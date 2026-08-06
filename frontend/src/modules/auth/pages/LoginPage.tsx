@@ -1,44 +1,49 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Alert,
   Box,
   Button,
   Fade,
+  IconButton,
+  InputAdornment,
+  Link,
   Paper,
   Stack,
   TextField,
   Typography,
   useMediaQuery,
 } from '@mui/material'
-import HubOutlinedIcon from '@mui/icons-material/HubOutlined'
-import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import LoginIcon from '@mui/icons-material/Login'
-import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
-import PrecisionManufacturingOutlinedIcon from '@mui/icons-material/PrecisionManufacturingOutlined'
+import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined'
+import SensorsOutlinedIcon from '@mui/icons-material/SensorsOutlined'
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { useAuth } from '../useAuth'
+import { BrandMark } from '../../../shared/BrandMark'
 import { LanguageToggle } from '../../../shared/i18n/LanguageToggle'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 
 const capabilities: {
-  icon: typeof InsightsOutlinedIcon
+  icon: typeof SensorsOutlinedIcon
   title: StringKey
   body: StringKey
 }[] = [
   {
-    icon: PrecisionManufacturingOutlinedIcon,
-    title: 'login.cap.simulation.title',
-    body: 'login.cap.simulation.body',
+    icon: SensorsOutlinedIcon,
+    title: 'login.cap.iot.title',
+    body: 'login.cap.iot.body',
   },
   {
-    icon: MonitorHeartOutlinedIcon,
-    title: 'login.cap.patients.title',
-    body: 'login.cap.patients.body',
+    icon: NotificationsActiveOutlinedIcon,
+    title: 'login.cap.alerts.title',
+    body: 'login.cap.alerts.body',
   },
   {
-    icon: InsightsOutlinedIcon,
+    icon: DescriptionOutlinedIcon,
     title: 'login.cap.reporting.title',
     body: 'login.cap.reporting.body',
   },
@@ -51,6 +56,7 @@ export function LoginPage() {
   const { t } = useLanguage()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
@@ -89,13 +95,7 @@ export function LoginPage() {
           py: 2,
         }}
       >
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <HubOutlinedIcon />
-          <Typography variant="subtitle1" sx={{ letterSpacing: '0.04em' }}>
-            CHAMBAFINAL
-          </Typography>
-        </Stack>
-
+        <BrandMark />
         <LanguageToggle />
       </Box>
 
@@ -154,7 +154,7 @@ export function LoginPage() {
                 spacing={2}
                 sx={{ alignItems: 'flex-start' }}
               >
-                <capability.icon sx={{ mt: '2px', color: 'text.secondary' }} />
+                <capability.icon sx={{ mt: '2px', color: 'primary.main' }} />
                 <Box>
                   <Typography variant="subtitle2">
                     {t(capability.title)}
@@ -200,6 +200,7 @@ export function LoginPage() {
 
               <TextField
                 label={t('login.email')}
+                placeholder={t('login.emailPlaceholder')}
                 type="email"
                 value={email}
                 // A failure from the previous attempt no longer describes what
@@ -214,19 +215,53 @@ export function LoginPage() {
                 disabled={pending}
                 fullWidth
               />
-              <TextField
-                label={t('login.password')}
-                type="password"
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value)
-                  setError(null)
-                }}
-                autoComplete="current-password"
-                required
-                disabled={pending}
-                fullWidth
-              />
+              <Stack spacing={0.5}>
+                <TextField
+                  label={t('login.password')}
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value)
+                    setError(null)
+                  }}
+                  autoComplete="current-password"
+                  required
+                  disabled={pending}
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label={
+                              showPassword
+                                ? t('login.hidePassword')
+                                : t('login.showPassword')
+                            }
+                            onClick={() => setShowPassword((value) => !value)}
+                            edge="end"
+                            size="small"
+                          >
+                            {showPassword ? (
+                              <VisibilityOffOutlinedIcon fontSize="small" />
+                            ) : (
+                              <VisibilityOutlinedIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <Link
+                  component={RouterLink}
+                  to="/forgot-password"
+                  variant="body2"
+                  sx={{ alignSelf: 'flex-end' }}
+                >
+                  {t('login.forgotPassword')}
+                </Link>
+              </Stack>
 
               <Button
                 type="submit"
