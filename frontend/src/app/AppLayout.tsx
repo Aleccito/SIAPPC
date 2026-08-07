@@ -6,11 +6,10 @@ import {
   Container,
   Stack,
   Toolbar,
-  Typography,
 } from '@mui/material'
-import HubOutlinedIcon from '@mui/icons-material/HubOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import { useAuth } from '../modules/auth/useAuth'
+import { BrandMark } from '../shared/BrandMark'
 import { LanguageToggle } from '../shared/i18n/LanguageToggle'
 import { useLanguage } from '../shared/i18n/useLanguage'
 import { modules } from '../modules/registry'
@@ -31,11 +30,8 @@ export function AppLayout() {
   return (
     <Box sx={{ minHeight: '100%', bgcolor: 'background.default' }}>
       <AppBar position="static">
-        <Toolbar>
-          <HubOutlinedIcon sx={{ mr: 1 }} />
-          <Typography variant="subtitle1" sx={{ mr: 4 }}>
-            CHAMBAFINAL
-          </Typography>
+        <Toolbar sx={{ gap: 4 }}>
+          <BrandMark withTagline={false} />
 
           <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>
             {visibleModules.map((module) => (

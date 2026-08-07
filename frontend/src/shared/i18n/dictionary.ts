@@ -17,28 +17,56 @@ const es = {
   'action.close': 'Cerrar',
   'language.switch': 'Cambiar a inglés',
 
-  'login.eyebrow': 'Proyecto final',
-  'login.headline1': 'Simula el flujo hospitalario.',
-  'login.headline2': 'Mejora la atención al paciente.',
+  'brand.name': 'SIAPPC',
+  'brand.tagline': 'Sistema Inteligente de Atención a Pacientes en Estado Crítico',
+
+  'login.eyebrow': 'Monitoreo inteligente',
+  'login.headline1': 'Monitoreo en tiempo real.',
+  'login.headline2': 'Cuidado crítico basado en datos.',
   'login.lead':
-    'Sistema modular para simulación hospitalaria, seguimiento de pacientes y los reportes que los conectan.',
-  'login.cap.simulation.title': 'Simulación',
-  'login.cap.simulation.body':
-    'Las corridas de FlexSim se encolan como trabajos por lotes. Cada una reporta rendimiento, utilización y el cuello de botella encontrado.',
-  'login.cap.patients.title': 'Pacientes',
-  'login.cap.patients.body':
-    'Registra pacientes, asígnalos a un módulo de atención y consulta su información en cualquier momento.',
-  'login.cap.reporting.title': 'Reportes',
+    'Una plataforma clínica para visualizar señales, detectar eventos críticos y documentar decisiones con precisión y trazabilidad de pacientes politraumatizados.',
+  'login.cap.iot.title': 'Monitoreo IoT',
+  'login.cap.iot.body':
+    'Integración con sensores y dispositivos para lecturas continuas.',
+  'login.cap.alerts.title': 'Alertas Clínicas',
+  'login.cap.alerts.body': 'Notificaciones precisas para umbrales y eventos críticos.',
+  'login.cap.reporting.title': 'Reportes Inteligentes',
   'login.cap.reporting.body':
-    'Los tableros de Power BI y los reportes leen los mismos datos que escribe la simulación en MariaDB.',
+    'Resúmenes clínicos y auditoría de eventos con formato institucional.',
   'login.phaseNote':
     'La fase 1 es solo la interfaz. Cada llamada al servidor es una implementación falsa que conserva la firma real.',
   'login.title': 'Iniciar sesión',
-  'login.hint': 'Usa cualquier correo y contraseña por ahora',
-  'login.email': 'Correo',
+  'login.hint':
+    'Ingrese sus credenciales institucionales para acceder a la central de monitoreo.',
+  'login.email': 'Correo institucional',
+  'login.emailPlaceholder': 'ejemplo@institucion.org',
   'login.password': 'Contraseña',
+  'login.showPassword': 'Mostrar contraseña',
+  'login.hidePassword': 'Ocultar contraseña',
+  'login.forgotPassword': '¿Olvidó su contraseña?',
   'login.pending': 'Iniciando sesión…',
   'login.failed': 'No se pudo iniciar sesión',
+
+  'forgotPassword.title': 'Recuperar contraseña',
+  'forgotPassword.hint':
+    'Ingrese su correo institucional registrado para recibir las instrucciones de restablecimiento.',
+  'forgotPassword.warning':
+    'El enlace de recuperación expirará automáticamente en 15 minutos por motivos de seguridad.',
+  'forgotPassword.submit': 'Enviar enlace de recuperación',
+  'forgotPassword.backToLogin': 'Volver al inicio de sesión',
+  'forgotPassword.pending': 'Enviando…',
+  'forgotPassword.failed': 'No se pudo enviar el enlace',
+
+  'verify.title': 'Verificación de seguridad',
+  'verify.hint':
+    'Ingrese el código de seguridad de 6 dígitos enviado a su dispositivo móvil registrado.',
+  'verify.resendQuestion': '¿No recibió el código?',
+  'verify.resend': 'Reenviar',
+  'verify.resendIn': 'en',
+  'verify.submit': 'Verificar',
+  'verify.pending': 'Verificando…',
+  'verify.failed': 'Código incorrecto',
+  'verify.success': 'Código verificado. Ahora puede iniciar sesión.',
 
   'dashboard.welcome': 'Bienvenido, {name}',
   'dashboard.powerbi.title': 'Power BI',
@@ -132,28 +160,54 @@ const en: Strings = {
   'action.close': 'Close',
   'language.switch': 'Switch to Spanish',
 
-  'login.eyebrow': 'Final project',
-  'login.headline1': 'Simulate hospital flow.',
-  'login.headline2': 'Improve patient service.',
+  'brand.name': 'SIAPPC',
+  'brand.tagline': 'Intelligent System for Critical Patient Care',
+
+  'login.eyebrow': 'Intelligent monitoring',
+  'login.headline1': 'Real-time monitoring.',
+  'login.headline2': 'Critical care driven by data.',
   'login.lead':
-    'A modular system for hospital simulation, patient tracking, and the reporting that ties them together.',
-  'login.cap.simulation.title': 'Simulation',
-  'login.cap.simulation.body':
-    'FlexSim runs are queued as batch jobs. Each one reports throughput, utilisation, and the bottleneck it found.',
-  'login.cap.patients.title': 'Patients',
-  'login.cap.patients.body':
-    'Register patients, assign them to a service module, and read their record at any point.',
-  'login.cap.reporting.title': 'Reporting',
+    'A clinical platform to visualise signals, detect critical events, and document decisions with precision and traceability for polytrauma patients.',
+  'login.cap.iot.title': 'IoT Monitoring',
+  'login.cap.iot.body': 'Integrates with sensors and devices for continuous readings.',
+  'login.cap.alerts.title': 'Clinical Alerts',
+  'login.cap.alerts.body': 'Precise notifications for thresholds and critical events.',
+  'login.cap.reporting.title': 'Intelligent Reports',
   'login.cap.reporting.body':
-    'Power BI dashboards and reports read the same MariaDB data the simulation writes.',
+    'Clinical summaries and event audit trails in institutional format.',
   'login.phaseNote':
     'Phase 1 is the frontend only. Every backend call is a stub with the real signature.',
   'login.title': 'Sign in',
-  'login.hint': 'Use any email and password for now',
-  'login.email': 'Email',
+  'login.hint': 'Enter your institutional credentials to access the monitoring centre.',
+  'login.email': 'Institutional email',
+  'login.emailPlaceholder': 'example@institution.org',
   'login.password': 'Password',
+  'login.showPassword': 'Show password',
+  'login.hidePassword': 'Hide password',
+  'login.forgotPassword': 'Forgot your password?',
   'login.pending': 'Signing in…',
   'login.failed': 'Login failed',
+
+  'forgotPassword.title': 'Recover password',
+  'forgotPassword.hint':
+    'Enter your registered institutional email to receive reset instructions.',
+  'forgotPassword.warning':
+    'The recovery link will automatically expire in 15 minutes for security reasons.',
+  'forgotPassword.submit': 'Send recovery link',
+  'forgotPassword.backToLogin': 'Back to sign in',
+  'forgotPassword.pending': 'Sending…',
+  'forgotPassword.failed': 'Could not send the link',
+
+  'verify.title': 'Security verification',
+  'verify.hint':
+    'Enter the 6-digit security code sent to your registered mobile device.',
+  'verify.resendQuestion': "Didn't receive the code?",
+  'verify.resend': 'Resend',
+  'verify.resendIn': 'in',
+  'verify.submit': 'Verify',
+  'verify.pending': 'Verifying…',
+  'verify.failed': 'Incorrect code',
+  'verify.success': 'Code verified. You can now sign in.',
 
   'dashboard.welcome': 'Welcome, {name}',
   'dashboard.powerbi.title': 'Power BI',
