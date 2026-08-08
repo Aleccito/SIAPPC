@@ -56,6 +56,7 @@ CREATE TABLE usuario (
   tipo_personal        VARCHAR(50) NOT NULL,
   registro_profesional VARCHAR(60),
   email                VARCHAR(150) NOT NULL,
+  password_hash        CHAR(60) NOT NULL,
   telefono             VARCHAR(30),
   activo               BOOLEAN NOT NULL DEFAULT TRUE,
   PRIMARY KEY (usuario_id),
@@ -101,10 +102,15 @@ CREATE TABLE paciente (
   sexo                ENUM('M','F','O') NOT NULL,
   tipo_sangre         ENUM('A+','A-','B+','B-','AB+','AB-','O+','O-'),
   contacto_emergencia VARCHAR(150),
+  modulo              VARCHAR(10),
+  estado              ENUM('waiting','inService','discharged') NOT NULL DEFAULT 'waiting',
+  motivo_consulta     VARCHAR(255),
+  fecha_llegada       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   activo              BOOLEAN NOT NULL DEFAULT TRUE,
   PRIMARY KEY (paciente_id),
   UNIQUE KEY uq_paciente_cedula (cedula),
   KEY ix_paciente_hospital (hospital_id),
+  KEY ix_paciente_estado (estado),
   CONSTRAINT fk_paciente_hospital FOREIGN KEY (hospital_id)
     REFERENCES hospital (hospital_id) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB;
