@@ -8,6 +8,7 @@ import rolesRoutes from "./routes/roles.ts";
 import auditRoutes from "./routes/audit.ts";
 import catalogRoutes from "./routes/catalogs.ts";
 import patientsRoutes from "./routes/patients.ts";
+import sensorsRoutes from "./routes/sensors.ts";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -27,6 +28,7 @@ export async function buildApp() {
   await app.register(auditRoutes);
   await app.register(catalogRoutes);
   await app.register(patientsRoutes);
+  await app.register(sensorsRoutes);
 
   return app;
 }

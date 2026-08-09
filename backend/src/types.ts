@@ -147,3 +147,69 @@ export interface PacienteRow extends RowDataPacket {
   motivo_consulta: string | null;
   fecha_llegada: string;
 }
+
+export interface DispositivoRow extends RowDataPacket {
+  dispositivo_id: number;
+}
+
+export interface SensorRow extends RowDataPacket {
+  sensor_id: number;
+}
+
+// valor llega como string: mysql2 no convierte DECIMAL a number por defecto.
+export interface LecturaRow extends RowDataPacket {
+  lectura_id: number;
+  valor: string;
+  fecha_hora: Date;
+  variable_medida: string;
+  unidad: string;
+  codigo: string;
+}
+
+export type SensorReading = {
+  id: string;
+  device: string;
+  variable: string;
+  unit: string;
+  value: number;
+  at: string;
+};
+
+// Espejo exacto de los ENUM de la tabla `alerta`: se usan tal cual como valores
+// de la API para no mantener una traducción de códigos entre capas.
+export const alertSeverities = ["baja", "media", "alta", "critica"] as const;
+export type AlertSeverity = (typeof alertSeverities)[number];
+
+export const alertStatuses = ["abierta", "reconocida", "resuelta"] as const;
+export type AlertStatus = (typeof alertStatuses)[number];
+
+export interface AlertaRow extends RowDataPacket {
+  alerta_id: number;
+  lectura_id: number;
+  tipo: string;
+  severidad: AlertSeverity;
+  mensaje: string | null;
+  estado: AlertStatus;
+  fecha_hora: Date;
+  fecha_resolucion: Date | null;
+  // Contexto de la lectura que disparó la alerta (JOIN lectura/sensor/dispositivo).
+  valor: string;
+  variable_medida: string;
+  unidad: string;
+  codigo: string;
+}
+
+export type SensorAlert = {
+  id: string;
+  readingId: string;
+  device: string;
+  variable: string;
+  unit: string;
+  value: number;
+  type: string;
+  severity: AlertSeverity;
+  message: string | null;
+  status: AlertStatus;
+  at: string;
+  resolvedAt: string | null;
+};

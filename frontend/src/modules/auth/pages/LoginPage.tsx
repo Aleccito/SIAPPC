@@ -59,6 +59,9 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [resetSuccess] = useState(
+    () => Boolean((location.state as { resetSuccess?: boolean } | null)?.resetSuccess),
+  )
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   async function handleSubmit(event: FormEvent) {
@@ -196,6 +199,7 @@ export function LoginPage() {
                 </Typography>
               </Stack>
 
+              {resetSuccess && <Alert severity="success">{t('verify.success')}</Alert>}
               {error && <Alert severity="error">{error}</Alert>}
 
               <TextField

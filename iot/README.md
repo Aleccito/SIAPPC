@@ -16,12 +16,14 @@ source ~/venv/bin/activate
 pip install -r requirements.txt
 ```
 
-```bash
-cp .env.example .env
-```
-
+El `.env` de la Pi se le pide a **Ing.Adrian**: ahí vienen las credenciales reales
+del broker. [`.env.example`](.env.example) solo documenta qué variables existen.
 `DEVICE_CODE` debe coincidir con `dispositivo.codigo` en la base de datos, y
-`MQTT_HOST` apunta al broker. El `.env` está en `.gitignore`.
+`MQTT_HOST` apunta al broker. El `.env` está en `.gitignore` y ahí se queda.
+
+Esta parte corre sobre la Raspberry Pi con los sensores conectados, así que no
+va en Docker: el resto del sistema (base, backend, frontend) se levanta con
+`docker compose up` desde la raíz del repo, ver [../README.md](../README.md).
 
 ## Ejecutar
 

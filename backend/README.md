@@ -1,71 +1,112 @@
 # Backend
 
-Base de datos MariaDB en Docker. Todavía no hay API.
+API Fastify sobre MariaDB, en TypeScript. Node corre las fuentes `.ts`
+directamente (type stripping), así que no hay paso de build.
 
-Este `docker-compose.yml` levanta **solo** la base, con su propio `.env` local.
-Para correr todo el sistema (base + backend + frontend) usa el Compose de la raíz
-del repo: ver [../README.md](../README.md). No levantes los dos a la vez, ambos
-publican MariaDB en el mismo puerto del host.
+## Cómo se corre
 
-## Preparar
+Con el Compose de la raíz del repo, junto con la base y el frontend:
 
 ```bash
-cp .env.example .env
+docker compose up -d --build
 ```
 
-Llena `DB_USER`, `DB_PASSWORD` y `DB_ROOT_PASSWORD`. El archivo `.env` está en
-`.gitignore` y ahí se queda: nunca se commitea.
+Esa es la única ruta soportada. Los pasos completos —incluido pedirle el `.env`
+a **Ing.Adrian**, que es de donde salen las credenciales reales— están en
+[../README.md](../README.md). Este directorio no se levanta por separado.
 
-```bash
-npm install
-```
+El `backend/docker-compose.yml` y los scripts `db:*` de `package.json` son
+restos de cuando la base se levantaba sola. Publican MariaDB en el mismo puerto
+del host que el Compose de la raíz, así que correr los dos a la vez choca. Si
+tienes un `3306 already in use`, casi siempre es eso.
 
-## Levantar
+Igual pasa con `backend/.env`: está en `.dockerignore` y no entra en la imagen.
+El contenedor recibe su configuración del `docker-compose.yml` de la raíz, que
+lee el `.env` de la raíz. [`.env.example`](.env.example) queda como referencia de
+qué variables lee el backend, con valores de relleno.
 
-```bash
-npm run db:up
-```
-
-La primera vez el contenedor aplica `db/schema.sql` automáticamente y crea las 16
-tablas, y enseguida `db/seed.sql` con el hospital, los roles y el admin inicial
-(`admin@institucion.org` / `Admin12345`, contraseña pública, solo desarrollo).
-Tarda unos 30 segundos en quedar sano.
-
-| Comando | Qué hace |
+| Variable | Para qué |
 |---|---|
-| `npm run db:up` | Levanta MariaDB en segundo plano |
-| `npm run db:down` | Apaga el contenedor, conserva los datos |
-| `npm run db:reset` | Borra el volumen y arranca de cero |
-| `npm run db:logs` | Sigue los logs |
-| `npm run migrate` | Aplica `db/schema.sql` contra la base actual |
-| `npm run typecheck` | Revisa tipos |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Conexión a MariaDB (en Compose, `mariadb:3306`) |
+| `PORT` | Puerto HTTP, 3001 |
+| `JWT_SECRET` | Firma de los tokens. **Sin esto el proceso se apaga al arrancar** |
+| `MQTT_HOST`, `MQTT_PORT`, `MQTT_USER`, `MQTT_PASSWORD` | Broker del que se leen las lecturas de la Pi |
+| `MQTT_TELEMETRY_TOPIC` | Tema suscrito, por defecto `siappc/+/telemetry` |
 
-## Migrar
+## Endpoints
 
-`db/schema.sql` es solo DDL, no crea la base. El nombre sale de `DB_NAME`:
-Docker crea la base con `MARIADB_DATABASE` y `migrate.ts` se conecta directo a
-ella. Así el nombre vive en un solo lugar, el `.env`.
+Todo cuelga de la raíz del servicio. El frontend los llama con prefijo `/api`,
+que nginx quita al hacer proxy.
 
-El esquema se aplica solo en el primer arranque, cuando el volumen está vacío.
-Después de eso usa `npm run migrate`, que requiere que la base ya exista.
+| Ruta | Qué hace |
+|---|---|
+| `GET /health` | Sonda de vida, `{"status":"ok"}` |
+| `POST /auth/login` | Credenciales por token JWT; registra el acceso en auditoría |
+| `GET /auth/me` | Usuario de la sesión |
+| `GET /users` · `POST /users` · `PATCH /users/:id` | Alta, listado y edición de usuarios |
+| `GET /users/:id/activity` | Actividad reciente de un usuario |
+| `GET /roles` · `POST /roles` | Roles del sistema |
+| `GET /roles/:id/permissions` · `PUT /roles/:id/permissions` | Matriz de permisos del rol |
+| `GET /roles/changes` | Historial de cambios de rol |
+| `GET /permissions` | Catálogo de permisos |
+| `GET /audit` · `GET /audit/entities` | Bitácora, paginada y filtrable |
+| `GET /units` | Catálogo de unidades |
+| `GET /patients` · `POST /patients` | Pacientes activos y registro de llegada |
+| `GET /sensors/readings` | Lecturas, filtrables por `device`, `variable`, `limit` |
+| `GET /sensors/alerts` | Alertas, además por `severity` y `status` |
 
-`migrate` **no es idempotente**: el esquema usa `CREATE TABLE` sin
-`IF NOT EXISTS`, así que sobre una base que ya tiene las tablas falla con
-`Table 'hospital' already exists`. Eso es correcto, no un bug. Para reconstruir:
+Salvo `/health` y `/auth/login`, todas exigen `Authorization: Bearer <token>`.
+Las de usuarios, roles y auditoría además revalidan el permiso concreto contra
+`rol_permiso` en el servidor — no basta con el rol que venga en el token.
+
+## Ingesta MQTT
+
+`src/services/mqttIngest.ts` se suscribe a `siappc/+/telemetry` y por cada
+mensaje válido:
+
+1. Busca el `dispositivo` por `codigo`. Si no está dado de alta, descarta la
+   lectura en vez de inventarle dueño.
+2. Da de alta el `sensor` (dispositivo + variable) si no existía.
+3. Inserta la `lectura` con `INSERT IGNORE`: el índice único sobre
+   `hash_sha256` descarta reenvíos del buffer de la Pi y duplicados de QoS 1.
+4. Evalúa umbrales y, si toca, inserta la `alerta`.
+
+Los umbrales viven en código (`hr` fuera de 50–120 / 40–140, `spo2` bajo 90 / 85).
+Son un mínimo viable, no la lógica clínica final: todavía no hay tabla de
+configuración por paciente o por sensor. El `ecg` no dispara alertas — una
+muestra instantánea de voltaje no dice nada sin la onda completa.
+
+La conexión al broker no bloquea el arranque: si no hay broker, mqtt.js reintenta
+solo y el servidor HTTP sigue respondiendo.
+
+## Base de datos
+
+`db/schema.sql` son 17 tablas: hospital, unidades, roles y permisos, usuarios y
+especializaciones, pacientes e historia clínica, dispositivos, sensores,
+lecturas, alertas, notificaciones y auditoría.
+
+El esquema y el seed se aplican solos en el primer arranque, cuando el volumen
+está vacío. Para rehacerlos hay que borrar el volumen desde la raíz del repo:
 
 ```bash
-npm run db:reset
+docker compose down -v
 ```
 
-## Conectarse a mano
+`db/schema.sql` usa `CREATE TABLE` sin `IF NOT EXISTS`, así que reaplicarlo sobre
+una base que ya tiene tablas falla con `Table 'hospital' already exists`. Eso es
+correcto, no un bug.
+
+Para entrar a la base con un cliente:
 
 ```bash
-docker exec -it chamba-mariadb mariadb -u root -p
+docker exec -it siappc-mariadb mariadb -u root -p
 ```
 
 ## Pendiente
 
-El esquema actual es **ThermoTrace**: sensores, lecturas y alertas. No tiene
-tablas para corridas de FlexSim, módulos de atención KY-xxx, estado del paciente
-en la fila de servicio, ni contraseña en `usuario`. El frontend espera esas
-cosas. Falta decidir si el esquema o el frontend es el que se ajusta.
+- El esquema no tiene tablas para corridas de FlexSim ni para el estado del
+  paciente en la fila de servicio; las pantallas de FlexSim y Reportes siguen
+  siendo maquetas.
+- Los umbrales de alerta son fijos y globales.
+- El `origin` de CORS todavía apunta solo a `http://localhost:5173`. En Docker no
+  estorba, porque nginx sirve el frontend y el backend en el mismo origen.

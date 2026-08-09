@@ -1,10 +1,56 @@
-# CHAMBAFINAL
+# Frontend
 
-Sistema modular para optimizar la atención al paciente: simulación hospitalaria,
-seguimiento de pacientes y reportes.
+Tablero web de SIAPPC: administración de usuarios y roles, auditoría, pacientes
+y monitoreo de sensores.
 
-La fase 1 es solo frontend. Cada llamada al servidor es una implementación falsa
-con la firma real, así que la fase 2 reemplaza cuerpos de funciones, no pantallas.
+## Cómo se corre
+
+Con el Compose de la raíz del repo, junto con la base y el backend:
+
+```bash
+docker compose up -d --build
+```
+
+Esa es la única ruta soportada, y queda en http://localhost:8080. Los pasos
+completos —incluido pedirle el `.env` a **Ing.Adrian**, que es de donde salen las
+credenciales reales— están en [../README.md](../README.md). Este directorio no se
+levanta por separado.
+
+El frontend no lee ninguna variable de entorno: no hay `VITE_*` ni `.env` aquí.
+La imagen es multi-stage — Vite compila el bundle y nginx sirve el `dist`, sin
+`node_modules`. `nginx.conf` hace proxy de `/api/` hacia `backend:3001`, así que
+para el navegador todo es el mismo origen y no hay CORS que configurar.
+
+Después de cambiar código hay que reconstruir la imagen:
+`docker compose up -d --build`.
+
+## Iniciar sesión
+
+El login es real: pega contra `POST /api/auth/login` y el rol viene del servidor.
+La cuenta inicial la crea el seed de la base
+(`admin@institucion.org` / `Admin12345`, contraseña que está en el repositorio,
+solo para desarrollo). El token vive en `sessionStorage` y muere con la pestaña.
+
+## Qué está conectado y qué no
+
+| Módulo | Estado | Contra qué |
+|---|---|---|
+| Autenticación | Real | `POST /auth/login`, `GET /auth/me` |
+| Usuarios (`/admin/users`) | Real | `GET/POST /users`, `PATCH /users/:id`, `GET /users/:id/activity`, `GET /units` |
+| Roles (`/admin/roles`) | Real | `GET/POST /roles`, `GET/PUT /roles/:id/permissions`, `GET /roles/changes` |
+| Auditoría (`/admin/audit`) | Real | `GET /audit`, `GET /audit/entities` |
+| Sensores (`/sensors`) | Real | `GET /sensors/readings`, `GET /sensors/alerts` |
+| Pacientes (`/patients`) | **Simulado** | La API ya existe (`GET/POST /patients`); falta cambiar `patientsApi.ts` |
+| Reportes (`/reports`) | **Simulado** | Fixtures en el navegador, sin endpoint |
+| FlexSim (`/flexsim`) | **Simulado** | Estado derivado del tiempo transcurrido |
+| Power BI (`/powerbi`) | **Simulado** | Placeholder, sin token de incrustación |
+| Recuperar contraseña | **Simulado** | `passwordResetApi.ts` no llama a nada |
+| Panel principal (`/`) | **Simulado** | Tres tarjetas de texto, sin datos |
+
+Cada API simulada lleva un comentario `PHASE 2:` en la línea exacta que hay que
+reemplazar. Las reales pasan todas por
+[`src/shared/api/http.ts`](src/shared/api/http.ts), que agrega el token y
+normaliza los errores del backend.
 
 ## Stack
 
@@ -15,41 +61,14 @@ con la firma real, así que la fase 2 reemplaza cuerpos de funciones, no pantall
 | Componentes | MUI + `@mui/icons-material` |
 | Rutas | React Router (SPA data router) |
 | Estado del servidor | TanStack Query |
+| Servidor en producción | nginx (dentro del contenedor) |
 
 Paleta blanca en [`src/shared/theme.ts`](src/shared/theme.ts).
 
-## Ejecutar
-
-```bash
-npm install
-```
-
-```bash
-npm run dev
-```
-
-```bash
-npm run build
-```
-
-```bash
-npm run lint
-```
-
-## Iniciar sesión
-
-La fase 1 acepta cualquier correo y contraseña. El rol sale del correo: si
-contiene `admin` entra como administrador, cualquier otro como usuario.
-
-- `admin@plant.local` — ve todos los módulos, incluido Usuarios
-- `lucia@plant.local` — sin Usuarios, y `/admin/users` lo redirige
-
-La sesión vive en `sessionStorage` y muere con la pestaña.
-
 ## Idioma
 
-Español por defecto, con interruptor `EN`/`ES` en la barra superior y en el login.
-La elección se guarda en `localStorage` y actualiza `<html lang>`.
+Español por defecto, con interruptor `EN`/`ES` en la barra superior y en el
+login. La elección se guarda en `localStorage` y actualiza `<html lang>`.
 
 Todo el texto vive en [`src/shared/i18n/dictionary.ts`](src/shared/i18n/dictionary.ts).
 El diccionario inglés está tipado contra el español, así que una traducción
@@ -61,28 +80,23 @@ faltante rompe la compilación en vez de fallar en silencio.
 src/
   app/                 App.tsx (providers), router.tsx, AppLayout.tsx
   shared/
+    api/http.ts        fetch con token y errores normalizados
     theme.ts           paleta blanca
     i18n/              diccionario, provider, hook, interruptor
   modules/
     registry.ts        aquí se registra cada módulo
-    auth/              tipos, useAuth, authContext, AuthProvider,
-                       ProtectedRoute, RequireRole, LoginPage
+    auth/              login, recuperación, useAuth, ProtectedRoute, RequireRole
     dashboard/         MainPage
-    powerbi/           placeholder de incrustación
-    flexsim/           encolar corrida, sondear estado, leer resultados
+    admin/             usuarios, roles, matriz de permisos, auditoría
+    sensors/           lecturas y alertas de la Pi
     patients/          registro, ficha y filtro por módulo de atención
     reports/           lista de reportes
-    admin/             UsersPage (asignación de roles)
+    flexsim/           encolar corrida, sondear estado, leer resultados
+    powerbi/           placeholder de incrustación
 ```
 
 Un módulo es dueño de `types.ts`, `api/` y `pages/`. Los módulos importan de
 `auth` y `shared`; no se importan entre sí.
-
-## Módulos de atención
-
-El hospital atiende en módulos numerados: `KY-001`, `KY-004`, `KY-012`, `KY-019`.
-Están tipados en [`src/modules/patients/types.ts`](src/modules/patients/types.ts),
-así que un código desconocido es error de compilación.
 
 ## Agregar un módulo
 
@@ -100,21 +114,31 @@ Una entrada más en [`src/modules/registry.ts`](src/modules/registry.ts):
 }
 ```
 
-El router y la barra de navegación leen el registro. Ninguno se edita.
-`lazy` mantiene la página fuera del bundle inicial.
+El router y la barra de navegación leen el registro. Ninguno se edita. `lazy`
+mantiene la página fuera del bundle inicial. Las rutas que no son entradas de
+navegación van en `detailRoutes`, en el mismo archivo.
 
-## Puntos de reemplazo para la fase 2
+## Módulos de atención
 
-Cada API falsa lleva un comentario `PHASE 2:` en la línea exacta.
+El hospital atiende en módulos numerados: `KY-001`, `KY-004`, `KY-012`, `KY-019`.
+Están tipados en [`src/modules/patients/types.ts`](src/modules/patients/types.ts),
+así que un código desconocido es error de compilación.
 
-| Archivo | Se convierte en |
-|---|---|
-| `modules/auth/api/authApi.ts` | login real; el rol viene del servidor |
-| `modules/admin/api/usersApi.ts` | `GET/PATCH /api/admin/users` |
-| `modules/powerbi/api/powerbiApi.ts` | `GET /api/powerbi/embed-token` |
-| `modules/flexsim/api/flexsimApi.ts` | `POST/GET /api/flexsim/runs` |
-| `modules/patients/api/patientsApi.ts` | `GET/POST /api/patients` |
-| `modules/reports/api/reportsApi.ts` | `GET /api/reports` |
+## Seguridad
+
+`ProtectedRoute` y `RequireRole` esconden interfaz. **No** son control de acceso:
+cualquiera edita `sessionStorage` y llega a cualquier ruta. Lo que sí protege son
+los endpoints — el backend revalida el permiso concreto contra `rol_permiso` en
+cada petición de usuarios, roles y auditoría, y la regla "no se puede suspender
+al último administrador activo" se aplica del lado del servidor, no en la
+pantalla.
+
+Pendiente todavía:
+
+- el token está en `sessionStorage`, no en una cookie `httpOnly`
+- los datos de pacientes exigen bitácora de quién consultó qué ficha
+- ningún secreto debe ir jamás en una variable `VITE_*`: se empaquetan en el
+  bundle y viajan al navegador
 
 ### Power BI
 
@@ -134,28 +158,14 @@ corridas y sondea el estado. La simulación es batch asíncrono, siempre.
 Los nombres de modelo que manda el cliente se validan en el servidor antes de
 llegar a una invocación por CLI.
 
-## Seguridad
-
-`ProtectedRoute` y `RequireRole` esconden interfaz. **No** son control de acceso:
-cualquiera edita `sessionStorage` y llega a cualquier ruta. Aceptable mientras
-los datos son fixtures, deja de serlo con un servidor real. En la fase 2:
-
-- todo endpoint `/api/admin/*` revalida el rol en el servidor, leído de la
-  sesión, nunca de lo que manda el cliente
-- los datos de pacientes exigen control de acceso real y bitácora de quién
-  consultó qué ficha
-- la regla "el último admin no puede degradarse" es un invariante de datos y
-  también se aplica en el servidor
-- el token de sesión pasa a una cookie httpOnly
-- ningún secreto va en una variable `VITE_*`; esas se empaquetan y viajan al
-  navegador
-
 ## Pendientes conocidos
 
-- El sondeo de FlexSim se pausa con la pestaña oculta (comportamiento de
-  TanStack Query). Usar `refetchIntervalInBackground: true` si corre en pantalla
-  de pared.
-- Los fixtures de Reportes y los modelos de FlexSim siguen en lenguaje de
-  fábrica (`line-a.fsm`, "Downtime by station"), no de hospital.
+- La tarjeta "Datos" del panel principal todavía dice que MariaDB llega en la
+  fase 2 (`dashboard.data.body` en el diccionario). Ya llegó; falta reescribir
+  ese texto.
+- El sondeo de FlexSim se pausa con la pestaña oculta (comportamiento de TanStack
+  Query). Usar `refetchIntervalInBackground: true` si corre en pantalla de pared.
+- Los fixtures de Reportes y los modelos de FlexSim siguen en lenguaje de fábrica
+  (`line-a.fsm`, "Downtime by station"), no de hospital.
 - `npm audit` reporta un aviso de react-router que afecta modo RSC. Esta app es
   SPA data router sin RSC, así que la ruta no es alcanzable.
