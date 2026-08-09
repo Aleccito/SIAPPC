@@ -1,6 +1,6 @@
 import { request } from '../../../shared/api/http'
 import type { User } from '../../auth/types'
-import type { ActivityEntry, CreatedUser, NewUser, RoleSummary, Unit } from '../types'
+import type { ActivityEntry, CreatedUser, NewUser, Unit } from '../types'
 
 // El backend re-verifica el permiso en cada una de estas rutas — llegar a esta
 // pantalla no es autorización.
@@ -27,10 +27,6 @@ export async function updateUser(
 
 export async function listUserActivity(id: string, days: number): Promise<ActivityEntry[]> {
   return request<ActivityEntry[]>(`/users/${id}/activity?days=${days}`)
-}
-
-export async function listRoles(): Promise<RoleSummary[]> {
-  return request<RoleSummary[]>('/roles')
 }
 
 export async function listUnits(): Promise<Unit[]> {

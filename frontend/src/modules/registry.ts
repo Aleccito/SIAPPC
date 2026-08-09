@@ -8,6 +8,7 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import PrecisionManufacturingOutlinedIcon from '@mui/icons-material/PrecisionManufacturingOutlined'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
+import SensorsOutlinedIcon from '@mui/icons-material/SensorsOutlined'
 import type { Role } from './auth/types'
 import type { StringKey } from '../shared/i18n/dictionary'
 
@@ -55,6 +56,14 @@ export const modules: AppModule[] = [
     icon: MonitorHeartOutlinedIcon,
     lazy: async () => ({
       Component: (await import('./patients/pages/PatientsPage')).PatientsPage,
+    }),
+  },
+  {
+    path: '/sensors',
+    label: 'nav.sensors',
+    icon: SensorsOutlinedIcon,
+    lazy: async () => ({
+      Component: (await import('./sensors/pages/SensorsPage')).SensorsPage,
     }),
   },
   {
