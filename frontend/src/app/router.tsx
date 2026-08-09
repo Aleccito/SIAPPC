@@ -4,7 +4,7 @@ import { ProtectedRoute } from '../modules/auth/components/ProtectedRoute'
 import { RequireRole } from '../modules/auth/components/RequireRole'
 import { ForgotPasswordPage } from '../modules/auth/pages/ForgotPasswordPage'
 import { LoginPage } from '../modules/auth/pages/LoginPage'
-import { modules } from '../modules/registry'
+import { detailRoutes, modules } from '../modules/registry'
 
 export const router = createBrowserRouter([
   {
@@ -20,7 +20,7 @@ export const router = createBrowserRouter([
     children: [
       {
         element: <AppLayout />,
-        children: modules.map(({ path, lazy, requiredRole }) =>
+        children: [...modules, ...detailRoutes].map(({ path, lazy, requiredRole }) =>
           requiredRole
             ? {
                 element: <RequireRole role={requiredRole} />,

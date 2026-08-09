@@ -15,6 +15,7 @@ services:
       # Only runs on first boot, when the data volume is empty. To re-apply the
       # schema afterwards use `npm run migrate`.
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
     healthcheck:
       test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
       interval: 10s

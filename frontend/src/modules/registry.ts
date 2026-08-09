@@ -4,6 +4,8 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import PrecisionManufacturingOutlinedIcon from '@mui/icons-material/PrecisionManufacturingOutlined'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import type { Role } from './auth/types'
@@ -71,5 +73,35 @@ export const modules: AppModule[] = [
       Component: (await import('./admin/pages/UsersPage')).UsersPage,
     }),
     requiredRole: 'admin',
+  },
+  {
+    path: '/admin/roles',
+    label: 'nav.roles',
+    icon: ShieldOutlinedIcon,
+    lazy: async () => ({
+      Component: (await import('./admin/pages/RolesPage')).RolesPage,
+    }),
+    requiredRole: 'admin',
+  },
+  {
+    path: '/admin/audit',
+    label: 'nav.audit',
+    icon: FactCheckOutlinedIcon,
+    lazy: async () => ({
+      Component: (await import('./admin/pages/AuditPage')).AuditPage,
+    }),
+    requiredRole: 'admin',
+  },
+]
+
+// Rutas que no son entradas de navegación: se llega a ellas desde una pantalla,
+// no desde la barra lateral.
+export const detailRoutes = [
+  {
+    path: '/admin/roles/:id/permissions',
+    lazy: async () => ({
+      Component: (await import('./admin/pages/PermissionMatrixPage')).PermissionMatrixPage,
+    }),
+    requiredRole: 'admin' as Role,
   },
 ]

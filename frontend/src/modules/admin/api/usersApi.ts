@@ -1,24 +1,38 @@
-import type { Role, User } from '../../auth/types'
+import { request } from '../../../shared/api/http'
+import type { User } from '../../auth/types'
+import type { ActivityEntry, CreatedUser, NewUser, RoleSummary, Unit } from '../types'
 
-// PHASE 2: replace these bodies with fetches. The backend must re-check that
-// the caller is an admin — never trust that this screen was reachable.
-let fixtures: User[] = [
-  { id: 'u-001', name: 'admin', email: 'admin@plant.local', role: 'admin' },
-  { id: 'u-002', name: 'lucia', email: 'lucia@plant.local', role: 'user' },
-  { id: 'u-003', name: 'marco', email: 'marco@plant.local', role: 'user' },
-]
-
+// El backend re-verifica el permiso en cada una de estas rutas — llegar a esta
+// pantalla no es autorización.
 export async function listUsers(): Promise<User[]> {
-  await new Promise((resolve) => setTimeout(resolve, 300))
-  return fixtures
+  return request<User[]>('/users')
 }
 
-export async function setUserRole(id: string, role: Role): Promise<User> {
-  await new Promise((resolve) => setTimeout(resolve, 300))
-  fixtures = fixtures.map((user) => (user.id === id ? { ...user, role } : user))
-  const updated = fixtures.find((user) => user.id === id)
-  if (!updated) {
-    throw new Error('User not found')
-  }
-  return updated
+export async function createUser(user: NewUser): Promise<CreatedUser> {
+  return request<CreatedUser>('/users', {
+    method: 'POST',
+    body: JSON.stringify(user),
+  })
+}
+
+export async function updateUser(
+  id: string,
+  changes: { role?: string; unitId?: number | null; active?: boolean },
+): Promise<User> {
+  return request<User>(`/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(changes),
+  })
+}
+
+export async function listUserActivity(id: string, days: number): Promise<ActivityEntry[]> {
+  return request<ActivityEntry[]>(`/users/${id}/activity?days=${days}`)
+}
+
+export async function listRoles(): Promise<RoleSummary[]> {
+  return request<RoleSummary[]>('/roles')
+}
+
+export async function listUnits(): Promise<Unit[]> {
+  return request<Unit[]>('/units')
 }
