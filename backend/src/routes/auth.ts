@@ -15,8 +15,22 @@ function toUser(row: UsuarioRow): User {
     name: row.nombre,
     email: row.email,
     role: row.rol_nombre,
+    roleLabel: row.rol_etiqueta,
+    unit: row.unidad_nombre,
+    phone: row.telefono,
+    active: Boolean(row.activo),
+    lastActivity: row.ultimo_acceso ? new Date(row.ultimo_acceso).toISOString() : null,
   };
 }
+
+const SELECT_USER = `
+  SELECT u.usuario_id, u.nombre, u.email, u.telefono, u.ultimo_acceso, u.activo,
+         r.nombre AS rol_nombre, r.etiqueta AS rol_etiqueta,
+         un.nombre AS unidad_nombre
+  FROM usuario u
+  JOIN rol r ON r.rol_id = u.rol_id
+  LEFT JOIN unidad un ON un.unidad_id = u.unidad_id
+`;
 
 export default async function authRoutes(app: FastifyInstance) {
   app.post("/auth/login", async (req, reply) => {
@@ -26,10 +40,15 @@ export default async function authRoutes(app: FastifyInstance) {
     }
     const { email, password } = parsed.data;
 
-    const [rows] = await pool.query<(UsuarioRow & { activo: number })[]>(
-      `SELECT u.usuario_id, u.nombre, u.email, u.password_hash, u.activo, r.nombre AS rol_nombre
+    // El hash solo se lee aquí; por eso esta consulta no reusa SELECT_USER.
+    const [rows] = await pool.query<UsuarioRow[]>(
+      `SELECT u.usuario_id, u.nombre, u.email, u.telefono, u.ultimo_acceso, u.activo,
+              u.password_hash,
+              r.nombre AS rol_nombre, r.etiqueta AS rol_etiqueta,
+              un.nombre AS unidad_nombre
        FROM usuario u
        JOIN rol r ON r.rol_id = u.rol_id
+       LEFT JOIN unidad un ON un.unidad_id = u.unidad_id
        WHERE u.email = ?`,
       [email],
     );
@@ -40,18 +59,24 @@ export default async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: "Credenciales inválidas" });
     }
 
+    // Alimenta la columna "Última Actividad" de la administración de usuarios.
+    await pool.query("UPDATE usuario SET ultimo_acceso = NOW() WHERE usuario_id = ?", [
+      row.usuario_id,
+    ]);
+    await pool.query(
+      `INSERT INTO auditoria (usuario_id, entidad, registro_id, accion, observacion)
+       VALUES (?, 'usuario', ?, 'LOGIN', NULL)`,
+      [row.usuario_id, row.usuario_id],
+    );
+
     const token = await reply.jwtSign({ sub: String(row.usuario_id), role: row.rol_nombre });
     return { token, user: toUser(row) };
   });
 
   app.get("/auth/me", { preHandler: [app.authenticate] }, async (req, reply) => {
-    const [rows] = await pool.query<UsuarioRow[]>(
-      `SELECT u.usuario_id, u.nombre, u.email, r.nombre AS rol_nombre
-       FROM usuario u
-       JOIN rol r ON r.rol_id = u.rol_id
-       WHERE u.usuario_id = ?`,
-      [req.user.sub],
-    );
+    const [rows] = await pool.query<UsuarioRow[]>(`${SELECT_USER} WHERE u.usuario_id = ?`, [
+      req.user.sub,
+    ]);
     const row = rows[0];
     if (!row) return reply.code(404).send({ error: "Usuario no encontrado" });
     return toUser(row);

@@ -1,111 +1,295 @@
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Alert,
   Box,
+  Button,
+  Chip,
+  IconButton,
+  InputAdornment,
   LinearProgress,
+  ListItemIcon,
+  ListItemText,
+  Menu,
   MenuItem,
   Paper,
-  Select,
   Stack,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material'
-import { listUsers, setUserRole } from '../api/usersApi'
+import AddIcon from '@mui/icons-material/Add'
+import BlockIcon from '@mui/icons-material/Block'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined'
+import HistoryIcon from '@mui/icons-material/History'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
+import SearchIcon from '@mui/icons-material/Search'
+import { listRoles, listUnits, listUsers, updateUser } from '../api/usersApi'
+import { ActivityDialog } from '../components/ActivityDialog'
+import { NewUserDialog } from '../components/NewUserDialog'
 import { useAuth } from '../../auth/useAuth'
-import type { Role } from '../../auth/types'
+import type { User } from '../../auth/types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
-import type { StringKey } from '../../../shared/i18n/dictionary'
 
-const roles: Role[] = ['admin', 'user']
-
-const roleKey: Record<Role, StringKey> = {
-  admin: 'role.admin',
-  user: 'role.user',
-}
+const ALL = '__all__'
 
 export function UsersPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { user: currentUser } = useAuth()
   const queryClient = useQueryClient()
+  const locale = language === 'es' ? 'es-MX' : 'en-US'
 
-  const { data, isPending } = useQuery({
-    queryKey: ['users'],
-    queryFn: listUsers,
-  })
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState(ALL)
+  const [unitFilter, setUnitFilter] = useState(ALL)
+  const [statusFilter, setStatusFilter] = useState(ALL)
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [menu, setMenu] = useState<{ anchor: HTMLElement; user: User } | null>(null)
+  const [newUserOpen, setNewUserOpen] = useState(false)
+  const [activityUser, setActivityUser] = useState<User | null>(null)
+
+  const users = useQuery({ queryKey: ['users'], queryFn: listUsers })
+  const roles = useQuery({ queryKey: ['roles'], queryFn: listRoles })
+  const units = useQuery({ queryKey: ['units'], queryFn: listUnits })
 
   const mutation = useMutation({
-    mutationFn: ({ id, role }: { id: string; role: Role }) =>
-      setUserRole(id, role),
+    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+      updateUser(id, { active }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   })
 
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    return (users.data ?? []).filter((user) => {
+      if (term && !`${user.name} ${user.email}`.toLowerCase().includes(term)) return false
+      if (roleFilter !== ALL && user.role !== roleFilter) return false
+      if (unitFilter !== ALL && user.unit !== unitFilter) return false
+      if (statusFilter !== ALL && String(user.active) !== statusFilter) return false
+      return true
+    })
+  }, [users.data, search, roleFilter, unitFilter, statusFilter])
+
+  // Filtrar puede dejar la página actual fuera de rango; se corrige al vuelo en
+  // vez de con un efecto, que provocaría un render extra con la tabla vacía.
+  const safePage = page * rowsPerPage >= filtered.length ? 0 : page
+  const visible = filtered.slice(safePage * rowsPerPage, safePage * rowsPerPage + rowsPerPage)
+
+  function resetPageAnd<T>(setter: (value: T) => void) {
+    return (value: T) => {
+      setter(value)
+      setPage(0)
+    }
+  }
+
   return (
     <Stack spacing={3}>
-      <Typography variant="h5">{t('users.title')}</Typography>
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="h5">{t('users.title')}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t('users.subtitle')}
+          </Typography>
+        </Box>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setNewUserOpen(true)}>
+          {t('users.new.button')}
+        </Button>
+      </Stack>
 
       {mutation.isError && (
-        <Alert severity="error">{t('users.updateError')}</Alert>
+        <Alert severity="error">{(mutation.error as Error).message}</Alert>
       )}
 
+      <Paper sx={{ p: 2 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          <TextField
+            size="small"
+            placeholder={t('users.search')}
+            value={search}
+            onChange={(event) => resetPageAnd(setSearch)(event.target.value)}
+            sx={{ flexGrow: 1 }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <TextField
+            select
+            size="small"
+            label={t('users.filter.role')}
+            value={roleFilter}
+            onChange={(event) => resetPageAnd(setRoleFilter)(event.target.value)}
+            sx={{ minWidth: 180 }}
+          >
+            <MenuItem value={ALL}>{t('users.filter.all')}</MenuItem>
+            {roles.data?.map((role) => (
+              <MenuItem key={role.id} value={role.name}>
+                {role.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label={t('users.filter.unit')}
+            value={unitFilter}
+            onChange={(event) => resetPageAnd(setUnitFilter)(event.target.value)}
+            sx={{ minWidth: 180 }}
+          >
+            <MenuItem value={ALL}>{t('users.filter.all')}</MenuItem>
+            {units.data?.map((unit) => (
+              <MenuItem key={unit.id} value={unit.name}>
+                {unit.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label={t('users.filter.status')}
+            value={statusFilter}
+            onChange={(event) => resetPageAnd(setStatusFilter)(event.target.value)}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value={ALL}>{t('users.filter.all')}</MenuItem>
+            <MenuItem value="true">{t('users.status.active')}</MenuItem>
+            <MenuItem value="false">{t('users.status.suspended')}</MenuItem>
+          </TextField>
+        </Stack>
+      </Paper>
+
       <TableContainer component={Paper}>
-        {/* Height is reserved so a role change does not shift the table. */}
+        {/* Altura reservada: al cambiar un estado la tabla no debe saltar. */}
         <Box sx={{ height: 4 }}>
-          {(isPending || mutation.isPending) && <LinearProgress />}
+          {(users.isPending || mutation.isPending) && <LinearProgress />}
         </Box>
         <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>{t('users.col.name')}</TableCell>
               <TableCell>{t('users.col.email')}</TableCell>
-              <TableCell sx={{ width: 160 }}>{t('users.col.role')}</TableCell>
+              <TableCell>{t('users.col.role')}</TableCell>
+              <TableCell>{t('users.col.unit')}</TableCell>
+              <TableCell>{t('users.col.status')}</TableCell>
+              <TableCell>{t('users.col.lastActivity')}</TableCell>
+              <TableCell align="right">{t('users.col.actions')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {data?.length === 0 && (
+            {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                   <Typography variant="body2" color="text.secondary">
-                    {t('users.empty')}
+                    {users.data?.length ? t('users.noMatches') : t('users.empty')}
                   </Typography>
                 </TableCell>
               </TableRow>
             )}
-            {data?.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
+            {visible.map((user) => (
+              <TableRow key={user.id} hover>
+                <TableCell sx={{ fontWeight: 600 }}>{user.name}</TableCell>
+                <TableCell sx={{ color: 'text.secondary' }}>{user.email}</TableCell>
                 <TableCell>
-                  <Select
+                  <Chip size="small" label={user.roleLabel} color="primary" variant="outlined" />
+                </TableCell>
+                <TableCell>{user.unit ?? '—'}</TableCell>
+                <TableCell>
+                  <Chip
                     size="small"
-                    fullWidth
-                    value={user.role}
-                    // An admin demoting themselves would lock the last admin
-                    // out of this screen.
-                    disabled={user.email === currentUser?.email}
-                    onChange={(event) =>
-                      mutation.mutate({
-                        id: user.id,
-                        role: event.target.value as Role,
-                      })
-                    }
+                    label={user.active ? t('users.status.active') : t('users.status.suspended')}
+                    color={user.active ? 'success' : 'error'}
+                    variant="outlined"
+                  />
+                </TableCell>
+                <TableCell sx={{ color: 'text.secondary' }}>
+                  {user.lastActivity
+                    ? new Date(user.lastActivity).toLocaleString(locale)
+                    : t('users.never')}
+                </TableCell>
+                <TableCell align="right">
+                  <IconButton
+                    size="small"
+                    aria-label={t('users.action.menu')}
+                    onClick={(event) => setMenu({ anchor: event.currentTarget, user })}
                   >
-                    {roles.map((role) => (
-                      <MenuItem key={role} value={role}>
-                        {t(roleKey[role])}
-                      </MenuItem>
-                    ))}
-                  </Select>
+                    <MoreHorizIcon fontSize="small" />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+
+        <TablePagination
+          component="div"
+          count={filtered.length}
+          page={safePage}
+          onPageChange={(_, next) => setPage(next)}
+          rowsPerPage={rowsPerPage}
+          rowsPerPageOptions={[10, 25, 50]}
+          onRowsPerPageChange={(event) => {
+            setRowsPerPage(Number(event.target.value))
+            setPage(0)
+          }}
+          labelRowsPerPage={t('users.rowsPerPage')}
+          labelDisplayedRows={({ from, to, count }) =>
+            `${t('users.showing')} ${from}–${to} ${t('users.of')} ${count} ${t('users.usersLabel')}`
+          }
+        />
       </TableContainer>
+
+      <Menu anchorEl={menu?.anchor} open={Boolean(menu)} onClose={() => setMenu(null)}>
+        <MenuItem
+          onClick={() => {
+            setActivityUser(menu!.user)
+            setMenu(null)
+          }}
+        >
+          <ListItemIcon>
+            <HistoryIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t('users.action.history')}</ListItemText>
+        </MenuItem>
+        <MenuItem
+          // Suspenderse a sí mismo cierra la sesión en curso; el servidor
+          // además rechaza suspender al último administrador.
+          disabled={menu?.user.id === currentUser?.id}
+          onClick={() => {
+            mutation.mutate({ id: menu!.user.id, active: !menu!.user.active })
+            setMenu(null)
+          }}
+        >
+          <ListItemIcon>
+            {menu?.user.active ? (
+              <BlockIcon fontSize="small" />
+            ) : (
+              <CheckCircleOutlineIcon fontSize="small" />
+            )}
+          </ListItemIcon>
+          <ListItemText>
+            {menu?.user.active ? t('users.action.suspend') : t('users.action.activate')}
+          </ListItemText>
+        </MenuItem>
+      </Menu>
+
+      <NewUserDialog
+        open={newUserOpen}
+        roles={roles.data ?? []}
+        units={units.data ?? []}
+        onClose={() => setNewUserOpen(false)}
+      />
+      <ActivityDialog user={activityUser} onClose={() => setActivityUser(null)} />
     </Stack>
   )
 }

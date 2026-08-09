@@ -2,6 +2,11 @@
 
 Base de datos MariaDB en Docker. Todavía no hay API.
 
+Este `docker-compose.yml` levanta **solo** la base, con su propio `.env` local.
+Para correr todo el sistema (base + backend + frontend) usa el Compose de la raíz
+del repo: ver [../README.md](../README.md). No levantes los dos a la vez, ambos
+publican MariaDB en el mismo puerto del host.
+
 ## Preparar
 
 ```bash
@@ -22,7 +27,9 @@ npm run db:up
 ```
 
 La primera vez el contenedor aplica `db/schema.sql` automáticamente y crea las 16
-tablas. Tarda unos 30 segundos en quedar sano.
+tablas, y enseguida `db/seed.sql` con el hospital, los roles y el admin inicial
+(`admin@institucion.org` / `Admin12345`, contraseña pública, solo desarrollo).
+Tarda unos 30 segundos en quedar sano.
 
 | Comando | Qué hace |
 |---|---|

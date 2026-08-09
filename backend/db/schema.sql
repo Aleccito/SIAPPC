@@ -17,8 +17,14 @@ CREATE TABLE hospital (
 
 CREATE TABLE rol (
   rol_id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  -- `nombre` es la llave estable que usa el código; `etiqueta` es lo que ve el
+  -- usuario. Separarlas deja renombrar un rol sin romper ninguna consulta.
   nombre      VARCHAR(60) NOT NULL,
+  etiqueta    VARCHAR(80) NOT NULL,
   descripcion VARCHAR(255),
+  -- Los roles base del sistema no se editan ni se borran desde la interfaz:
+  -- la matriz de permisos los muestra en solo lectura.
+  es_sistema  BOOLEAN NOT NULL DEFAULT FALSE,
   activo      BOOLEAN NOT NULL DEFAULT TRUE,
   PRIMARY KEY (rol_id),
   UNIQUE KEY uq_rol_nombre (nombre)
@@ -37,8 +43,11 @@ CREATE TABLE rol_permiso (
   rol_permiso_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   rol_id         INT UNSIGNED NOT NULL,
   permiso_id     INT UNSIGNED NOT NULL,
+  -- Las cuatro columnas son las cuatro casillas de la matriz de permisos.
   puede_ver      BOOLEAN NOT NULL DEFAULT FALSE,
+  puede_crear    BOOLEAN NOT NULL DEFAULT FALSE,
   puede_editar   BOOLEAN NOT NULL DEFAULT FALSE,
+  puede_eliminar BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (rol_permiso_id),
   UNIQUE KEY uq_rol_permiso (rol_id, permiso_id),
   KEY ix_rol_permiso_permiso (permiso_id),
@@ -48,26 +57,46 @@ CREATE TABLE rol_permiso (
     REFERENCES permiso (permiso_id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
+-- Unidad física o servicio donde trabaja el personal: UCI, Trauma, Admisión,
+-- Piso 3, TI. No es lo mismo que `especializacion`, que es clínica.
+CREATE TABLE unidad (
+  unidad_id   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  hospital_id INT UNSIGNED NOT NULL,
+  nombre      VARCHAR(80) NOT NULL,
+  activo      BOOLEAN NOT NULL DEFAULT TRUE,
+  PRIMARY KEY (unidad_id),
+  UNIQUE KEY uq_unidad_hospital_nombre (hospital_id, nombre),
+  CONSTRAINT fk_unidad_hospital FOREIGN KEY (hospital_id)
+    REFERENCES hospital (hospital_id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE usuario (
   usuario_id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
   hospital_id          INT UNSIGNED NOT NULL,
   rol_id               INT UNSIGNED NOT NULL,
+  unidad_id            INT UNSIGNED NULL,
   nombre               VARCHAR(150) NOT NULL,
   tipo_personal        VARCHAR(50) NOT NULL,
   registro_profesional VARCHAR(60),
   email                VARCHAR(150) NOT NULL,
   password_hash        CHAR(60) NOT NULL,
   telefono             VARCHAR(30),
+  -- Alimenta la columna "Última Actividad" sin escanear `auditoria`.
+  ultimo_acceso        DATETIME NULL,
+  -- FALSE es "Suspendido" en la interfaz: la cuenta existe pero no entra.
   activo               BOOLEAN NOT NULL DEFAULT TRUE,
   PRIMARY KEY (usuario_id),
   UNIQUE KEY uq_usuario_email (email),
   UNIQUE KEY uq_usuario_registro (registro_profesional),
   KEY ix_usuario_hospital (hospital_id),
   KEY ix_usuario_rol (rol_id),
+  KEY ix_usuario_unidad (unidad_id),
   CONSTRAINT fk_usuario_hospital FOREIGN KEY (hospital_id)
     REFERENCES hospital (hospital_id) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT fk_usuario_rol FOREIGN KEY (rol_id)
-    REFERENCES rol (rol_id) ON DELETE RESTRICT ON UPDATE CASCADE
+    REFERENCES rol (rol_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_usuario_unidad FOREIGN KEY (unidad_id)
+    REFERENCES unidad (unidad_id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE especializacion (

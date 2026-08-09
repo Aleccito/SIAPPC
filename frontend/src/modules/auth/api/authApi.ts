@@ -1,29 +1,30 @@
+import { clearToken, request, setToken } from '../../../shared/api/http'
 import type { Credentials, User } from '../types'
 
-// PHASE 1: fake implementation. Only the bodies of these functions change when
-// the real backend lands — the signatures and everything that calls them stay.
 const STORAGE_KEY = 'auth.user'
 
+type LoginResponse = {
+  token: string
+  user: User
+}
+
 export async function login(credentials: Credentials): Promise<User> {
-  await new Promise((resolve) => setTimeout(resolve, 400))
+  const { token, user } = await request<LoginResponse>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  })
 
-  if (!credentials.email || !credentials.password) {
-    throw new Error('Email and password are required')
-  }
-
-  // PHASE 2: the role comes from the backend. Until then, any email containing
-  // "admin" signs in as an admin so both paths are testable.
-  const user: User = {
-    id: 'local-1',
-    name: credentials.email.split('@')[0],
-    email: credentials.email,
-    role: credentials.email.includes('admin') ? 'admin' : 'user',
-  }
+  // The token is what authorises the next calls; the user is cached alongside
+  // it so a reload restores the session without a round trip.
+  setToken(token)
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user))
   return user
 }
 
 export async function logout(): Promise<void> {
+  // The JWT is stateless: there is nothing to revoke server-side, so signing
+  // out is purely dropping the credentials this tab holds.
+  clearToken()
   sessionStorage.removeItem(STORAGE_KEY)
 }
 
