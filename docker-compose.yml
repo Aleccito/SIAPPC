@@ -12,8 +12,9 @@ services:
       - '${DB_PORT}:3306'
     volumes:
       - mariadb_data:/var/lib/mysql
-      # Only runs on first boot, when the data volume is empty. To re-apply the
-      # schema afterwards use `npm run migrate`.
+      # Only runs on first boot, when the data volume is empty. Later schema
+      # changes go through db/migrations/ —
+      # `docker compose exec backend node db/migrate.ts`.
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       # Roles, hospital y el primer admin. Sin esto no hay con qué iniciar
       # sesión: crear usuarios exige un admin ya autenticado.
@@ -24,6 +25,30 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: siappc-mosquitto
+    restart: unless-stopped
+    # start.sh escribe el archivo de contraseñas a partir del `.env` de la raíz
+    # y luego arranca mosquitto, así que broker, backend y Pi no pueden
+    # desincronizarse. No se commitea ningún hash y cambiar la contraseña es
+    # reiniciar el servicio.
+    command: ['/bin/sh', '/mosquitto/start.sh']
+    environment:
+      MQTT_USER: ${MQTT_USER:?falta MQTT_USER en el .env de la raiz}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?falta MQTT_PASSWORD en el .env de la raiz}
+    ports:
+      # Solo TLS. El puerto se publica para que la Raspberry, que vive fuera de
+      # Compose, alcance el broker; el backend lo usa por la red interna.
+      - '${MQTT_TLS_PORT:-8883}:8883'
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/start.sh:/mosquitto/start.sh:ro
+      # Certificados de desarrollo, generados por infra/mosquitto/gen-certs.sh.
+      # Sin ellos el broker no arranca: no hay modo sin TLS.
+      - ./infra/mosquitto/certs:/mosquitto/certs:ro
+      - mosquitto_data:/mosquitto/data
 
   backend:
     build: ./backend
@@ -39,18 +64,42 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       PORT: 3001
       JWT_SECRET: ${JWT_SECRET}
-      # Broker donde publica la Pi. Vive fuera de Compose, así que el host debe
-      # ser alcanzable desde el contenedor: una IP de la red, no `localhost`.
+      # Orígenes del navegador autorizados. En Compose el tablero se sirve
+      # desde nginx y llega al backend por el mismo origen, así que esto solo
+      # entra en juego con el frontend de desarrollo (Vite) o si algún día el
+      # tablero se sirve desde otro dominio.
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?falta ALLOWED_ORIGINS en el .env de la raiz}
+      # Dentro de la red de Compose el broker siempre es `mosquitto:8883`;
+      # MQTT_TLS_PORT solo controla el puerto publicado al host para la Pi.
       # Sin broker el backend sigue sirviendo HTTP y reintenta en segundo plano.
-      MQTT_HOST: ${MQTT_HOST:-localhost}
-      MQTT_PORT: ${MQTT_PORT:-1883}
-      MQTT_USER: ${MQTT_USER:-}
-      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 8883
+      MQTT_USER: ${MQTT_USER:?falta MQTT_USER en el .env de la raiz}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?falta MQTT_PASSWORD en el .env de la raiz}
+      # CA que firma el certificado del broker. Es la misma que usa mosquitto,
+      # pero aquí solo se monta el certificado público: la clave no entra.
+      MQTT_CA_FILE: /certs/ca.crt
+    volumes:
+      - ./infra/mosquitto/certs/ca.crt:/certs/ca.crt:ro
     ports:
       - '${BACKEND_PORT:-3001}:3001'
+    # `wget` es el de busybox, ya viene en la imagen base; --spider no descarga
+    # el cuerpo. start_period cubre el arranque: mientras tanto un fallo no
+    # cuenta como reintento.
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:3001/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
       mariadb:
         condition: service_healthy
+      # El backend tolera un broker caído: reintenta en segundo plano y sigue
+      # sirviendo HTTP. Por eso basta con que el contenedor haya arrancado, no
+      # hace falta esperar a que el broker esté sano.
+      mosquitto:
+        condition: service_started
 
   frontend:
     build: ./frontend
@@ -58,8 +107,13 @@ services:
     restart: unless-stopped
     ports:
       - '${FRONTEND_PORT:-8080}:80'
+    # Espera a que el backend responda `/health`, no solo a que su contenedor
+    # exista. Así el tablero no se sirve antes de que haya API detrás: entrar y
+    # que el login falle con 502 desorienta más que esperar unos segundos.
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   mariadb_data:
+  mosquitto_data:

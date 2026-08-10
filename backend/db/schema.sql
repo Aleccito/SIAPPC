@@ -1,8 +1,17 @@
--- ThermoTrace / Monitoreo Hospitalario - MariaDB 10.6+
+-- ThermoTrace / Monitoreo Hospitalario - MariaDB 11.4
 --
 -- Solo DDL. El nombre de la base viene de DB_NAME en el entorno: Docker la crea
--- con MARIADB_DATABASE y migrate.ts se conecta directo a ella. No agregues
--- CREATE DATABASE ni USE aquí, o el nombre queda quemado en dos lugares.
+-- con MARIADB_DATABASE y se conecta directo a ella. No agregues CREATE DATABASE
+-- ni USE aquí, o el nombre queda quemado en dos lugares.
+--
+-- Este archivo es el esquema **completo y actual**, y corre una sola vez: en el
+-- primer arranque del contenedor, cuando el volumen está vacío. Sobre una base
+-- que ya tiene tablas falla, y eso es correcto — para cambiar el esquema de una
+-- base existente se agrega un archivo en `db/migrations/`, no se toca esto.
+--
+-- Al agregar una migración hay que hacer las dos cosas: reflejar el cambio aquí
+-- (para instalaciones nuevas) y registrarla al final, en el INSERT sobre
+-- `migracion` (para que no se vuelva a aplicar sobre una base recién creada).
 SET FOREIGN_KEY_CHECKS = 0;
 
 CREATE TABLE hospital (
@@ -262,7 +271,10 @@ CREATE TABLE auditoria (
   usuario_id   INT UNSIGNED NULL,
   entidad      VARCHAR(60) NOT NULL,
   registro_id  BIGINT UNSIGNED NOT NULL,
-  accion       ENUM('INSERT','UPDATE','DELETE','LOGIN','LOGOUT') NOT NULL,
+  -- LOGIN_BLOCKED lo escribe el límite de intentos de `/auth/login`. No es una
+  -- acción del usuario sino un evento de seguridad, y vive aquí para que la
+  -- detección de fuerza bruta lea de una sola bitácora.
+  accion       ENUM('INSERT','UPDATE','DELETE','LOGIN','LOGOUT','LOGIN_BLOCKED') NOT NULL,
   fecha_hora   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   observacion  TEXT,
   PRIMARY KEY (auditoria_id),
@@ -272,4 +284,18 @@ CREATE TABLE auditoria (
     REFERENCES usuario (usuario_id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
+-- Qué migraciones de `db/migrations/` ya se aplicaron. `db/migrate.ts` la crea
+-- si no existe, así que las bases anteriores a este archivo también funcionan.
+CREATE TABLE migracion (
+  nombre      VARCHAR(120) NOT NULL,
+  aplicada_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (nombre)
+) ENGINE=InnoDB;
+
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- Migraciones ya incorporadas al DDL de arriba. Una base creada con este
+-- archivo nace al día: `migrate.ts` las ve registradas y no las repite. Sobre
+-- una base vieja, en cambio, `migracion` arranca vacía y sí se aplican.
+INSERT INTO migracion (nombre) VALUES
+  ('001-auditoria-login-blocked.sql');

@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { pool } from "../../db/db.ts";
 import { verifyPassword } from "../lib/passwords.ts";
@@ -32,8 +32,50 @@ const SELECT_USER = `
   LEFT JOIN unidad un ON un.unidad_id = u.unidad_id
 `;
 
+function attemptedEmail(req: FastifyRequest): string {
+  const body = req.body as { email?: unknown } | undefined;
+  return typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+}
+
+// Queda constancia del bloqueo en la misma bitácora que el resto: contar
+// LOGIN_BLOCKED por IP en una ventana de tiempo es lo que permite detectar
+// fuerza bruta sin montar otra tabla.
+async function recordBlockedLogin(email: string, ip: string): Promise<void> {
+  const [rows] = await pool.query<UsuarioRow[]>(
+    "SELECT usuario_id FROM usuario WHERE email = ?",
+    [email],
+  );
+  // Si el correo no existe no hay a quién colgarle el evento: `usuario_id` va
+  // nulo y `registro_id`, que no admite nulos, va en 0.
+  const usuarioId = rows[0]?.usuario_id ?? null;
+  await pool.query(
+    `INSERT INTO auditoria (usuario_id, entidad, registro_id, accion, observacion)
+     VALUES (?, 'usuario', ?, 'LOGIN_BLOCKED', ?)`,
+    [usuarioId, usuarioId ?? 0, JSON.stringify({ ip, email })],
+  );
+}
+
 export default async function authRoutes(app: FastifyInstance) {
-  app.post("/auth/login", async (req, reply) => {
+  const loginRateLimit = {
+    max: 5,
+    timeWindow: "15 minutes",
+    // La clave junta IP y correo intentado. Solo con la IP, un atacante desde
+    // otra red deja fuera al usuario legítimo; solo con el correo, basta rotar
+    // direcciones. El techo global de 100/min cubre el caso de una sola IP
+    // probando muchos correos distintos.
+    //
+    // `preHandler` en vez del `onRequest` por defecto porque en onRequest el
+    // cuerpo todavía no está parseado y `req.body` sería undefined.
+    hook: "preHandler" as const,
+    keyGenerator: (req: FastifyRequest) => `${req.ip}|${attemptedEmail(req)}`,
+    onExceeded: (req: FastifyRequest) => {
+      recordBlockedLogin(attemptedEmail(req), req.ip).catch((err: unknown) => {
+        req.log.error({ err }, "auth: no se pudo registrar el bloqueo de login");
+      });
+    },
+  };
+
+  app.post("/auth/login", { config: { rateLimit: loginRateLimit } }, async (req, reply) => {
     const parsed = credentialsSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "Email y contraseña son requeridos" });

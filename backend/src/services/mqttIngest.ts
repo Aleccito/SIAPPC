@@ -118,17 +118,33 @@ async function handleMessage(topic: string, payloadBuf: Buffer, logger: FastifyB
 // Se conecta en segundo plano: si el broker no está arriba, mqtt.js reintenta
 // solo y el servidor HTTP sigue respondiendo mientras tanto.
 export function startMqttIngest(logger: FastifyBaseLogger): mqtt.MqttClient {
-  const client = mqtt.connect({
+  const tls = env.mqtt.tls;
+  const options: mqtt.IClientOptions = {
+    protocol: tls ? "mqtts" : "mqtt",
     host: env.mqtt.host,
     port: env.mqtt.port,
     username: env.mqtt.user,
     password: env.mqtt.password,
     clientId: `siappc-backend-${Math.random().toString(16).slice(2)}`,
     reconnectPeriod: 2000,
-  });
+  };
+
+  if (tls) {
+    options.ca = tls.ca;
+    options.cert = tls.cert;
+    options.key = tls.key;
+    // Explícito aunque sea el valor por defecto de Node: con una CA propia y
+    // autofirmada es la línea que separa "cifrado" de "cifrado y autenticado",
+    // y no debe desactivarse para silenciar un certificado mal emitido — hay
+    // que reemitirlo con el SAN correcto (infra/mosquitto/gen-certs.sh).
+    options.rejectUnauthorized = true;
+  }
+
+  const client = mqtt.connect(options);
 
   client.on("connect", () => {
-    logger.info(`mqtt: conectado a ${env.mqtt.host}:${env.mqtt.port}`);
+    const scheme = tls ? "mqtts" : "mqtt";
+    logger.info(`mqtt: conectado a ${scheme}://${env.mqtt.host}:${env.mqtt.port}`);
     client.subscribe(env.mqtt.telemetryTopic, { qos: 1 }, (err) => {
       if (err) logger.error({ err }, "mqtt: fallo al suscribirse");
     });

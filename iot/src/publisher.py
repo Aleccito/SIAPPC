@@ -2,8 +2,10 @@
 
 import hashlib
 import json
+import ssl
 import threading
 import time
+from pathlib import Path
 
 import paho.mqtt.client as mqtt
 
@@ -37,6 +39,9 @@ class Publisher:
         if config.MQTT_USER:
             self._client.username_pw_set(config.MQTT_USER, config.MQTT_PASSWORD)
 
+        if config.MQTT_TLS:
+            self._enable_tls()
+
         # Last Will: si la Pi desaparece sin avisar, el broker publica esto por
         # ella y el tablero puede marcar el dispositivo como caído.
         self._client.will_set(
@@ -48,6 +53,30 @@ class Publisher:
 
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
+
+    def _enable_tls(self) -> None:
+        """Cifra la conexión y valida quién está al otro lado.
+
+        La CA se comprueba aquí y no en `tls_set` para dar un mensaje claro:
+        el error de paho cuando el archivo no existe no dice cuál falta.
+        """
+        if not Path(config.MQTT_CA_FILE).is_file():
+            raise SystemExit(
+                f"[mqtt] no se encuentra la CA del broker en {config.MQTT_CA_FILE}.\n"
+                "        Cópiala desde infra/mosquitto/certs/ca.crt (la genera "
+                "infra/mosquitto/gen-certs.sh) o apunta MQTT_CA_FILE al archivo correcto."
+            )
+
+        self._client.tls_set(
+            ca_certs=config.MQTT_CA_FILE,
+            certfile=config.MQTT_CLIENT_CERT_FILE,
+            keyfile=config.MQTT_CLIENT_KEY_FILE,
+            cert_reqs=ssl.CERT_REQUIRED,
+            tls_version=ssl.PROTOCOL_TLS_CLIENT,
+        )
+        # Nada de tls_insecure_set(True): el nombre del certificado tiene que
+        # coincidir con MQTT_HOST. Si el broker se alcanza por una IP, esa IP
+        # va como SAN al emitir el certificado, no se desactiva la validación.
 
     def start(self) -> None:
         # connect_async + loop_start no bloquean: la lectura de sensores sigue
@@ -70,7 +99,8 @@ class Publisher:
             print(f"[mqtt] conexión rechazada: {reason_code}")
             return
 
-        print(f"[mqtt] conectado a {config.MQTT_HOST}:{config.MQTT_PORT}")
+        scheme = "mqtts" if config.MQTT_TLS else "mqtt"
+        print(f"[mqtt] conectado a {scheme}://{config.MQTT_HOST}:{config.MQTT_PORT}")
         client.publish(
             config.STATUS_TOPIC,
             json.dumps({"device": config.DEVICE_CODE, "status": "online"}),

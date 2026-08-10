@@ -19,7 +19,30 @@ pip install -r requirements.txt
 El `.env` de la Pi se le pide a **Ing.Adrian**: ahí vienen las credenciales reales
 del broker. [`.env.example`](.env.example) solo documenta qué variables existen.
 `DEVICE_CODE` debe coincidir con `dispositivo.codigo` en la base de datos, y
-`MQTT_HOST` apunta al broker. El `.env` está en `.gitignore` y ahí se queda.
+`MQTT_HOST` apunta a la máquina donde corre el broker. El `.env` está en
+`.gitignore` y ahí se queda.
+
+### Certificado del broker
+
+El broker solo acepta MQTT sobre TLS (puerto 8883) y con usuario, así que además
+del `.env` la Pi necesita la CA que firma el certificado del broker. Se genera en
+la máquina del Compose (ver [../README.md](../README.md)) y se copia a la Pi:
+
+```bash
+mkdir -p iot/certs
+scp usuario@maquina-del-broker:.../infra/mosquitto/certs/ca.crt iot/certs/ca.crt
+```
+
+Solo el `ca.crt`, que es público. La clave de la CA no sale de donde se generó, y
+`iot/certs/` está en `.gitignore`.
+
+Con eso, `MQTT_CA_FILE` puede quedar vacío en el `.env`: por defecto se busca ahí.
+Si falta el archivo, el proceso no arranca y lo dice; lo que no hace es publicar
+en claro.
+
+La Pi valida además que el nombre del certificado coincida con `MQTT_HOST`. Si
+llegas al broker por IP, esa IP tiene que estar dentro del certificado — se
+reemite con `MQTT_EXTRA_SANS`, no se desactiva la comprobación.
 
 Esta parte corre sobre la Raspberry Pi con los sensores conectados, así que no
 va en Docker: el resto del sistema (base, backend, frontend) se levanta con
@@ -80,12 +103,22 @@ caída, o un duplicado de QoS 1, se descarta en vez de contarse dos veces.
 
 ## Probar sin Raspberry
 
-Levanta un broker desechable y observa los mensajes:
+El broker ya no es un contenedor desechable y anónimo: lo levanta el Compose de
+la raíz (`docker compose up -d`), con TLS y con usuario. Para ver lo que entra,
+desde la raíz del repo:
 
 ```bash
-docker run -d --rm --name mqtt-test -p 1883:1883 eclipse-mosquitto:2 sh -c "printf 'listener 1883\nallow_anonymous true\n' > /mosquitto/config/mosquitto.conf; mosquitto -c /mosquitto/config/mosquitto.conf"
+docker run --rm --network siappc_default \
+  -v "$PWD/infra/mosquitto/certs/ca.crt:/ca.crt:ro" \
+  eclipse-mosquitto:2 mosquitto_sub --cafile /ca.crt \
+  -h mosquitto -p 8883 -t 'siappc/#' -v \
+  -u siappc -P 'la MQTT_PASSWORD del .env de la raíz'
 ```
 
-```bash
-docker run --rm --network host eclipse-mosquitto:2 mosquitto_sub -h host.docker.internal -t 'siappc/#' -v
-```
+Sin `--cafile` la conexión falla, y sin `-u`/`-P` el broker responde
+`not authorised`. Es lo esperado: no hay puerto en claro ni acceso anónimo.
+
+Para publicar desde la laptop, `python3 src/main.py --simulate` con un `.env`
+que apunte a esa máquina y con `iot/certs/ca.crt` en su sitio. `DEVICE_CODE`
+tiene que existir en la tabla `dispositivo`, o el backend descarta las lecturas
+por no saber de quién son.
