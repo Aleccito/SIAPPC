@@ -6,6 +6,7 @@ import type { SvgIconComponent } from '@mui/icons-material'
 import { useAuth } from '../../auth/useAuth'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
+import { usePageHeader } from '../../../app/pageHeader'
 
 const placeholders: {
   icon: SvgIconComponent
@@ -32,13 +33,10 @@ const placeholders: {
 export function MainPage() {
   const { user } = useAuth()
   const { t } = useLanguage()
+  usePageHeader(t('dashboard.welcome', { name: user?.name ?? '' }))
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h5">
-        {t('dashboard.welcome', { name: user?.name ?? '' })}
-      </Typography>
-
       <Box
         sx={{
           display: 'grid',

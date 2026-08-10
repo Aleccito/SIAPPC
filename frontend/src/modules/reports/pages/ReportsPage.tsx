@@ -17,6 +17,7 @@ import { listReports } from '../api/reportsApi'
 import type { ReportStatus } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
+import { usePageHeader } from '../../../app/pageHeader'
 
 const statusColor: Record<ReportStatus, 'success' | 'info' | 'error'> = {
   ready: 'success',
@@ -32,6 +33,7 @@ const statusKey: Record<ReportStatus, StringKey> = {
 
 export function ReportsPage() {
   const { t, language } = useLanguage()
+  usePageHeader(t('reports.title'))
   const { data, isPending } = useQuery({
     queryKey: ['reports'],
     queryFn: listReports,
@@ -39,8 +41,6 @@ export function ReportsPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h5">{t('reports.title')}</Typography>
-
       <TableContainer component={Paper}>
         {/* Height is reserved so a refetch does not shift the table. */}
         <Box sx={{ height: 4 }}>{isPending && <LinearProgress />}</Box>

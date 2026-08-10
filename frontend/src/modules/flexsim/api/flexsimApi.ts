@@ -1,8 +1,8 @@
 import type { RunResult, SimulationRun, RunStatus } from '../types'
 
-// PHASE 2: replace these bodies with fetches to the backend job service, which
-// launches FlexSim headless and writes results to MariaDB. FlexSim is a Windows
-// desktop application — it is never called from the browser.
+// PENDIENTE: datos de ejemplo. Falta el servicio de trabajos en el backend, que
+// lanza FlexSim en modo headless y escribe los resultados en MariaDB. FlexSim es
+// una aplicación de escritorio de Windows: nunca se la llama desde el navegador.
 export const models = ['line-a.fsm', 'line-b.fsm', 'warehouse.fsm']
 
 const QUEUED_MS = 2000

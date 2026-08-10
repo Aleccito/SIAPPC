@@ -15,6 +15,7 @@ const es = {
   'nav.audit': 'Auditoría',
 
   'layout.mainNav': 'Navegación principal',
+  'layout.toggleNav': 'Plegar o desplegar la navegación',
   'layout.notifications': 'Notificaciones',
 
   'action.signIn': 'Iniciar sesión',
@@ -26,21 +27,22 @@ const es = {
   'brand.name': 'SIAPPC',
   'brand.tagline': 'Sistema Inteligente de Atención a Pacientes en Estado Crítico',
 
-  'login.eyebrow': 'Monitoreo inteligente',
-  'login.headline1': 'Monitoreo en tiempo real.',
-  'login.headline2': 'Cuidado crítico basado en datos.',
+  'login.eyebrow': 'Central de monitoreo',
+  'login.headline1': 'Cada signo vital,',
+  'login.headline2': 'en el momento que ocurre.',
   'login.lead':
-    'Una plataforma clínica para visualizar señales, detectar eventos críticos y documentar decisiones con precisión y trazabilidad de pacientes politraumatizados.',
-  'login.cap.iot.title': 'Monitoreo IoT',
+    'Plataforma clínica para el seguimiento de pacientes politraumatizados: reúne las señales de los dispositivos a pie de cama, avisa cuando algo se sale de rango y deja constancia de cada decisión.',
+  'login.cap.iot.title': 'Monitoreo continuo',
   'login.cap.iot.body':
-    'Integración con sensores y dispositivos para lecturas continuas.',
-  'login.cap.alerts.title': 'Alertas Clínicas',
-  'login.cap.alerts.body': 'Notificaciones precisas para umbrales y eventos críticos.',
-  'login.cap.reporting.title': 'Reportes Inteligentes',
+    'Los dispositivos a pie de cama publican signos vitales cifrados; el sistema los registra sin intervención del personal.',
+  'login.cap.alerts.title': 'Alertas clínicas',
+  'login.cap.alerts.body':
+    'Cada lectura se contrasta con los umbrales del servicio y las desviaciones se elevan al instante, clasificadas por severidad.',
+  'login.cap.reporting.title': 'Trazabilidad completa',
   'login.cap.reporting.body':
-    'Resúmenes clínicos y auditoría de eventos con formato institucional.',
-  'login.phaseNote':
-    'La fase 1 es solo la interfaz. Cada llamada al servidor es una implementación falsa que conserva la firma real.',
+    'Lecturas, alertas y accesos quedan asentados en una bitácora consultable y exportable.',
+  'login.securityNote':
+    'Acceso exclusivo para personal autorizado. Todo inicio de sesión y toda consulta quedan registrados en la bitácora de auditoría.',
   'login.title': 'Iniciar sesión',
   'login.hint':
     'Ingrese sus credenciales institucionales para acceder a la central de monitoreo.',
@@ -77,17 +79,18 @@ const es = {
   'dashboard.welcome': 'Bienvenido, {name}',
   'dashboard.powerbi.title': 'Power BI',
   'dashboard.powerbi.body':
-    'El reporte incrustado aparece aquí cuando el servidor entregue el token de incrustación.',
+    'Tableros analíticos sobre el histórico clínico, incrustados desde el espacio de trabajo del hospital.',
   'dashboard.flexsim.title': 'FlexSim',
   'dashboard.flexsim.body':
-    'Las corridas se encolan en el servidor y los resultados se leen de la base de datos.',
+    'Las corridas de simulación se encolan en el servidor y sus resultados se leen de la base de datos.',
   'dashboard.data.title': 'Datos',
-  'dashboard.data.body': 'MariaDB llega en la fase 2, detrás de la API.',
+  'dashboard.data.body':
+    'Lecturas y alertas se almacenan en MariaDB conforme llegan de los dispositivos.',
 
   'powerbi.title': 'Power BI',
   'powerbi.loading': 'Cargando reporte…',
   'powerbi.placeholder':
-    'El reporte se muestra aquí cuando el servidor entregue el token de incrustación.',
+    'El reporte se mostrará aquí en cuanto se configure el espacio de trabajo de Power BI del hospital.',
   'powerbi.unavailable': 'Reporte no disponible',
   'powerbi.report': 'Reporte {id}',
 
@@ -185,6 +188,7 @@ const es = {
   'audit.INSERT': 'Creación',
   'audit.UPDATE': 'Edición',
   'audit.DELETE': 'Eliminación',
+  'audit.LOGIN_BLOCKED': 'Acceso bloqueado',
 
   'roles.title': 'Gestión de Roles y Permisos',
   'roles.subtitle': 'Define qué puede ver y hacer cada tipo de usuario en el sistema.',
@@ -196,6 +200,12 @@ const es = {
   'roles.customRole': 'Rol personalizado',
   'roles.predefined': 'Predefinido',
   'roles.editPermissions': 'Ver/Editar Permisos',
+  'roles.col.role': 'Rol',
+  'roles.col.type': 'Tipo',
+  'roles.col.users': 'Usuarios',
+  'roles.col.actions': 'Acciones',
+  'roles.noDescription': 'Sin descripción',
+  'roles.empty': 'Todavía no hay roles configurados.',
   'roles.changes.title': 'Últimos cambios de permisos',
   'roles.changes.empty': 'Todavía no hay cambios registrados.',
   'roles.changes.seeAll': 'Ver historial completo',
@@ -315,6 +325,7 @@ const en: Strings = {
   'nav.audit': 'Audit Log',
 
   'layout.mainNav': 'Main navigation',
+  'layout.toggleNav': 'Collapse or expand the navigation',
   'layout.notifications': 'Notifications',
 
   'action.signIn': 'Sign in',
@@ -326,20 +337,22 @@ const en: Strings = {
   'brand.name': 'SIAPPC',
   'brand.tagline': 'Intelligent System for Critical Patient Care',
 
-  'login.eyebrow': 'Intelligent monitoring',
-  'login.headline1': 'Real-time monitoring.',
-  'login.headline2': 'Critical care driven by data.',
+  'login.eyebrow': 'Monitoring centre',
+  'login.headline1': 'Every vital sign,',
+  'login.headline2': 'the moment it happens.',
   'login.lead':
-    'A clinical platform to visualise signals, detect critical events, and document decisions with precision and traceability for polytrauma patients.',
-  'login.cap.iot.title': 'IoT Monitoring',
-  'login.cap.iot.body': 'Integrates with sensors and devices for continuous readings.',
-  'login.cap.alerts.title': 'Clinical Alerts',
-  'login.cap.alerts.body': 'Precise notifications for thresholds and critical events.',
-  'login.cap.reporting.title': 'Intelligent Reports',
+    'A clinical platform for following polytrauma patients: it gathers the signals from bedside devices, raises the alarm when something drifts out of range, and keeps a record of every decision.',
+  'login.cap.iot.title': 'Continuous monitoring',
+  'login.cap.iot.body':
+    'Bedside devices publish encrypted vital signs; the system records them with no action from staff.',
+  'login.cap.alerts.title': 'Clinical alerts',
+  'login.cap.alerts.body':
+    'Every reading is checked against the ward thresholds, and deviations are escalated at once, graded by severity.',
+  'login.cap.reporting.title': 'Full traceability',
   'login.cap.reporting.body':
-    'Clinical summaries and event audit trails in institutional format.',
-  'login.phaseNote':
-    'Phase 1 is the frontend only. Every backend call is a stub with the real signature.',
+    'Readings, alerts, and access are all written to an audit trail you can search and export.',
+  'login.securityNote':
+    'Authorised personnel only. Every sign-in and every query is written to the audit trail.',
   'login.title': 'Sign in',
   'login.hint': 'Enter your institutional credentials to access the monitoring centre.',
   'login.email': 'Institutional email',
@@ -375,16 +388,18 @@ const en: Strings = {
   'dashboard.welcome': 'Welcome, {name}',
   'dashboard.powerbi.title': 'Power BI',
   'dashboard.powerbi.body':
-    'The embedded report lands here once the embed-token endpoint exists.',
+    'Analytics dashboards over the clinical history, embedded from the hospital workspace.',
   'dashboard.flexsim.title': 'FlexSim',
   'dashboard.flexsim.body':
-    'Runs are queued on the backend and results are read from the database.',
+    'Simulation runs are queued on the server and their results are read from the database.',
   'dashboard.data.title': 'Data',
-  'dashboard.data.body': 'MariaDB lands in phase 2, behind the API.',
+  'dashboard.data.body':
+    'Readings and alerts are stored in MariaDB as they arrive from the devices.',
 
   'powerbi.title': 'Power BI',
   'powerbi.loading': 'Loading report…',
-  'powerbi.placeholder': 'The report renders here once the embed endpoint exists.',
+  'powerbi.placeholder':
+    "The report will render here once the hospital's Power BI workspace is configured.",
   'powerbi.unavailable': 'Report unavailable',
   'powerbi.report': 'Report {id}',
 
@@ -485,6 +500,12 @@ const en: Strings = {
   'roles.customRole': 'Custom role',
   'roles.predefined': 'Predefined',
   'roles.editPermissions': 'View/Edit Permissions',
+  'roles.col.role': 'Role',
+  'roles.col.type': 'Type',
+  'roles.col.users': 'Users',
+  'roles.col.actions': 'Actions',
+  'roles.noDescription': 'No description',
+  'roles.empty': 'No roles configured yet.',
   'roles.changes.title': 'Latest permission changes',
   'roles.changes.empty': 'No changes recorded yet.',
   'roles.changes.seeAll': 'View full history',
@@ -541,6 +562,7 @@ const en: Strings = {
   'audit.INSERT': 'Created',
   'audit.UPDATE': 'Edited',
   'audit.DELETE': 'Deleted',
+  'audit.LOGIN_BLOCKED': 'Sign-in blocked',
   'users.empty': 'No users to show.',
 
   'patients.title': 'Patients',

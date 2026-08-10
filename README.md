@@ -64,7 +64,8 @@ privada no sale de la máquina del broker.
 docker compose up -d --build
 ```
 
-Eso es todo. Compose levanta MariaDB, el broker MQTT, el backend y el frontend.
+Eso es todo. Compose levanta MariaDB, Redis, el broker MQTT, el backend y el
+frontend.
 
 | Servicio | URL | Notas |
 |---|---|---|
@@ -72,6 +73,7 @@ Eso es todo. Compose levanta MariaDB, el broker MQTT, el backend y el frontend.
 | Backend | http://localhost:3001 | API Fastify (`/health` responde `{"status":"ok"}`) |
 | MariaDB | localhost:3306 | Solo para conectarse con un cliente de base de datos |
 | Mosquitto | mqtts://localhost:8883 | Broker MQTT, **solo TLS y con usuario** |
+| Redis | — | Sin puerto en el host: solo la red de Compose. Con contraseña |
 
 Los puertos publicados salen del `.env` (`FRONTEND_PORT`, `BACKEND_PORT`,
 `DB_PORT`). Dentro de la red de Compose la base siempre escucha en 3306, así que
@@ -91,6 +93,14 @@ El broker no tiene puerto en texto plano: no existe el 1883, ni siquiera dentro
 de la red de Compose. Tampoco acepta clientes anónimos — crea su usuario al
 arrancar con el `MQTT_USER`/`MQTT_PASSWORD` del `.env`, así que backend, broker y
 Pi leen las credenciales de un solo sitio y no pueden desincronizarse.
+
+Redis guarda dos cosas, ninguna de ellas dato del hospital: los contadores del
+límite de peticiones (`siappc-rl:`) y la caché de `/sensors/*` (`siappc-cache:`).
+Por eso arranca sin persistencia (`--save "" --appendonly no`) y con techo de
+memoria y desalojo LRU: todo lo que guarda es reconstruible, y un dump en disco
+solo sumaría una copia de datos que ya viven en MariaDB. No publica puerto al
+host, pero exige contraseña igual — un contenedor comprometido dentro de la red
+de Compose no debe poder vaciar los contadores del rate limit.
 
 ### 5. Entrar
 
@@ -118,10 +128,11 @@ Lo que realmente corre, tomado de `docker-compose.yml`, los `Dockerfile` y los
 |---|---|---|
 | MariaDB | 11.4 | `docker-compose.yml` |
 | Mosquitto | 2 (2.1.x) | `docker-compose.yml` |
+| Redis | 7 (alpine) | `docker-compose.yml` |
 | Node | 24 (alpine) | `backend/Dockerfile`, `frontend/Dockerfile` |
 | nginx | 1.29 (alpine) | `frontend/Dockerfile` |
 | Fastify | 5 | `backend/package.json` |
-| mysql2 · Zod · bcryptjs · mqtt | 3 · 3 · 2 · 5 | `backend/package.json` |
+| mysql2 · Zod · bcryptjs · mqtt · ioredis | 3 · 3 · 2 · 5 · 6 | `backend/package.json` |
 | TypeScript | 6 | ambos `package.json` |
 | React · React Router | 19 · 7 | `frontend/package.json` |
 | Vite · MUI · TanStack Query | 8 · 9 · 5 | `frontend/package.json` |
@@ -155,7 +166,7 @@ regla para agregar una migración están en
 | `docker compose logs -f backend` | Sigue los logs del backend |
 | `docker compose logs -f mosquitto` | Sigue los logs del broker MQTT |
 | `docker compose exec backend node db/migrate.ts` | Aplica migraciones pendientes de esquema |
-| `docker compose ps` | Estado de los cuatro servicios |
+| `docker compose ps` | Estado de los cinco servicios |
 | `sh infra/mosquitto/gen-certs.sh` | Regenera los certificados de desarrollo del broker |
 
 Después de cambiar código hay que reconstruir: `docker compose up -d --build`.
@@ -183,14 +194,32 @@ importa si sirves el frontend desde otro sitio o lo corres con Vite.
 **Todo responde 429.** Es el límite de peticiones: 100 por minuto para la API en
 general y 5 cada 15 minutos para `POST /auth/login`, contados por IP (y para el
 login, por IP + correo intentado). Los bloqueos de login quedan en `auditoria`
-con `accion='LOGIN_BLOCKED'`. El contador vive en memoria del proceso, así que
-`docker compose restart backend` lo borra — útil si te bloqueaste a ti mismo
-probando.
+con `accion='LOGIN_BLOCKED'`. El contador vive en Redis, así que **reiniciar el
+backend ya no lo borra**. Si te bloqueaste a ti mismo probando, espera la
+ventana o bórralo a mano:
+
+```bash
+docker compose exec redis redis-cli -a "$REDIS_PASSWORD" --no-auth-warning KEYS 'siappc-rl:*'
+```
 
 **El `.env` de la raíz no es el mismo que `backend/.env`.** Compose sustituye los
 `${VAR}` del `docker-compose.yml` leyendo el `.env` que está junto a ese archivo,
 o sea el de la raíz. Nunca mira dentro de `backend/`. Además `backend/.env` está
 en `backend/.dockerignore`, así que tampoco entra en la imagen.
+
+**El broker reinicia en bucle diciendo `illegal option -` o `: not found`.** No
+son los certificados: es Windows. Con `core.autocrlf=true`, git convierte
+`infra/mosquitto/start.sh` a CRLF al hacer checkout y el `sh` del contenedor lee
+`set -eu\r`. El repositorio trae un `.gitattributes` que fija `eol=lf` para
+`*.sh` y `*.conf`, pero un archivo ya convertido en tu copia de trabajo sigue
+mal. Para reescribir solo ese archivo, sin tocar nada más:
+
+```bash
+git add --renormalize infra/mosquitto && rm infra/mosquitto/start.sh && git checkout infra/mosquitto/start.sh
+```
+
+(El `git rm --cached -r . && git reset --hard` que suele recomendarse hace lo
+mismo para todo el repositorio, pero **descarta los cambios sin commitear**.)
 
 **El broker reinicia en bucle.** Casi siempre faltan los certificados: sin
 `infra/mosquitto/certs/` mosquitto no arranca, porque no tiene modo sin TLS.
@@ -214,6 +243,14 @@ llega a arrancar el servicio y avisa por nombre.
 - `Falta MQTT_CA_FILE` o `No se puede leer MQTT_CA_FILE=…` — el proceso se apaga
   al arrancar. Es configuración, no red: el backend no se conecta en claro como
   alternativa.
+
+**Redis no arranca o el backend se queja de él.** Si Compose se detiene diciendo
+`falta REDIS_PASSWORD`, agrégala al `.env` de la raíz. Si el backend registra
+`redis: error de conexión`, sigue respondiendo —la caché va directo a MariaDB y
+el límite de peticiones deja pasar todo (`skipOnError`)— pero **mientras tanto
+no hay rate limit, ni siquiera en el login**: no es un estado en el que dejar el
+sistema. Revisa `docker compose logs redis` y que `REDIS_PASSWORD` sea la misma
+que la del `REDIS_URL` del backend; las dos salen del `.env` de la raíz.
 
 **El puerto 3306 ya está ocupado.** Casi siempre es otro MariaDB corriendo:
 `backend/docker-compose.yml` levanta uno propio y no es la ruta soportada. Apaga

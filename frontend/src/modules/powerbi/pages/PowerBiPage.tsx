@@ -3,9 +3,11 @@ import { Alert, Box, Paper, Stack, Typography } from '@mui/material'
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
 import { getEmbedConfig } from '../api/powerbiApi'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
+import { usePageHeader } from '../../../app/pageHeader'
 
 export function PowerBiPage() {
   const { t } = useLanguage()
+  usePageHeader(t('powerbi.title'))
   const { data, error, isPending } = useQuery({
     queryKey: ['powerbi', 'embed-config'],
     queryFn: getEmbedConfig,
@@ -14,13 +16,11 @@ export function PowerBiPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h5">{t('powerbi.title')}</Typography>
-
       {error && <Alert severity="info">{t('powerbi.unavailable')}</Alert>}
 
       <Paper sx={{ height: 600 }}>
-        {/* PHASE 2: swap this placeholder for <PowerBIEmbed> from
-            powerbi-client-react, fed by `data`. */}
+        {/* PENDIENTE: sustituir este marcador por <PowerBIEmbed> de
+            powerbi-client-react, alimentado con `data`. */}
         <Box
           sx={{
             height: '100%',

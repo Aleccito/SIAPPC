@@ -47,8 +47,8 @@ solo para desarrollo). El token vive en `sessionStorage` y muere con la pestaña
 | Recuperar contraseña | **Simulado** | `passwordResetApi.ts` no llama a nada |
 | Panel principal (`/`) | **Simulado** | Tres tarjetas de texto, sin datos |
 
-Cada API simulada lleva un comentario `PHASE 2:` en la línea exacta que hay que
-reemplazar. Las reales pasan todas por
+Cada API simulada lleva un comentario `PENDIENTE:` en la línea exacta que hay
+que reemplazar. Las reales pasan todas por
 [`src/shared/api/http.ts`](src/shared/api/http.ts), que agrega el token y
 normaliza los errores del backend.
 
@@ -160,9 +160,6 @@ llegar a una invocación por CLI.
 
 ## Pendientes conocidos
 
-- La tarjeta "Datos" del panel principal todavía dice que MariaDB llega en la
-  fase 2 (`dashboard.data.body` en el diccionario). Ya llegó; falta reescribir
-  ese texto.
 - El sondeo de FlexSim se pausa con la pestaña oculta (comportamiento de TanStack
   Query). Usar `refetchIntervalInBackground: true` si corre en pantalla de pared.
 - Los fixtures de Reportes y los modelos de FlexSim siguen en lenguaje de fábrica

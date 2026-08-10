@@ -67,7 +67,18 @@ export type AuditPage = {
   entries: AuditEntry[]
 }
 
-export const auditActions = ['INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT'] as const
+// Debe seguir al ENUM de `auditoria.accion` en backend/db/schema.sql. Faltaba
+// LOGIN_BLOCKED, que es el que escribe el límite de intentos de login: había
+// renglones en la tabla que el filtro no podía seleccionar, justo los que
+// interesa revisar cuando se sospecha de fuerza bruta.
+export const auditActions = [
+  'INSERT',
+  'UPDATE',
+  'DELETE',
+  'LOGIN',
+  'LOGOUT',
+  'LOGIN_BLOCKED',
+] as const
 
 export type AuditFilters = {
   userId?: string

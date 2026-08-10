@@ -1,6 +1,8 @@
 import type { Report } from '../types'
 
-// PHASE 2: replace this body with a fetch to the backend. The shape stays.
+// PENDIENTE: datos de ejemplo. Falta el endpoint de reportes en el backend; la
+// forma de `Report` es la definitiva, así que al conectarlo solo cambia el
+// cuerpo de esta función.
 const fixtures: Report[] = [
   {
     id: 'r-001',

@@ -7,10 +7,15 @@ import type { AuditEntry, AuditoriaRow } from "../types.ts";
 const querySchema = z.object({
   userId: z.string().optional(),
   entity: z.string().optional(),
-  action: z.enum(["INSERT", "UPDATE", "DELETE", "LOGIN", "LOGOUT"]).optional(),
+  // Los seis valores del ENUM de `auditoria.accion` en db/schema.sql.
+  // LOGIN_BLOCKED faltaba aquí: filtrar por él devolvía 400 y era justo el que
+  // se quiere aislar al revisar intentos de fuerza bruta.
+  action: z
+    .enum(["INSERT", "UPDATE", "DELETE", "LOGIN", "LOGOUT", "LOGIN_BLOCKED"])
+    .optional(),
   days: z.coerce.number().int().positive().max(365).optional(),
   page: z.coerce.number().int().min(0).default(0),
-  pageSize: z.coerce.number().int().min(1).max(100).default(25),
+  pageSize: z.coerce.number().int().min(1).max(100).default(10),
 });
 
 export default async function auditRoutes(app: FastifyInstance) {

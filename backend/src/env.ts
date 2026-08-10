@@ -23,6 +23,12 @@ const {
   // (require_certificate true). Los dos van juntos o ninguno.
   MQTT_CLIENT_CERT_FILE,
   MQTT_CLIENT_KEY_FILE,
+  // Store compartido del límite de peticiones y caché de /sensors/*. Vacía =
+  // contador en memoria y sin caché: válido con una sola instancia.
+  REDIS_URL,
+  // Segundos que vive en caché una respuesta de /sensors/*. 0 desactiva la
+  // caché sin tocar el límite de peticiones.
+  SENSORS_CACHE_TTL = "10",
 } = process.env;
 
 if (!JWT_SECRET) {
@@ -69,10 +75,19 @@ function readPem(path: string, varName: string): Buffer {
   }
 }
 
+const sensorsCacheTtl = Number(SENSORS_CACHE_TTL);
+
+if (!Number.isInteger(sensorsCacheTtl) || sensorsCacheTtl < 0) {
+  console.error("SENSORS_CACHE_TTL debe ser un entero de segundos >= 0 (0 desactiva la cache)");
+  process.exit(1);
+}
+
 export const env = {
   port: Number(PORT),
   jwtSecret: JWT_SECRET,
   allowedOrigins,
+  redisUrl: REDIS_URL || undefined,
+  sensorsCacheTtl,
   mqtt: {
     host: MQTT_HOST,
     port: Number(MQTT_PORT),

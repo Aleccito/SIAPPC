@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { ResultSetHeader } from "mysql2";
 import { z } from "zod";
 import { pool } from "../../db/db.ts";
+import { recordAudit } from "../lib/audit.ts";
 import { serviceModules } from "../types.ts";
 import type { PacienteRow, Patient } from "../types.ts";
 
@@ -49,24 +50,46 @@ export default async function patientsRoutes(app: FastifyInstance) {
     }
     const { name, document, module, reason, hospitalId, fechaNacimiento, sexo } = parsed.data;
 
+    // Registro y bitácora en la misma transacción: el ingreso de un paciente
+    // tiene que decir quién lo admitió y a qué hora, y esa constancia no puede
+    // depender de que una segunda consulta salga bien.
+    const connection = await pool.getConnection();
     try {
-      const [result] = await pool.query<ResultSetHeader>(
+      await connection.beginTransaction();
+
+      const [result] = await connection.query<ResultSetHeader>(
         `INSERT INTO paciente
            (hospital_id, nombre, cedula, fecha_nacimiento, sexo, modulo, estado, motivo_consulta)
          VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?)`,
         [hospitalId, name, document, fechaNacimiento, sexo, module, reason],
       );
 
-      const [rows] = await pool.query<PacienteRow[]>(
+      await recordAudit(connection, {
+        actorId: req.user.sub,
+        entidad: "paciente",
+        registroId: result.insertId,
+        accion: "INSERT",
+        // Sin el motivo de consulta: es dato clínico y vive en `paciente`, con
+        // los permisos de esa tabla. La bitácora dice quién y cuándo, no el
+        // cuadro del paciente.
+        observacion: `registró la llegada de ${name} (${document}) al módulo ${module}`,
+      });
+
+      await connection.commit();
+
+      const [rows] = await connection.query<PacienteRow[]>(
         `${SELECT_PATIENT} WHERE paciente_id = ?`,
         [result.insertId],
       );
       return reply.code(201).send(toPatient(rows[0]!));
     } catch (err) {
+      await connection.rollback();
       if ((err as { code?: string }).code === "ER_DUP_ENTRY") {
         return reply.code(409).send({ error: "Esa cédula ya está registrada" });
       }
       throw err;
+    } finally {
+      connection.release();
     }
   });
 }

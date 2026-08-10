@@ -10,6 +10,8 @@ export const sidebar = {
   hoverBg: '#1e293b',
   border: '#1e293b',
   width: 240,
+  // Plegada: solo los iconos. Suficiente para el icono y su zona de clic.
+  collapsedWidth: 72,
 } as const
 
 export const theme = createTheme({

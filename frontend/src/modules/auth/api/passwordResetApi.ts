@@ -1,6 +1,6 @@
-// PHASE 2: replace these bodies with real endpoints. requestReset must respond
-// the same way whether the email exists or not, so the UI never leaks which
-// institutional emails are registered.
+// PENDIENTE: datos de ejemplo, faltan los endpoints reales. Cuando existan,
+// `requestReset` debe responder igual exista o no el correo: si no, la pantalla
+// delata qué direcciones institucionales están dadas de alta.
 export async function requestReset(email: string): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 400))
 

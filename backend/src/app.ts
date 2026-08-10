@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import { env } from "./env.ts";
+import { redis, registerRedisLogging } from "./lib/redis.ts";
 import authPlugin from "./plugins/auth.ts";
 import authRoutes from "./routes/auth.ts";
 import usersRoutes from "./routes/users.ts";
@@ -14,7 +15,9 @@ import sensorsRoutes from "./routes/sensors.ts";
 
 export async function buildApp() {
   const app = Fastify({
-    logger: true,
+    // `silent` solo lo usan las pruebas (.env.test): trece casos con el log de
+    // peticiones a nivel info entierran el resultado de la suite.
+    logger: { level: process.env.LOG_LEVEL ?? "info" },
     // En Compose el navegador nunca habla con este proceso: nginx hace de
     // intermediario y todas las peticiones llegan con su IP. Sin esto, el
     // límite de intentos contaría a todo el hospital como un solo cliente.
@@ -28,11 +31,31 @@ export async function buildApp() {
     origin: env.allowedOrigins,
   });
 
+  registerRedisLogging(app.log);
+
   // Techo general para toda la API. Los endpoints sensibles lo aprietan por su
   // cuenta con `config.rateLimit` — ver POST /auth/login.
   await app.register(rateLimit, {
     max: 100,
     timeWindow: "1 minute",
+    // Con el contador en memoria, cada réplica del backend dejaba pasar el
+    // límite completo por su cuenta: dos instancias = el doble de intentos de
+    // login, y un reinicio borraba los bloqueos. En Redis el contador es uno
+    // solo para todas, y sobrevive al reinicio del proceso.
+    //
+    // `redis` a null hace que el plugin use su store en memoria — es el camino
+    // de `npm run dev` sin REDIS_URL, no el de Compose.
+    redis: redis ?? undefined,
+    // Prefijo propio para que `FLUSHDB` no haga falta nunca y las claves del
+    // rate limit no se confundan con las de la caché (ver lib/cache.ts).
+    nameSpace: "siappc-rl:",
+    // Si Redis falla, la petición pasa en vez de responder 500. Es la política
+    // por defecto del plugin y aquí se deja explícita porque tiene un costo
+    // real: mientras Redis esté caído NO hay límite de peticiones, ni siquiera
+    // en /auth/login. Por eso el backend depende de `service_healthy` en
+    // docker-compose.yml y el error queda en el log — un Redis caído es un
+    // incidente de operación, no un modo de funcionamiento.
+    skipOnError: true,
   });
 
   await app.register(authPlugin);

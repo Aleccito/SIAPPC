@@ -10,6 +10,7 @@
     "db:logs": "docker compose logs -f mariadb",
     "migrate": "node --env-file=.env db/migrate.ts",
     "typecheck": "tsc --noEmit",
+    "test": "node --test --test-concurrency=1 --env-file=.env.test \"test/*.test.ts\"",
     "dev": "node --env-file=.env --watch src/server.ts",
     "start": "node --env-file=.env src/server.ts"
   },
@@ -21,6 +22,7 @@
     "bcryptjs": "^2.4.3",
     "fastify": "^5.11.2",
     "fastify-plugin": "^5.0.1",
+    "ioredis": "^6.0.0",
     "mqtt": "^5.15.2",
     "mysql2": "^3.11.5",
     "zod": "^3.24.1"
