@@ -33,9 +33,25 @@ _load_env_file()
 DEVICE_CODE = os.environ.get("DEVICE_CODE", "RPI-01")
 
 MQTT_HOST = os.environ.get("MQTT_HOST", "localhost")
-MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
+# El broker solo escucha TLS: 8883, no 1883.
+MQTT_PORT = int(os.environ.get("MQTT_PORT", "8883"))
 MQTT_USER = os.environ.get("MQTT_USER") or None
 MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD") or None
+
+# Solo para apuntar a un broker heredado sin TLS.
+MQTT_TLS = os.environ.get("MQTT_TLS", "true").lower() not in ("false", "0", "no")
+
+# CA que firma el certificado del broker. En desarrollo la emite
+# `infra/mosquitto/gen-certs.sh` y hay que copiar el `ca.crt` resultante a la
+# Pi; por defecto se busca en `iot/certs/ca.crt` (git-ignorado).
+MQTT_CA_FILE = os.environ.get("MQTT_CA_FILE") or str(
+    Path(__file__).resolve().parent.parent / "certs" / "ca.crt"
+)
+
+# Certificado de cliente: solo si el broker exige mTLS
+# (require_certificate true). Los dos van juntos o ninguno.
+MQTT_CLIENT_CERT_FILE = os.environ.get("MQTT_CLIENT_CERT_FILE") or None
+MQTT_CLIENT_KEY_FILE = os.environ.get("MQTT_CLIENT_KEY_FILE") or None
 
 TELEMETRY_TOPIC = f"siappc/{DEVICE_CODE}/telemetry"
 STATUS_TOPIC = f"siappc/{DEVICE_CODE}/status"
