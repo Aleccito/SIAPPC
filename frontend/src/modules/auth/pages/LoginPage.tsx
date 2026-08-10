@@ -26,7 +26,7 @@ import { useAuth } from '../useAuth'
 import { BrandMark } from '../../../shared/BrandMark'
 import { LanguageToggle } from '../../../shared/i18n/LanguageToggle'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
-import { sidebar } from '../../../shared/theme'
+import { brandBlueSoft, sidebar } from '../../../shared/theme'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 
 const capabilities: {
@@ -138,7 +138,7 @@ export function LoginPage() {
         {/* La versión con lema usa text.secondary, ilegible sobre el azul
             marino. El lema ya lo dice el titular de abajo. */}
         <Box sx={{ color: sidebar.text }}>
-          <BrandMark withTagline={false} />
+          <BrandMark withTagline={false} variant="onBlue" />
         </Box>
 
         <Stack spacing={3.5} sx={{ maxWidth: 520 }}>
@@ -209,7 +209,7 @@ export function LoginPage() {
                     border: `1px solid ${sidebar.border}`,
                   }}
                 >
-                  <capability.icon fontSize="small" sx={{ color: '#93b4fd' }} />
+                  <capability.icon fontSize="small" sx={{ color: brandBlueSoft }} />
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>

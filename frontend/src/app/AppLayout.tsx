@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Avatar,
   Box,
+  Collapse,
   IconButton,
   List,
   ListItemButton,
@@ -14,14 +15,19 @@ import {
   Typography,
 } from '@mui/material'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import LogoutIcon from '@mui/icons-material/Logout'
 import MenuIcon from '@mui/icons-material/Menu'
-import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined'
 import { useAuth } from '../modules/auth/useAuth'
+import { NotificationsBell } from '../modules/notifications/components/NotificationsBell'
+import { BrandLogo } from '../shared/BrandLogo'
 import { LanguageToggle } from '../shared/i18n/LanguageToggle'
 import { useLanguage } from '../shared/i18n/useLanguage'
 import { sidebar } from '../shared/theme'
-import { modules } from '../modules/registry'
+import { isNavGroup, modules } from '../modules/registry'
+import type { AppModule, NavGroup } from '../modules/registry'
+import type { StringKey } from '../shared/i18n/dictionary'
 import { usePageHeaderValue } from './pageHeader'
 import { PageHeaderProvider } from './PageHeaderProvider'
 
@@ -39,10 +45,91 @@ export function AppLayout() {
 
 const COLLAPSED_KEY = 'app.sidebarCollapsed'
 
+// Todas las rutas que aparecen en el menú, cabeceras de sección aparte.
+const NAV_PATHS = modules.flatMap((entry) =>
+  isNavGroup(entry) ? entry.children.map((child) => child.path) : [entry.path],
+)
+
+/** ¿Alguna otra entrada del menú cuelga de esta ruta? */
+function hasNavDescendant(path: string): boolean {
+  return NAV_PATHS.some((other) => other !== path && other.startsWith(`${path}/`))
+}
+
+// Una fila del menú. La usan por igual las entradas de primer nivel y las
+// anidadas, para que el estado activo y el hover no se dupliquen en dos sitios
+// que luego se separan.
+function NavRow({
+  module,
+  collapsed = false,
+  nested = false,
+  t,
+}: {
+  module: AppModule
+  collapsed?: boolean
+  nested?: boolean
+  t: (key: StringKey) => string
+}) {
+  return (
+    // Plegada, el icono es lo único que queda: el tooltip es lo que impide
+    // tener que adivinar qué es cada uno. Desplegada estorba, así que se
+    // desactiva con `disableHoverListener`.
+    <Tooltip
+      title={t(module.label)}
+      placement="right"
+      disableHoverListener={!collapsed}
+      disableFocusListener={!collapsed}
+      disableTouchListener={!collapsed}
+    >
+      <ListItemButton
+        component={NavLink}
+        to={module.path}
+        // `end` exige coincidencia exacta. Hace falta cuando otra entrada del
+        // menú cuelga de esta ruta: `/reports` es prefijo de
+        // `/reports/permissions`, y sin esto "Listado" se marcaba activo a la
+        // vez que "Permisos". La raíz lo lleva siempre, o quedaría activa en
+        // todas las pantallas.
+        //
+        // No se pone a ciegas en todas: `/admin/roles` tiene que seguir activo
+        // dentro de `/admin/roles/:id/permissions`, que es una ruta de detalle
+        // y no una entrada del menú.
+        end={module.path === '/' || hasNavDescendant(module.path)}
+        sx={{
+          borderRadius: 2,
+          mb: 0.5,
+          color: sidebar.textMuted,
+          justifyContent: collapsed ? 'center' : undefined,
+          px: collapsed ? 1 : undefined,
+          '&:hover': { bgcolor: sidebar.hoverBg, color: sidebar.text },
+          '&.active': {
+            bgcolor: sidebar.activeBg,
+            color: '#ffffff',
+            '&:hover': { bgcolor: sidebar.activeBg },
+          },
+        }}
+      >
+        <ListItemIcon sx={{ color: 'inherit', minWidth: collapsed ? 0 : nested ? 30 : 36 }}>
+          {/* El hijo lleva el icono más pequeño: la sangría sola no basta para
+              leer la jerarquía de un vistazo. */}
+          <module.icon fontSize={nested ? 'inherit' : 'small'} />
+        </ListItemIcon>
+        {!collapsed && (
+          <ListItemText
+            primary={t(module.label)}
+            slotProps={{
+              primary: { sx: { fontSize: nested ? 13 : 14, fontWeight: 600 } },
+            }}
+          />
+        )}
+      </ListItemButton>
+    </Tooltip>
+  )
+}
+
 function AppLayoutInner() {
   const { user, logout } = useAuth()
   const { t, language } = useLanguage()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const header = usePageHeaderValue()
 
   // Se recuerda entre recargas, como el idioma: si alguien trabaja con la barra
@@ -59,8 +146,49 @@ function AppLayoutInner() {
   }
 
   const width = collapsed ? sidebar.collapsedWidth : sidebar.width
+
+  // Grupos abiertos o cerrados a mano. Sin entrada aquí, un grupo se muestra
+  // abierto si la pantalla actual es uno de sus hijos.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+
+  // Entrar en una pantalla hija borra lo que se hubiera decidido a mano para su
+  // grupo, con lo que vuelve a mandar la regla de "abierto si estoy dentro".
+  //
+  // Sin esto: cierras Reportes, pulsas "Ver historial completo" en Roles —que
+  // lleva a Auditoría— y acabas en una pantalla cuyo elemento de menú está
+  // escondido, sin nada marcado como activo. Cerrarlo estando dentro sigue
+  // funcionando; lo que no persiste es esa decisión hasta la siguiente
+  // navegación.
+  useEffect(() => {
+    setOpenGroups((current) => {
+      const stale = Object.keys(current).filter((groupId) => {
+        const group = modules.find((entry) => isNavGroup(entry) && entry.id === groupId)
+        return (
+          group &&
+          isNavGroup(group) &&
+          group.children.some((child) => pathname.startsWith(child.path))
+        )
+      })
+      if (!stale.length) return current
+      const next = { ...current }
+      for (const key of stale) delete next[key]
+      return next
+    })
+  }, [pathname])
+
+  function isGroupOpen(group: NavGroup): boolean {
+    const manual = openGroups[group.id]
+    if (manual !== undefined) return manual
+    return group.children.some((child) => pathname.startsWith(child.path))
+  }
+
+  function toggleGroup(group: NavGroup) {
+    const next = !isGroupOpen(group)
+    setOpenGroups((current) => ({ ...current, [group.id]: next }))
+  }
+
   const visibleModules = modules.filter(
-    (module) => !module.requiredRole || module.requiredRole === user?.role,
+    (entry) => !entry.requiredRole || entry.requiredRole === user?.role,
   )
   const today = new Date().toLocaleDateString(language === 'es' ? 'es-MX' : 'en-US', {
     day: 'numeric',
@@ -108,12 +236,7 @@ function AppLayoutInner() {
             spacing={1.5}
             sx={{ alignItems: 'center', p: 2, justifyContent: collapsed ? 'center' : undefined }}
           >
-            <Avatar
-              variant="rounded"
-              sx={{ bgcolor: 'primary.main', width: 36, height: 36, fontWeight: 700 }}
-            >
-              S
-            </Avatar>
+            <BrandLogo size={36} variant="onBlue" />
             {!collapsed && (
               <Stack spacing={0}>
                 <Typography variant="subtitle1" noWrap sx={{ lineHeight: 1.2, fontWeight: 700 }}>
@@ -143,50 +266,70 @@ function AppLayoutInner() {
             aria-label={t('layout.mainNav')}
             sx={{ px: 1.5 }}
           >
-            {visibleModules.map((module) => (
-              // Plegada, el icono es lo único que queda: el tooltip es lo que
-              // impide tener que adivinar qué es cada uno. Desplegada estorba,
-              // así que se desactiva con `disableHoverListener`.
-              <Tooltip
-                key={module.path}
-                title={t(module.label)}
-                placement="right"
-                disableHoverListener={!collapsed}
-                disableFocusListener={!collapsed}
-                disableTouchListener={!collapsed}
-              >
-                <ListItemButton
-                  component={NavLink}
-                  to={module.path}
-                  end={module.path === '/'}
-                  sx={{
-                    borderRadius: 2,
-                    mb: 0.5,
-                    color: sidebar.textMuted,
-                    justifyContent: collapsed ? 'center' : undefined,
-                    px: collapsed ? 1 : undefined,
-                    '&:hover': { bgcolor: sidebar.hoverBg, color: sidebar.text },
-                    '&.active': {
-                      bgcolor: sidebar.activeBg,
-                      color: '#ffffff',
-                      '&:hover': { bgcolor: sidebar.activeBg },
-                    },
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{ color: 'inherit', minWidth: collapsed ? 0 : 36 }}
+            {visibleModules.map((entry) => {
+              if (!isNavGroup(entry)) {
+                return <NavRow key={entry.path} module={entry} collapsed={collapsed} t={t} />
+              }
+
+              const children = entry.children.filter(
+                (child) => !child.requiredRole || child.requiredRole === user?.role,
+              )
+
+              // Plegada la barra, los hijos se dibujan como filas sueltas y la
+              // cabecera desaparece: no hay sitio para sangrar ni para un
+              // desplegable, y una cabecera que solo abre un grupo invisible no
+              // haría nada. Así ninguna pantalla queda inalcanzable.
+              if (collapsed) {
+                return children.map((child) => (
+                  <NavRow key={child.path} module={child} collapsed t={t} />
+                ))
+              }
+
+              const open = isGroupOpen(entry)
+              const groupId = `nav-grupo-${entry.id}`
+
+              return (
+                <Box key={entry.id}>
+                  {/* Toda la fila es el control: no navega, solo abre y cierra.
+                      Sin `component={NavLink}` queda como ButtonBase, es decir
+                      role="button" y tabIndex 0, que responde a Enter y Espacio.
+                      Un enlace estaría mal: no lleva a ninguna parte, y se
+                      anunciaría como enlace e invitaría a abrirlo en otra
+                      pestaña. */}
+                  <ListItemButton
+                    onClick={() => toggleGroup(entry)}
+                    aria-expanded={open}
+                    aria-controls={groupId}
+                    sx={{
+                      borderRadius: 2,
+                      mb: 0.5,
+                      color: sidebar.textMuted,
+                      '&:hover': { bgcolor: sidebar.hoverBg, color: sidebar.text },
+                    }}
                   >
-                    <module.icon fontSize="small" />
-                  </ListItemIcon>
-                  {!collapsed && (
+                    <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>
+                      <entry.icon fontSize="small" />
+                    </ListItemIcon>
                     <ListItemText
-                      primary={t(module.label)}
+                      primary={t(entry.label)}
                       slotProps={{ primary: { sx: { fontSize: 14, fontWeight: 600 } } }}
                     />
-                  )}
-                </ListItemButton>
-              </Tooltip>
-            ))}
+                    {open ? (
+                      <ExpandLessIcon fontSize="small" />
+                    ) : (
+                      <ExpandMoreIcon fontSize="small" />
+                    )}
+                  </ListItemButton>
+                  <Collapse in={open} unmountOnExit>
+                    <List id={groupId} disablePadding sx={{ pl: 2.5 }}>
+                      {children.map((child) => (
+                        <NavRow key={child.path} module={child} nested t={t} />
+                      ))}
+                    </List>
+                  </Collapse>
+                </Box>
+              )
+            })}
           </List>
         </Box>
 
@@ -281,9 +424,7 @@ function AppLayoutInner() {
           </Stack>
 
           <LanguageToggle />
-          <IconButton aria-label={t('layout.notifications')}>
-            <NotificationsNoneOutlinedIcon />
-          </IconButton>
+          <NotificationsBell />
         </Toolbar>
 
         <Box sx={{ p: 3 }}>

@@ -1,3 +1,4 @@
+import { Link as RouterLink } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
@@ -6,6 +7,7 @@ import {
   Button,
   Chip,
   LinearProgress,
+  Link,
   MenuItem,
   Paper,
   Stack,
@@ -228,7 +230,17 @@ export function SensorsPage() {
                     variant="outlined"
                   />
                 </TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>{alert.device}</TableCell>
+                <TableCell>
+                  {/* El código del dispositivo lleva a su cama: es el dato por
+                      el que se pregunta "¿qué está pasando en esa cama?". */}
+                  <Link
+                    component={RouterLink}
+                    to={`/monitoring/${alert.device}`}
+                    sx={{ fontWeight: 600 }}
+                  >
+                    {alert.device}
+                  </Link>
+                </TableCell>
                 <TableCell>{alert.variable}</TableCell>
                 <TableCell>
                   {alert.value} {alert.unit}
@@ -271,7 +283,17 @@ export function SensorsPage() {
             )}
             {readings.data?.map((reading) => (
               <TableRow key={reading.id} hover>
-                <TableCell sx={{ fontWeight: 600 }}>{reading.device}</TableCell>
+                <TableCell>
+                  {/* El código del dispositivo lleva a su cama: es el dato por
+                      el que se pregunta "¿qué está pasando en esa cama?". */}
+                  <Link
+                    component={RouterLink}
+                    to={`/monitoring/${reading.device}`}
+                    sx={{ fontWeight: 600 }}
+                  >
+                    {reading.device}
+                  </Link>
+                </TableCell>
                 <TableCell>{reading.variable}</TableCell>
                 <TableCell>
                   {reading.value} {reading.unit}
