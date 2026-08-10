@@ -1,0 +1,15 @@
+.claude/
+CLAUDE.md
+
+# Entorno
+.env
+.env.local
+
+# Certificados de desarrollo del broker MQTT: los genera
+# infra/mosquitto/gen-certs.sh y se regeneran cuando haga falta. Nunca se
+# commitea una clave privada, ni siquiera de desarrollo.
+infra/mosquitto/certs/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

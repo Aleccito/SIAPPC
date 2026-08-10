@@ -1,0 +1,10 @@
+venv/
+.env
+buffer.db
+# CA del broker, copiada desde infra/mosquitto/certs/ca.crt.
+certs/
+__pycache__/
+*.pyc
+*.log
+data/*
+!data/.gitkeep
