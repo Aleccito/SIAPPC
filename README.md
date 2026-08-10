@@ -81,9 +81,11 @@ El navegador nunca llama al backend en otro origen: nginx sirve el frontend y
 hace proxy de `/api/` hacia `backend:3001`, así que no hay CORS que configurar.
 
 La primera vez MariaDB aplica `backend/db/schema.sql` y después
-`backend/db/seed.sql`, y tarda unos 30 segundos en quedar sana. El backend
-espera a que el healthcheck pase antes de arrancar, así que ver el frontend
-antes que el backend es normal.
+`backend/db/seed.sql`, y tarda unos 30 segundos en quedar sana. Cada servicio
+espera a que el anterior responda, no solo a que su contenedor exista: el
+backend arranca cuando MariaDB pasa su healthcheck, y el frontend cuando el
+backend contesta `/health`. Por eso el primer `up` tarda: si el tablero ya
+carga, la API detrás ya está viva.
 
 El broker no tiene puerto en texto plano: no existe el 1883, ni siquiera dentro
 de la red de Compose. Tampoco acepta clientes anónimos — crea su usuario al

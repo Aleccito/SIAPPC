@@ -83,9 +83,21 @@ services:
       - ./infra/mosquitto/certs/ca.crt:/certs/ca.crt:ro
     ports:
       - '${BACKEND_PORT:-3001}:3001'
+    # `wget` es el de busybox, ya viene en la imagen base; --spider no descarga
+    # el cuerpo. start_period cubre el arranque: mientras tanto un fallo no
+    # cuenta como reintento.
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:3001/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
       mariadb:
         condition: service_healthy
+      # El backend tolera un broker caído: reintenta en segundo plano y sigue
+      # sirviendo HTTP. Por eso basta con que el contenedor haya arrancado, no
+      # hace falta esperar a que el broker esté sano.
       mosquitto:
         condition: service_started
 
@@ -95,8 +107,12 @@ services:
     restart: unless-stopped
     ports:
       - '${FRONTEND_PORT:-8080}:80'
+    # Espera a que el backend responda `/health`, no solo a que su contenedor
+    # exista. Así el tablero no se sirve antes de que haya API detrás: entrar y
+    # que el login falle con 502 desorienta más que esperar unos segundos.
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   mariadb_data:
