@@ -87,9 +87,53 @@ Fastify corre con `trustProxy: true` porque en Compose todas las peticiones
 llegan desde nginx: sin eso el límite contaría a todo el hospital como un solo
 cliente. nginx ya reenvía `X-Forwarded-For`.
 
-El contador vive en memoria del proceso, así que reiniciar el backend lo borra.
-Para un despliegue con más de una instancia haría falta un store compartido
-(Redis); con una sola instancia esto alcanza.
+El contador vive en Redis, no en la memoria del proceso. Eso es lo que permite
+correr más de una réplica del backend: con el contador en memoria cada réplica
+aplicaba el límite por su cuenta, así que dos instancias dejaban pasar diez
+intentos de login en vez de cinco, y reiniciar el proceso borraba los bloqueos.
+
+Las claves van con prefijo `siappc-rl:` y las escribe `@fastify/rate-limit`
+solo, contra el cliente de `src/lib/redis.ts`.
+
+Si Redis se cae, `skipOnError: true` deja pasar las peticiones en vez de
+responder 500 — pero eso significa que **mientras Redis esté abajo no hay
+límite de peticiones, ni siquiera en `/auth/login`**. Es un compromiso
+deliberado a favor de la disponibilidad, no un modo de operación: por eso el
+backend depende de `redis` con `condition: service_healthy` en
+`docker-compose.yml` y cada fallo queda en el log.
+
+Sin `REDIS_URL` el plugin cae a su contador en memoria y arranca igual. Ese es
+el camino de `npm run dev` con una sola instancia; en Compose la variable
+siempre viene puesta.
+
+## Caché de lecturas y alertas
+
+`GET /sensors/readings` y `GET /sensors/alerts` pasan por una caché en Redis
+(`src/lib/cache.ts`, prefijo `siappc-cache:`). Son las consultas que alimentan
+el tablero de sensores y los reportes, y las únicas que barren tablas que crecen
+sin techo —una lectura por segundo y por sensor— con tres JOIN y un `ORDER BY`.
+El tablero además las repite en cada refresco, para todos los usuarios
+conectados a la vez.
+
+`SENSORS_CACHE_TTL` (10 s por defecto) fija cuánto vive cada respuesta; `0`
+desactiva la caché sin tocar el límite de peticiones.
+
+**TTL corto en vez de invalidar al escribir.** La ingesta MQTT inserta una
+lectura por segundo y por sensor: invalidar en cada `INSERT` dejaría la caché
+siempre fría, con toda la complejidad de la invalidación y ninguno de los
+aciertos. El precio es que una respuesta puede venir hasta `SENSORS_CACHE_TTL`
+segundos vieja — aceptable para el tablero y los reportes; si algún día un
+endpoint dispara una acción clínica inmediata, ese debe saltarse la caché.
+
+La clave se arma con los parámetros ya validados por zod y ordenados alfabé-
+ticamente, así que `?device=A&limit=50` y `?limit=50&device=A` comparten
+entrada. **No incluye al usuario**, porque estas consultas todavía no filtran
+por hospital ni por unidad: la respuesta es idéntica para cualquiera que pase el
+`authenticate`. El día que se agregue ese filtro, el identificador tiene que
+entrar en la clave, o un usuario leería la respuesta cacheada de otro hospital.
+
+Cualquier fallo de Redis se degrada a consultar MariaDB: la caché nunca
+convierte una API que funciona en una que responde 500.
 
 ## Ingesta MQTT
 

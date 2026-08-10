@@ -23,6 +23,7 @@ import { alertSeverities, alertStatuses } from '../types'
 import type { AlertSeverity, AlertStatus } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
+import { usePageHeader } from '../../../app/pageHeader'
 
 const ALL = '__all__'
 
@@ -56,6 +57,7 @@ const statusKey: Record<AlertStatus, StringKey> = {
 
 export function SensorsPage() {
   const { t, language } = useLanguage()
+  usePageHeader(t('sensors.title'), t('sensors.subtitle'))
   const [device, setDevice] = useState(ALL)
   const [variable, setVariable] = useState(ALL)
   const [severity, setSeverity] = useState<AlertSeverity | typeof ALL>(ALL)
@@ -110,13 +112,6 @@ export function SensorsPage() {
 
   return (
     <Stack spacing={3}>
-      <Box>
-        <Typography variant="h5">{t('sensors.title')}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {t('sensors.subtitle')}
-        </Typography>
-      </Box>
-
       <Paper sx={{ p: 2 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField

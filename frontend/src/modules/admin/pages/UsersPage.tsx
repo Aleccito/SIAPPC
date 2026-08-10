@@ -37,11 +37,13 @@ import { NewUserDialog } from '../components/NewUserDialog'
 import { useAuth } from '../../auth/useAuth'
 import type { User } from '../../auth/types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
+import { usePageHeader } from '../../../app/pageHeader'
 
 const ALL = '__all__'
 
 export function UsersPage() {
   const { t, language } = useLanguage()
+  usePageHeader(t('users.title'), t('users.subtitle'))
   const { user: currentUser } = useAuth()
   const queryClient = useQueryClient()
   const locale = language === 'es' ? 'es-MX' : 'en-US'
@@ -91,13 +93,9 @@ export function UsersPage() {
 
   return (
     <Stack spacing={3}>
-      <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
-        <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="h5">{t('users.title')}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {t('users.subtitle')}
-          </Typography>
-        </Box>
+      {/* Título y descripción se fueron a la barra superior (usePageHeader);
+          queda la acción, alineada a la derecha como estaba. */}
+      <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setNewUserOpen(true)}>
           {t('users.new.button')}
         </Button>

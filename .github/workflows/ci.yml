@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          # Desechable y solo de este job: el contenedor muere con él y no se
+          # alcanza desde fuera del runner. No es la contraseña de nadie.
+          MARIADB_ROOT_PASSWORD: ci_throwaway_db
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # Redis va por `docker run` y no como `service`: hace falta pasarle
+      # `--requirepass` y los service containers de Actions no dejan cambiar el
+      # comando, solo las variables de entorno.
+      - name: Levantar Redis
+        run: |
+          docker run -d --name redis -p 6379:6379 redis:7-alpine \
+            redis-server --requirepass ci_throwaway_redis --save '' --appendonly no
+          for i in $(seq 1 30); do
+            if docker exec redis redis-cli -a ci_throwaway_redis --no-auth-warning ping | grep -q PONG; then
+              echo "redis listo"; exit 0
+            fi
+            sleep 1
+          done
+          echo "redis no respondió"; docker logs redis; exit 1
+
+      # `.env.test` está en .gitignore —son credenciales de desarrollo—, así que
+      # el job se escribe el suyo con valores desechables de este runner.
+      - name: Escribir .env.test
+        working-directory: backend
+        run: |
+          sed -e 's/^DB_PASSWORD=.*/DB_PASSWORD=ci_throwaway_db/' \
+              -e 's#^REDIS_URL=.*#REDIS_URL=redis://:ci_throwaway_redis@127.0.0.1:6379#' \
+              .env.test.example > .env.test
+
+      - run: npm ci
+        working-directory: backend
+
+      - run: npm run typecheck
+        working-directory: backend
+
+      # Las pruebas recrean `thermotrace_test` desde db/schema.sql y db/seed.sql
+      # en cada corrida; no hace falta sembrar nada aquí.
+      - run: npm test
+        working-directory: backend
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: frontend
+
+      # `npm run build` y no `tsc --noEmit`: el build usa `tsc -b` con
+      # referencias de proyecto y detecta errores que el otro deja pasar.
+      - run: npm run build
+        working-directory: frontend

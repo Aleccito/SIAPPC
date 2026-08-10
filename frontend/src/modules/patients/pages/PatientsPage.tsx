@@ -30,6 +30,7 @@ import { serviceModules } from '../types'
 import type { Patient, PatientStatus, ServiceModule } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
+import { usePageHeader } from '../../../app/pageHeader'
 
 const statusColor: Record<PatientStatus, 'default' | 'info' | 'success'> = {
   waiting: 'default',
@@ -52,6 +53,7 @@ const emptyForm = {
 
 export function PatientsPage() {
   const { t, language } = useLanguage()
+  usePageHeader(t('patients.title'))
   const queryClient = useQueryClient()
   const [moduleFilter, setModuleFilter] = useState<ServiceModule | 'all'>('all')
   const [formOpen, setFormOpen] = useState(false)
@@ -83,12 +85,9 @@ export function PatientsPage() {
 
   return (
     <Stack spacing={3}>
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{ alignItems: 'center', justifyContent: 'space-between' }}
-      >
-        <Typography variant="h5">{t('patients.title')}</Typography>
+      {/* El título se fue a la barra superior (usePageHeader); queda la acción,
+          alineada a la derecha como estaba. */}
+      <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
         <Button
           variant="contained"
           startIcon={<PersonAddAltOutlinedIcon />}

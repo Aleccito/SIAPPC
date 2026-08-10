@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { z } from "zod";
 import { pool } from "../../db/db.ts";
+import { recordAudit } from "../lib/audit.ts";
 import { hashPassword } from "../lib/passwords.ts";
 import type { ActivityEntry, AuditoriaRow, UsuarioRow, User } from "../types.ts";
 
@@ -89,14 +90,38 @@ export default async function usersRoutes(app: FastifyInstance) {
       }
 
       const tempPassword = generateTempPassword();
+      // El hash se calcula antes de abrir la transacción: bcrypt tarda del
+      // orden de decenas de milisegundos y no hay razón para tener una
+      // transacción abierta mientras tanto.
+      const passwordHash = await hashPassword(tempPassword);
+
+      // Alta y bitácora en la misma transacción: dar de alta una cuenta sin
+      // dejar constancia de quién la creó es exactamente el rastro que no puede
+      // faltar. Si no se puede registrar, no se crea.
+      const connection = await pool.getConnection();
       try {
-        const [result] = await pool.query<ResultSetHeader>(
+        await connection.beginTransaction();
+
+        const [result] = await connection.query<ResultSetHeader>(
           `INSERT INTO usuario (hospital_id, rol_id, unidad_id, nombre, tipo_personal, email, telefono, password_hash)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [hospitalId, rolId, unitId ?? null, name, role, email, phone ?? null, await hashPassword(tempPassword)],
+          [hospitalId, rolId, unitId ?? null, name, role, email, phone ?? null, passwordHash],
         );
 
-        const [rows] = await pool.query<UsuarioRow[]>(
+        await recordAudit(connection, {
+          actorId: req.user.sub,
+          entidad: "usuario",
+          registroId: result.insertId,
+          accion: "INSERT",
+          // Sin la contraseña temporal ni el hash: la bitácora la puede leer
+          // cualquiera con permiso de auditoría, y no es donde se guardan
+          // credenciales.
+          observacion: `creó la cuenta ${email} con rol ${role}`,
+        });
+
+        await connection.commit();
+
+        const [rows] = await connection.query<UsuarioRow[]>(
           `${SELECT_USER} WHERE u.usuario_id = ?`,
           [result.insertId],
         );
@@ -104,17 +129,21 @@ export default async function usersRoutes(app: FastifyInstance) {
         // después: si se pierde, se genera otra.
         return reply.code(201).send({ user: toUser(rows[0]!), tempPassword });
       } catch (err) {
+        await connection.rollback();
         if ((err as { code?: string }).code === "ER_DUP_ENTRY") {
           return reply.code(409).send({ error: "Ese email ya está en uso" });
         }
         throw err;
+      } finally {
+        connection.release();
       }
     },
   );
 
-  // Historial de actividad de una cuenta. Sale de `auditoria`, que hoy solo
-  // recibe LOGIN: el resto de acciones se irán registrando conforme cada módulo
-  // las escriba.
+  // Historial de actividad de una cuenta, desde `auditoria`. Filtra por
+  // `usuario_id`, que es QUIEN ejecutó la acción: aquí salen las cosas que hizo
+  // esta cuenta, no las que le hicieron a ella. Para eso último se consulta
+  // `GET /audit` por entidad y registro.
   app.get(
     "/users/:id/activity",
     { preHandler: [app.requirePermission("auditoria", "ver")] },
@@ -155,8 +184,22 @@ export default async function usersRoutes(app: FastifyInstance) {
       }
       const { role, unitId, active } = parsed.data;
 
+      // Se lee la cuenta ANTES de tocarla: la bitácora necesita a quién se le
+      // aplicó el cambio, y después del UPDATE ya no se sabe cómo estaba. De
+      // paso, un id inexistente se corta aquí en vez de tras un UPDATE que no
+      // afectó ningún renglón.
+      const [targets] = await pool.query<UsuarioRow[]>(
+        `${SELECT_USER} WHERE u.usuario_id = ?`,
+        [id],
+      );
+      const target = targets[0];
+      if (!target) return reply.code(404).send({ error: "Usuario no encontrado" });
+
       const updates: string[] = [];
       const values: unknown[] = [];
+      // Qué se cambió, en prose, que es como la pantalla de Auditoría muestra
+      // `observacion` (ver routes/audit.ts).
+      const changes: string[] = [];
 
       if (role !== undefined) {
         const rolId = await findRoleId(role);
@@ -165,10 +208,14 @@ export default async function usersRoutes(app: FastifyInstance) {
         }
         updates.push("rol_id = ?");
         values.push(rolId);
+        if (role !== target.rol_nombre) {
+          changes.push(`cambió el rol de ${target.rol_nombre} a ${role}`);
+        }
       }
       if (unitId !== undefined) {
         updates.push("unidad_id = ?");
         values.push(unitId);
+        changes.push(unitId === null ? "quitó la unidad" : "cambió la unidad");
       }
       if (active !== undefined) {
         // Suspender al último administrador dejaría el sistema sin quien
@@ -186,20 +233,51 @@ export default async function usersRoutes(app: FastifyInstance) {
         }
         updates.push("activo = ?");
         values.push(active);
+        if (active !== Boolean(target.activo)) {
+          changes.push(active ? "reactivó la cuenta" : "suspendió la cuenta");
+        }
       }
 
       if (!updates.length) {
         return reply.code(400).send({ error: "Nada que actualizar" });
       }
 
-      await pool.query(`UPDATE usuario SET ${updates.join(", ")} WHERE usuario_id = ?`, [
-        ...values,
-        id,
-      ]);
+      // Cambio y bitácora en la misma transacción: una suspensión sin rastro de
+      // quién la ordenó es justo lo que no puede pasar.
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+
+        await connection.query(`UPDATE usuario SET ${updates.join(", ")} WHERE usuario_id = ?`, [
+          ...values,
+          id,
+        ]);
+
+        // `changes` queda vacío cuando la petición reenvía los valores que ya
+        // tenía la cuenta. El UPDATE es real pero no cambió nada, y anotar
+        // "actualizó" sin decir qué solo ensucia la bitácora.
+        if (changes.length) {
+          await recordAudit(connection, {
+            actorId: req.user.sub,
+            entidad: "usuario",
+            registroId: id,
+            accion: "UPDATE",
+            // Guion en vez de "de": con "cambió el rol de X a Y" pegado a "de
+            // <correo>" salían dos "de" seguidos y no se entendía a quién.
+            observacion: `${changes.join("; ")} — ${target.email}`,
+          });
+        }
+
+        await connection.commit();
+      } catch (err) {
+        await connection.rollback();
+        throw err;
+      } finally {
+        connection.release();
+      }
 
       const [rows] = await pool.query<UsuarioRow[]>(`${SELECT_USER} WHERE u.usuario_id = ?`, [id]);
-      if (!rows[0]) return reply.code(404).send({ error: "Usuario no encontrado" });
-      return toUser(rows[0]);
+      return toUser(rows[0]!);
     },
   );
 }

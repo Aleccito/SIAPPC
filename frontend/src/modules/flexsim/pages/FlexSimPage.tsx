@@ -23,6 +23,7 @@ import { listRuns, models, startRun } from '../api/flexsimApi'
 import type { RunStatus } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
+import { usePageHeader } from '../../../app/pageHeader'
 
 const statusColor: Record<RunStatus, 'default' | 'info' | 'success' | 'error'> =
   {
@@ -41,6 +42,7 @@ const statusKey: Record<RunStatus, StringKey> = {
 
 export function FlexSimPage() {
   const { t } = useLanguage()
+  usePageHeader(t('flexsim.title'))
   const queryClient = useQueryClient()
   const [model, setModel] = useState(models[0])
 
@@ -64,8 +66,6 @@ export function FlexSimPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h5">{t('flexsim.title')}</Typography>
-
       {mutation.isError && (
         <Alert severity="error">{t('flexsim.queueError')}</Alert>
       )}

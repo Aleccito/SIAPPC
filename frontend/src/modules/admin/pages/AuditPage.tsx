@@ -19,11 +19,14 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import { listAudit, listAuditEntities } from '../api/auditApi'
 import { listUsers } from '../api/usersApi'
 import { auditActions } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
+import { usePageHeader } from '../../../app/pageHeader'
 
 const ALL = '__all__'
 
@@ -36,16 +39,57 @@ const RANGES = [
 
 // Cada acción tiene un color propio: en una lista larga el color es lo que deja
 // localizar un borrado entre cientos de inicios de sesión.
-const ACTION_COLOR: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
-  LOGIN: 'default',
+const ACTION_COLOR: Record<string, 'default' | 'primary' | 'success' | 'warning' | 'error'> = {
+  LOGIN: 'primary',
   LOGOUT: 'default',
   INSERT: 'success',
   UPDATE: 'warning',
   DELETE: 'error',
+  // En rojo como DELETE: no es una acción del usuario sino un intento de acceso
+  // rechazado, y es lo que hay que ver primero al abrir la bitácora.
+  LOGIN_BLOCKED: 'error',
+}
+
+// Relleno sólido solo para lo que no se puede pasar por alto. Si todas las
+// filas gritan, ninguna destaca: el resto va en contorno y estos dos ganan el
+// contraste. DELETE es irreversible y LOGIN_BLOCKED es un intento de entrar
+// que fue rechazado.
+const ACTION_FILLED = new Set(['DELETE', 'LOGIN_BLOCKED'])
+
+// Color por entidad, para que la columna deje de ser texto gris. Es una
+// categoría, no una escala: el color solo agrupa — azul lo que toca cuentas,
+// verde lo asistencial, ámbar lo que cambia permisos.
+//
+// Sin 'default' entre los valores a propósito: `theme.palette.default` no
+// existe, así que dejarlo aquí obliga a comprobarlo en cada uso. Una entidad
+// que no esté en el mapa da `undefined` y cae en el gris de reserva.
+const ENTITY_COLOR: Record<string, 'primary' | 'success' | 'warning'> = {
+  usuario: 'primary',
+  paciente: 'success',
+  rol: 'warning',
+  rol_permiso: 'warning',
+}
+
+// Etiqueta tenue: fondo al 10 % del color y texto en su tono oscuro, que sobre
+// blanco mantiene el contraste de lectura. Las entidades desconocidas usan el
+// gris secundario del tema.
+function entityTag(theme: Theme, entity: string): { bgcolor: string; color: string } {
+  const key = ENTITY_COLOR[entity]
+  if (!key) {
+    return {
+      bgcolor: alpha(theme.palette.text.secondary, 0.1),
+      color: theme.palette.text.secondary,
+    }
+  }
+  return {
+    bgcolor: alpha(theme.palette[key].main, 0.1),
+    color: theme.palette[key].dark,
+  }
 }
 
 export function AuditPage() {
   const { t, language } = useLanguage()
+  usePageHeader(t('audit.title'), t('audit.subtitle'))
   const locale = language === 'es' ? 'es-MX' : 'en-US'
 
   const [userId, setUserId] = useState(ALL)
@@ -53,7 +97,7 @@ export function AuditPage() {
   const [action, setAction] = useState(ALL)
   const [range, setRange] = useState<string>('30')
   const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(25)
+  const [pageSize, setPageSize] = useState(10)
 
   const users = useQuery({ queryKey: ['users'], queryFn: listUsers })
   const entities = useQuery({ queryKey: ['auditEntities'], queryFn: listAuditEntities })
@@ -86,13 +130,6 @@ export function AuditPage() {
 
   return (
     <Stack spacing={3}>
-      <Box>
-        <Typography variant="h5">{t('audit.title')}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {t('audit.subtitle')}
-        </Typography>
-      </Box>
-
       <Paper sx={{ p: 2 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
@@ -195,24 +232,55 @@ export function AuditPage() {
                 </TableCell>
               </TableRow>
             )}
-            {audit.data?.entries.map((entry) => (
-              <TableRow key={entry.id} hover>
-                <TableCell sx={{ color: 'text.secondary' }}>
-                  {new Date(entry.at).toLocaleString(locale)}
-                </TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>{entry.author ?? '—'}</TableCell>
-                <TableCell>
-                  <Chip
-                    size="small"
-                    variant="outlined"
-                    color={ACTION_COLOR[entry.action] ?? 'default'}
-                    label={t(`audit.${entry.action}` as StringKey)}
-                  />
-                </TableCell>
-                <TableCell sx={{ color: 'text.secondary' }}>{entry.entity}</TableCell>
-                <TableCell>{entry.note ?? '—'}</TableCell>
-              </TableRow>
-            ))}
+            {audit.data?.entries.map((entry) => {
+              const blocked = entry.action === 'LOGIN_BLOCKED'
+              return (
+                <TableRow
+                  key={entry.id}
+                  hover
+                  sx={
+                    // Franja roja al canto y un fondo apenas teñido: al recorrer
+                    // la bitácora con la vista, los accesos rechazados se
+                    // encuentran sin leer renglón por renglón. Va en la fila
+                    // entera y no solo en el chip porque lo que se busca es el
+                    // evento, no la etiqueta.
+                    blocked
+                      ? {
+                          bgcolor: (theme) => alpha(theme.palette.error.main, 0.05),
+                          'td:first-of-type': {
+                            boxShadow: (theme) =>
+                              `inset 3px 0 0 ${theme.palette.error.main}`,
+                          },
+                        }
+                      : undefined
+                  }
+                >
+                  <TableCell sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                    {new Date(entry.at).toLocaleString(locale)}
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{entry.author ?? '—'}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      variant={ACTION_FILLED.has(entry.action) ? 'filled' : 'outlined'}
+                      color={ACTION_COLOR[entry.action] ?? 'default'}
+                      label={t(`audit.${entry.action}` as StringKey)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {/* Etiqueta tenue, no un chip de color pleno: la entidad
+                        agrupa, no alerta, y compitiendo con la columna de
+                        acción se perdería cuál de las dos importa. */}
+                    <Chip
+                      size="small"
+                      label={entry.entity}
+                      sx={(theme) => ({ border: 'none', ...entityTag(theme, entry.entity) })}
+                    />
+                  </TableCell>
+                  <TableCell>{entry.note ?? '—'}</TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
 
@@ -222,7 +290,9 @@ export function AuditPage() {
           page={page}
           onPageChange={(_, next) => setPage(next)}
           rowsPerPage={pageSize}
-          rowsPerPageOptions={[25, 50, 100]}
+          // 15 tiene que estar en la lista además de ser el valor inicial: MUI
+          // avisa por consola si el valor actual no es una de las opciones.
+          rowsPerPageOptions={[5,10,15, 50, 100]}
           onRowsPerPageChange={(event) => {
             setPageSize(Number(event.target.value))
             setPage(0)

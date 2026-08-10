@@ -63,8 +63,8 @@ export function ForgotPasswordPage() {
     setPending(true)
     try {
       await verifyCode(digits.join(''))
-      // PHASE 2: once the backend supports setting a new password, this
-      // redirect becomes a third step instead of sending the user back here.
+      // PENDIENTE: cuando el backend permita fijar la contraseña nueva, esto
+      // pasa a ser un tercer paso en vez de devolver al usuario al login.
       navigate('/login', { state: { resetSuccess: true } })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t('verify.failed'))

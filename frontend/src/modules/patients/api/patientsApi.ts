@@ -1,7 +1,9 @@
 import type { NewPatient, Patient } from '../types'
 
-// PHASE 2: replace these bodies with fetches to /api/patients. The backend owns
-// the identifier and the arrival timestamp — never send them from the browser.
+// PENDIENTE: esta pantalla todavía trabaja sobre datos de ejemplo. El backend ya
+// expone `GET /patients` y `POST /patients`, así que falta cambiar estos cuerpos
+// por llamadas a `request`. El identificador y la hora de llegada los asigna el
+// servidor — nunca se mandan desde el navegador.
 let fixtures: Patient[] = [
   {
     id: 'p-001',

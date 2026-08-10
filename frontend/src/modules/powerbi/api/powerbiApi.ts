@@ -1,8 +1,8 @@
 import type { EmbedConfig } from '../types'
 
-// PHASE 2: replace this body with a fetch to the backend endpoint that mints the
-// embed token from the service principal. The token must never be built here —
-// the frontend only ever receives a short-lived one.
+// PENDIENTE: datos de ejemplo. Falta el endpoint que emite el token de
+// incrustación a partir del service principal. Ese token no se construye aquí
+// bajo ninguna circunstancia: el frontend solo recibe uno de vida corta.
 export async function getEmbedConfig(): Promise<EmbedConfig> {
   throw new Error('Embed token endpoint is not available yet')
 }
