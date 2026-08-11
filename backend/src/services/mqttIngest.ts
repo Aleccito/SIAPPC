@@ -20,6 +20,14 @@ const telemetrySchema = z.object({
 
 type TelemetryPayload = z.infer<typeof telemetrySchema>;
 
+// Forma de siappc/<device>/status, ver iot/src/publisher.py y
+// iot/monitor/net/publisher.py. Es un mensaje retenido, y el mismo que el
+// broker publica por su cuenta (Last Will) si el dispositivo desaparece.
+const statusSchema = z.object({
+  device: z.string().min(1).max(50),
+  status: z.enum(["online", "offline"]),
+});
+
 type AlertInfo = {
   tipo: string;
   severidad: "baja" | "media" | "alta" | "critica";
@@ -47,9 +55,58 @@ function evaluateAlert(variable: string, value: number): AlertInfo | null {
     }
     return null;
   }
+  // `pr` es la misma frecuencia que `hr` medida por otra vía (los picos del
+  // pletismógrafo en vez del ECG), así que van los mismos rangos. Que las dos
+  // se separen es un dato clínico en sí mismo, pero eso necesita comparar dos
+  // series y no una lectura suelta: no se puede resolver aquí.
+  if (variable === "pr") {
+    if (value < 40 || value > 140) {
+      return { tipo: "pr_fuera_de_rango", severidad: "critica", mensaje: `Frecuencia de pulso ${value} bpm fuera de rango crítico` };
+    }
+    if (value < 50 || value > 120) {
+      return { tipo: "pr_fuera_de_rango", severidad: "alta", mensaje: `Frecuencia de pulso ${value} bpm fuera de rango` };
+    }
+    return null;
+  }
+  // Los mismos límites que el monitor usa en pantalla (AlarmLimits.resp_low /
+  // resp_high en iot/monitor/config.py), para que no digan cosas distintas.
+  // OJO: `resp` es una estimación sacada del pletismógrafo, no una respiración
+  // medida por flujo ni por impedancia. Por eso no llega a "critica": no es un
+  // número sobre el que despertar a nadie.
+  if (variable === "resp") {
+    if (value < 8 || value > 30) {
+      return { tipo: "resp_fuera_de_rango", severidad: "alta", mensaje: `Respiración estimada ${value} rpm fuera de rango` };
+    }
+    return null;
+  }
+  // El índice de perfusión no es un signo vital: dice cuánta señal le llega al
+  // sensor. Por debajo de 0.2 el dedo está mal apoyado o frío, y lo que hay que
+  // desconfiar es del SpO2 que sale de ahí, no del paciente. Severidad baja a
+  // propósito: es calidad de señal, no una alarma clínica.
+  if (variable === "perfusion") {
+    if (value < 0.2) {
+      return { tipo: "perfusion_baja", severidad: "baja", mensaje: `Índice de perfusión ${value}%: señal débil, el SpO2 puede no ser fiable` };
+    }
+    return null;
+  }
   // ecg: una muestra instantánea de voltaje no dice nada por sí sola, hace
   // falta la forma de onda para detectar arritmias. Sin umbral por ahora.
   return null;
+}
+
+// Un dispositivo en `mantenimiento` o `baja` está así porque alguien lo puso a
+// mano; que la Pi se conecte no es motivo para deshacer esa decisión. Solo se
+// mueve entre los dos estados que describen "está o no está transmitiendo".
+async function updateDeviceStatus(device: string, online: boolean, logger: FastifyBaseLogger): Promise<void> {
+  const estado = online ? "activo" : "inactivo";
+  const [result] = await pool.query<ResultSetHeader>(
+    `UPDATE dispositivo SET estado = ?
+     WHERE codigo = ? AND estado IN ('activo', 'inactivo') AND estado <> ?`,
+    [estado, device, estado],
+  );
+  if (result.affectedRows > 0) {
+    logger.info({ device, estado }, "mqtt: dispositivo cambió de estado");
+  }
 }
 
 async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogger): Promise<void> {
@@ -98,11 +155,27 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
 }
 
 async function handleMessage(topic: string, payloadBuf: Buffer, logger: FastifyBaseLogger): Promise<void> {
+  // Al borrar un retenido el broker reparte un mensaje vacío. No es un error ni
+  // hay nada que ingerir.
+  if (payloadBuf.length === 0) {
+    return;
+  }
+
   let raw: unknown;
   try {
     raw = JSON.parse(payloadBuf.toString("utf-8"));
   } catch {
     logger.warn({ topic }, "mqtt: payload no es JSON válido");
+    return;
+  }
+
+  if (topic.endsWith("/status")) {
+    const parsed = statusSchema.safeParse(raw);
+    if (!parsed.success) {
+      logger.warn({ topic, issues: parsed.error.issues }, "mqtt: estado con forma inválida");
+      return;
+    }
+    await updateDeviceStatus(parsed.data.device, parsed.data.status === "online", logger);
     return;
   }
 
@@ -145,7 +218,10 @@ export function startMqttIngest(logger: FastifyBaseLogger): mqtt.MqttClient {
   client.on("connect", () => {
     const scheme = tls ? "mqtts" : "mqtt";
     logger.info(`mqtt: conectado a ${scheme}://${env.mqtt.host}:${env.mqtt.port}`);
-    client.subscribe(env.mqtt.telemetryTopic, { qos: 1 }, (err) => {
+    // Los dos temas de una vez. Al suscribirse al de estado el broker entrega
+    // los retenidos, así que el backend se pone al día con los equipos que ya
+    // estaban conectados (o caídos) antes de que él arrancara.
+    client.subscribe([env.mqtt.telemetryTopic, env.mqtt.statusTopic], { qos: 1 }, (err) => {
       if (err) logger.error({ err }, "mqtt: fallo al suscribirse");
     });
   });
