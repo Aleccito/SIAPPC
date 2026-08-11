@@ -93,13 +93,6 @@ export function UsersPage() {
 
   return (
     <Stack spacing={3}>
-      {/* Título y descripción se fueron a la barra superior (usePageHeader);
-          queda la acción, alineada a la derecha como estaba. */}
-      <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setNewUserOpen(true)}>
-          {t('users.new.button')}
-        </Button>
-      </Stack>
 
       {mutation.isError && (
         <Alert severity="error">{(mutation.error as Error).message}</Alert>
@@ -165,6 +158,17 @@ export function UsersPage() {
             <MenuItem value="true">{t('users.status.active')}</MenuItem>
             <MenuItem value="false">{t('users.status.suspended')}</MenuItem>
           </TextField>
+          {/* La acción cierra la fila de filtros en vez de ocupar una propia,
+              que quedaba vacía de lado a lado. `ml: auto` la empuja al extremo
+              en pantalla ancha; apilada, se queda donde caiga. */}
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setNewUserOpen(true)}
+            sx={{ ml: { md: 'auto' }, flexShrink: 0 }}
+          >
+            {t('users.new.button')}
+          </Button>
         </Stack>
       </Paper>
 

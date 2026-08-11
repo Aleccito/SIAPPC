@@ -85,9 +85,30 @@ export function PatientsPage() {
 
   return (
     <Stack spacing={3}>
-      {/* El título se fue a la barra superior (usePageHeader); queda la acción,
-          alineada a la derecha como estaba. */}
-      <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
+      {/* Filtro a la izquierda y acción a la derecha, en la misma fila. Antes
+          ocupaban dos filas —el botón solo en una y el desplegable solo en la
+          siguiente—, cada una medio vacía. */}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{ alignItems: { sm: 'center' } }}
+      >
+        <Select
+          size="small"
+          value={moduleFilter}
+          onChange={(event) =>
+            setModuleFilter(event.target.value as ServiceModule | 'all')
+          }
+          sx={{ minWidth: 200 }}
+        >
+          <MenuItem value="all">{t('patients.filter.all')}</MenuItem>
+          {serviceModules.map((name) => (
+            <MenuItem key={name} value={name}>
+              {name}
+            </MenuItem>
+          ))}
+        </Select>
+        <Box sx={{ flexGrow: 1 }} />
         <Button
           variant="contained"
           startIcon={<PersonAddAltOutlinedIcon />}
@@ -100,22 +121,6 @@ export function PatientsPage() {
       {mutation.isError && (
         <Alert severity="error">{t('patients.addError')}</Alert>
       )}
-
-      <Select
-        size="small"
-        value={moduleFilter}
-        onChange={(event) =>
-          setModuleFilter(event.target.value as ServiceModule | 'all')
-        }
-        sx={{ alignSelf: 'flex-start', minWidth: 200 }}
-      >
-        <MenuItem value="all">{t('patients.filter.all')}</MenuItem>
-        {serviceModules.map((name) => (
-          <MenuItem key={name} value={name}>
-            {name}
-          </MenuItem>
-        ))}
-      </Select>
 
       <TableContainer component={Paper}>
         {/* Height is reserved so a refetch does not shift the table. */}

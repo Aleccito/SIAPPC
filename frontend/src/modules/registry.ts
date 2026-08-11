@@ -6,6 +6,8 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
+import ListAltOutlinedIcon from '@mui/icons-material/ListAltOutlined'
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined'
 import PrecisionManufacturingOutlinedIcon from '@mui/icons-material/PrecisionManufacturingOutlined'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import SensorsOutlinedIcon from '@mui/icons-material/SensorsOutlined'
@@ -25,7 +27,28 @@ export type AppModule = {
   requiredRole?: Role
 }
 
-export const modules: AppModule[] = [
+// Cabecera de sección: agrupa entradas y no lleva pantalla propia. Pulsarla
+// abre o cierra el grupo, nada más — por eso no tiene `path` ni `lazy`.
+//
+// Solo un nivel de anidamiento: con dos, la barra lateral pide migas de pan y
+// un menú que se recuerde a sí mismo, y aquí no hay tantas pantallas.
+export type NavGroup = {
+  // Clave estable para el estado de abierto/cerrado. No es una ruta: si lo
+  // fuera, alguien acabaría enlazándola.
+  id: string
+  label: StringKey
+  icon: SvgIconComponent
+  requiredRole?: Role
+  children: AppModule[]
+}
+
+export type NavEntry = AppModule | NavGroup
+
+export function isNavGroup(entry: NavEntry): entry is NavGroup {
+  return 'children' in entry
+}
+
+export const modules: NavEntry[] = [
   {
     path: '/',
     label: 'nav.dashboard',
@@ -67,12 +90,50 @@ export const modules: AppModule[] = [
     }),
   },
   {
-    path: '/reports',
+    id: 'reports',
     label: 'nav.reports',
     icon: DescriptionOutlinedIcon,
-    lazy: async () => ({
-      Component: (await import('./reports/pages/ReportsPage')).ReportsPage,
-    }),
+    children: [
+      {
+        path: '/reports',
+        label: 'nav.reportsList',
+        icon: ListAltOutlinedIcon,
+        lazy: async () => ({
+          Component: (await import('./reports/pages/ReportsPage')).ReportsPage,
+        }),
+      },
+      {
+        path: '/notifications',
+        label: 'nav.notifications',
+        icon: NotificationsNoneOutlinedIcon,
+        lazy: async () => ({
+          Component: (await import('./notifications/pages/NotificationsPage'))
+            .NotificationsPage,
+        }),
+      },
+      {
+        path: '/reports/permissions',
+        label: 'nav.permissionChanges',
+        icon: ShieldOutlinedIcon,
+        lazy: async () => ({
+          Component: (await import('./admin/pages/PermissionChangesPage'))
+            .PermissionChangesPage,
+        }),
+        requiredRole: 'admin',
+      },
+      // La bitácora es material de consulta, como los reportes: quién hizo qué
+      // y cuándo. Colgarla de aquí la saca de la lista de administración, donde
+      // estaba junto a Usuarios y Roles, que son pantallas de configuración.
+      {
+        path: '/admin/audit',
+        label: 'nav.audit',
+        icon: FactCheckOutlinedIcon,
+        lazy: async () => ({
+          Component: (await import('./admin/pages/AuditPage')).AuditPage,
+        }),
+        requiredRole: 'admin',
+      },
+    ],
   },
   {
     path: '/admin/users',
@@ -92,20 +153,27 @@ export const modules: AppModule[] = [
     }),
     requiredRole: 'admin',
   },
-  {
-    path: '/admin/audit',
-    label: 'nav.audit',
-    icon: FactCheckOutlinedIcon,
-    lazy: async () => ({
-      Component: (await import('./admin/pages/AuditPage')).AuditPage,
-    }),
-    requiredRole: 'admin',
-  },
 ]
+
+// El árbol de `modules` es para el menú. El router necesita la lista plana:
+// agrupar en la barra lateral no cambia dónde vive cada pantalla, y las
+// cabeceras de sección no aportan ninguna ruta.
+export const routeModules: AppModule[] = modules.flatMap((entry) =>
+  isNavGroup(entry) ? entry.children : [entry],
+)
 
 // Rutas que no son entradas de navegación: se llega a ellas desde una pantalla,
 // no desde la barra lateral.
 export const detailRoutes = [
+  {
+    // Detalle de una cama. `:device` es el `dispositivo.codigo` de la Pi, que es
+    // lo que identifica la fuente de las lecturas; la cama es una etiqueta que
+    // cuelga del paciente asignado.
+    path: '/monitoring/:device',
+    lazy: async () => ({
+      Component: (await import('./monitoring/pages/BedMonitorPage')).BedMonitorPage,
+    }),
+  },
   {
     path: '/admin/roles/:id/permissions',
     lazy: async () => ({

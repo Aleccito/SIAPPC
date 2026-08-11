@@ -1,12 +1,24 @@
 import { createTheme } from '@mui/material/styles'
 
+// El azul de la marca, tomado del logo. Vive aquí y no dentro de BrandLogo para
+// que el color de la interfaz y el del logo no puedan separarse: si algún día
+// cambia la marca, se cambia en este renglón y arrastra botones, enlaces, el
+// elemento activo del menú y el propio logo.
+//
+// Sobre blanco da 7:1 de contraste, así que aguanta texto pequeño encima.
+// El único sitio donde hay que repetirlo a mano es public/favicon.svg, que el
+// navegador pide como archivo suelto y no puede importar nada.
+export const brandBlue = '#2b5c86'
+// Tinte claro del mismo azul, para iconos y acentos sobre fondo oscuro.
+export const brandBlueSoft = '#9dc0dd'
+
 // Sidebar tokens live outside the palette: the shell is dark navy while the
 // rest of the app stays white, so a single palette mode cannot express both.
 export const sidebar = {
   bg: '#0f172a',
   text: '#e2e8f0',
   textMuted: '#94a3b8',
-  activeBg: '#2563eb',
+  activeBg: brandBlue,
   hoverBg: '#1e293b',
   border: '#1e293b',
   width: 240,
@@ -23,7 +35,7 @@ export const theme = createTheme({
       default: '#ffffff',
       paper: '#ffffff',
     },
-    primary: { main: '#2563eb' },
+    primary: { main: brandBlue },
     success: { main: '#16a34a' },
     warning: { main: '#d97706' },
     error: { main: '#dc2626' },
