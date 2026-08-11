@@ -14,7 +14,7 @@
     "dev": "node --env-file=.env --watch src/server.ts",
     "start": "node --env-file=.env src/server.ts",
     "db:migrate": "node --env-file=.env node_modules/prisma/build/index.js migrate dev",
-    "generate": "node --env-file=.env node_modules/prisma/build/index.js generate",
+    "generate": "node --env-file-if-exists=.env node_modules/prisma/build/index.js generate",
     "schema:build": "node --env-file=.env db/build-schema.ts",
     "studio": "node --env-file=.env node_modules/prisma/build/index.js studio"
   },
