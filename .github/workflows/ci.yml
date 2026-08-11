@@ -60,6 +60,16 @@ jobs:
       - run: npm ci
         working-directory: backend
 
+      # `src/generated/` está en .gitignore —no se commitea código generado—, así
+      # que en un clon limpio hay que generarlo antes de compilar nada: sin los
+      # tipos del cliente, cada `prisma.*` y cada callback de `$transaction` cae
+      # en `any` implícito y `tsc` falla en cascada.
+      #
+      # No toca la base: solo lee prisma/schema.prisma.
+      - name: Generar cliente de Prisma
+        run: npm run generate
+        working-directory: backend
+
       - run: npm run typecheck
         working-directory: backend
 
