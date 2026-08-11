@@ -51,13 +51,15 @@ va en Docker: el resto del sistema (base, backend, frontend) se levanta con
 ## Ejecutar
 
 ```bash
-python3 src/main.py
+python3 src/main.py                    # telemetría a secas
+python3 monitor/main.py                # monitor de cabecera, publicando lo mismo
 ```
 
 Sin hardware conectado, para probar la cadena completa desde una laptop:
 
 ```bash
 python3 src/main.py --simulate
+python3 monitor/main.py --demo --windowed
 ```
 
 ## Qué publica
@@ -78,8 +80,11 @@ Un valor inválido (por ejemplo, el dedo fuera del sensor) no se publica. Un
 hueco en la serie es más honesto que un cero que parece una medición.
 
 El tema `status` es retenido y además está declarado como Last Will: si la Pi
-se apaga o pierde la red sin avisar, el broker publica `offline` por ella y el
-tablero puede marcar el dispositivo como caído.
+se apaga o pierde la red sin avisar, el broker publica `offline` por ella. El
+backend lo consume junto con la telemetría y mueve `dispositivo.estado` entre
+`activo` e `inactivo`, así que el tablero ve el equipo caído sin que nadie
+tenga que avisar. Un dispositivo puesto a mano en `mantenimiento` o `baja` no
+se toca: que la Pi se conecte no deshace una decisión administrativa.
 
 ## Buffer
 
@@ -100,6 +105,33 @@ caída, o un duplicado de QoS 1, se descarta en vez de contarse dos veces.
 - `src/publisher.py`: cliente MQTT, reconexión y vaciado del buffer
 - `src/buffer.py`: cola local en SQLite
 - `src/config.py`: configuración por entorno
+- `monitor/`: monitor de cabecera con pantalla (proyecto `Rasp-main`), módulo
+  aparte que publica por el mismo MQTT. Ver [`monitor/README.md`](monitor/README.md)
+
+## `src/` y `monitor/`
+
+Son dos programas distintos sobre el mismo hardware. Comparten el camino de
+salida: los dos publican por MQTT con el mismo contrato y las mismas
+credenciales del `.env`.
+
+|  | `src/` | `monitor/` |
+|---|---|---|
+| Para qué | telemetría remota | monitor de cabecera local + telemetría |
+| Salida | MQTT sobre TLS → backend → MySQL | pantalla completa (pygame) **y** el mismo MQTT |
+| Procesamiento | HR/SpO2 con la referencia de Maxim | Pan-Tompkins, SpO2 latido a latido, respiración, alarmas |
+| Qué publica | `hr`, `spo2`, `ecg` (muestra instantánea) | `hr`, `spo2`, `pr`, `perfusion`, `resp` |
+| Cola local | `buffer.db` | `monitor-buffer.db` |
+
+`monitor/` traía su propio cliente HTTP contra `POST /api/v1/ingest`, un
+endpoint que este backend no tiene. En vez de agregarlo se le cambió el
+transporte: hoy publica por el MQTT que ya estaba funcionando. Lo que no viaja
+por ahí son las **ondas** (ECG, pleth): el modelo es una fila por lectura y una
+onda son ~250 muestras por segundo. Se dibujan en pantalla y ahí se quedan.
+
+Si los dos corren en el mismo Pi, cada uno necesita su `DEVICE_CODE` (o al menos
+saber que van a escribir sobre las mismas variables del mismo dispositivo): el
+`client_id` de MQTT ya los distingue, pero la tabla `sensor` es por dispositivo
+y variable.
 
 ## Probar sin Raspberry
 

@@ -15,6 +15,10 @@ const {
   // + comodín: un solo suscriptor cubre todos los dispositivos, cada uno
   // publica en su propio siappc/<device>/telemetry.
   MQTT_TELEMETRY_TOPIC = "siappc/+/telemetry",
+  // Tema retenido donde cada dispositivo dice si está vivo. Lo publica al
+  // conectarse y, si desaparece sin avisar, lo publica el broker por él
+  // (Last Will). Mismo comodín, misma razón.
+  MQTT_STATUS_TOPIC = "siappc/+/status",
   // Solo para apuntar a un broker heredado sin TLS. En Compose nunca se usa:
   // el broker no tiene listener en texto plano.
   MQTT_TLS = "true",
@@ -94,6 +98,7 @@ export const env = {
     user: MQTT_USER || undefined,
     password: MQTT_PASSWORD || undefined,
     telemetryTopic: MQTT_TELEMETRY_TOPIC,
+    statusTopic: MQTT_STATUS_TOPIC,
     // null = conexión en texto plano. Con TLS activo el certificado del broker
     // se valida siempre contra esta CA: no hay interruptor para saltarse la
     // verificación, porque un `rejectUnauthorized: false` olvidado deja la

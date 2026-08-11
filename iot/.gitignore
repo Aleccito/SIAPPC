@@ -1,6 +1,8 @@
 venv/
 .env
+# Colas locales de lecturas pendientes: la de src/ y la de monitor/.
 buffer.db
+monitor-buffer.db
 # CA del broker, copiada desde infra/mosquitto/certs/ca.crt.
 certs/
 __pycache__/
