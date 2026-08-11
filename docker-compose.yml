@@ -12,9 +12,10 @@ services:
       - '${DB_PORT}:3306'
     volumes:
       - mariadb_data:/var/lib/mysql
-      # Only runs on first boot, when the data volume is empty. Later schema
-      # changes go through db/migrations/ —
-      # `docker compose exec backend node db/migrate.ts`.
+      # Only runs on first boot, when the data volume is empty. Generated from
+      # backend/prisma/schema.prisma by `npm run schema:build` — do not edit it
+      # by hand. Later schema changes go through Prisma migrations:
+      # `cd backend && npm run migrate`.
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       # Roles, hospital y el primer admin. Sin esto no hay con qué iniciar
       # sesión: crear usuarios exige un admin ya autenticado.
@@ -145,6 +146,34 @@ services:
       # modo el límite de peticiones deja de aplicarse, y eso no debe ser el
       # estado normal de un arranque.
       redis:
+        condition: service_healthy
+
+  # Proceso ETL: agrega `lectura` y `alerta` al datamart que consultan la
+  # pantalla de Reportes y Power BI. Ver backend/etl/README.md.
+  #
+  # Misma imagen que el backend, otro comando: comparte el cliente de Prisma, el
+  # esquema y la configuración, pero corre en su propio contenedor para que una
+  # agregación pesada no le quite CPU a la API ni le bloquee el bucle de eventos.
+  #
+  # Las tablas del datamart las crea la migración, que —igual que el resto— se
+  # aplica desde el host con `cd backend && npm run migrate`, no desde estos
+  # contenedores. En una base creada de cero por db/schema.sql ya vienen.
+  etl:
+    build: ./backend
+    container_name: siappc-etl
+    restart: unless-stopped
+    command: ['node', 'etl/scheduler.ts']
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # Minuto de cada hora en el que corre. No en punto: a las :00 la hora
+      # recién cerrada todavía recibe lecturas atrasadas del buffer de las Pi.
+      ETL_MINUTO: ${ETL_MINUTO:-5}
+    depends_on:
+      mariadb:
         condition: service_healthy
 
   frontend:

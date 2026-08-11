@@ -3,7 +3,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/app.ts";
-import { pool } from "../db/db.ts";
+import { prisma } from "../src/lib/prisma.ts";
 import { redis } from "../src/lib/redis.ts";
 import {
   authHeader,
@@ -20,34 +20,38 @@ const TTL_SECONDS = 1;
 // Inserta una lectura saltándose MQTT: lo que se prueba es la caché de lectura,
 // no la ingesta.
 async function insertReading(value: number): Promise<void> {
-  await pool.query(
-    "INSERT INTO dispositivo (hospital_id, codigo) VALUES (1, 'TEST-01') ON DUPLICATE KEY UPDATE codigo = codigo",
-  );
-  const [disp] = await pool.query<{ dispositivo_id: number }[] & object[]>(
-    "SELECT dispositivo_id FROM dispositivo WHERE codigo = 'TEST-01'",
-  );
-  const dispositivoId = (disp as { dispositivo_id: number }[])[0]!.dispositivo_id;
+  const dispositivo = await prisma.dispositivo.upsert({
+    where: { codigo: "TEST-01" },
+    create: { hospital_id: 1, codigo: "TEST-01" },
+    update: {},
+    select: { dispositivo_id: true },
+  });
 
-  await pool.query(
-    `INSERT INTO sensor (dispositivo_id, variable_medida, unidad) VALUES (?, 'hr', 'bpm')
-     ON DUPLICATE KEY UPDATE unidad = VALUES(unidad)`,
-    [dispositivoId],
-  );
-  const [sensor] = await pool.query<{ sensor_id: number }[] & object[]>(
-    "SELECT sensor_id FROM sensor WHERE dispositivo_id = ? AND variable_medida = 'hr'",
-    [dispositivoId],
-  );
+  const sensor = await prisma.sensor.upsert({
+    where: {
+      dispositivo_id_variable_medida: {
+        dispositivo_id: dispositivo.dispositivo_id,
+        variable_medida: "hr",
+      },
+    },
+    create: {
+      dispositivo_id: dispositivo.dispositivo_id,
+      variable_medida: "hr",
+      unidad: "bpm",
+    },
+    update: { unidad: "bpm" },
+    select: { sensor_id: true },
+  });
 
-  await pool.query(
-    "INSERT INTO lectura (sensor_id, valor, fecha_hora, hash_sha256) VALUES (?, ?, NOW(), ?)",
-    [
-      (sensor as { sensor_id: number }[])[0]!.sensor_id,
-      value,
+  await prisma.lectura.create({
+    data: {
+      sensor_id: sensor.sensor_id,
+      valor: value,
       // El índice único es sobre el hash; con uno distinto por lectura no se
       // descartan como reenvíos.
-      value.toString().padStart(64, "0"),
-    ],
-  );
+      hash_sha256: value.toString().padStart(64, "0"),
+    },
+  });
 }
 
 describe("caché de /sensors", () => {

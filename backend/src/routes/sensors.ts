@@ -1,7 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { pool } from "../../db/db.ts";
+import { Prisma } from "../generated/prisma/client.ts";
+import { prisma } from "../lib/prisma.ts";
 import { cached, cacheKey } from "../lib/cache.ts";
+import { parseOr400 } from "../lib/http.ts";
 import { env } from "../env.ts";
 import { alertSeverities, alertStatuses } from "../types.ts";
 import type { AlertaRow, LecturaRow, SensorAlert, SensorReading } from "../types.ts";
@@ -35,9 +37,9 @@ function toAlert(row: AlertaRow): SensorAlert {
 }
 
 const querySchema = z.object({
-  device: z.string().min(1).optional(),
-  variable: z.string().min(1).optional(),
-  limit: z.coerce.number().int().positive().max(500).optional(),
+  device: z.string().min(1).max(50).optional(),
+  variable: z.string().min(1).max(60).optional(),
+  limit: z.coerce.number().int().positive().max(500).default(100),
 });
 
 const alertsQuerySchema = querySchema.extend({
@@ -45,13 +47,21 @@ const alertsQuerySchema = querySchema.extend({
   status: z.enum(alertStatuses).optional(),
 });
 
+function whereClause(conditions: Prisma.Sql[]): Prisma.Sql {
+  return conditions.length ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}` : Prisma.empty;
+}
+
 // Lecturas y alertas que alimentan el tablero de sensores y los reportes del
 // frontend; ambas se llenan desde la ingesta MQTT (services/mqttIngest.ts).
 //
-// Las dos van por caché en Redis (lib/cache.ts) con TTL corto. Son las únicas
-// consultas del backend que barren tablas que crecen sin techo —una lectura por
-// segundo y por sensor— con tres JOIN y un ORDER BY, y el tablero las repite en
-// cada refresco para todos los usuarios conectados a la vez.
+// Van por consulta cruda a propósito: son tres JOIN sobre las dos tablas que
+// crecen sin techo —una lectura por segundo y por sensor— y el plan que sale
+// del `LIMIT` sobre `ix_lectura_sensor_fecha` es el motivo de que la pantalla
+// responda. Con el constructor de consultas el SQL final queda fuera de la
+// vista, y aquí lo que se está afinando es exactamente ese SQL.
+//
+// Las dos van además por caché en Redis (lib/cache.ts) con TTL corto, porque el
+// tablero las repite en cada refresco para todos los usuarios conectados.
 //
 // La clave de caché NO incluye al usuario porque estas consultas todavía no
 // filtran por hospital ni por unidad: la respuesta es la misma para cualquiera
@@ -61,91 +71,58 @@ const alertsQuerySchema = querySchema.extend({
 export default async function sensorsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
-  app.get("/sensors/readings", async (req, reply) => {
-    const parsed = querySchema.safeParse(req.query);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: parsed.error.issues });
-    }
-    const { device, variable, limit = 100 } = parsed.data;
+  app.get("/sensors/readings", async (req) => {
+    const { device, variable, limit } = parseOr400(querySchema, req.query);
 
-    // Se construye desde `parsed.data`, no desde `req.query`: así la clave usa
-    // los valores ya validados y normalizados por zod (`limit` es número, no la
-    // cadena que vino en la URL) y una query basura nunca llega a crear clave.
+    // Se construye desde los valores ya validados por zod (`limit` es número,
+    // no la cadena que vino en la URL), así una query basura nunca crea clave.
     const key = cacheKey("readings", { device, variable, limit });
 
     return cached(key, env.sensorsCacheTtl, req.log, async () => {
-      const conditions: string[] = [];
-      const params: (string | number)[] = [];
-      if (device) {
-        conditions.push("d.codigo = ?");
-        params.push(device);
-      }
-      if (variable) {
-        conditions.push("s.variable_medida = ?");
-        params.push(variable);
-      }
-      const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+      const conditions: Prisma.Sql[] = [];
+      if (device) conditions.push(Prisma.sql`d.codigo = ${device}`);
+      if (variable) conditions.push(Prisma.sql`s.variable_medida = ${variable}`);
 
-      const [rows] = await pool.query<LecturaRow[]>(
-        `SELECT l.lectura_id, l.valor, l.fecha_hora, s.variable_medida, s.unidad, d.codigo
-         FROM lectura l
-         JOIN sensor s ON s.sensor_id = l.sensor_id
-         JOIN dispositivo d ON d.dispositivo_id = s.dispositivo_id
-         ${where}
-         ORDER BY l.fecha_hora DESC
-         LIMIT ?`,
-        [...params, limit],
-      );
+      const rows = await prisma.$queryRaw<LecturaRow[]>`
+        SELECT l.lectura_id, l.valor, l.fecha_hora, s.variable_medida, s.unidad, d.codigo
+        FROM lectura l
+        JOIN sensor s ON s.sensor_id = l.sensor_id
+        JOIN dispositivo d ON d.dispositivo_id = s.dispositivo_id
+        ${whereClause(conditions)}
+        ORDER BY l.fecha_hora DESC
+        LIMIT ${limit}
+      `;
       return rows.map(toReading);
     });
   });
 
-  app.get("/sensors/alerts", async (req, reply) => {
-    const parsed = alertsQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: parsed.error.issues });
-    }
-    const { device, variable, severity, status, limit = 100 } = parsed.data;
+  app.get("/sensors/alerts", async (req) => {
+    const { device, variable, severity, status, limit } = parseOr400(alertsQuerySchema, req.query);
 
     const key = cacheKey("alerts", { device, variable, severity, status, limit });
 
     return cached(key, env.sensorsCacheTtl, req.log, async () => {
-      const conditions: string[] = [];
-      const params: (string | number)[] = [];
-      if (device) {
-        conditions.push("d.codigo = ?");
-        params.push(device);
-      }
-      if (variable) {
-        conditions.push("s.variable_medida = ?");
-        params.push(variable);
-      }
-      if (severity) {
-        conditions.push("a.severidad = ?");
-        params.push(severity);
-      }
-      if (status) {
-        conditions.push("a.estado = ?");
-        params.push(status);
-      }
-      const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+      const conditions: Prisma.Sql[] = [];
+      if (device) conditions.push(Prisma.sql`d.codigo = ${device}`);
+      if (variable) conditions.push(Prisma.sql`s.variable_medida = ${variable}`);
+      if (severity) conditions.push(Prisma.sql`a.severidad = ${severity}`);
+      if (status) conditions.push(Prisma.sql`a.estado = ${status}`);
 
       // alerta.fecha_hora es DATETIME (segundos), así que un lote de alertas
       // del mismo segundo empataría: alerta_id desempata por orden de
       // inserción.
-      const [rows] = await pool.query<AlertaRow[]>(
-        `SELECT a.alerta_id, a.lectura_id, a.tipo, a.severidad, a.mensaje, a.estado,
-                a.fecha_hora, a.fecha_resolucion,
-                l.valor, s.variable_medida, s.unidad, d.codigo
-         FROM alerta a
-         JOIN lectura l ON l.lectura_id = a.lectura_id
-         JOIN sensor s ON s.sensor_id = l.sensor_id
-         JOIN dispositivo d ON d.dispositivo_id = s.dispositivo_id
-         ${where}
-         ORDER BY a.fecha_hora DESC, a.alerta_id DESC
-         LIMIT ?`,
-        [...params, limit],
-      );
+      const rows = await prisma.$queryRaw<AlertaRow[]>`
+        SELECT a.alerta_id, a.lectura_id, a.tipo, a.severidad, a.mensaje, a.estado,
+               a.fecha_hora, a.fecha_resolucion,
+               l.valor, s.variable_medida, s.unidad, d.codigo
+        FROM alerta a
+        JOIN lectura l ON l.lectura_id = a.lectura_id
+        JOIN sensor s ON s.sensor_id = l.sensor_id
+        JOIN dispositivo d ON d.dispositivo_id = s.dispositivo_id
+        ${whereClause(conditions)}
+        ORDER BY a.fecha_hora DESC, a.alerta_id DESC
+        LIMIT ${limit}
+      `;
       return rows.map(toAlert);
     });
   });

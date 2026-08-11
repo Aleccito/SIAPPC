@@ -1,10 +1,11 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { setTimeout as sleep } from "node:timers/promises";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/app.ts";
-import { pool } from "../db/db.ts";
+import { Prisma } from "../src/generated/prisma/client.ts";
 import { redis } from "../src/lib/redis.ts";
-import { ADMIN, closeConnections, flushRedis, resetDatabase } from "./helpers.ts";
+import { ADMIN, closeConnections, countRows, flushRedis, resetDatabase } from "./helpers.ts";
 
 // El punto de esta suite: el contador vive en Redis, no en la memoria del
 // proceso. Con el contador en memoria, dos réplicas del backend dejaban pasar el
@@ -44,10 +45,16 @@ describe("límite de intentos de login", () => {
   });
 
   it("cada bloqueo queda como LOGIN_BLOCKED en la bitácora", async () => {
-    const [rows] = await pool.query<{ total: number }[] & object[]>(
-      "SELECT COUNT(*) AS total FROM auditoria WHERE accion = 'LOGIN_BLOCKED'",
-    );
-    assert.ok((rows as { total: number }[])[0]!.total > 0);
+    // Se espera al renglón en vez de leerlo de una: el 429 NO aguarda a que se
+    // escriba la bitácora, y tiene que ser así — bloquear la respuesta de un
+    // rechazo en una escritura a la base es justo lo que un atacante querría.
+    // Lo que se comprueba aquí es que el renglón acaba estando, no cuándo.
+    let total = 0;
+    for (let intento = 0; intento < 50 && total === 0; intento++) {
+      total = await countRows(Prisma.sql`FROM auditoria WHERE accion = 'LOGIN_BLOCKED'`);
+      if (total === 0) await sleep(100);
+    }
+    assert.ok(total > 0, "el bloqueo no llegó a la bitácora");
   });
 
   it("una instancia nueva hereda el bloqueo — es el caso de la segunda réplica", async () => {

@@ -1,36 +1,17 @@
+import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { pool } from "../../db/db.ts";
+import { prisma } from "../lib/prisma.ts";
+import { revokeToken } from "../lib/sessions.ts";
+import { notFound } from "../lib/http.ts";
 import { verifyPassword } from "../lib/passwords.ts";
-import type { UsuarioRow, User } from "../types.ts";
+import { toUser, USER_INCLUDE } from "./users.ts";
+import type { UsuarioConRelaciones } from "./users.ts";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
-
-function toUser(row: UsuarioRow): User {
-  return {
-    id: String(row.usuario_id),
-    name: row.nombre,
-    email: row.email,
-    role: row.rol_nombre,
-    roleLabel: row.rol_etiqueta,
-    unit: row.unidad_nombre,
-    phone: row.telefono,
-    active: Boolean(row.activo),
-    lastActivity: row.ultimo_acceso ? new Date(row.ultimo_acceso).toISOString() : null,
-  };
-}
-
-const SELECT_USER = `
-  SELECT u.usuario_id, u.nombre, u.email, u.telefono, u.ultimo_acceso, u.activo,
-         r.nombre AS rol_nombre, r.etiqueta AS rol_etiqueta,
-         un.nombre AS unidad_nombre
-  FROM usuario u
-  JOIN rol r ON r.rol_id = u.rol_id
-  LEFT JOIN unidad un ON un.unidad_id = u.unidad_id
-`;
 
 function attemptedEmail(req: FastifyRequest): string {
   const body = req.body as { email?: unknown } | undefined;
@@ -41,18 +22,21 @@ function attemptedEmail(req: FastifyRequest): string {
 // LOGIN_BLOCKED por IP en una ventana de tiempo es lo que permite detectar
 // fuerza bruta sin montar otra tabla.
 async function recordBlockedLogin(email: string, ip: string): Promise<void> {
-  const [rows] = await pool.query<UsuarioRow[]>(
-    "SELECT usuario_id FROM usuario WHERE email = ?",
-    [email],
-  );
+  const usuario = await prisma.usuario.findUnique({
+    where: { email },
+    select: { usuario_id: true },
+  });
   // Si el correo no existe no hay a quién colgarle el evento: `usuario_id` va
   // nulo y `registro_id`, que no admite nulos, va en 0.
-  const usuarioId = rows[0]?.usuario_id ?? null;
-  await pool.query(
-    `INSERT INTO auditoria (usuario_id, entidad, registro_id, accion, observacion)
-     VALUES (?, 'usuario', ?, 'LOGIN_BLOCKED', ?)`,
-    [usuarioId, usuarioId ?? 0, JSON.stringify({ ip, email })],
-  );
+  await prisma.auditoria.create({
+    data: {
+      usuario_id: usuario?.usuario_id ?? null,
+      entidad: "usuario",
+      registro_id: BigInt(usuario?.usuario_id ?? 0),
+      accion: "LOGIN_BLOCKED",
+      observacion: JSON.stringify({ ip, email }),
+    },
+  });
 }
 
 export default async function authRoutes(app: FastifyInstance) {
@@ -82,19 +66,12 @@ export default async function authRoutes(app: FastifyInstance) {
     }
     const { email, password } = parsed.data;
 
-    // El hash solo se lee aquí; por eso esta consulta no reusa SELECT_USER.
-    const [rows] = await pool.query<UsuarioRow[]>(
-      `SELECT u.usuario_id, u.nombre, u.email, u.telefono, u.ultimo_acceso, u.activo,
-              u.password_hash,
-              r.nombre AS rol_nombre, r.etiqueta AS rol_etiqueta,
-              un.nombre AS unidad_nombre
-       FROM usuario u
-       JOIN rol r ON r.rol_id = u.rol_id
-       LEFT JOIN unidad un ON un.unidad_id = u.unidad_id
-       WHERE u.email = ?`,
-      [email],
-    );
-    const row = rows[0];
+    // Es la única consulta que lee `password_hash`; el resto usa el mismo
+    // `USER_INCLUDE` sin él.
+    const row = await prisma.usuario.findUnique({
+      where: { email },
+      include: USER_INCLUDE,
+    });
 
     // Same error for "no existe" and "clave incorrecta": don't leak which one failed.
     if (!row || !row.activo || !(await verifyPassword(password, row.password_hash))) {
@@ -102,25 +79,73 @@ export default async function authRoutes(app: FastifyInstance) {
     }
 
     // Alimenta la columna "Última Actividad" de la administración de usuarios.
-    await pool.query("UPDATE usuario SET ultimo_acceso = NOW() WHERE usuario_id = ?", [
-      row.usuario_id,
+    await prisma.$transaction([
+      prisma.usuario.update({
+        where: { usuario_id: row.usuario_id },
+        data: { ultimo_acceso: new Date() },
+      }),
+      prisma.auditoria.create({
+        data: {
+          usuario_id: row.usuario_id,
+          entidad: "usuario",
+          registro_id: BigInt(row.usuario_id),
+          accion: "LOGIN",
+          observacion: null,
+        },
+      }),
     ]);
-    await pool.query(
-      `INSERT INTO auditoria (usuario_id, entidad, registro_id, accion, observacion)
-       VALUES (?, 'usuario', ?, 'LOGIN', NULL)`,
-      [row.usuario_id, row.usuario_id],
-    );
 
-    const token = await reply.jwtSign({ sub: String(row.usuario_id), role: row.rol_nombre });
+    // El `jti` es lo que hace revocable esta sesión: identifica a ESTE token, no
+    // al usuario, así que cerrar sesión aquí no toca las demás sesiones abiertas
+    // de la misma persona (ver lib/sessions.ts).
+    const token = await reply.jwtSign(
+      { sub: String(row.usuario_id), role: row.rol.nombre },
+      { jti: randomUUID() },
+    );
     return { token, user: toUser(row) };
   });
 
-  app.get("/auth/me", { preHandler: [app.authenticate] }, async (req, reply) => {
-    const [rows] = await pool.query<UsuarioRow[]>(`${SELECT_USER} WHERE u.usuario_id = ?`, [
-      req.user.sub,
-    ]);
-    const row = rows[0];
-    if (!row) return reply.code(404).send({ error: "Usuario no encontrado" });
+  // Cierra la sesión de verdad: el token queda en la lista de revocados y deja
+  // de pasar `authenticate` aunque le falten horas para vencer. Es por token, no
+  // por usuario — salir en un dispositivo no echa a nadie de los otros.
+  //
+  // Y deja el renglón LOGOUT en la bitácora, la otra mitad del par LOGIN/LOGOUT:
+  // sin él no se puede reconstruir cuánto duró una sesión.
+  app.post("/auth/logout", { preHandler: [app.authenticate] }, async (req, reply) => {
+    // Sin `jti` —un token firmado antes de que existiera la revocación— no hay
+    // qué revocar. La sesión termina igual del lado del navegador y la salida
+    // sigue quedando anotada; caduca sola en lo que le reste de las 12 h.
+    if (req.user.jti && req.user.exp) {
+      const revocado = await revokeToken(req.user.jti, req.user.exp, req.log);
+      if (!revocado) {
+        // Pasa sin Redis o con Redis caído. El usuario ve una salida normal y su
+        // navegador tira el token, pero una copia de ese token seguiría sirviendo:
+        // queda en el log porque es lo que hay que ver al investigar después.
+        req.log.warn(
+          { usuario: req.user.sub },
+          "auth: sesión cerrada SIN revocar el token — el token sigue siendo válido",
+        );
+      }
+    }
+
+    await prisma.auditoria.create({
+      data: {
+        usuario_id: Number(req.user.sub),
+        entidad: "usuario",
+        registro_id: BigInt(req.user.sub),
+        accion: "LOGOUT",
+        observacion: null,
+      },
+    });
+    return reply.code(204).send();
+  });
+
+  app.get("/auth/me", { preHandler: [app.authenticate] }, async (req) => {
+    const row = (await prisma.usuario.findUnique({
+      where: { usuario_id: Number(req.user.sub) },
+      include: USER_INCLUDE,
+    })) as UsuarioConRelaciones | null;
+    if (!row) throw notFound("Usuario no encontrado");
     return toUser(row);
   });
 }

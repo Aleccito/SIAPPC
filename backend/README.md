@@ -1,8 +1,9 @@
 # Backend
 
-API Fastify 5 sobre MariaDB 11.4, en TypeScript 6 y Node 24. Node corre las
+API REST Fastify 5 sobre MariaDB 11.4, en TypeScript 6 y Node 24. Node corre las
 fuentes `.ts` directamente (type stripping), así que no hay paso de build ni
-`dist/`. SQL crudo con `mysql2`, sin ORM; validación con Zod.
+`dist/`. Prisma 7 como ORM —con `$queryRaw` donde el SQL a mano gana—; validación
+con Zod.
 
 ## Cómo se corre
 
@@ -48,21 +49,73 @@ que nginx quita al hacer proxy.
 | `GET /health` | Sonda de vida, `{"status":"ok"}` |
 | `POST /auth/login` | Credenciales por token JWT; registra el acceso en auditoría |
 | `GET /auth/me` | Usuario de la sesión |
-| `GET /users` · `POST /users` · `PATCH /users/:id` | Alta, listado y edición de usuarios |
+| `GET /users` · `GET /users/:id` · `POST /users` · `PATCH /users/:id` · `DELETE /users/:id` | CRUD de usuarios |
 | `GET /users/:id/activity` | Actividad reciente de un usuario |
-| `GET /roles` · `POST /roles` | Roles del sistema |
+| `GET /roles` · `GET /roles/:id` · `POST /roles` · `PATCH /roles/:id` · `DELETE /roles/:id` | CRUD de roles |
 | `GET /roles/:id/permissions` · `PUT /roles/:id/permissions` | Matriz de permisos del rol |
 | `GET /roles/changes` | Historial de cambios de rol |
 | `GET /permissions` | Catálogo de permisos |
 | `GET /audit` · `GET /audit/entities` | Bitácora, paginada y filtrable |
-| `GET /units` | Catálogo de unidades |
-| `GET /patients` · `POST /patients` | Pacientes activos y registro de llegada |
+| `GET /units` · `GET /units/:id` · `POST /units` · `PUT|PATCH /units/:id` · `DELETE /units/:id` | CRUD de unidades |
+| `GET /patients` · `GET /patients/:id` · `POST /patients` · `PUT|PATCH /patients/:id` · `DELETE /patients/:id` | CRUD de pacientes |
 | `GET /sensors/readings` | Lecturas, filtrables por `device`, `variable`, `limit` |
 | `GET /sensors/alerts` | Alertas, además por `severity` y `status` |
 
 Salvo `/health` y `/auth/login`, todas exigen `Authorization: Bearer <token>`.
 Las de usuarios, roles y auditoría además revalidan el permiso concreto contra
 `rol_permiso` en el servidor — no basta con el rol que venga en el token.
+
+### Convenciones REST
+
+| | |
+|---|---|
+| `GET /recurso` | Arreglo de recursos. `?page` y `?pageSize` paginan; el total va en la cabecera `X-Total-Count`, no en el cuerpo. Sin `pageSize` sale la lista completa |
+| `GET /recurso/:id` | El recurso, o 404 |
+| `POST /recurso` | 201 con el recurso creado y la cabecera `Location` |
+| `PUT /recurso/:id` | Reemplaza: exige el cuerpo completo |
+| `PATCH /recurso/:id` | Modifica solo lo que venga |
+| `DELETE /recurso/:id` | 204 sin cuerpo. Es baja lógica (`activo = FALSE`) en todo lo que la bitácora referencia |
+
+Los errores salen siempre con la misma forma: `{ "error": "mensaje" }`, o
+`{ "error": [ ...incidencias de zod... ] }` cuando falla la validación de la
+entrada. Lo arma `src/lib/http.ts`, que además traduce los códigos de Prisma:
+`P2002` (llave duplicada) → 409, `P2003` (referencia rota) → 409, `P2025`
+(no encontrado) → 404. Un error no previsto responde 500 con un mensaje
+genérico y el detalle solo en el log — el texto de una excepción interna puede
+llevar SQL o datos de otro registro.
+
+### CRUD genérico
+
+`src/lib/crud.ts` genera las seis rutas de arriba a partir de una descripción
+del recurso: modelo de Prisma, permiso exigido por acción, esquemas de zod,
+cómo se ve desde afuera y qué texto deja en la bitácora. Lo usan `/patients` y
+`/units`.
+
+Cada alta, cambio y baja se escribe en `auditoria` **dentro de la misma
+transacción** que el cambio. Si no se puede dejar constancia, el cambio no se
+hace.
+
+No todo pasa por ahí, a propósito: `/users` y `/roles` siguen escritos a mano
+porque tienen reglas que no caben en una configuración —la contraseña temporal
+del alta, no poder suspender al último administrador, derivar el `nombre` del
+rol de su etiqueta, los roles del sistema en solo lectura—. Meterlas a la fuerza
+convertiría la fábrica en un caso especial por recurso.
+
+### Consultas crudas
+
+Lo que va con `$queryRaw` y por qué, para que no se "arregle" pasándolo al ORM:
+
+| Dónde | Motivo |
+|---|---|
+| `GET /audit` | El `NOW() - INTERVAL ? DAY` lo resuelve MariaDB, y el total y la página salen de la misma cláusula `WHERE` |
+| `GET /sensors/readings` · `/alerts` | Tres JOIN sobre las tablas que crecen sin techo; el plan del `LIMIT` sobre `ix_lectura_sensor_fecha` es lo que hace que la pantalla responda |
+| `GET /roles/:id/permissions` | `LEFT JOIN` con la condición del rol dentro del `ON`, más `COALESCE` por columna |
+| `POST /roles` con `baseRole` | Copia la matriz del rol base en una sola sentencia en vez de N+1 viajes |
+| `app.requirePermission` | La columna a leer (`puede_ver`, `puede_crear`, …) se decide en tiempo de ejecución |
+| Ingesta MQTT | `INSERT IGNORE`, que Prisma no expone |
+
+Los valores siempre van parametrizados por la plantilla de `$queryRaw`; lo único
+que se arma como texto son fragmentos fijos escritos en el propio código.
 
 ## Límite de peticiones
 
@@ -176,9 +229,54 @@ usuario y contraseña.
 
 ## Base de datos
 
-`db/schema.sql` son 17 tablas: hospital, unidades, roles y permisos, usuarios y
-especializaciones, pacientes e historia clínica, dispositivos, sensores,
-lecturas, alertas, notificaciones y auditoría.
+17 tablas: hospital, unidades, roles y permisos, usuarios y especializaciones,
+pacientes e historia clínica, dispositivos, sensores, lecturas, alertas,
+notificaciones y auditoría.
+
+**`prisma/schema.prisma` es la fuente de verdad.** Para cambiar una tabla se
+edita ahí y solo ahí:
+
+```bash
+npm run db:migrate -- --name agrega_columna_x   # crea y aplica la migración
+npm run schema:build                            # regenera db/schema.sql
+npm run generate                                # regenera el cliente tipado
+```
+
+Los otros dos archivos de `db/` son consecuencia, no fuente:
+
+| Archivo | Qué es |
+|---|---|
+| `db/schema.sql` | **Generado.** El DDL completo de una instalación nueva. Lo aplica MariaDB en el primer arranque (`docker-entrypoint-initdb.d`) y las pruebas para recrear la base. No se edita a mano |
+| `db/extra.sql` | Hand-written. Lo que Prisma no sabe expresar —hoy, el `CHECK` de `alerta`—. `schema:build` lo pega al final de `schema.sql`, y cada sentencia tiene que ir además en alguna migración |
+| `db/seed.sql` | Hand-written. Roles, hospital y el primer admin |
+
+`schema.sql` incluye al final la tabla `_prisma_migrations` con todas las
+migraciones ya marcadas como aplicadas, así que una base recién creada nace al
+día y `migrate deploy` no intenta repetirlas.
+
+`db/build-schema.ts` no necesita una base viva: el DDL sale del datamodel.
+
+### Migraciones sobre una base existente
+
+```bash
+cd backend && npm run migrate     # prisma migrate deploy
+```
+
+Corre **desde el host**, no dentro del contenedor: la CLI de Prisma es una
+dependencia de desarrollo y no entra en la imagen. Toma la conexión de las
+mismas `DB_*` del `.env`, igual que los scripts `db:*`.
+
+Es idempotente: la segunda corrida no hace nada.
+
+> **Base creada antes de Prisma.** Tiene el esquema pero no `_prisma_migrations`,
+> así que `migrate deploy` intentaría crear tablas que ya existen. Se marca la
+> línea base una vez y queda arreglado:
+>
+> ```bash
+> node --env-file=.env node_modules/prisma/build/index.js migrate resolve --applied 00000000000000_init
+> ```
+>
+> La tabla `migracion` del mecanismo anterior queda huérfana; se puede borrar.
 
 El esquema y el seed se aplican solos en el primer arranque, cuando el volumen
 está vacío. Para rehacerlos hay que borrar el volumen desde la raíz del repo:
@@ -191,44 +289,25 @@ docker compose down -v
 una base que ya tiene tablas falla con `Table 'hospital' already exists`. Eso es
 correcto, no un bug: para una base que ya existe están las migraciones.
 
-### Migraciones
+### Tipos de las llaves
 
-`db/migrations/` guarda los cambios de esquema posteriores al arranque inicial,
-un archivo `.sql` por cambio, numerados y aplicados en orden alfabético:
+Son `INT UNSIGNED` (`Int @db.UnsignedInt`) y `BIGINT UNSIGNED`
+(`BigInt @db.UnsignedBigInt` en `historia_clinica`, `lectura`, `alerta`,
+`auditoria`). MariaDB rechaza una llave foránea cuyo tipo no coincida **incluido
+el signo**, con un `errno: 150` que no explica nada, así que conviene copiar el
+tipo de la columna referenciada.
 
-```bash
-docker compose exec backend node db/migrate.ts
-```
-
-El script crea la tabla `migracion` si no está, aplica lo que falte y anota cada
-archivo. Es idempotente: la segunda corrida no hace nada. Sobre una base creada
-con el `schema.sql` actual tampoco hace nada, porque el propio `schema.sql` las
-deja registradas.
-
-**Al agregar una migración hay que tocar dos archivos**, y los dos importan:
-
-1. `db/migrations/NNN-nombre.sql` con el `ALTER`/`CREATE` — es lo que reciben las
-   bases que ya existen.
-2. `db/schema.sql`, reflejando el cambio en el DDL **y** sumando el nombre del
-   archivo al `INSERT INTO migracion` del final — es lo que recibe una
-   instalación nueva, que nace al día y no debe reaplicar nada.
-
-Si se olvida el paso 2, una instalación nueva queda con el esquema viejo o
-intenta aplicar una migración que ya estaba incluida. Es la única duplicación
-del mecanismo, y es a propósito: mantiene `schema.sql` legible como retrato
-completo del esquema en vez de obligar a leer veinte parches para saber cómo es
-una tabla.
-
-Los tipos de las llaves son `INT UNSIGNED` (y `BIGINT UNSIGNED` en
-`historia_clinica`, `lectura`, `alerta`, `auditoria`). MariaDB rechaza una llave
-foránea cuyo tipo no coincida **incluido el signo**, con un `errno: 150` que no
-explica nada, así que conviene copiar el tipo de la columna referenciada.
+Los `BIGINT UNSIGNED` llegan a JavaScript como `BigInt`, no como `number`: por
+encima de 2^53 un `number` dejaría de representar el identificador exacto. Las
+respuestas de la API los convierten a texto (`String(row.lectura_id)`).
 
 Para entrar a la base con un cliente:
 
 ```bash
 docker exec -it siappc-mariadb mariadb -u root -p
 ```
+
+Para verla con interfaz: `npm run studio`.
 
 ## Pendiente
 

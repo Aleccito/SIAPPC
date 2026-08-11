@@ -22,8 +22,16 @@ export async function login(credentials: Credentials): Promise<User> {
 }
 
 export async function logout(): Promise<void> {
-  // The JWT is stateless: there is nothing to revoke server-side, so signing
-  // out is purely dropping the credentials this tab holds.
+  // The JWT is stateless: there is nothing to revoke server-side. The call is
+  // only so the sign-out lands in the audit log as LOGOUT — the Audit screen
+  // filters on it, and without it a session has a start and no end.
+  try {
+    await request('/auth/logout', { method: 'POST' })
+  } catch {
+    // An expired or already-rejected token must not trap anyone in the app:
+    // dropping the credentials below is what actually signs them out.
+  }
+
   clearToken()
   sessionStorage.removeItem(STORAGE_KEY)
 }

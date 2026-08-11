@@ -1,39 +1,49 @@
 import { randomBytes } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { z } from "zod";
-import { pool } from "../../db/db.ts";
+import { prisma } from "../lib/prisma.ts";
 import { recordAudit } from "../lib/audit.ts";
+import { badRequest, conflict, notFound, parseOr400 } from "../lib/http.ts";
 import { hashPassword } from "../lib/passwords.ts";
-import type { ActivityEntry, AuditoriaRow, UsuarioRow, User } from "../types.ts";
+import type { ActivityEntry, User } from "../types.ts";
 
-function toUser(row: UsuarioRow): User {
+// Las mismas relaciones en todas las consultas de usuario: el rol da la
+// etiqueta que se ve en pantalla y la unidad su nombre. Se exporta porque
+// routes/auth.ts devuelve el mismo objeto tras iniciar sesión.
+export const USER_INCLUDE = {
+  rol: { select: { nombre: true, etiqueta: true } },
+  unidad: { select: { nombre: true } },
+} as const;
+
+export type UsuarioConRelaciones = {
+  usuario_id: number;
+  nombre: string;
+  email: string;
+  telefono: string | null;
+  ultimo_acceso: Date | null;
+  activo: boolean;
+  rol: { nombre: string; etiqueta: string };
+  unidad: { nombre: string } | null;
+};
+
+export function toUser(row: UsuarioConRelaciones): User {
   return {
     id: String(row.usuario_id),
     name: row.nombre,
     email: row.email,
-    role: row.rol_nombre,
-    roleLabel: row.rol_etiqueta,
-    unit: row.unidad_nombre,
+    role: row.rol.nombre,
+    roleLabel: row.rol.etiqueta,
+    unit: row.unidad?.nombre ?? null,
     phone: row.telefono,
-    active: Boolean(row.activo),
-    lastActivity: row.ultimo_acceso ? new Date(row.ultimo_acceso).toISOString() : null,
+    active: row.activo,
+    lastActivity: row.ultimo_acceso ? row.ultimo_acceso.toISOString() : null,
   };
 }
 
-const SELECT_USER = `
-  SELECT u.usuario_id, u.nombre, u.email, u.telefono, u.ultimo_acceso, u.activo,
-         r.nombre AS rol_nombre, r.etiqueta AS rol_etiqueta,
-         un.nombre AS unidad_nombre
-  FROM usuario u
-  JOIN rol r ON r.rol_id = u.rol_id
-  LEFT JOIN unidad un ON un.unidad_id = u.unidad_id
-`;
-
 const createUserSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().optional(),
+  name: z.string().min(1).max(150),
+  email: z.string().email().max(150),
+  phone: z.string().max(30).optional(),
   role: z.string().min(1),
   unitId: z.number().int().positive().optional(),
   hospitalId: z.number().int().positive().default(1),
@@ -45,6 +55,10 @@ const updateUserSchema = z.object({
   active: z.boolean().optional(),
 });
 
+const activityQuerySchema = z.object({
+  days: z.coerce.number().int().positive().max(365).default(30),
+});
+
 // Contraseña temporal: el administrador la entrega a mano. Se muestra una sola
 // vez en la respuesta de creación y no se guarda en claro en ningún lado.
 // PENDIENTE: cuando exista servicio de correo, enviarla por ahí en su lugar.
@@ -52,25 +66,63 @@ function generateTempPassword(): string {
   return randomBytes(9).toString("base64url");
 }
 
-async function findRoleId(role: string): Promise<number | null> {
-  const [rows] = await pool.query<(RowDataPacket & { rol_id: number })[]>(
-    "SELECT rol_id FROM rol WHERE nombre = ? AND activo = TRUE",
-    [role],
-  );
-  return rows[0]?.rol_id ?? null;
+async function findRoleId(role: string): Promise<number> {
+  const row = await prisma.rol.findFirst({
+    where: { nombre: role, activo: true },
+    select: { rol_id: true },
+  });
+  if (!row) throw badRequest(`Rol '${role}' no existe`);
+  return row.rol_id;
 }
 
+async function findUser(id: number): Promise<UsuarioConRelaciones> {
+  const row = await prisma.usuario.findUnique({
+    where: { usuario_id: id },
+    include: USER_INCLUDE,
+  });
+  if (!row) throw notFound("Usuario no encontrado");
+  return row;
+}
+
+/**
+ * Corta la operación si deja el sistema sin ningún administrador activo.
+ *
+ * Suspender o dar de baja al último no se puede revertir desde la interfaz: no
+ * quedaría nadie con permiso para reactivarlo.
+ */
+async function assertNotLastAdmin(userId: number): Promise<void> {
+  const otros = await prisma.usuario.count({
+    where: { rol: { nombre: "admin" }, activo: true, usuario_id: { not: userId } },
+  });
+  if (otros === 0) {
+    throw conflict("No puede suspender al último administrador");
+  }
+}
+
+// Los usuarios NO pasan por la fábrica de CRUD (lib/crud.ts): el alta genera y
+// devuelve una contraseña temporal, la baja tiene que comprobar que no sea el
+// último administrador, y la bitácora dice qué cambió y no solo que cambió.
+// Nada de eso cabe en una configuración declarativa, y meterlo a la fuerza
+// convertiría la fábrica en un caso especial por recurso.
 export default async function usersRoutes(app: FastifyInstance) {
   // Cada ruta re-verifica el permiso en el servidor, sin importar que la
   // pantalla ya se hubiera bloqueado en el navegador.
   app.addHook("preHandler", app.authenticate);
 
+  app.get("/users", { preHandler: [app.requirePermission("usuarios", "ver")] }, async () => {
+    const rows = await prisma.usuario.findMany({
+      include: USER_INCLUDE,
+      orderBy: { nombre: "asc" },
+    });
+    return rows.map(toUser);
+  });
+
   app.get(
-    "/users",
+    "/users/:id",
     { preHandler: [app.requirePermission("usuarios", "ver")] },
-    async () => {
-      const [rows] = await pool.query<UsuarioRow[]>(`${SELECT_USER} ORDER BY u.nombre`);
-      return rows.map(toUser);
+    async (req) => {
+      const { id } = parseOr400(z.object({ id: z.coerce.number().int().positive() }), req.params);
+      return toUser(await findUser(id));
     },
   );
 
@@ -78,16 +130,12 @@ export default async function usersRoutes(app: FastifyInstance) {
     "/users",
     { preHandler: [app.requirePermission("usuarios", "crear")] },
     async (req, reply) => {
-      const parsed = createUserSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return reply.code(400).send({ error: parsed.error.issues });
-      }
-      const { name, email, phone, role, unitId, hospitalId } = parsed.data;
+      const { name, email, phone, role, unitId, hospitalId } = parseOr400(
+        createUserSchema,
+        req.body,
+      );
 
       const rolId = await findRoleId(role);
-      if (!rolId) {
-        return reply.code(400).send({ error: `Rol '${role}' no existe` });
-      }
 
       const tempPassword = generateTempPassword();
       // El hash se calcula antes de abrir la transacción: bcrypt tarda del
@@ -98,20 +146,25 @@ export default async function usersRoutes(app: FastifyInstance) {
       // Alta y bitácora en la misma transacción: dar de alta una cuenta sin
       // dejar constancia de quién la creó es exactamente el rastro que no puede
       // faltar. Si no se puede registrar, no se crea.
-      const connection = await pool.getConnection();
-      try {
-        await connection.beginTransaction();
+      const created = await prisma.$transaction(async (tx) => {
+        const row = await tx.usuario.create({
+          data: {
+            hospital_id: hospitalId,
+            rol_id: rolId,
+            unidad_id: unitId ?? null,
+            nombre: name,
+            tipo_personal: role,
+            email,
+            telefono: phone ?? null,
+            password_hash: passwordHash,
+          },
+          include: USER_INCLUDE,
+        });
 
-        const [result] = await connection.query<ResultSetHeader>(
-          `INSERT INTO usuario (hospital_id, rol_id, unidad_id, nombre, tipo_personal, email, telefono, password_hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [hospitalId, rolId, unitId ?? null, name, role, email, phone ?? null, passwordHash],
-        );
-
-        await recordAudit(connection, {
+        await recordAudit(tx, {
           actorId: req.user.sub,
           entidad: "usuario",
-          registroId: result.insertId,
+          registroId: row.usuario_id,
           accion: "INSERT",
           // Sin la contraseña temporal ni el hash: la bitácora la puede leer
           // cualquiera con permiso de auditoría, y no es donde se guardan
@@ -119,24 +172,13 @@ export default async function usersRoutes(app: FastifyInstance) {
           observacion: `creó la cuenta ${email} con rol ${role}`,
         });
 
-        await connection.commit();
+        return row;
+      });
 
-        const [rows] = await connection.query<UsuarioRow[]>(
-          `${SELECT_USER} WHERE u.usuario_id = ?`,
-          [result.insertId],
-        );
-        // La contraseña viaja una única vez, aquí. No hay forma de recuperarla
-        // después: si se pierde, se genera otra.
-        return reply.code(201).send({ user: toUser(rows[0]!), tempPassword });
-      } catch (err) {
-        await connection.rollback();
-        if ((err as { code?: string }).code === "ER_DUP_ENTRY") {
-          return reply.code(409).send({ error: "Ese email ya está en uso" });
-        }
-        throw err;
-      } finally {
-        connection.release();
-      }
+      reply.header("Location", `/users/${created.usuario_id}`);
+      // La contraseña viaja una única vez, aquí. No hay forma de recuperarla
+      // después: si se pierde, se genera otra.
+      return reply.code(201).send({ user: toUser(created), tempPassword });
     },
   );
 
@@ -148,18 +190,27 @@ export default async function usersRoutes(app: FastifyInstance) {
     "/users/:id/activity",
     { preHandler: [app.requirePermission("auditoria", "ver")] },
     async (req) => {
-      const { id } = req.params as { id: string };
-      const { days } = req.query as { days?: string };
-      const window = Number(days) > 0 ? Number(days) : 30;
+      const { id } = parseOr400(z.object({ id: z.coerce.number().int().positive() }), req.params);
+      const { days } = parseOr400(activityQuerySchema, req.query);
 
-      const [rows] = await pool.query<AuditoriaRow[]>(
-        `SELECT auditoria_id, entidad, registro_id, accion, fecha_hora, observacion
-         FROM auditoria
-         WHERE usuario_id = ? AND fecha_hora >= NOW() - INTERVAL ? DAY
-         ORDER BY fecha_hora DESC
-         LIMIT 100`,
-        [id, window],
-      );
+      // La ventana se calcula contra el reloj de la base y no el de Node: los
+      // dos procesos pueden estar en zonas distintas y la bitácora se guarda
+      // con la hora del servidor de base de datos.
+      const rows = await prisma.$queryRaw<
+        {
+          auditoria_id: bigint;
+          entidad: string;
+          accion: string;
+          fecha_hora: Date;
+          observacion: string | null;
+        }[]
+      >`
+        SELECT auditoria_id, entidad, accion, fecha_hora, observacion
+        FROM auditoria
+        WHERE usuario_id = ${id} AND fecha_hora >= NOW() - INTERVAL ${days} DAY
+        ORDER BY fecha_hora DESC
+        LIMIT 100
+      `;
 
       return rows.map(
         (row): ActivityEntry => ({
@@ -176,88 +227,57 @@ export default async function usersRoutes(app: FastifyInstance) {
   app.patch(
     "/users/:id",
     { preHandler: [app.requirePermission("usuarios", "editar")] },
-    async (req, reply) => {
-      const { id } = req.params as { id: string };
-      const parsed = updateUserSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return reply.code(400).send({ error: parsed.error.issues });
-      }
-      const { role, unitId, active } = parsed.data;
+    async (req) => {
+      const { id } = parseOr400(z.object({ id: z.coerce.number().int().positive() }), req.params);
+      const { role, unitId, active } = parseOr400(updateUserSchema, req.body);
 
       // Se lee la cuenta ANTES de tocarla: la bitácora necesita a quién se le
       // aplicó el cambio, y después del UPDATE ya no se sabe cómo estaba. De
       // paso, un id inexistente se corta aquí en vez de tras un UPDATE que no
       // afectó ningún renglón.
-      const [targets] = await pool.query<UsuarioRow[]>(
-        `${SELECT_USER} WHERE u.usuario_id = ?`,
-        [id],
-      );
-      const target = targets[0];
-      if (!target) return reply.code(404).send({ error: "Usuario no encontrado" });
+      const target = await findUser(id);
 
-      const updates: string[] = [];
-      const values: unknown[] = [];
-      // Qué se cambió, en prose, que es como la pantalla de Auditoría muestra
+      const data: Record<string, unknown> = {};
+      // Qué se cambió, en prosa, que es como la pantalla de Auditoría muestra
       // `observacion` (ver routes/audit.ts).
       const changes: string[] = [];
 
       if (role !== undefined) {
-        const rolId = await findRoleId(role);
-        if (!rolId) {
-          return reply.code(400).send({ error: `Rol '${role}' no existe` });
-        }
-        updates.push("rol_id = ?");
-        values.push(rolId);
-        if (role !== target.rol_nombre) {
-          changes.push(`cambió el rol de ${target.rol_nombre} a ${role}`);
+        data.rol_id = await findRoleId(role);
+        if (role !== target.rol.nombre) {
+          changes.push(`cambió el rol de ${target.rol.nombre} a ${role}`);
         }
       }
       if (unitId !== undefined) {
-        updates.push("unidad_id = ?");
-        values.push(unitId);
+        data.unidad_id = unitId;
         changes.push(unitId === null ? "quitó la unidad" : "cambió la unidad");
       }
       if (active !== undefined) {
-        // Suspender al último administrador dejaría el sistema sin quien
-        // administre y sin forma de revertirlo desde la interfaz.
-        if (!active) {
-          const [admins] = await pool.query<(RowDataPacket & { total: number })[]>(
-            `SELECT COUNT(*) AS total
-             FROM usuario u JOIN rol r ON r.rol_id = u.rol_id
-             WHERE r.nombre = 'admin' AND u.activo = TRUE AND u.usuario_id <> ?`,
-            [id],
-          );
-          if (!admins[0]?.total) {
-            return reply.code(409).send({ error: "No puede suspender al último administrador" });
-          }
-        }
-        updates.push("activo = ?");
-        values.push(active);
-        if (active !== Boolean(target.activo)) {
+        if (!active) await assertNotLastAdmin(id);
+        data.activo = active;
+        if (active !== target.activo) {
           changes.push(active ? "reactivó la cuenta" : "suspendió la cuenta");
         }
       }
 
-      if (!updates.length) {
-        return reply.code(400).send({ error: "Nada que actualizar" });
+      if (Object.keys(data).length === 0) {
+        throw badRequest("Nada que actualizar");
       }
 
       // Cambio y bitácora en la misma transacción: una suspensión sin rastro de
       // quién la ordenó es justo lo que no puede pasar.
-      const connection = await pool.getConnection();
-      try {
-        await connection.beginTransaction();
-
-        await connection.query(`UPDATE usuario SET ${updates.join(", ")} WHERE usuario_id = ?`, [
-          ...values,
-          id,
-        ]);
+      return prisma.$transaction(async (tx) => {
+        const updated = await tx.usuario.update({
+          where: { usuario_id: id },
+          data,
+          include: USER_INCLUDE,
+        });
 
         // `changes` queda vacío cuando la petición reenvía los valores que ya
         // tenía la cuenta. El UPDATE es real pero no cambió nada, y anotar
         // "actualizó" sin decir qué solo ensucia la bitácora.
         if (changes.length) {
-          await recordAudit(connection, {
+          await recordAudit(tx, {
             actorId: req.user.sub,
             entidad: "usuario",
             registroId: id,
@@ -268,16 +288,34 @@ export default async function usersRoutes(app: FastifyInstance) {
           });
         }
 
-        await connection.commit();
-      } catch (err) {
-        await connection.rollback();
-        throw err;
-      } finally {
-        connection.release();
-      }
+        return toUser(updated);
+      });
+    },
+  );
 
-      const [rows] = await pool.query<UsuarioRow[]>(`${SELECT_USER} WHERE u.usuario_id = ?`, [id]);
-      return toUser(rows[0]!);
+  // Baja lógica, no DELETE real: la cuenta aparece como autora de renglones de
+  // `auditoria` y como responsable de historias clínicas, y borrarla dejaría
+  // esos registros sin dueño.
+  app.delete(
+    "/users/:id",
+    { preHandler: [app.requirePermission("usuarios", "eliminar")] },
+    async (req, reply) => {
+      const { id } = parseOr400(z.object({ id: z.coerce.number().int().positive() }), req.params);
+      const target = await findUser(id);
+      await assertNotLastAdmin(id);
+
+      await prisma.$transaction(async (tx) => {
+        await tx.usuario.update({ where: { usuario_id: id }, data: { activo: false } });
+        await recordAudit(tx, {
+          actorId: req.user.sub,
+          entidad: "usuario",
+          registroId: id,
+          accion: "DELETE",
+          observacion: `dio de baja la cuenta ${target.email}`,
+        });
+      });
+
+      return reply.code(204).send();
     },
   );
 }

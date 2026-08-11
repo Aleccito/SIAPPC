@@ -1,8 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import type { ResultSetHeader } from "mysql2";
 import { z } from "zod";
-import { pool } from "../../db/db.ts";
-import { recordAudit } from "../lib/audit.ts";
+import { registerCrud } from "../lib/crud.ts";
 import { serviceModules } from "../types.ts";
 import type { PacienteRow, Patient } from "../types.ts";
 
@@ -18,78 +16,66 @@ function toPatient(row: PacienteRow): Patient {
   };
 }
 
-const newPatientSchema = z.object({
-  name: z.string().min(1),
-  document: z.string().min(1),
+const patientSchema = z.object({
+  name: z.string().min(1).max(150),
+  document: z.string().min(1).max(30),
   module: z.enum(serviceModules),
-  reason: z.string().min(1),
+  reason: z.string().min(1).max(255),
   hospitalId: z.number().int().positive(),
   fechaNacimiento: z.string(), // ISO date, e.g. "1990-05-14"
   sexo: z.enum(["M", "F", "O"]),
+  status: z.enum(["waiting", "inService", "discharged"]).default("waiting"),
 });
 
-const SELECT_PATIENT = `
-  SELECT paciente_id, nombre, cedula, modulo, estado, motivo_consulta, fecha_llegada
-  FROM paciente
-`;
+// PATCH acepta cualquier subconjunto. Es el verbo con el que la sala de espera
+// mueve a un paciente de `waiting` a `inService` sin reenviar su expediente.
+const patientPatchSchema = patientSchema.partial();
+
+type PatientInput = z.infer<typeof patientSchema>;
+
+function toRow(input: Partial<PatientInput>): Record<string, unknown> {
+  return {
+    ...(input.name !== undefined ? { nombre: input.name } : {}),
+    ...(input.document !== undefined ? { cedula: input.document } : {}),
+    ...(input.module !== undefined ? { modulo: input.module } : {}),
+    ...(input.reason !== undefined ? { motivo_consulta: input.reason } : {}),
+    ...(input.hospitalId !== undefined ? { hospital_id: input.hospitalId } : {}),
+    ...(input.fechaNacimiento !== undefined
+      ? { fecha_nacimiento: new Date(input.fechaNacimiento) }
+      : {}),
+    ...(input.sexo !== undefined ? { sexo: input.sexo } : {}),
+    ...(input.status !== undefined ? { estado: input.status } : {}),
+  };
+}
 
 export default async function patientsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
-  app.get("/patients", async () => {
-    const [rows] = await pool.query<PacienteRow[]>(
-      `${SELECT_PATIENT} WHERE activo = TRUE ORDER BY fecha_llegada DESC`,
-    );
-    return rows.map(toPatient);
-  });
-
-  app.post("/patients", async (req, reply) => {
-    const parsed = newPatientSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: parsed.error.issues });
-    }
-    const { name, document, module, reason, hospitalId, fechaNacimiento, sexo } = parsed.data;
-
-    // Registro y bitácora en la misma transacción: el ingreso de un paciente
-    // tiene que decir quién lo admitió y a qué hora, y esa constancia no puede
-    // depender de que una segunda consulta salga bien.
-    const connection = await pool.getConnection();
-    try {
-      await connection.beginTransaction();
-
-      const [result] = await connection.query<ResultSetHeader>(
-        `INSERT INTO paciente
-           (hospital_id, nombre, cedula, fecha_nacimiento, sexo, modulo, estado, motivo_consulta)
-         VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?)`,
-        [hospitalId, name, document, fechaNacimiento, sexo, module, reason],
-      );
-
-      await recordAudit(connection, {
-        actorId: req.user.sub,
-        entidad: "paciente",
-        registroId: result.insertId,
-        accion: "INSERT",
-        // Sin el motivo de consulta: es dato clínico y vive en `paciente`, con
-        // los permisos de esa tabla. La bitácora dice quién y cuándo, no el
-        // cuadro del paciente.
-        observacion: `registró la llegada de ${name} (${document}) al módulo ${module}`,
-      });
-
-      await connection.commit();
-
-      const [rows] = await connection.query<PacienteRow[]>(
-        `${SELECT_PATIENT} WHERE paciente_id = ?`,
-        [result.insertId],
-      );
-      return reply.code(201).send(toPatient(rows[0]!));
-    } catch (err) {
-      await connection.rollback();
-      if ((err as { code?: string }).code === "ER_DUP_ENTRY") {
-        return reply.code(409).send({ error: "Esa cédula ya está registrada" });
-      }
-      throw err;
-    } finally {
-      connection.release();
-    }
+  registerCrud<PacienteRow, Patient, PatientInput, Partial<PatientInput>>(app, {
+    path: "/patients",
+    model: "paciente",
+    idField: "paciente_id",
+    auditEntity: "paciente",
+    // `paciente` no tiene módulo propio en la tabla `permiso`; el acceso a la
+    // sala de espera es el mismo de siempre: tener sesión.
+    permissions: { ver: null, crear: null, editar: null, eliminar: null },
+    createSchema: patientSchema,
+    updateSchema: patientPatchSchema,
+    query: { where: { activo: true }, orderBy: { fecha_llegada: "desc" } },
+    // Un paciente no se borra: su historia clínica y su bitácora lo
+    // referencian, y el alta es un estado, no una desaparición.
+    softDelete: { field: "activo", inactiveValue: false },
+    toDto: toPatient,
+    toCreateData: (input) => toRow(input),
+    toUpdateData: (input) => toRow(input),
+    describe: {
+      // Sin el motivo de consulta: es dato clínico y vive en `paciente`, con
+      // los permisos de esa tabla. La bitácora dice quién y cuándo, no el
+      // cuadro del paciente.
+      create: (row) =>
+        `registró la llegada de ${row.nombre} (${row.cedula}) al módulo ${row.modulo}`,
+      update: (row) => `actualizó el registro de ${row.nombre} (${row.cedula})`,
+      remove: (row) => `dio de baja el registro de ${row.nombre} (${row.cedula})`,
+    },
   });
 }
