@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import { env } from "./env.ts";
+import { registerErrorHandler } from "./lib/http.ts";
 import { redis, registerRedisLogging } from "./lib/redis.ts";
 import authPlugin from "./plugins/auth.ts";
 import authRoutes from "./routes/auth.ts";
@@ -12,6 +13,7 @@ import auditRoutes from "./routes/audit.ts";
 import catalogRoutes from "./routes/catalogs.ts";
 import patientsRoutes from "./routes/patients.ts";
 import sensorsRoutes from "./routes/sensors.ts";
+import reportsRoutes from "./routes/reports.ts";
 
 export async function buildApp() {
   const app = Fastify({
@@ -25,10 +27,19 @@ export async function buildApp() {
     trustProxy: true,
   });
 
+  // Forma única de los errores para toda la API, incluidos los que lanza
+  // Prisma (llave duplicada, referencia rota, registro inexistente).
+  registerErrorHandler(app);
+
   await app.register(sensible);
   await app.register(cors, {
     // Lista blanca del entorno; ver ALLOWED_ORIGINS en env.ts.
     origin: env.allowedOrigins,
+    // Sin esto el navegador entrega la respuesta pero esconde estas dos
+    // cabeceras: el total de una lista (lib/crud.ts) y la URL del recurso recién
+    // creado. Las pruebas usan `inject()`, que no aplica CORS, así que la falta
+    // solo se ve desde el navegador.
+    exposedHeaders: ["X-Total-Count", "Location"],
   });
 
   registerRedisLogging(app.log);
@@ -69,6 +80,7 @@ export async function buildApp() {
   await app.register(catalogRoutes);
   await app.register(patientsRoutes);
   await app.register(sensorsRoutes);
+  await app.register(reportsRoutes);
 
   return app;
 }

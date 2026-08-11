@@ -1,4 +1,4 @@
-import type { RowDataPacket } from "mysql2";
+import type { Prisma } from "./generated/prisma/client.ts";
 
 // Mirrors frontend/src/modules/auth/types.ts and patients/types.ts.
 // The frontend owns these shapes; the backend must produce exactly them.
@@ -52,9 +52,27 @@ export type Patient = {
   reason: string;
 };
 
-// Row shapes as they come back from mysql2 (snake_case, DB-native types).
-// Extending RowDataPacket is what lets pool.query<T[]>() accept these.
-export interface UsuarioRow extends RowDataPacket {
+// Mirrors frontend/src/modules/reports/types.ts. Los tres estados son los que
+// pinta la pantalla; el ETL tiene los suyos y routes/reports.ts los traduce.
+export type ReportStatus = "ready" | "running" | "failed";
+
+export type Report = {
+  id: string;
+  name: string;
+  source: string;
+  status: ReportStatus;
+  updatedAt: string;
+  // Campos propios del ETL: la pantalla los usa para explicar una corrida sin
+  // mandar a nadie a los logs del contenedor.
+  rowsRead: number;
+  rowsWritten: number;
+  error: string | null;
+};
+
+// Formas de los renglones que devuelven las consultas crudas ($queryRaw).
+// Son snake_case y con tipos de la base a propósito: es lo que sale del SQL a
+// mano. Lo que produce el ORM ya viene tipado por el cliente generado.
+export type UsuarioRow = {
   usuario_id: number;
   nombre: string;
   email: string;
@@ -67,7 +85,7 @@ export interface UsuarioRow extends RowDataPacket {
   activo: number;
 }
 
-export interface RolRow extends RowDataPacket {
+export type RolRow = {
   rol_id: number;
   nombre: string;
   etiqueta: string;
@@ -76,17 +94,17 @@ export interface RolRow extends RowDataPacket {
   usuarios: number;
 }
 
-export interface UnidadRow extends RowDataPacket {
+export type UnidadRow = {
   unidad_id: number;
   nombre: string;
 }
 
-export interface PermisoRow extends RowDataPacket {
+export type PermisoRow = {
   modulo: string;
   nombre: string;
 }
 
-export interface RolPermisoRow extends RowDataPacket {
+export type RolPermisoRow = {
   modulo: string;
   etiqueta: string;
   puede_ver: number;
@@ -111,7 +129,7 @@ export type RoleChange = {
   at: string;
 };
 
-export interface AuditoriaRow extends RowDataPacket {
+export type AuditoriaRow = {
   auditoria_id: number;
   entidad: string;
   registro_id: number;
@@ -138,7 +156,7 @@ export type ActivityEntry = {
   note: string | null;
 };
 
-export interface PacienteRow extends RowDataPacket {
+export type PacienteRow = {
   paciente_id: number;
   nombre: string;
   cedula: string;
@@ -148,18 +166,20 @@ export interface PacienteRow extends RowDataPacket {
   fecha_llegada: string;
 }
 
-export interface DispositivoRow extends RowDataPacket {
+export type DispositivoRow = {
   dispositivo_id: number;
 }
 
-export interface SensorRow extends RowDataPacket {
+export type SensorRow = {
   sensor_id: number;
 }
 
-// valor llega como string: mysql2 no convierte DECIMAL a number por defecto.
-export interface LecturaRow extends RowDataPacket {
+// `valor` es DECIMAL(12,4): no cabe en un double sin perder exactitud, así que
+// el driver lo entrega como Decimal de Prisma o como texto según el camino.
+// Quien lo consuma lo convierte explícitamente (ver toReading en routes/sensors).
+export type LecturaRow = {
   lectura_id: number;
-  valor: string;
+  valor: Prisma.Decimal | string;
   fecha_hora: Date;
   variable_medida: string;
   unidad: string;
@@ -183,7 +203,7 @@ export type AlertSeverity = (typeof alertSeverities)[number];
 export const alertStatuses = ["abierta", "reconocida", "resuelta"] as const;
 export type AlertStatus = (typeof alertStatuses)[number];
 
-export interface AlertaRow extends RowDataPacket {
+export type AlertaRow = {
   alerta_id: number;
   lectura_id: number;
   tipo: string;
@@ -193,7 +213,7 @@ export interface AlertaRow extends RowDataPacket {
   fecha_hora: Date;
   fecha_resolucion: Date | null;
   // Contexto de la lectura que disparó la alerta (JOIN lectura/sensor/dispositivo).
-  valor: string;
+  valor: Prisma.Decimal | string;
   variable_medida: string;
   unidad: string;
   codigo: string;

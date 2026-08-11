@@ -1,10 +1,8 @@
 import mqtt from "mqtt";
 import type { FastifyBaseLogger } from "fastify";
-import type { ResultSetHeader } from "mysql2";
 import { z } from "zod";
-import { pool } from "../../db/db.ts";
+import { prisma } from "../lib/prisma.ts";
 import { env } from "../env.ts";
-import type { DispositivoRow, SensorRow } from "../types.ts";
 
 // Forma de siappc/<device>/telemetry, ver iot/src/publisher.py:build_payload.
 // `variable` no es un enum cerrado: sensor.variable_medida es VARCHAR(60) y
@@ -99,22 +97,24 @@ function evaluateAlert(variable: string, value: number): AlertInfo | null {
 // mueve entre los dos estados que describen "está o no está transmitiendo".
 async function updateDeviceStatus(device: string, online: boolean, logger: FastifyBaseLogger): Promise<void> {
   const estado = online ? "activo" : "inactivo";
-  const [result] = await pool.query<ResultSetHeader>(
-    `UPDATE dispositivo SET estado = ?
-     WHERE codigo = ? AND estado IN ('activo', 'inactivo') AND estado <> ?`,
-    [estado, device, estado],
-  );
-  if (result.affectedRows > 0) {
+  const { count } = await prisma.dispositivo.updateMany({
+    where: {
+      codigo: device,
+      estado: { in: ["activo", "inactivo"] },
+      NOT: { estado },
+    },
+    data: { estado },
+  });
+  if (count > 0) {
     logger.info({ device, estado }, "mqtt: dispositivo cambió de estado");
   }
 }
 
 async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogger): Promise<void> {
-  const [dispRows] = await pool.query<DispositivoRow[]>(
-    "SELECT dispositivo_id FROM dispositivo WHERE codigo = ?",
-    [payload.device],
-  );
-  const dispositivo = dispRows[0];
+  const dispositivo = await prisma.dispositivo.findUnique({
+    where: { codigo: payload.device },
+    select: { dispositivo_id: true },
+  });
   if (!dispositivo) {
     // Sin dispositivo dado de alta no hay hospital_id al que colgar la
     // lectura: se descarta en vez de inventar un dueño.
@@ -122,35 +122,54 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
     return;
   }
 
-  await pool.query(
-    `INSERT INTO sensor (dispositivo_id, variable_medida, unidad)
-     VALUES (?, ?, ?)
-     ON DUPLICATE KEY UPDATE unidad = VALUES(unidad)`,
-    [dispositivo.dispositivo_id, payload.variable, payload.unit],
-  );
-  const [sensorRows] = await pool.query<SensorRow[]>(
-    "SELECT sensor_id FROM sensor WHERE dispositivo_id = ? AND variable_medida = ?",
-    [dispositivo.dispositivo_id, payload.variable],
-  );
-  const sensor = sensorRows[0]!;
+  // El sensor se crea la primera vez que ese dispositivo reporta la variable.
+  const sensor = await prisma.sensor.upsert({
+    where: {
+      dispositivo_id_variable_medida: {
+        dispositivo_id: dispositivo.dispositivo_id,
+        variable_medida: payload.variable,
+      },
+    },
+    create: {
+      dispositivo_id: dispositivo.dispositivo_id,
+      variable_medida: payload.variable,
+      unidad: payload.unit,
+    },
+    update: { unidad: payload.unit },
+    select: { sensor_id: true },
+  });
 
   // INSERT IGNORE + el índice único sobre hash_sha256 descartan reenvíos del
-  // buffer local de la Pi y duplicados de QoS 1 sin lanzar error.
-  const [result] = await pool.query<ResultSetHeader>(
-    `INSERT IGNORE INTO lectura (sensor_id, valor, fecha_hora, hash_sha256)
-     VALUES (?, ?, ?, ?)`,
-    [sensor.sensor_id, payload.value, new Date(payload.ts * 1000), payload.hash],
-  );
-  if (result.affectedRows === 0) {
+  // buffer local de la Pi y duplicados de QoS 1 sin lanzar error. Se hace con
+  // SQL crudo porque Prisma no expone IGNORE: la alternativa sería un SELECT
+  // previo por cada lectura —una por segundo y por sensor— y aun así quedaría
+  // la carrera entre el SELECT y el INSERT.
+  const insertadas = await prisma.$executeRaw`
+    INSERT IGNORE INTO lectura (sensor_id, valor, fecha_hora, hash_sha256)
+    VALUES (${sensor.sensor_id}, ${payload.value}, ${new Date(payload.ts * 1000)}, ${payload.hash})
+  `;
+  if (insertadas === 0) {
     return;
   }
 
   const alert = evaluateAlert(payload.variable, payload.value);
   if (alert) {
-    await pool.query(
-      "INSERT INTO alerta (lectura_id, tipo, severidad, mensaje) VALUES (?, ?, ?, ?)",
-      [result.insertId, alert.tipo, alert.severidad, alert.mensaje],
-    );
+    // El id de la lectura recién insertada se busca por su hash, que es único:
+    // `$executeRaw` devuelve el número de renglones, no LAST_INSERT_ID().
+    const lectura = await prisma.lectura.findUnique({
+      where: { hash_sha256: payload.hash },
+      select: { lectura_id: true },
+    });
+    if (lectura) {
+      await prisma.alerta.create({
+        data: {
+          lectura_id: lectura.lectura_id,
+          tipo: alert.tipo,
+          severidad: alert.severidad,
+          mensaje: alert.mensaje,
+        },
+      });
+    }
   }
 }
 

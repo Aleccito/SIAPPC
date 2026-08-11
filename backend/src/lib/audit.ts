@@ -1,14 +1,16 @@
-import type { Pool, PoolConnection } from "mysql2/promise";
+import type { prisma } from "./prisma.ts";
 
 // Acciones que la bitácora acepta; el ENUM de `auditoria.accion` en
-// db/schema.sql es la fuente. LOGIN/LOGOUT/LOGIN_BLOCKED los escribe
+// prisma/schema.prisma es la fuente. LOGIN/LOGOUT/LOGIN_BLOCKED los escribe
 // routes/auth.ts por su cuenta, porque no son cambios sobre un registro.
 export type AuditAction = "INSERT" | "UPDATE" | "DELETE";
 
-// Pool y PoolConnection comparten `query`, así que el mismo helper sirve suelto
-// o dentro de una transacción. El tipo lo pide explícito para que quien llame
-// tenga que decidir cuál de los dos usa.
-type Queryable = Pick<Pool | PoolConnection, "query">;
+/**
+ * El cliente de Prisma o el de dentro de una `$transaction`. Los dos exponen
+ * los mismos modelos; el tipo lo pide explícito para que quien llame tenga que
+ * decidir cuál de los dos usa.
+ */
+export type Queryable = Omit<typeof prisma, `$${string}`>;
 
 /**
  * Escribe un renglón en `auditoria`.
@@ -32,9 +34,13 @@ export async function recordAudit(
     observacion: string | null;
   },
 ): Promise<void> {
-  await db.query(
-    `INSERT INTO auditoria (usuario_id, entidad, registro_id, accion, observacion)
-     VALUES (?, ?, ?, ?, ?)`,
-    [entry.actorId, entry.entidad, entry.registroId, entry.accion, entry.observacion],
-  );
+  await db.auditoria.create({
+    data: {
+      usuario_id: entry.actorId === null ? null : Number(entry.actorId),
+      entidad: entry.entidad,
+      registro_id: BigInt(entry.registroId),
+      accion: entry.accion,
+      observacion: entry.observacion,
+    },
+  });
 }

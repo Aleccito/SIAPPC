@@ -2,10 +2,12 @@ import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/app.ts";
-import { pool } from "../db/db.ts";
+import { Prisma } from "../src/generated/prisma/client.ts";
+import { prisma } from "../src/lib/prisma.ts";
 import {
   authHeader,
   closeConnections,
+  countRows,
   flushRedis,
   loginAsAdmin,
   resetDatabase,
@@ -19,12 +21,11 @@ import {
 type AuditRow = { accion: string; entidad: string; registro_id: number; observacion: string | null };
 
 async function auditFor(entidad: string, registroId: number | string): Promise<AuditRow[]> {
-  const [rows] = await pool.query<(AuditRow & { constructor: unknown })[]>(
-    `SELECT accion, entidad, registro_id, observacion FROM auditoria
-     WHERE entidad = ? AND registro_id = ? ORDER BY auditoria_id`,
-    [entidad, registroId],
-  );
-  return rows as AuditRow[];
+  return prisma.$queryRaw<AuditRow[]>`
+    SELECT accion, entidad, registro_id, observacion FROM auditoria
+    WHERE entidad = ${entidad} AND registro_id = ${Number(registroId)}
+    ORDER BY auditoria_id
+  `;
 }
 
 describe("bitácora de auditoría", () => {
@@ -150,7 +151,7 @@ describe("bitácora de auditoría", () => {
     // es el agujero que esta tabla existe para tapar. Con el INSERT fallando
     // primero (correo duplicado) no se distingue nada: ahí recordAudit ni
     // siquiera llega a ejecutarse.
-    await pool.query("RENAME TABLE auditoria TO auditoria_oculta");
+    await prisma.$executeRawUnsafe("RENAME TABLE auditoria TO auditoria_oculta");
     try {
       const res = await app.inject({
         method: "POST",
@@ -164,14 +165,13 @@ describe("bitácora de auditoría", () => {
       });
       assert.equal(res.statusCode, 500);
     } finally {
-      await pool.query("RENAME TABLE auditoria_oculta TO auditoria");
+      await prisma.$executeRawUnsafe("RENAME TABLE auditoria_oculta TO auditoria");
     }
 
-    const [rows] = await pool.query<{ total: number }[] & object[]>(
-      "SELECT COUNT(*) AS total FROM usuario WHERE email = ?",
-      ["no.debe.existir@institucion.org"],
+    const total = await countRows(
+      Prisma.sql`FROM usuario WHERE email = ${"no.debe.existir@institucion.org"}`,
     );
-    assert.equal((rows as { total: number }[])[0]!.total, 0, "la cuenta se creó sin auditoría");
+    assert.equal(total, 0, "la cuenta se creó sin auditoría");
   });
 
   it("si el cambio falla, no queda renglón de auditoría suelto", async () => {
@@ -192,10 +192,7 @@ describe("bitácora de auditoría", () => {
     });
     assert.equal(first.statusCode, 201);
 
-    const [beforeRows] = await pool.query<{ total: number }[] & object[]>(
-      "SELECT COUNT(*) AS total FROM auditoria",
-    );
-    const before = (beforeRows as { total: number }[])[0]!.total;
+    const before = await countRows(Prisma.sql`FROM auditoria`);
 
     const second = await app.inject({
       method: "POST",
@@ -205,9 +202,6 @@ describe("bitácora de auditoría", () => {
     });
     assert.equal(second.statusCode, 409);
 
-    const [afterRows] = await pool.query<{ total: number }[] & object[]>(
-      "SELECT COUNT(*) AS total FROM auditoria",
-    );
-    assert.equal((afterRows as { total: number }[])[0]!.total, before);
+    assert.equal(await countRows(Prisma.sql`FROM auditoria`), before);
   });
 });

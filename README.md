@@ -132,7 +132,8 @@ Lo que realmente corre, tomado de `docker-compose.yml`, los `Dockerfile` y los
 | Node | 24 (alpine) | `backend/Dockerfile`, `frontend/Dockerfile` |
 | nginx | 1.29 (alpine) | `frontend/Dockerfile` |
 | Fastify | 5 | `backend/package.json` |
-| mysql2 · Zod · bcryptjs · mqtt · ioredis | 3 · 3 · 2 · 5 · 6 | `backend/package.json` |
+| Prisma (ORM) | 7 | `backend/prisma/schema.prisma` |
+| Zod · bcryptjs · mqtt · ioredis | 3 · 2 · 5 · 6 | `backend/package.json` |
 | TypeScript | 6 | ambos `package.json` |
 | React · React Router | 19 · 7 | `frontend/package.json` |
 | Vite · MUI · TanStack Query | 8 · 9 · 5 | `frontend/package.json` |
@@ -143,18 +144,27 @@ stripping, y por eso `typescript` solo aparece como dependencia de desarrollo.
 
 ## Cambios de esquema
 
-`backend/db/schema.sql` es el esquema completo y **solo corre en el primer
-arranque**, cuando el volumen está vacío. Sobre una base que ya tiene tablas
-falla a propósito, así que para cambiar el esquema de una base con datos:
+El esquema se define en **`backend/prisma/schema.prisma`**, y ese es el único
+archivo que se edita a mano. `backend/db/schema.sql` se genera a partir de él y
+**solo corre en el primer arranque**, cuando el volumen está vacío; sobre una
+base que ya tiene tablas falla a propósito.
 
 ```bash
-docker compose exec backend node db/migrate.ts
+cd backend
+npm run db:migrate -- --name descripcion   # crea y aplica la migración
+npm run schema:build                       # regenera db/schema.sql
 ```
 
-Eso aplica los archivos de `backend/db/migrations/` que falten y los anota en la
-tabla `migracion`. Correrlo dos veces no hace nada la segunda. Los detalles y la
-regla para agregar una migración están en
-[backend/README.md](backend/README.md).
+Para aplicar a una base que ya existe lo que otro haya migrado:
+
+```bash
+cd backend && npm run migrate
+```
+
+Corre desde el host y no dentro del contenedor: la CLI de Prisma es dependencia
+de desarrollo y no entra en la imagen. Correrlo dos veces no hace nada la
+segunda. Los detalles —incluido cómo marcar la línea base en una base creada
+antes de Prisma— están en [backend/README.md](backend/README.md).
 
 ## Comandos
 
@@ -165,7 +175,7 @@ regla para agregar una migración están en
 | `docker compose down -v` | Apaga todo y borra el volumen de la base |
 | `docker compose logs -f backend` | Sigue los logs del backend |
 | `docker compose logs -f mosquitto` | Sigue los logs del broker MQTT |
-| `docker compose exec backend node db/migrate.ts` | Aplica migraciones pendientes de esquema |
+| `cd backend && npm run migrate` | Aplica migraciones pendientes de esquema (desde el host) |
 | `docker compose ps` | Estado de los cinco servicios |
 | `sh infra/mosquitto/gen-certs.sh` | Regenera los certificados de desarrollo del broker |
 
