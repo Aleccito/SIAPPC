@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- Versión de placa azul de src/shared/BrandLogo.tsx (variant="onBlue").
+       En la pestaña se usa esta y no la blanca: la barra del navegador puede ser
+       clara u oscura, y una placa blanca desaparece sobre la clara.
+
+       El azul está repetido a mano porque el navegador pide el favicon como
+       archivo suelto y no puede importar `brandBlue` de shared/theme.ts. Si
+       cambia el azul de la marca, hay que cambiarlo también aquí. -->
+  <rect width="48" height="48" rx="11" fill="#2b5c86"/>
+  <path fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.6"
+        d="M19 4 H29 A3 3 0 0 1 32 7 V13 A3 3 0 0 0 35 16 H41 A3 3 0 0 1 44 19
+           V29 A3 3 0 0 1 41 32 H35 A3 3 0 0 0 32 35 V41 A3 3 0 0 1 29 44
+           H19 A3 3 0 0 1 16 41 V35 A3 3 0 0 0 13 32 H7 A3 3 0 0 1 4 29
+           V19 A3 3 0 0 1 7 16 H13 A3 3 0 0 0 16 13 V7 A3 3 0 0 1 19 4 Z"/>
+  <polyline points="9,24 18,24 20.5,17 23,31 25.5,19.5 27.5,24 39,24"
+            fill="none" stroke="#ffffff" stroke-width="3.4"
+            stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

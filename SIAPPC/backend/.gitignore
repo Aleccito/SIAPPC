@@ -1,0 +1,6 @@
+.env
+node_modules/
+dist/
+# Cliente de Prisma: se genera desde prisma/schema.prisma con `npm run generate`
+# (y en la imagen, durante el build). No se commitea código generado.
+src/generated/

@@ -1,0 +1,194 @@
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: siappc-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '${DB_PORT}:3306'
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      # Only runs on first boot, when the data volume is empty. Generated from
+      # backend/prisma/schema.prisma by `npm run schema:build` — do not edit it
+      # by hand. Later schema changes go through Prisma migrations:
+      # `cd backend && npm run migrate`.
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      # Roles, hospital y el primer admin. Sin esto no hay con qué iniciar
+      # sesión: crear usuarios exige un admin ya autenticado.
+      - ./backend/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: siappc-mosquitto
+    restart: unless-stopped
+    # start.sh escribe el archivo de contraseñas a partir del `.env` de la raíz
+    # y luego arranca mosquitto, así que broker, backend y Pi no pueden
+    # desincronizarse. No se commitea ningún hash y cambiar la contraseña es
+    # reiniciar el servicio.
+    command: ['/bin/sh', '/mosquitto/start.sh']
+    environment:
+      MQTT_USER: ${MQTT_USER:?falta MQTT_USER en el .env de la raiz}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?falta MQTT_PASSWORD en el .env de la raiz}
+    ports:
+      # Solo TLS. El puerto se publica para que la Raspberry, que vive fuera de
+      # Compose, alcance el broker; el backend lo usa por la red interna.
+      - '${MQTT_TLS_PORT:-8883}:8883'
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/start.sh:/mosquitto/start.sh:ro
+      # Certificados de desarrollo, generados por infra/mosquitto/gen-certs.sh.
+      # Sin ellos el broker no arranca: no hay modo sin TLS.
+      - ./infra/mosquitto/certs:/mosquitto/certs:ro
+      - mosquitto_data:/mosquitto/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: siappc-redis
+    restart: unless-stopped
+    # Sin `ports`: Redis solo se alcanza por la red interna de Compose. Aun así
+    # arranca con contraseña — un contenedor comprometido en esa misma red no
+    # debe poder vaciar los contadores del límite de peticiones.
+    #
+    # `--save ""` y `--appendonly no` desactivan la persistencia a propósito:
+    # aquí solo viven contadores de rate limit y caché, ambos reconstruibles.
+    # Un dump en disco solo sumaría datos del hospital fuera de MariaDB.
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?falta REDIS_PASSWORD en el .env de la raiz}
+      - --save
+      - ''
+      - --appendonly
+      - 'no'
+      # Techo de memoria con desalojo LRU: la caché nunca debe hacer que el
+      # contenedor muera por OOM. Los contadores del rate limit ya traen TTL.
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build: ./backend
+    container_name: siappc-backend
+    restart: unless-stopped
+    environment:
+      # Inside the compose network MariaDB always listens on 3306; DB_PORT only
+      # controls the port published to the host.
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET}
+      # Orígenes del navegador autorizados. En Compose el tablero se sirve
+      # desde nginx y llega al backend por el mismo origen, así que esto solo
+      # entra en juego con el frontend de desarrollo (Vite) o si algún día el
+      # tablero se sirve desde otro dominio.
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?falta ALLOWED_ORIGINS en el .env de la raiz}
+      # Dentro de la red de Compose el broker siempre es `mosquitto:8883`;
+      # MQTT_TLS_PORT solo controla el puerto publicado al host para la Pi.
+      # Sin broker el backend sigue sirviendo HTTP y reintenta en segundo plano.
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 8883
+      MQTT_USER: ${MQTT_USER:?falta MQTT_USER en el .env de la raiz}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?falta MQTT_PASSWORD en el .env de la raiz}
+      # CA que firma el certificado del broker. Es la misma que usa mosquitto,
+      # pero aquí solo se monta el certificado público: la clave no entra.
+      MQTT_CA_FILE: /certs/ca.crt
+      # Store compartido del límite de peticiones y caché de /sensors/*. Es lo
+      # que permite correr más de una réplica del backend: con el contador en
+      # memoria, cada réplica dejaba pasar el límite completo por su cuenta.
+      REDIS_URL: redis://:${REDIS_PASSWORD:?falta REDIS_PASSWORD en el .env de la raiz}@redis:6379
+      # Segundos que vive en caché una respuesta de /sensors/*. La Pi publica
+      # cada segundo, así que 10 s recorta la mayoría de las consultas del
+      # tablero sin que los datos se vean viejos.
+      SENSORS_CACHE_TTL: 10
+    volumes:
+      - ./infra/mosquitto/certs/ca.crt:/certs/ca.crt:ro
+    ports:
+      - '${BACKEND_PORT:-3001}:3001'
+    # `wget` es el de busybox, ya viene en la imagen base; --spider no descarga
+    # el cuerpo. start_period cubre el arranque: mientras tanto un fallo no
+    # cuenta como reintento.
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:3001/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      # El backend tolera un broker caído: reintenta en segundo plano y sigue
+      # sirviendo HTTP. Por eso basta con que el contenedor haya arrancado, no
+      # hace falta esperar a que el broker esté sano.
+      mosquitto:
+        condition: service_started
+      # A diferencia del broker, aquí sí se espera a que esté sano: el backend
+      # sobrevive a un Redis caído (ver skipOnError en src/app.ts) pero en ese
+      # modo el límite de peticiones deja de aplicarse, y eso no debe ser el
+      # estado normal de un arranque.
+      redis:
+        condition: service_healthy
+
+  # Proceso ETL: agrega `lectura` y `alerta` al datamart que consultan la
+  # pantalla de Reportes y Power BI. Ver backend/etl/README.md.
+  #
+  # Misma imagen que el backend, otro comando: comparte el cliente de Prisma, el
+  # esquema y la configuración, pero corre en su propio contenedor para que una
+  # agregación pesada no le quite CPU a la API ni le bloquee el bucle de eventos.
+  #
+  # Las tablas del datamart las crea la migración, que —igual que el resto— se
+  # aplica desde el host con `cd backend && npm run migrate`, no desde estos
+  # contenedores. En una base creada de cero por db/schema.sql ya vienen.
+  etl:
+    build: ./backend
+    container_name: siappc-etl
+    restart: unless-stopped
+    command: ['node', 'etl/scheduler.ts']
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # Minuto de cada hora en el que corre. No en punto: a las :00 la hora
+      # recién cerrada todavía recibe lecturas atrasadas del buffer de las Pi.
+      ETL_MINUTO: ${ETL_MINUTO:-5}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: siappc-frontend
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-8080}:80'
+    # Espera a que el backend responda `/health`, no solo a que su contenedor
+    # exista. Así el tablero no se sirve antes de que haya API detrás: entrar y
+    # que el login falle con 502 desorienta más que esperar unos segundos.
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  mariadb_data:
+  mosquitto_data:

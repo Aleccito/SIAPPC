@@ -1,0 +1,21 @@
+.claude/
+CLAUDE.md
+
+# Entorno
+.env
+.env.local
+# Credenciales de desarrollo aunque sean «solo de prueba»: mismas que el .env de
+# la raíz. Se commitea .env.test.example, no esto.
+.env.test
+# `env` sin punto: nombre que sale de guardar el archivo mal. Contiene lo mismo
+# que .env (secretos) y sin esta línea no lo cubre ninguna de las de arriba.
+/env
+
+# Certificados de desarrollo del broker MQTT: los genera
+# infra/mosquitto/gen-certs.sh y se regeneran cuando haga falta. Nunca se
+# commitea una clave privada, ni siquiera de desarrollo.
+infra/mosquitto/certs/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

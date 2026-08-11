@@ -1,0 +1,319 @@
+# Backend
+
+API REST Fastify 5 sobre MariaDB 11.4, en TypeScript 6 y Node 24. Node corre las
+fuentes `.ts` directamente (type stripping), así que no hay paso de build ni
+`dist/`. Prisma 7 como ORM —con `$queryRaw` donde el SQL a mano gana—; validación
+con Zod.
+
+## Cómo se corre
+
+Con el Compose de la raíz del repo, junto con la base y el frontend:
+
+```bash
+docker compose up -d --build
+```
+
+Esa es la única ruta soportada. Los pasos completos —incluido pedirle el `.env`
+a **Ing.Adrian**, que es de donde salen las credenciales reales— están en
+[../README.md](../README.md). Este directorio no se levanta por separado.
+
+El `backend/docker-compose.yml` y los scripts `db:*` de `package.json` son
+restos de cuando la base se levantaba sola. Publican MariaDB en el mismo puerto
+del host que el Compose de la raíz, así que correr los dos a la vez choca. Si
+tienes un `3306 already in use`, casi siempre es eso.
+
+Igual pasa con `backend/.env`: está en `.dockerignore` y no entra en la imagen.
+El contenedor recibe su configuración del `docker-compose.yml` de la raíz, que
+lee el `.env` de la raíz. [`.env.example`](.env.example) queda como referencia de
+qué variables lee el backend, con valores de relleno.
+
+| Variable | Para qué |
+|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Conexión a MariaDB (en Compose, `mariadb:3306`) |
+| `PORT` | Puerto HTTP, 3001 |
+| `JWT_SECRET` | Firma de los tokens. **Sin esto el proceso se apaga al arrancar** |
+| `ALLOWED_ORIGINS` | Orígenes del navegador autorizados, separados por coma. **Sin esto el proceso se apaga al arrancar** |
+| `MQTT_HOST`, `MQTT_PORT`, `MQTT_USER`, `MQTT_PASSWORD` | Broker del que se leen las lecturas de la Pi (en Compose, `mosquitto:8883`) |
+| `MQTT_TELEMETRY_TOPIC` | Tema suscrito, por defecto `siappc/+/telemetry` |
+| `MQTT_CA_FILE` | CA que firma el certificado del broker. **Sin esto el proceso se apaga al arrancar** |
+| `MQTT_CLIENT_CERT_FILE`, `MQTT_CLIENT_KEY_FILE` | Certificado de cliente, solo si el broker exige mTLS. Vacíos por defecto |
+| `MQTT_TLS` | Escape para un broker heredado sin TLS. Déjalo en `true` |
+
+## Endpoints
+
+Todo cuelga de la raíz del servicio. El frontend los llama con prefijo `/api`,
+que nginx quita al hacer proxy.
+
+| Ruta | Qué hace |
+|---|---|
+| `GET /health` | Sonda de vida, `{"status":"ok"}` |
+| `POST /auth/login` | Credenciales por token JWT; registra el acceso en auditoría |
+| `GET /auth/me` | Usuario de la sesión |
+| `GET /users` · `GET /users/:id` · `POST /users` · `PATCH /users/:id` · `DELETE /users/:id` | CRUD de usuarios |
+| `GET /users/:id/activity` | Actividad reciente de un usuario |
+| `GET /roles` · `GET /roles/:id` · `POST /roles` · `PATCH /roles/:id` · `DELETE /roles/:id` | CRUD de roles |
+| `GET /roles/:id/permissions` · `PUT /roles/:id/permissions` | Matriz de permisos del rol |
+| `GET /roles/changes` | Historial de cambios de rol |
+| `GET /permissions` | Catálogo de permisos |
+| `GET /audit` · `GET /audit/entities` | Bitácora, paginada y filtrable |
+| `GET /units` · `GET /units/:id` · `POST /units` · `PUT|PATCH /units/:id` · `DELETE /units/:id` | CRUD de unidades |
+| `GET /patients` · `GET /patients/:id` · `POST /patients` · `PUT|PATCH /patients/:id` · `DELETE /patients/:id` | CRUD de pacientes |
+| `GET /sensors/readings` | Lecturas, filtrables por `device`, `variable`, `limit` |
+| `GET /sensors/alerts` | Alertas, además por `severity` y `status` |
+
+Salvo `/health` y `/auth/login`, todas exigen `Authorization: Bearer <token>`.
+Las de usuarios, roles y auditoría además revalidan el permiso concreto contra
+`rol_permiso` en el servidor — no basta con el rol que venga en el token.
+
+### Convenciones REST
+
+| | |
+|---|---|
+| `GET /recurso` | Arreglo de recursos. `?page` y `?pageSize` paginan; el total va en la cabecera `X-Total-Count`, no en el cuerpo. Sin `pageSize` sale la lista completa |
+| `GET /recurso/:id` | El recurso, o 404 |
+| `POST /recurso` | 201 con el recurso creado y la cabecera `Location` |
+| `PUT /recurso/:id` | Reemplaza: exige el cuerpo completo |
+| `PATCH /recurso/:id` | Modifica solo lo que venga |
+| `DELETE /recurso/:id` | 204 sin cuerpo. Es baja lógica (`activo = FALSE`) en todo lo que la bitácora referencia |
+
+Los errores salen siempre con la misma forma: `{ "error": "mensaje" }`, o
+`{ "error": [ ...incidencias de zod... ] }` cuando falla la validación de la
+entrada. Lo arma `src/lib/http.ts`, que además traduce los códigos de Prisma:
+`P2002` (llave duplicada) → 409, `P2003` (referencia rota) → 409, `P2025`
+(no encontrado) → 404. Un error no previsto responde 500 con un mensaje
+genérico y el detalle solo en el log — el texto de una excepción interna puede
+llevar SQL o datos de otro registro.
+
+### CRUD genérico
+
+`src/lib/crud.ts` genera las seis rutas de arriba a partir de una descripción
+del recurso: modelo de Prisma, permiso exigido por acción, esquemas de zod,
+cómo se ve desde afuera y qué texto deja en la bitácora. Lo usan `/patients` y
+`/units`.
+
+Cada alta, cambio y baja se escribe en `auditoria` **dentro de la misma
+transacción** que el cambio. Si no se puede dejar constancia, el cambio no se
+hace.
+
+No todo pasa por ahí, a propósito: `/users` y `/roles` siguen escritos a mano
+porque tienen reglas que no caben en una configuración —la contraseña temporal
+del alta, no poder suspender al último administrador, derivar el `nombre` del
+rol de su etiqueta, los roles del sistema en solo lectura—. Meterlas a la fuerza
+convertiría la fábrica en un caso especial por recurso.
+
+### Consultas crudas
+
+Lo que va con `$queryRaw` y por qué, para que no se "arregle" pasándolo al ORM:
+
+| Dónde | Motivo |
+|---|---|
+| `GET /audit` | El `NOW() - INTERVAL ? DAY` lo resuelve MariaDB, y el total y la página salen de la misma cláusula `WHERE` |
+| `GET /sensors/readings` · `/alerts` | Tres JOIN sobre las tablas que crecen sin techo; el plan del `LIMIT` sobre `ix_lectura_sensor_fecha` es lo que hace que la pantalla responda |
+| `GET /roles/:id/permissions` | `LEFT JOIN` con la condición del rol dentro del `ON`, más `COALESCE` por columna |
+| `POST /roles` con `baseRole` | Copia la matriz del rol base en una sola sentencia en vez de N+1 viajes |
+| `app.requirePermission` | La columna a leer (`puede_ver`, `puede_crear`, …) se decide en tiempo de ejecución |
+| Ingesta MQTT | `INSERT IGNORE`, que Prisma no expone |
+
+Los valores siempre van parametrizados por la plantilla de `$queryRaw`; lo único
+que se arma como texto son fragmentos fijos escritos en el propio código.
+
+## Límite de peticiones
+
+`@fastify/rate-limit`, registrado en `src/app.ts`:
+
+| Alcance | Límite | Clave |
+|---|---|---|
+| Toda la API | 100 / minuto | IP |
+| `POST /auth/login` | 5 / 15 minutos | IP + correo intentado |
+
+La clave del login junta las dos cosas a propósito. Solo con la IP, un atacante
+desde otra red deja fuera al usuario legítimo; solo con el correo, basta rotar
+direcciones. El caso que queda —una IP probando muchos correos— lo tapa el techo
+global.
+
+Cada bloqueo escribe en `auditoria` con `accion='LOGIN_BLOCKED'` y guarda IP y
+correo en `observacion`. Si el correo no existe, `usuario_id` va nulo y
+`registro_id` en 0. Contar esos renglones por IP en una ventana de tiempo es lo
+que permitirá detectar fuerza bruta sin agregar otra tabla.
+
+Fastify corre con `trustProxy: true` porque en Compose todas las peticiones
+llegan desde nginx: sin eso el límite contaría a todo el hospital como un solo
+cliente. nginx ya reenvía `X-Forwarded-For`.
+
+El contador vive en Redis, no en la memoria del proceso. Eso es lo que permite
+correr más de una réplica del backend: con el contador en memoria cada réplica
+aplicaba el límite por su cuenta, así que dos instancias dejaban pasar diez
+intentos de login en vez de cinco, y reiniciar el proceso borraba los bloqueos.
+
+Las claves van con prefijo `siappc-rl:` y las escribe `@fastify/rate-limit`
+solo, contra el cliente de `src/lib/redis.ts`.
+
+Si Redis se cae, `skipOnError: true` deja pasar las peticiones en vez de
+responder 500 — pero eso significa que **mientras Redis esté abajo no hay
+límite de peticiones, ni siquiera en `/auth/login`**. Es un compromiso
+deliberado a favor de la disponibilidad, no un modo de operación: por eso el
+backend depende de `redis` con `condition: service_healthy` en
+`docker-compose.yml` y cada fallo queda en el log.
+
+Sin `REDIS_URL` el plugin cae a su contador en memoria y arranca igual. Ese es
+el camino de `npm run dev` con una sola instancia; en Compose la variable
+siempre viene puesta.
+
+## Caché de lecturas y alertas
+
+`GET /sensors/readings` y `GET /sensors/alerts` pasan por una caché en Redis
+(`src/lib/cache.ts`, prefijo `siappc-cache:`). Son las consultas que alimentan
+el tablero de sensores y los reportes, y las únicas que barren tablas que crecen
+sin techo —una lectura por segundo y por sensor— con tres JOIN y un `ORDER BY`.
+El tablero además las repite en cada refresco, para todos los usuarios
+conectados a la vez.
+
+`SENSORS_CACHE_TTL` (10 s por defecto) fija cuánto vive cada respuesta; `0`
+desactiva la caché sin tocar el límite de peticiones.
+
+**TTL corto en vez de invalidar al escribir.** La ingesta MQTT inserta una
+lectura por segundo y por sensor: invalidar en cada `INSERT` dejaría la caché
+siempre fría, con toda la complejidad de la invalidación y ninguno de los
+aciertos. El precio es que una respuesta puede venir hasta `SENSORS_CACHE_TTL`
+segundos vieja — aceptable para el tablero y los reportes; si algún día un
+endpoint dispara una acción clínica inmediata, ese debe saltarse la caché.
+
+La clave se arma con los parámetros ya validados por zod y ordenados alfabé-
+ticamente, así que `?device=A&limit=50` y `?limit=50&device=A` comparten
+entrada. **No incluye al usuario**, porque estas consultas todavía no filtran
+por hospital ni por unidad: la respuesta es idéntica para cualquiera que pase el
+`authenticate`. El día que se agregue ese filtro, el identificador tiene que
+entrar en la clave, o un usuario leería la respuesta cacheada de otro hospital.
+
+Cualquier fallo de Redis se degrada a consultar MariaDB: la caché nunca
+convierte una API que funciona en una que responde 500.
+
+## Ingesta MQTT
+
+`src/services/mqttIngest.ts` se suscribe a `siappc/+/telemetry` y por cada
+mensaje válido:
+
+1. Busca el `dispositivo` por `codigo`. Si no está dado de alta, descarta la
+   lectura en vez de inventarle dueño.
+2. Da de alta el `sensor` (dispositivo + variable) si no existía.
+3. Inserta la `lectura` con `INSERT IGNORE`: el índice único sobre
+   `hash_sha256` descarta reenvíos del buffer de la Pi y duplicados de QoS 1.
+4. Evalúa umbrales y, si toca, inserta la `alerta`.
+
+Los umbrales viven en código (`hr` fuera de 50–120 / 40–140, `spo2` bajo 90 / 85).
+Son un mínimo viable, no la lógica clínica final: todavía no hay tabla de
+configuración por paciente o por sensor. El `ecg` no dispara alertas — una
+muestra instantánea de voltaje no dice nada sin la onda completa.
+
+La conexión al broker no bloquea el arranque: si no hay broker, mqtt.js reintenta
+solo y el servidor HTTP sigue respondiendo.
+
+### TLS
+
+La conexión es `mqtts://` y el certificado del broker se valida contra la CA de
+`MQTT_CA_FILE`, con `rejectUnauthorized: true`. No hay interruptor para saltarse
+esa validación: un `rejectUnauthorized: false` olvidado deja la conexión cifrada
+pero suplantable, que es peor que no tener TLS porque parece que sí lo tienes.
+Si el certificado no valida, la respuesta es reemitirlo con el SAN correcto
+(`infra/mosquitto/gen-certs.sh`), no relajar el cliente.
+
+Los certificados se leen una sola vez, al cargar `src/env.ts`. Un archivo que
+falta apaga el proceso con un mensaje claro en vez de dejarlo reintentando: es
+un error de configuración, no una caída del broker, y tampoco existe una vuelta
+a texto plano si algo sale mal.
+
+`MQTT_CLIENT_CERT_FILE`/`MQTT_CLIENT_KEY_FILE` están cableados para cuando el
+broker exija certificado de cliente (`require_certificate true` en
+`infra/mosquitto/mosquitto.conf`). Hoy no lo exige: la autenticación es por
+usuario y contraseña.
+
+## Base de datos
+
+17 tablas: hospital, unidades, roles y permisos, usuarios y especializaciones,
+pacientes e historia clínica, dispositivos, sensores, lecturas, alertas,
+notificaciones y auditoría.
+
+**`prisma/schema.prisma` es la fuente de verdad.** Para cambiar una tabla se
+edita ahí y solo ahí:
+
+```bash
+npm run db:migrate -- --name agrega_columna_x   # crea y aplica la migración
+npm run schema:build                            # regenera db/schema.sql
+npm run generate                                # regenera el cliente tipado
+```
+
+Los otros dos archivos de `db/` son consecuencia, no fuente:
+
+| Archivo | Qué es |
+|---|---|
+| `db/schema.sql` | **Generado.** El DDL completo de una instalación nueva. Lo aplica MariaDB en el primer arranque (`docker-entrypoint-initdb.d`) y las pruebas para recrear la base. No se edita a mano |
+| `db/extra.sql` | Hand-written. Lo que Prisma no sabe expresar —hoy, el `CHECK` de `alerta`—. `schema:build` lo pega al final de `schema.sql`, y cada sentencia tiene que ir además en alguna migración |
+| `db/seed.sql` | Hand-written. Roles, hospital y el primer admin |
+
+`schema.sql` incluye al final la tabla `_prisma_migrations` con todas las
+migraciones ya marcadas como aplicadas, así que una base recién creada nace al
+día y `migrate deploy` no intenta repetirlas.
+
+`db/build-schema.ts` no necesita una base viva: el DDL sale del datamodel.
+
+### Migraciones sobre una base existente
+
+```bash
+cd backend && npm run migrate     # prisma migrate deploy
+```
+
+Corre **desde el host**, no dentro del contenedor: la CLI de Prisma es una
+dependencia de desarrollo y no entra en la imagen. Toma la conexión de las
+mismas `DB_*` del `.env`, igual que los scripts `db:*`.
+
+Es idempotente: la segunda corrida no hace nada.
+
+> **Base creada antes de Prisma.** Tiene el esquema pero no `_prisma_migrations`,
+> así que `migrate deploy` intentaría crear tablas que ya existen. Se marca la
+> línea base una vez y queda arreglado:
+>
+> ```bash
+> node --env-file=.env node_modules/prisma/build/index.js migrate resolve --applied 00000000000000_init
+> ```
+>
+> La tabla `migracion` del mecanismo anterior queda huérfana; se puede borrar.
+
+El esquema y el seed se aplican solos en el primer arranque, cuando el volumen
+está vacío. Para rehacerlos hay que borrar el volumen desde la raíz del repo:
+
+```bash
+docker compose down -v
+```
+
+`db/schema.sql` usa `CREATE TABLE` sin `IF NOT EXISTS`, así que reaplicarlo sobre
+una base que ya tiene tablas falla con `Table 'hospital' already exists`. Eso es
+correcto, no un bug: para una base que ya existe están las migraciones.
+
+### Tipos de las llaves
+
+Son `INT UNSIGNED` (`Int @db.UnsignedInt`) y `BIGINT UNSIGNED`
+(`BigInt @db.UnsignedBigInt` en `historia_clinica`, `lectura`, `alerta`,
+`auditoria`). MariaDB rechaza una llave foránea cuyo tipo no coincida **incluido
+el signo**, con un `errno: 150` que no explica nada, así que conviene copiar el
+tipo de la columna referenciada.
+
+Los `BIGINT UNSIGNED` llegan a JavaScript como `BigInt`, no como `number`: por
+encima de 2^53 un `number` dejaría de representar el identificador exacto. Las
+respuestas de la API los convierten a texto (`String(row.lectura_id)`).
+
+Para entrar a la base con un cliente:
+
+```bash
+docker exec -it siappc-mariadb mariadb -u root -p
+```
+
+Para verla con interfaz: `npm run studio`.
+
+## Pendiente
+
+- El esquema no tiene tablas para corridas de FlexSim ni para el estado del
+  paciente en la fila de servicio; las pantallas de FlexSim y Reportes siguen
+  siendo maquetas.
+- Los umbrales de alerta son fijos y globales.
+- El `origin` de CORS todavía apunta solo a `http://localhost:5173`. En Docker no
+  estorba, porque nginx sirve el frontend y el backend en el mismo origen.

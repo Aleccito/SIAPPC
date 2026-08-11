@@ -1,0 +1,827 @@
+// ThermoTrace / Monitoreo Hospitalario — MariaDB 11.4
+//
+// ESTE ARCHIVO ES LA FUENTE DE VERDAD DEL ESQUEMA. Para cambiar una tabla se
+// edita aquí y solo aquí:
+//
+//   npm run db:migrate -- --name descripcion_del_cambio   (crea la migración)
+//   npm run schema:build                                   (regenera db/schema.sql)
+//
+// `db/schema.sql` es un archivo GENERADO: lo consume MariaDB en el primer
+// arranque del contenedor (docker-entrypoint-initdb.d) y las pruebas para
+// recrear la base. No se edita a mano.
+//
+// Lo que Prisma no sabe expresar —CHECK constraints— vive en `db/extra.sql` y
+// lo aplica tanto `schema:build` como su propia migración.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  runtime  = "nodejs"
+  moduleFormat = "esm"
+}
+
+// La URL no vive aquí: Prisma 7 la toma de `prisma.config.ts` para las
+// migraciones, y en tiempo de ejecución el cliente se conecta por el adaptador
+// de mariadb, configurado en src/lib/prisma.ts con las mismas DB_*.
+datasource db {
+  provider = "mysql"
+}
+
+// Los nombres de campo son los de la base (snake_case) a propósito: las
+// consultas crudas de `$queryRaw` devuelven exactamente estas claves, así que
+// una sola forma sirve para el ORM y para el SQL a mano.
+
+model Hospital {
+  hospital_id Int     @id @default(autoincrement()) @db.UnsignedInt
+  nombre      String  @db.VarChar(150)
+  direccion   String? @db.VarChar(255)
+  telefono    String? @db.VarChar(30)
+  activo      Boolean @default(true)
+
+  unidades     Unidad[]
+  usuarios     Usuario[]
+  pacientes    Paciente[]
+  dispositivos Dispositivo[]
+
+  @@unique([nombre], map: "uq_hospital_nombre")
+  @@map("hospital")
+}
+
+model Rol {
+  rol_id Int @id @default(autoincrement()) @db.UnsignedInt
+  /// `nombre` es la llave estable que usa el código; `etiqueta` es lo que ve el
+  /// usuario. Separarlas deja renombrar un rol sin romper ninguna consulta.
+  nombre      String  @db.VarChar(60)
+  etiqueta    String  @db.VarChar(80)
+  descripcion String? @db.VarChar(255)
+  /// Los roles base del sistema no se editan ni se borran desde la interfaz:
+  /// la matriz de permisos los muestra en solo lectura.
+  es_sistema Boolean @default(false)
+  activo     Boolean @default(true)
+
+  permisos RolPermiso[]
+  usuarios Usuario[]
+
+  @@unique([nombre], map: "uq_rol_nombre")
+  @@map("rol")
+}
+
+model Permiso {
+  permiso_id  Int     @id @default(autoincrement()) @db.UnsignedInt
+  nombre      String  @db.VarChar(80)
+  modulo      String  @db.VarChar(60)
+  descripcion String? @db.VarChar(255)
+
+  roles RolPermiso[]
+
+  @@unique([modulo, nombre], map: "uq_permiso_modulo_nombre")
+  @@map("permiso")
+}
+
+model RolPermiso {
+  rol_permiso_id Int @id @default(autoincrement()) @db.UnsignedInt
+  rol_id         Int @db.UnsignedInt
+  permiso_id     Int @db.UnsignedInt
+  /// Las cuatro columnas son las cuatro casillas de la matriz de permisos.
+  puede_ver      Boolean @default(false)
+  puede_crear    Boolean @default(false)
+  puede_editar   Boolean @default(false)
+  puede_eliminar Boolean @default(false)
+
+  rol     Rol     @relation(fields: [rol_id], references: [rol_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_rolperm_rol")
+  permiso Permiso @relation(fields: [permiso_id], references: [permiso_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_rolperm_permiso")
+
+  @@unique([rol_id, permiso_id], map: "uq_rol_permiso")
+  @@index([permiso_id], map: "ix_rol_permiso_permiso")
+  @@map("rol_permiso")
+}
+
+/// Unidad física o servicio donde trabaja el personal: UCI, Trauma, Admisión,
+/// Piso 3, TI. No es lo mismo que `especializacion`, que es clínica.
+model Unidad {
+  unidad_id   Int     @id @default(autoincrement()) @db.UnsignedInt
+  hospital_id Int     @db.UnsignedInt
+  nombre      String  @db.VarChar(80)
+  activo      Boolean @default(true)
+
+  hospital Hospital  @relation(fields: [hospital_id], references: [hospital_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_unidad_hospital")
+  usuarios Usuario[]
+
+  @@unique([hospital_id, nombre], map: "uq_unidad_hospital_nombre")
+  @@map("unidad")
+}
+
+model Usuario {
+  usuario_id           Int     @id @default(autoincrement()) @db.UnsignedInt
+  hospital_id          Int     @db.UnsignedInt
+  rol_id               Int     @db.UnsignedInt
+  unidad_id            Int?    @db.UnsignedInt
+  nombre               String  @db.VarChar(150)
+  tipo_personal        String  @db.VarChar(50)
+  registro_profesional String? @db.VarChar(60)
+  email                String  @db.VarChar(150)
+  password_hash        String  @db.Char(60)
+  telefono             String? @db.VarChar(30)
+  /// Alimenta la columna "Última Actividad" sin escanear `auditoria`.
+  ultimo_acceso DateTime? @db.DateTime(0)
+  /// FALSE es "Suspendido" en la interfaz: la cuenta existe pero no entra.
+  activo Boolean @default(true)
+
+  hospital         Hospital                @relation(fields: [hospital_id], references: [hospital_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_usuario_hospital")
+  rol              Rol                     @relation(fields: [rol_id], references: [rol_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_usuario_rol")
+  unidad           Unidad?                 @relation(fields: [unidad_id], references: [unidad_id], onDelete: SetNull, onUpdate: Cascade, map: "fk_usuario_unidad")
+  especializaciones UsuarioEspecializacion[]
+  pacientes        MedicoPaciente[]
+  historias        HistoriaClinica[]
+  notificaciones   Notificacion[]
+  auditoria        Auditoria[]
+  // Expediente clínico y notas SOAP. Ver el bloque "Expediente clínico" al
+  // final del archivo.
+  notas_soap        NotaSoap[] @relation("NotaSoapAutor")
+  notas_soap_firmadas NotaSoap[] @relation("NotaSoapFirmante")
+  cambios_historia  HistoriaCambio[]
+
+  @@unique([email], map: "uq_usuario_email")
+  @@unique([registro_profesional], map: "uq_usuario_registro")
+  @@index([hospital_id], map: "ix_usuario_hospital")
+  @@index([rol_id], map: "ix_usuario_rol")
+  @@index([unidad_id], map: "ix_usuario_unidad")
+  @@map("usuario")
+}
+
+model Especializacion {
+  especializacion_id Int     @id @default(autoincrement()) @db.UnsignedInt
+  nombre             String  @db.VarChar(120)
+  area               String? @db.VarChar(80)
+
+  usuarios UsuarioEspecializacion[]
+
+  @@unique([nombre], map: "uq_especializacion_nombre")
+  @@map("especializacion")
+}
+
+model UsuarioEspecializacion {
+  usuario_especializacion_id Int       @id @default(autoincrement()) @db.UnsignedInt
+  usuario_id                 Int       @db.UnsignedInt
+  especializacion_id         Int       @db.UnsignedInt
+  fecha_obtencion            DateTime? @db.Date
+  certificado                String?   @db.VarChar(255)
+
+  usuario         Usuario         @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_ue_usuario")
+  especializacion Especializacion @relation(fields: [especializacion_id], references: [especializacion_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_ue_especializacion")
+
+  @@unique([usuario_id, especializacion_id], map: "uq_usuario_espec")
+  @@index([especializacion_id], map: "ix_ue_especializacion")
+  @@map("usuario_especializacion")
+}
+
+enum Sexo {
+  M
+  F
+  O
+}
+
+enum TipoSangre {
+  A_POS  @map("A+")
+  A_NEG  @map("A-")
+  B_POS  @map("B+")
+  B_NEG  @map("B-")
+  AB_POS @map("AB+")
+  AB_NEG @map("AB-")
+  O_POS  @map("O+")
+  O_NEG  @map("O-")
+}
+
+enum EstadoPaciente {
+  waiting
+  inService
+  discharged
+}
+
+model Paciente {
+  paciente_id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  hospital_id         Int         @db.UnsignedInt
+  nombre              String      @db.VarChar(150)
+  cedula              String      @db.VarChar(30)
+  fecha_nacimiento    DateTime    @db.Date
+  sexo                Sexo
+  tipo_sangre         TipoSangre?
+  contacto_emergencia String?     @db.VarChar(150)
+  modulo              String?     @db.VarChar(10)
+  estado              EstadoPaciente @default(waiting)
+  motivo_consulta     String?     @db.VarChar(255)
+  fecha_llegada       DateTime    @default(now()) @db.DateTime(0)
+  activo              Boolean     @default(true)
+
+  hospital     Hospital          @relation(fields: [hospital_id], references: [hospital_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_paciente_hospital")
+  medicos      MedicoPaciente[]
+  historias    HistoriaClinica[]
+  dispositivos Dispositivo[]
+  // Expediente clínico general (1:1) y notas SOAP. Ver el bloque "Expediente
+  // clínico" al final del archivo.
+  expediente   ExpedienteClinico?
+  notas_soap   NotaSoap[]
+
+  @@unique([cedula], map: "uq_paciente_cedula")
+  @@index([hospital_id], map: "ix_paciente_hospital")
+  @@index([estado], map: "ix_paciente_estado")
+  @@map("paciente")
+}
+
+model MedicoPaciente {
+  medico_paciente_id Int      @id @default(autoincrement()) @db.UnsignedInt
+  usuario_id         Int      @db.UnsignedInt
+  paciente_id        Int      @db.UnsignedInt
+  fecha_asignacion   DateTime @default(dbgenerated("(curdate())")) @db.Date
+  motivo             String?  @db.VarChar(255)
+  activo             Boolean  @default(true)
+
+  usuario  Usuario  @relation(fields: [usuario_id], references: [usuario_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_mp_usuario")
+  paciente Paciente @relation(fields: [paciente_id], references: [paciente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_mp_paciente")
+
+  @@unique([usuario_id, paciente_id, fecha_asignacion], map: "uq_medico_paciente")
+  @@index([paciente_id], map: "ix_mp_paciente")
+  @@map("medico_paciente")
+}
+
+model HistoriaClinica {
+  historia_id   BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  paciente_id   Int      @db.UnsignedInt
+  usuario_id    Int      @db.UnsignedInt
+  fecha_hora    DateTime @default(now()) @db.DateTime(0)
+  diagnostico   String?  @db.Text
+  tratamiento   String?  @db.Text
+  observaciones String?  @db.Text
+
+  paciente Paciente @relation(fields: [paciente_id], references: [paciente_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_hc_paciente")
+  usuario  Usuario  @relation(fields: [usuario_id], references: [usuario_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_hc_usuario")
+
+  @@index([paciente_id, fecha_hora], map: "ix_hc_paciente_fecha")
+  @@index([usuario_id], map: "ix_hc_usuario")
+  @@map("historia_clinica")
+}
+
+enum EstadoDispositivo {
+  activo
+  inactivo
+  mantenimiento
+  baja
+}
+
+model Dispositivo {
+  dispositivo_id    Int               @id @default(autoincrement()) @db.UnsignedInt
+  hospital_id       Int               @db.UnsignedInt
+  paciente_id       Int?              @db.UnsignedInt
+  codigo            String            @db.VarChar(50)
+  modelo            String?           @db.VarChar(80)
+  microcontrolador  String?           @db.VarChar(80)
+  estado            EstadoDispositivo @default(activo)
+  fecha_instalacion DateTime?         @db.DateTime(0)
+
+  hospital Hospital  @relation(fields: [hospital_id], references: [hospital_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_disp_hospital")
+  paciente Paciente? @relation(fields: [paciente_id], references: [paciente_id], onDelete: SetNull, onUpdate: Cascade, map: "fk_disp_paciente")
+  sensores Sensor[]
+
+  @@unique([codigo], map: "uq_dispositivo_codigo")
+  @@index([hospital_id], map: "ix_disp_hospital")
+  @@index([paciente_id], map: "ix_disp_paciente")
+  @@map("dispositivo")
+}
+
+enum EstadoSensor {
+  activo
+  inactivo
+  fallo
+}
+
+model Sensor {
+  sensor_id       Int          @id @default(autoincrement()) @db.UnsignedInt
+  dispositivo_id  Int          @db.UnsignedInt
+  modelo          String?      @db.VarChar(80)
+  variable_medida String       @db.VarChar(60)
+  unidad          String       @db.VarChar(20)
+  estado          EstadoSensor @default(activo)
+
+  dispositivo Dispositivo @relation(fields: [dispositivo_id], references: [dispositivo_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_sensor_dispositivo")
+  lecturas    Lectura[]
+  // Agregados del ETL (backend/etl/), no del modelo operativo.
+  lecturas_hora LecturaHora[]
+  alertas_dia   AlertaDia[]
+
+  @@unique([dispositivo_id, variable_medida], map: "uq_sensor_disp_var")
+  @@map("sensor")
+}
+
+model Lectura {
+  lectura_id   BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  sensor_id    Int      @db.UnsignedInt
+  valor        Decimal  @db.Decimal(12, 4)
+  fecha_hora   DateTime @default(now()) @db.DateTime(3)
+  hash_sha256  String   @db.Char(64)
+  sincronizada Boolean  @default(false)
+
+  sensor  Sensor   @relation(fields: [sensor_id], references: [sensor_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_lectura_sensor")
+  alertas Alerta[]
+
+  @@unique([hash_sha256], map: "uq_lectura_hash")
+  @@index([sensor_id, fecha_hora], map: "ix_lectura_sensor_fecha")
+  @@index([sincronizada, fecha_hora], map: "ix_lectura_pendiente")
+  @@map("lectura")
+}
+
+enum SeveridadAlerta {
+  baja
+  media
+  alta
+  critica
+}
+
+enum EstadoAlerta {
+  abierta
+  reconocida
+  resuelta
+}
+
+/// El CHECK `ck_alerta_resolucion` (fecha_resolucion >= fecha_hora) no se puede
+/// expresar en Prisma; vive en `db/extra.sql`.
+model Alerta {
+  alerta_id        BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  lectura_id       BigInt          @db.UnsignedBigInt
+  tipo             String          @db.VarChar(60)
+  severidad        SeveridadAlerta
+  mensaje          String?         @db.VarChar(255)
+  estado           EstadoAlerta    @default(abierta)
+  fecha_hora       DateTime        @default(now()) @db.DateTime(0)
+  fecha_resolucion DateTime?       @db.DateTime(0)
+
+  lectura        Lectura        @relation(fields: [lectura_id], references: [lectura_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_alerta_lectura")
+  notificaciones Notificacion[]
+
+  @@index([lectura_id], map: "ix_alerta_lectura")
+  @@index([estado, severidad, fecha_hora], map: "ix_alerta_estado_sev")
+  @@map("alerta")
+}
+
+enum CanalNotificacion {
+  email
+  sms
+  push
+  panel
+}
+
+enum EstadoEnvio {
+  pendiente
+  enviado
+  fallido
+  leido
+}
+
+model Notificacion {
+  notificacion_id BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  alerta_id       BigInt            @db.UnsignedBigInt
+  usuario_id      Int               @db.UnsignedInt
+  canal           CanalNotificacion
+  fecha_envio     DateTime          @default(now()) @db.DateTime(0)
+  estado_envio    EstadoEnvio       @default(pendiente)
+
+  alerta  Alerta  @relation(fields: [alerta_id], references: [alerta_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_notif_alerta")
+  usuario Usuario @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_notif_usuario")
+
+  @@index([alerta_id], map: "ix_notif_alerta")
+  @@index([usuario_id, estado_envio], map: "ix_notif_usuario_estado")
+  @@map("notificacion")
+}
+
+enum AccionAuditoria {
+  INSERT
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  LOGIN_BLOCKED
+}
+
+model Auditoria {
+  auditoria_id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  usuario_id   Int?   @db.UnsignedInt
+  entidad      String @db.VarChar(60)
+  registro_id  BigInt @db.UnsignedBigInt
+  /// LOGIN_BLOCKED lo escribe el límite de intentos de `/auth/login`. No es una
+  /// acción del usuario sino un evento de seguridad, y vive aquí para que la
+  /// detección de fuerza bruta lea de una sola bitácora.
+  accion      AccionAuditoria
+  fecha_hora  DateTime        @default(now()) @db.DateTime(0)
+  observacion String?         @db.Text
+
+  usuario Usuario? @relation(fields: [usuario_id], references: [usuario_id], onDelete: SetNull, onUpdate: Cascade, map: "fk_audit_usuario")
+
+  @@index([entidad, registro_id], map: "ix_audit_entidad_registro")
+  @@index([usuario_id, fecha_hora], map: "ix_audit_usuario_fecha")
+  @@map("auditoria")
+}
+
+// ---------------------------------------------------------------------------
+// Datamart del ETL (backend/etl/)
+//
+// Estas tres tablas NO las escribe la aplicación: las llena el proceso ETL a
+// partir de `lectura` y `alerta`. Son datos derivados —se pueden borrar y
+// reconstruir corriendo el ETL desde cero— y por eso viven aparte del modelo
+// operativo aunque estén en la misma base.
+//
+// El motivo de existir es el tamaño: `lectura` crece una fila por segundo y por
+// sensor, y un tablero que pregunte "promedio de SpO2 por hora del último mes"
+// sobre la tabla cruda barre millones de renglones cada vez que alguien abre la
+// pantalla. Contra el agregado son cientos.
+// ---------------------------------------------------------------------------
+
+/// Una fila por sensor y por hora. La llave compuesta (sensor_id, hora) es lo
+/// que hace que el ETL se pueda repetir: reprocesar una hora reemplaza su fila
+/// en vez de duplicarla.
+model LecturaHora {
+  sensor_id  Int      @db.UnsignedInt
+  /// Inicio del bucket, truncado a la hora en punto.
+  hora       DateTime @db.DateTime(0)
+  muestras   Int      @db.UnsignedInt
+  valor_min  Decimal  @db.Decimal(12, 4)
+  valor_max  Decimal  @db.Decimal(12, 4)
+  valor_prom Decimal  @db.Decimal(12, 4)
+
+  sensor Sensor @relation(fields: [sensor_id], references: [sensor_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_lechora_sensor")
+
+  @@id([sensor_id, hora])
+  @@index([hora], map: "ix_lechora_hora")
+  @@map("lectura_hora")
+}
+
+/// Conteo de alertas por día, sensor y severidad. Mismo criterio de llave que
+/// `lectura_hora`: reprocesar un día lo reemplaza.
+model AlertaDia {
+  dia       DateTime        @db.Date
+  sensor_id Int             @db.UnsignedInt
+  severidad SeveridadAlerta
+  total     Int             @db.UnsignedInt
+
+  sensor Sensor @relation(fields: [sensor_id], references: [sensor_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_alertadia_sensor")
+
+  @@id([dia, sensor_id, severidad])
+  @@index([dia], map: "ix_alertadia_dia")
+  @@map("alerta_dia")
+}
+
+enum EstadoEtl {
+  ejecutando
+  completado
+  fallido
+}
+
+/// Bitácora de corridas del ETL, y a la vez su marca de agua: `marca_hasta` de
+/// la última corrida completada es desde dónde sigue la siguiente.
+///
+/// Es también lo que responde `GET /reports`: la pantalla de Reportes lista
+/// justamente esto —qué proceso, sobre qué fuente, cómo terminó y cuándo—.
+model EtlEjecucion {
+  ejecucion_id  BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  /// Identificador del proceso: "lecturas_hora", "alertas_dia".
+  proceso       String    @db.VarChar(60)
+  estado        EstadoEtl @default(ejecutando)
+  /// Ventana procesada. `marca_desde` nulo = carga inicial, sin marca previa.
+  marca_desde   DateTime? @db.DateTime(3)
+  marca_hasta   DateTime? @db.DateTime(3)
+  filas_leidas  Int       @default(0) @db.UnsignedInt
+  filas_escritas Int      @default(0) @db.UnsignedInt
+  /// El mensaje del fallo. Se guarda para que la pantalla de Reportes pueda
+  /// decir por qué quedó en rojo sin mandar a nadie a leer los logs.
+  error         String?   @db.Text
+  inicio        DateTime  @default(now()) @db.DateTime(3)
+  fin           DateTime? @db.DateTime(3)
+
+  @@index([proceso, estado, inicio], map: "ix_etl_proceso_estado")
+  @@map("etl_ejecucion")
+}
+
+// ---------------------------------------------------------------------------
+// Expediente clínico: Historia Clínica General y Notas SOAP
+//
+// Bloque autocontenido y aditivo: todo lo de aquí abajo es nuevo, y las únicas
+// líneas que toca de los modelos de arriba son las relaciones inversas que
+// Prisma exige (`Paciente.expediente`, `Paciente.notas_soap`,
+// `Usuario.notas_soap*`, `Usuario.cambios_historia`).
+//
+// La tabla `historia_clinica` que ya existía NO se modifica ni se sustituye:
+// sigue siendo la nota de evolución de un encuentro (diagnóstico / tratamiento
+// / observaciones de una atención concreta) y `routes/patients.ts` la ve igual.
+// Lo que se agrega es el expediente longitudinal —lo que es cierto del paciente
+// y no de una visita— y se expone junto a ella en /historia/:pacienteId, donde
+// las evoluciones son una categoría más.
+//
+// Por qué un `expediente_clinico` intermedio y no colgar ocho tablas de
+// `paciente`: da un único sitio donde vive la trazabilidad del expediente
+// (`historia_cambio`) y deja la relación con `paciente` en una sola línea, que
+// es lo que hace que este bloque se pueda mezclar sin pelearse con el resto del
+// esquema.
+// ---------------------------------------------------------------------------
+
+/// Cabecera del expediente: una fila por paciente, creada la primera vez que
+/// alguien escribe algo clínico. Las categorías cuelgan de aquí.
+model ExpedienteClinico {
+  expediente_id  Int      @id @default(autoincrement()) @db.UnsignedInt
+  paciente_id    Int      @unique(map: "uq_expediente_paciente") @db.UnsignedInt
+  /// Texto libre de enfermería. Es lo ÚNICO del expediente que un enfermero
+  /// puede escribir (ver src/routes/historia.ts); el resto es de médico.
+  observaciones  String?  @db.Text
+  fecha_apertura DateTime @default(now()) @db.DateTime(0)
+  actualizado_en DateTime @default(now()) @updatedAt @db.DateTime(0)
+
+  paciente          Paciente              @relation(fields: [paciente_id], references: [paciente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_expediente_paciente")
+  antecedentes      Antecedente[]
+  alergias          Alergia[]
+  medicamentos      MedicamentoPaciente[]
+  diagnosticos      DiagnosticoClinico[]
+  hospitalizaciones Hospitalizacion[]
+  procedimientos    Procedimiento[]
+  documentos        DocumentoClinico[]
+  cambios           HistoriaCambio[]
+
+  @@map("expediente_clinico")
+}
+
+enum TipoAntecedente {
+  personal
+  familiar
+  quirurgico
+  ginecoobstetrico
+  habito
+}
+
+/// Antecedentes personales y familiares. Un solo modelo con `tipo` en vez de
+/// dos tablas gemelas: las columnas son las mismas y la pantalla los agrupa por
+/// esa columna.
+model Antecedente {
+  antecedente_id Int             @id @default(autoincrement()) @db.UnsignedInt
+  expediente_id  Int             @db.UnsignedInt
+  tipo           TipoAntecedente
+  descripcion    String          @db.Text
+  /// Parentesco cuando `tipo = familiar` ("madre", "abuelo paterno").
+  parentesco     String?         @db.VarChar(60)
+  /// Año aproximado: muchos antecedentes no traen fecha exacta.
+  anio           Int?            @db.UnsignedSmallInt
+  registrado_por Int?            @db.UnsignedInt
+  fecha_registro DateTime        @default(now()) @db.DateTime(0)
+  activo         Boolean         @default(true)
+
+  expediente ExpedienteClinico @relation(fields: [expediente_id], references: [expediente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_antecedente_expediente")
+
+  @@index([expediente_id, tipo], map: "ix_antecedente_exp_tipo")
+  @@map("antecedente")
+}
+
+enum SeveridadReaccion {
+  leve
+  moderada
+  grave
+  anafilaxia
+}
+
+enum EstadoAlergia {
+  activa
+  resuelta
+  descartada
+}
+
+/// Alergias y reacciones adversas. `descartada` no se borra: que alguien haya
+/// descartado una alergia es información clínica, y borrarla haría repetir la
+/// prueba.
+model Alergia {
+  alergia_id      Int               @id @default(autoincrement()) @db.UnsignedInt
+  expediente_id   Int               @db.UnsignedInt
+  sustancia       String            @db.VarChar(150)
+  reaccion        String?           @db.Text
+  severidad       SeveridadReaccion @default(leve)
+  estado          EstadoAlergia     @default(activa)
+  fecha_deteccion DateTime?         @db.Date
+  registrado_por  Int?              @db.UnsignedInt
+  fecha_registro  DateTime          @default(now()) @db.DateTime(0)
+
+  expediente ExpedienteClinico @relation(fields: [expediente_id], references: [expediente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_alergia_expediente")
+
+  @@index([expediente_id, estado], map: "ix_alergia_exp_estado")
+  @@map("alergia")
+}
+
+enum EstadoMedicamento {
+  activo
+  suspendido
+  finalizado
+}
+
+/// Medicamentos. No hay dos tablas para "activos" e "historial farmacológico":
+/// son la misma fila en distinto `estado`, y separarlas obligaría a mover el
+/// renglón al suspender el tratamiento, que es justo cuando no se quiere perder
+/// el rastro.
+model MedicamentoPaciente {
+  medicamento_id    Int               @id @default(autoincrement()) @db.UnsignedInt
+  expediente_id     Int               @db.UnsignedInt
+  nombre            String            @db.VarChar(150)
+  dosis             String?           @db.VarChar(80)
+  via               String?           @db.VarChar(40)
+  frecuencia        String?           @db.VarChar(80)
+  indicacion        String?           @db.VarChar(255)
+  estado            EstadoMedicamento @default(activo)
+  fecha_inicio      DateTime?         @db.Date
+  fecha_fin         DateTime?         @db.Date
+  /// Por qué se suspendió. Sin esto el historial dice que se dejó de dar, pero
+  /// no si fue por reacción adversa o porque terminó el esquema.
+  motivo_suspension String?           @db.VarChar(255)
+  registrado_por    Int?              @db.UnsignedInt
+  fecha_registro    DateTime          @default(now()) @db.DateTime(0)
+
+  expediente ExpedienteClinico @relation(fields: [expediente_id], references: [expediente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_medicamento_expediente")
+
+  @@index([expediente_id, estado], map: "ix_medicamento_exp_estado")
+  @@map("medicamento_paciente")
+}
+
+enum TipoDiagnostico {
+  presuntivo
+  definitivo
+  diferencial
+}
+
+enum EstadoDiagnostico {
+  activo
+  resuelto
+  descartado
+}
+
+/// Diagnósticos del expediente. `cie10` es opcional a propósito: se registra el
+/// diagnóstico aunque todavía no se haya codificado.
+model DiagnosticoClinico {
+  diagnostico_id    Int               @id @default(autoincrement()) @db.UnsignedInt
+  expediente_id     Int               @db.UnsignedInt
+  cie10             String?           @db.VarChar(10)
+  descripcion       String            @db.VarChar(255)
+  tipo              TipoDiagnostico   @default(presuntivo)
+  estado            EstadoDiagnostico @default(activo)
+  fecha_diagnostico DateTime?         @db.Date
+  notas             String?           @db.Text
+  registrado_por    Int?              @db.UnsignedInt
+  fecha_registro    DateTime          @default(now()) @db.DateTime(0)
+
+  expediente ExpedienteClinico @relation(fields: [expediente_id], references: [expediente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_diagnostico_expediente")
+
+  @@index([expediente_id, estado], map: "ix_diagnostico_exp_estado")
+  @@map("diagnostico_clinico")
+}
+
+/// Hospitalizaciones previas y la actual. Es historia del paciente, no gestión
+/// de camas: `fecha_egreso` nulo = sigue internado.
+model Hospitalizacion {
+  hospitalizacion_id Int       @id @default(autoincrement()) @db.UnsignedInt
+  expediente_id      Int       @db.UnsignedInt
+  motivo             String    @db.VarChar(255)
+  servicio           String?   @db.VarChar(120)
+  establecimiento    String?   @db.VarChar(150)
+  fecha_ingreso      DateTime  @db.Date
+  fecha_egreso       DateTime? @db.Date
+  resumen_egreso     String?   @db.Text
+  registrado_por     Int?      @db.UnsignedInt
+  fecha_registro     DateTime  @default(now()) @db.DateTime(0)
+
+  expediente ExpedienteClinico @relation(fields: [expediente_id], references: [expediente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_hospitalizacion_expediente")
+
+  @@index([expediente_id, fecha_ingreso], map: "ix_hospitalizacion_exp_fecha")
+  @@map("hospitalizacion")
+}
+
+/// Procedimientos y cirugías.
+model Procedimiento {
+  procedimiento_id Int       @id @default(autoincrement()) @db.UnsignedInt
+  expediente_id    Int       @db.UnsignedInt
+  nombre           String    @db.VarChar(200)
+  codigo           String?   @db.VarChar(20)
+  fecha            DateTime? @db.Date
+  descripcion      String?   @db.Text
+  resultado        String?   @db.Text
+  registrado_por   Int?      @db.UnsignedInt
+  fecha_registro   DateTime  @default(now()) @db.DateTime(0)
+
+  expediente ExpedienteClinico @relation(fields: [expediente_id], references: [expediente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_procedimiento_expediente")
+
+  @@index([expediente_id, fecha], map: "ix_procedimiento_exp_fecha")
+  @@map("procedimiento")
+}
+
+enum TipoDocumento {
+  laboratorio
+  imagenologia
+  consentimiento
+  interconsulta
+  receta
+  otro
+}
+
+/// Metadatos de un documento clínico adjunto.
+///
+/// PENDIENTE: aquí solo vive la ficha del documento; el archivo NO se guarda ni
+/// se sirve todavía. `almacenamiento` es el nombre del backend de archivos
+/// ("s3", "minio", "disco") y `ruta` la llave dentro de él. Cuando exista ese
+/// servicio se enchufa ahí: subida multipart en POST /historia/:id/documentos y
+/// descarga por URL firmada. El binario no va en la base.
+model DocumentoClinico {
+  documento_id    Int           @id @default(autoincrement()) @db.UnsignedInt
+  expediente_id   Int           @db.UnsignedInt
+  tipo            TipoDocumento @default(otro)
+  titulo          String        @db.VarChar(200)
+  descripcion     String?       @db.Text
+  /// PENDIENTE: lo llena el servicio de almacenamiento; nulo = ficha sin archivo.
+  almacenamiento  String?       @db.VarChar(40)
+  ruta            String?       @db.VarChar(500)
+  mime            String?       @db.VarChar(120)
+  tamano_bytes    BigInt?       @db.UnsignedBigInt
+  hash_sha256     String?       @db.Char(64)
+  fecha_documento DateTime?     @db.Date
+  registrado_por  Int?          @db.UnsignedInt
+  fecha_registro  DateTime      @default(now()) @db.DateTime(0)
+
+  expediente ExpedienteClinico @relation(fields: [expediente_id], references: [expediente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_documento_expediente")
+
+  @@index([expediente_id, tipo], map: "ix_documento_exp_tipo")
+  @@map("documento_clinico")
+}
+
+enum AccionHistoria {
+  alta
+  modificacion
+  baja
+}
+
+/// Historial de cambios del expediente, con trazabilidad.
+///
+/// Es distinto de `auditoria` y las dos se escriben en la misma transacción:
+/// `auditoria` es la bitácora transversal del sistema —quién tocó qué registro
+/// de qué tabla— y esta es el historial que se lee DENTRO del expediente, por
+/// categoría y en orden, sin exigir permiso de auditoría ni filtrar la bitácora
+/// general.
+model HistoriaCambio {
+  cambio_id     BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  expediente_id Int            @db.UnsignedInt
+  /// La categoría tal como la nombra la API: "alergias", "medicamentos", …
+  categoria     String         @db.VarChar(40)
+  /// Id del renglón dentro de esa categoría.
+  registro_id   BigInt         @db.UnsignedBigInt
+  accion        AccionHistoria
+  usuario_id    Int?           @db.UnsignedInt
+  fecha_hora    DateTime       @default(now()) @db.DateTime(0)
+  detalle       String?        @db.Text
+
+  expediente ExpedienteClinico @relation(fields: [expediente_id], references: [expediente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_histcambio_expediente")
+  usuario    Usuario?          @relation(fields: [usuario_id], references: [usuario_id], onDelete: SetNull, onUpdate: Cascade, map: "fk_histcambio_usuario")
+
+  @@index([expediente_id, fecha_hora], map: "ix_histcambio_exp_fecha")
+  @@index([usuario_id], map: "ix_histcambio_usuario")
+  @@map("historia_cambio")
+}
+
+enum EstadoNotaSoap {
+  borrador
+  firmada
+}
+
+/// Nota SOAP: subjetivo, objetivo, análisis y plan, atada a su autor y su hora.
+///
+/// Una vez firmada NO se edita —el backend rechaza PUT/PATCH sobre una nota en
+/// `firmada`— y una corrección se hace con una nota nueva que apunta a la
+/// original por `nota_padre_id`. Ese es el modelo del addendum: no hay forma de
+/// reescribir lo que alguien firmó, solo de añadirle algo que también queda
+/// firmado por quien lo escribe.
+model NotaSoap {
+  nota_id       BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  paciente_id   Int            @db.UnsignedInt
+  /// El médico que la escribe. Es también el único que puede firmarla.
+  usuario_id    Int            @db.UnsignedInt
+  /// No nulo = esta nota es un addendum de `nota_padre_id`.
+  nota_padre_id BigInt?        @db.UnsignedBigInt
+  fecha_hora    DateTime       @default(now()) @db.DateTime(0)
+  subjetivo     String?        @db.Text
+  objetivo      String?        @db.Text
+  analisis      String?        @db.Text
+  plan          String?        @db.Text
+  estado        EstadoNotaSoap @default(borrador)
+  /// Quién firmó y cuándo. Hoy `firmada_por` es siempre `usuario_id` —solo el
+  /// autor firma— y se guarda igual: la firma es un hecho aparte de la autoría,
+  /// y si algún día se admite firma por delegación el dato ya está donde va.
+  firmada_por   Int?           @db.UnsignedInt
+  firmada_en    DateTime?      @db.DateTime(0)
+
+  paciente   Paciente   @relation(fields: [paciente_id], references: [paciente_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_nota_soap_paciente")
+  autor      Usuario    @relation("NotaSoapAutor", fields: [usuario_id], references: [usuario_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_nota_soap_autor")
+  firmante   Usuario?   @relation("NotaSoapFirmante", fields: [firmada_por], references: [usuario_id], onDelete: SetNull, onUpdate: NoAction, map: "fk_nota_soap_firmante")
+  nota_padre NotaSoap?  @relation("NotaSoapAddendum", fields: [nota_padre_id], references: [nota_id], onDelete: Restrict, onUpdate: NoAction, map: "fk_nota_soap_padre")
+  addenda    NotaSoap[] @relation("NotaSoapAddendum")
+
+  @@index([paciente_id, fecha_hora], map: "ix_nota_soap_paciente_fecha")
+  @@index([usuario_id], map: "ix_nota_soap_autor")
+  @@index([nota_padre_id], map: "ix_nota_soap_padre")
+  @@index([firmada_por], map: "ix_nota_soap_firmante")
+  @@map("nota_soap")
+}

@@ -1,0 +1,8 @@
+node_modules
+.env
+.git
+README.md
+docker-compose.yml
+Dockerfile
+# Se genera dentro de la imagen; el del host puede ser de otra plataforma.
+src/generated
