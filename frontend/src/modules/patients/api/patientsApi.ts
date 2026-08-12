@@ -1,60 +1,51 @@
-import type { NewPatient, Patient } from '../types'
+import { request, requestList } from '../../../shared/api/http'
+import type { ListResult } from '../../../shared/api/http'
+import type { NewPatient, Patient, PatientChanges } from '../types'
 
-// PENDIENTE: esta pantalla todavía trabaja sobre datos de ejemplo. El backend ya
-// expone `GET /patients` y `POST /patients`, así que falta cambiar estos cuerpos
-// por llamadas a `request`. El identificador y la hora de llegada los asigna el
-// servidor — nunca se mandan desde el navegador.
-let fixtures: Patient[] = [
-  {
-    id: 'p-001',
-    name: 'Yariela Sánchez',
-    document: '8-912-2044',
-    module: 'KY-012',
-    status: 'inService',
-    arrivedAt: '2026-07-25T07:40:00Z',
-    reason: 'Control de presión arterial',
-  },
-  {
-    id: 'p-002',
-    name: 'Ernesto Villalaz',
-    document: '4-731-1188',
-    module: 'KY-001',
-    status: 'waiting',
-    arrivedAt: '2026-07-25T08:05:00Z',
-    reason: 'Dolor abdominal',
-  },
-  {
-    id: 'p-003',
-    name: 'Damaris Quintero',
-    document: '3-118-9057',
-    module: 'KY-019',
-    status: 'discharged',
-    arrivedAt: '2026-07-25T06:15:00Z',
-    reason: 'Curación de herida',
-  },
-]
+// El despliegue atiende un solo hospital, igual que el alta de usuarios y el
+// catálogo de unidades, que también lo fijan en 1.
+const HOSPITAL_ID = 1
 
-let nextId = 4
+export type PatientQuery = {
+  page?: number
+  pageSize?: number
+}
 
-export async function listPatients(): Promise<Patient[]> {
-  await new Promise((resolve) => setTimeout(resolve, 300))
-  return fixtures
+// El identificador y la hora de llegada los asigna el servidor: nunca se mandan
+// desde el navegador.
+export async function listPatients(
+  query: PatientQuery = {},
+): Promise<ListResult<Patient>> {
+  const params = new URLSearchParams()
+  if (query.page !== undefined) params.set('page', String(query.page))
+  if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize))
+  const search = params.toString()
+  return requestList<Patient>(`/patients${search ? `?${search}` : ''}`)
+}
+
+export async function getPatient(id: string): Promise<Patient> {
+  return request<Patient>(`/patients/${id}`)
 }
 
 export async function addPatient(patient: NewPatient): Promise<Patient> {
-  await new Promise((resolve) => setTimeout(resolve, 300))
+  return request<Patient>('/patients', {
+    method: 'POST',
+    body: JSON.stringify({ ...patient, hospitalId: HOSPITAL_ID }),
+  })
+}
 
-  if (!patient.name.trim() || !patient.document.trim()) {
-    // The screen shows a translated message, so this one is for the log.
-    throw new Error('Name and document are required')
-  }
+// PATCH y no PUT: PUT exigiría reenviar la ficha entera para cambiar el estado.
+export async function updatePatient(
+  id: string,
+  changes: PatientChanges,
+): Promise<Patient> {
+  return request<Patient>(`/patients/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(changes),
+  })
+}
 
-  const created: Patient = {
-    ...patient,
-    id: `p-${String(nextId++).padStart(3, '0')}`,
-    status: 'waiting',
-    arrivedAt: new Date().toISOString(),
-  }
-  fixtures = [created, ...fixtures]
-  return created
+// El backend responde 204: el paciente no se borra, se marca inactivo.
+export async function removePatient(id: string): Promise<void> {
+  await request<void>(`/patients/${id}`, { method: 'DELETE' })
 }

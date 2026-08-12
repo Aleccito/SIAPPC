@@ -54,8 +54,13 @@ FROM (
   UNION ALL SELECT 'medico', 'reportes', TRUE, TRUE, FALSE, FALSE
 
   UNION ALL SELECT 'enfermero', 'pacientes', TRUE, FALSE, TRUE, FALSE
+  -- Enfermería lee el expediente y las notas SOAP, y no las escribe. Lo único
+  -- que puede escribir de la historia son las observaciones, y eso no es otra
+  -- casilla: es que PATCH /historia/:id/observaciones pide `ver` en vez de
+  -- `editar` (ver src/routes/historia.ts). Un hospital que quiera darle más —o
+  -- quitarle la lectura de las notas— mueve estas casillas, sin tocar código.
   UNION ALL SELECT 'enfermero', 'historia_clinica', TRUE, FALSE, FALSE, FALSE
-  UNION ALL SELECT 'enfermero', 'notas_soap', TRUE, TRUE, TRUE, FALSE
+  UNION ALL SELECT 'enfermero', 'notas_soap', TRUE, FALSE, FALSE, FALSE
   UNION ALL SELECT 'enfermero', 'monitoreo', TRUE, TRUE, TRUE, FALSE
   UNION ALL SELECT 'enfermero', 'dispositivos', TRUE, FALSE, FALSE, FALSE
   UNION ALL SELECT 'enfermero', 'alertas', TRUE, FALSE, TRUE, FALSE
@@ -69,8 +74,12 @@ FROM (
   UNION ALL SELECT 'administrativo', 'configuracion', TRUE, FALSE, FALSE, FALSE
 
   UNION ALL SELECT 'admin', 'pacientes', TRUE, TRUE, TRUE, TRUE
-  UNION ALL SELECT 'admin', 'historia_clinica', TRUE, TRUE, TRUE, TRUE
-  UNION ALL SELECT 'admin', 'notas_soap', TRUE, TRUE, TRUE, TRUE
+  -- El administrador del sistema NO es personal clínico: sobre el expediente y
+  -- las notas SOAP solo lee, para poder auditar. Darle `crear`/`editar` haría
+  -- que una cuenta técnica pudiera firmar contenido clínico, que es justo lo
+  -- que la firma tiene que impedir.
+  UNION ALL SELECT 'admin', 'historia_clinica', TRUE, FALSE, FALSE, FALSE
+  UNION ALL SELECT 'admin', 'notas_soap', TRUE, FALSE, FALSE, FALSE
   UNION ALL SELECT 'admin', 'monitoreo', TRUE, TRUE, TRUE, TRUE
   UNION ALL SELECT 'admin', 'dispositivos', TRUE, TRUE, TRUE, TRUE
   UNION ALL SELECT 'admin', 'alertas', TRUE, TRUE, TRUE, TRUE

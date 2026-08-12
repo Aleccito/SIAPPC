@@ -1,4 +1,0 @@
-smbus2
-paho-mqtt
-adafruit-circuitpython-ads1x15
-numpy

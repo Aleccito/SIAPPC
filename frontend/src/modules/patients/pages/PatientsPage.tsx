@@ -26,8 +26,8 @@ import {
 } from '@mui/material'
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined'
 import { addPatient, listPatients } from '../api/patientsApi'
-import { serviceModules } from '../types'
-import type { Patient, PatientStatus, ServiceModule } from '../types'
+import { serviceModules, sexes } from '../types'
+import type { Patient, PatientStatus, ServiceModule, Sex } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 import { usePageHeader } from '../../../app/pageHeader'
@@ -49,6 +49,14 @@ const emptyForm = {
   document: '',
   module: serviceModules[0] as ServiceModule,
   reason: '',
+  fechaNacimiento: '',
+  sexo: 'M' as Sex,
+}
+
+const sexKey: Record<Sex, StringKey> = {
+  M: 'patients.sex.M',
+  F: 'patients.sex.F',
+  O: 'patients.sex.O',
 }
 
 export function PatientsPage() {
@@ -62,7 +70,7 @@ export function PatientsPage() {
 
   const { data, isPending } = useQuery({
     queryKey: ['patients'],
-    queryFn: listPatients,
+    queryFn: () => listPatients(),
   })
 
   const mutation = useMutation({
@@ -74,7 +82,7 @@ export function PatientsPage() {
     },
   })
 
-  const visible = data?.filter(
+  const visible = data?.items.filter(
     (patient) => moduleFilter === 'all' || patient.module === moduleFilter,
   )
 
@@ -226,6 +234,34 @@ export function PatientsPage() {
                 minRows={2}
                 fullWidth
               />
+              {/* El expediente no se abre sin fecha de nacimiento ni sexo: la
+                  tabla `paciente` los exige y el backend los valida. */}
+              <TextField
+                label={t('patients.form.birthDate')}
+                type="date"
+                value={form.fechaNacimiento}
+                onChange={(event) =>
+                  setForm({ ...form, fechaNacimiento: event.target.value })
+                }
+                slotProps={{ inputLabel: { shrink: true } }}
+                required
+                fullWidth
+              />
+              <TextField
+                label={t('patients.form.sex')}
+                value={form.sexo}
+                onChange={(event) =>
+                  setForm({ ...form, sexo: event.target.value as Sex })
+                }
+                select
+                fullWidth
+              >
+                {sexes.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    {t(sexKey[value])}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -236,7 +272,11 @@ export function PatientsPage() {
               type="submit"
               variant="contained"
               disabled={
-                mutation.isPending || !form.name.trim() || !form.document.trim()
+                mutation.isPending ||
+                !form.name.trim() ||
+                !form.document.trim() ||
+                !form.reason.trim() ||
+                !form.fechaNacimiento
               }
             >
               {t('patients.form.submit')}

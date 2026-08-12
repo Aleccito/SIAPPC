@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Monitor de signos vitales
-Comment=Arranca el monitor al iniciar el escritorio
-Exec=/home/pi/siappc/iot/.venv/bin/python /home/pi/siappc/iot/monitor/main.py
-Path=/home/pi/siappc/iot/monitor
-Terminal=false
-X-GNOME-Autostart-enabled=true

@@ -289,12 +289,11 @@ Con `docker compose up` quedan operativos, contra la base real:
 - **Usuarios** — alta, edición, cambio de rol, actividad por usuario
 - **Roles y permisos** — matriz de permisos por módulo, historial de cambios
 - **Auditoría** — bitácora de acciones, filtrable por entidad
-- **Pacientes** — la API existe (`GET/POST /patients`); la pantalla todavía usa
-  datos de prueba en el navegador
+- **Pacientes** — registro y consulta de la sala de espera contra `/patients`
 - **Sensores y alertas** — lecturas y alertas que entran por MQTT desde la Pi
 
 Siguen siendo maquetas sin servidor detrás: **Power BI**, **FlexSim**,
-**Reportes**, **recuperación de contraseña** y la pantalla de **Pacientes**. El
+**Reportes** y **recuperación de contraseña**. El
 detalle está en [frontend/README.md](frontend/README.md).
 
 ## IoT

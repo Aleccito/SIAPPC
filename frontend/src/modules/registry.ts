@@ -11,6 +11,7 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import PrecisionManufacturingOutlinedIcon from '@mui/icons-material/PrecisionManufacturingOutlined'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import SensorsOutlinedIcon from '@mui/icons-material/SensorsOutlined'
+import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined'
 import type { Role } from './auth/types'
 import type { StringKey } from '../shared/i18n/dictionary'
 
@@ -79,6 +80,19 @@ export const modules: NavEntry[] = [
     icon: MonitorHeartOutlinedIcon,
     lazy: async () => ({
       Component: (await import('./patients/pages/PatientsPage')).PatientsPage,
+    }),
+  },
+  // Expediente clínico. Va junto a Pacientes y no dentro de él porque son dos
+  // cosas distintas: Pacientes es la sala de espera —quién llegó y a qué
+  // módulo— y esto es el expediente, que se abre eligiendo al paciente y no
+  // tiene sentido sin uno. No lleva `requiredRole`: quién entra lo decide
+  // `rol_permiso` en el servidor, y la pantalla muestra el 403 que devuelva.
+  {
+    path: '/expediente',
+    label: 'nav.clinical',
+    icon: FolderSharedOutlinedIcon,
+    lazy: async () => ({
+      Component: (await import('./clinical/pages/ExpedientePage')).ExpedientePage,
     }),
   },
   {

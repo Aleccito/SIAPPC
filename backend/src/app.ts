@@ -13,7 +13,10 @@ import auditRoutes from "./routes/audit.ts";
 import catalogRoutes from "./routes/catalogs.ts";
 import patientsRoutes from "./routes/patients.ts";
 import sensorsRoutes from "./routes/sensors.ts";
+import soapRoutes from "./routes/soap.ts";
+import historiaRoutes from "./routes/historia.ts";
 import reportsRoutes from "./routes/reports.ts";
+import dashboardRoutes from "./routes/dashboard.ts";
 
 export async function buildApp() {
   const app = Fastify({
@@ -80,7 +83,10 @@ export async function buildApp() {
   await app.register(catalogRoutes);
   await app.register(patientsRoutes);
   await app.register(sensorsRoutes);
+  await app.register(soapRoutes);
+  await app.register(historiaRoutes);
   await app.register(reportsRoutes);
+  await app.register(dashboardRoutes);
 
   return app;
 }
