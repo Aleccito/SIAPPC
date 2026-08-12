@@ -26,6 +26,21 @@ declare module "@fastify/jwt" {
 }
 
 declare module "fastify" {
+  interface FastifyRequest {
+    /**
+     * Hospital al que pertenece la cuenta de la sesión.
+     *
+     * Lo pone `authenticate` desde la base, NO el cuerpo de la petición: el
+     * hospital de un registro no es una preferencia del cliente. Antes cada
+     * alta lo recibía del navegador —`hospitalId` en el JSON, con un 1 fijo en
+     * el frontend—, así que una petición hecha a mano podía dar de alta un
+     * paciente, una unidad o una cuenta en un hospital ajeno.
+     *
+     * Está en todas las rutas que pasan por `authenticate`, y solo en ellas.
+     */
+    hospitalId: number;
+  }
+
   interface FastifyInstance {
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requirePermission: (
@@ -60,16 +75,20 @@ async function authPlugin(app: FastifyInstance) {
       return reply.code(401).send({ error: "No autorizado" });
     }
 
+    // `hospital_id` viaja en la misma consulta que ya se hacía para comprobar
+    // `activo`: no cuesta una ida más a la base.
     const cuenta = await prisma.usuario.findUnique({
       where: { usuario_id: Number(req.user.sub) },
-      select: { activo: true },
+      select: { activo: true, hospital_id: true },
     });
 
     // Mismo 401 para la cuenta suspendida y para la que ya no existe: en los dos
     // casos el token es válido y la sesión no.
     if (!cuenta?.activo) {
-      reply.code(401).send({ error: "No autorizado" });
+      return reply.code(401).send({ error: "No autorizado" });
     }
+
+    req.hospitalId = cuenta.hospital_id;
   });
 
   // Usage: { preHandler: [app.authenticate, app.requirePermission("usuarios", "crear")] }

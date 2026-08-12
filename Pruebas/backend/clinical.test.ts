@@ -1,7 +1,7 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/app.ts";
+import { buildApp } from "../../backend/src/app.ts";
 import { authHeader, closeConnections, flushRedis, loginAsAdmin, resetDatabase } from "./helpers.ts";
 
 // Notas SOAP e Historia Clínica General.
@@ -23,7 +23,6 @@ const PACIENTE = {
   document: "C-SOAP-1",
   module: "KY-001",
   reason: "Disnea",
-  hospitalId: 1,
   fechaNacimiento: "1971-03-02",
   sexo: "F",
 } as const;

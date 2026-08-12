@@ -46,7 +46,9 @@ const createUserSchema = z.object({
   phone: z.string().max(30).optional(),
   role: z.string().min(1),
   unitId: z.number().int().positive().optional(),
-  hospitalId: z.number().int().positive().default(1),
+  // Sin `hospitalId`: la cuenta nueva nace en el hospital de quien la crea, y
+  // eso lo pone `authenticate` desde la sesión (ver src/plugins/auth.ts). Un
+  // administrador no da de alta personal de otro hospital desde su pantalla.
 });
 
 const updateUserSchema = z.object({
@@ -75,9 +77,13 @@ async function findRoleId(role: string): Promise<number> {
   return row.rol_id;
 }
 
-async function findUser(id: number): Promise<UsuarioConRelaciones> {
-  const row = await prisma.usuario.findUnique({
-    where: { usuario_id: id },
+// Acotada al hospital de quien pregunta: por aquí pasan la ficha, la edición y
+// la suspensión, así que una cuenta de otro hospital no se lee ni se toca.
+// Responde 404 y no 403 por lo mismo que en /patients: "existe pero no es
+// tuyo" ya confirma que ese correo está dado de alta en algún sitio.
+async function findUser(id: number, hospitalId: number): Promise<UsuarioConRelaciones> {
+  const row = await prisma.usuario.findFirst({
+    where: { usuario_id: id, hospital_id: hospitalId },
     include: USER_INCLUDE,
   });
   if (!row) throw notFound("Usuario no encontrado");
@@ -109,8 +115,11 @@ export default async function usersRoutes(app: FastifyInstance) {
   // pantalla ya se hubiera bloqueado en el navegador.
   app.addHook("preHandler", app.authenticate);
 
-  app.get("/users", { preHandler: [app.requirePermission("usuarios", "ver")] }, async () => {
+  app.get("/users", { preHandler: [app.requirePermission("usuarios", "ver")] }, async (req) => {
+    // Solo el personal de este hospital. El permiso `usuarios` dice que puedes
+    // administrar cuentas; no dice de cuál institución.
     const rows = await prisma.usuario.findMany({
+      where: { hospital_id: req.hospitalId },
       include: USER_INCLUDE,
       orderBy: { nombre: "asc" },
     });
@@ -122,7 +131,7 @@ export default async function usersRoutes(app: FastifyInstance) {
     { preHandler: [app.requirePermission("usuarios", "ver")] },
     async (req) => {
       const { id } = parseOr400(z.object({ id: z.coerce.number().int().positive() }), req.params);
-      return toUser(await findUser(id));
+      return toUser(await findUser(id, req.hospitalId));
     },
   );
 
@@ -130,10 +139,7 @@ export default async function usersRoutes(app: FastifyInstance) {
     "/users",
     { preHandler: [app.requirePermission("usuarios", "crear")] },
     async (req, reply) => {
-      const { name, email, phone, role, unitId, hospitalId } = parseOr400(
-        createUserSchema,
-        req.body,
-      );
+      const { name, email, phone, role, unitId } = parseOr400(createUserSchema, req.body);
 
       const rolId = await findRoleId(role);
 
@@ -149,7 +155,7 @@ export default async function usersRoutes(app: FastifyInstance) {
       const created = await prisma.$transaction(async (tx) => {
         const row = await tx.usuario.create({
           data: {
-            hospital_id: hospitalId,
+            hospital_id: req.hospitalId,
             rol_id: rolId,
             unidad_id: unitId ?? null,
             nombre: name,
@@ -193,6 +199,12 @@ export default async function usersRoutes(app: FastifyInstance) {
       const { id } = parseOr400(z.object({ id: z.coerce.number().int().positive() }), req.params);
       const { days } = parseOr400(activityQuerySchema, req.query);
 
+      // Que la cuenta sea de este hospital se comprueba ANTES de leer su
+      // actividad: si no, un identificador ajeno devolvía la bitácora de
+      // personal de otra institución, que es lo mismo que /audit sin filtro
+      // pero por la puerta de al lado.
+      await findUser(id, req.hospitalId);
+
       // La ventana se calcula contra el reloj de la base y no el de Node: los
       // dos procesos pueden estar en zonas distintas y la bitácora se guarda
       // con la hora del servidor de base de datos.
@@ -235,7 +247,7 @@ export default async function usersRoutes(app: FastifyInstance) {
       // aplicó el cambio, y después del UPDATE ya no se sabe cómo estaba. De
       // paso, un id inexistente se corta aquí en vez de tras un UPDATE que no
       // afectó ningún renglón.
-      const target = await findUser(id);
+      const target = await findUser(id, req.hospitalId);
 
       const data: Record<string, unknown> = {};
       // Qué se cambió, en prosa, que es como la pantalla de Auditoría muestra
@@ -301,7 +313,7 @@ export default async function usersRoutes(app: FastifyInstance) {
     { preHandler: [app.requirePermission("usuarios", "eliminar")] },
     async (req, reply) => {
       const { id } = parseOr400(z.object({ id: z.coerce.number().int().positive() }), req.params);
-      const target = await findUser(id);
+      const target = await findUser(id, req.hospitalId);
       await assertNotLastAdmin(id);
 
       await prisma.$transaction(async (tx) => {

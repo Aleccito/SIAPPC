@@ -79,7 +79,16 @@ export type CrudConfig<TRow, TDto, TCreate, TUpdate> = {
   toUpdateData: (input: TUpdate, req: FastifyRequest) => Record<string, unknown>;
   /** Filtro, orden y relaciones comunes a lista y consulta por id. */
   query?: {
-    where?: Record<string, unknown>;
+    /**
+     * Constante, o una función de la petición cuando el filtro depende de
+     * QUIÉN pregunta —el caso del hospital—.
+     *
+     * Se aplica a la lista, al conteo y a la consulta por id, y como esos dos
+     * últimos son los que usan PATCH, PUT y DELETE antes de escribir, un
+     * registro fuera del filtro no se lee NI se modifica: responde 404, que es
+     * lo correcto —existir en otro hospital es indistinguible de no existir—.
+     */
+    where?: Record<string, unknown> | ((req: FastifyRequest) => Record<string, unknown>);
     orderBy?: unknown;
     include?: Record<string, unknown>;
   };
@@ -118,11 +127,15 @@ export function registerCrud<TRow, TDto, TCreate, TUpdate>(
     return modulo ? [app.requirePermission(modulo, accion)] : [];
   };
 
-  const baseWhere = query.where ?? {};
+  // Se resuelve por petición y no una vez al registrar la ruta: con el filtro
+  // congelado en el arranque, uno que dependa de la sesión sería siempre el de
+  // quien arrancó el proceso, que no es nadie.
+  const whereFor = (req: FastifyRequest): Record<string, unknown> =>
+    typeof query.where === "function" ? query.where(req) : (query.where ?? {});
 
-  async function findById(id: number): Promise<TRow> {
+  async function findById(id: number, req: FastifyRequest): Promise<TRow> {
     const row = (await delegate(prisma, model).findFirst({
-      where: { ...baseWhere, [idField]: id },
+      where: { ...whereFor(req), [idField]: id },
       include: query.include,
     })) as TRow | null;
     if (!row) throw notFound(`No existe ${auditEntity} con id ${id}`);
@@ -138,6 +151,7 @@ export function registerCrud<TRow, TDto, TCreate, TUpdate>(
     // Sin `pageSize` la lista sale completa: es como la pide hoy el navegador y
     // cambiar el valor por defecto rompería las pantallas que no paginan.
     const pagination = pageSize ? { skip: page * pageSize, take: pageSize } : {};
+    const baseWhere = whereFor(req);
     const [rows, total] = await Promise.all([
       delegate(prisma, model).findMany({
         where: baseWhere,
@@ -155,7 +169,7 @@ export function registerCrud<TRow, TDto, TCreate, TUpdate>(
   });
 
   app.get(`${path}/:id`, { preHandler: guard("ver") }, async (req) =>
-    config.toDto(await findById(paramId(req))),
+    config.toDto(await findById(paramId(req), req)),
   );
 
   app.post(path, { preHandler: guard("crear") }, async (req, reply) => {
@@ -196,7 +210,7 @@ export function registerCrud<TRow, TDto, TCreate, TUpdate>(
       // Se lee ANTES de tocarlo: la bitácora necesita saber sobre qué se aplicó
       // el cambio, y después del UPDATE ya no se sabe cómo estaba. De paso, un
       // id inexistente se corta aquí y no tras un UPDATE que no afectó nada.
-      const before = await findById(id);
+      const before = await findById(id, req);
       const data = toData(parseOr400(schema, req.body), req);
 
       return config.toDto(
@@ -223,7 +237,7 @@ export function registerCrud<TRow, TDto, TCreate, TUpdate>(
 
   app.delete(`${path}/:id`, { preHandler: guard("eliminar") }, async (req, reply) => {
     const id = paramId(req);
-    const before = await findById(id);
+    const before = await findById(id, req);
 
     await prisma.$transaction(async (tx) => {
       const d = delegate(tx, model);

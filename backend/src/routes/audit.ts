@@ -38,8 +38,22 @@ type AuditRawRow = {
 //
 // Los valores nunca se concatenan: `Prisma.sql` los manda como parámetros, uno
 // por cada `${}`. Lo único que se arma como texto es la unión de condiciones.
-function buildWhere(filters: z.infer<typeof querySchema>): Prisma.Sql {
-  const conditions: Prisma.Sql[] = [];
+/**
+ * `hospitalId` NO es un filtro de la pantalla: es el recorte obligatorio por
+ * hospital, y por eso entra como argumento aparte y no dentro de `filters`.
+ *
+ * Las filas con `usuario_id` nulo se dejan ver. Son los LOGIN_BLOCKED de un
+ * correo que no existe (ver src/routes/auth.ts): no pertenecen a ningún
+ * hospital, no revelan nada de otro —su contenido es la IP y un correo que no
+ * está dado de alta— y esconderlas borraría justo el rastro de fuerza bruta que
+ * la bitácora existe para enseñar.
+ */
+function buildWhere(filters: z.infer<typeof querySchema>, hospitalId: number): Prisma.Sql {
+  const conditions: Prisma.Sql[] = [
+    Prisma.sql`(a.usuario_id IS NULL OR a.usuario_id IN (
+      SELECT u2.usuario_id FROM usuario u2 WHERE u2.hospital_id = ${hospitalId}
+    ))`,
+  ];
   if (filters.userId !== undefined) conditions.push(Prisma.sql`a.usuario_id = ${filters.userId}`);
   if (filters.entity) conditions.push(Prisma.sql`a.entidad = ${filters.entity}`);
   if (filters.action) conditions.push(Prisma.sql`a.accion = ${filters.action}`);
@@ -67,7 +81,7 @@ export default async function auditRoutes(app: FastifyInstance) {
 
   app.get("/audit", { preHandler: [app.requirePermission("auditoria", "ver")] }, async (req) => {
     const filters = parseOr400(querySchema, req.query);
-    const where = buildWhere(filters);
+    const where = buildWhere(filters, req.hospitalId);
     const { page, pageSize } = filters;
 
     // El log crece sin límite, así que se pagina en el servidor: la pantalla
@@ -98,8 +112,13 @@ export default async function auditRoutes(app: FastifyInstance) {
   app.get(
     "/audit/entities",
     { preHandler: [app.requirePermission("auditoria", "ver")] },
-    async () => {
+    async (req) => {
+      // Mismo recorte que el listado: las opciones del filtro no pueden delatar
+      // que en otro hospital se tocan entidades que aquí no existen.
       const rows = await prisma.auditoria.findMany({
+        where: {
+          OR: [{ usuario_id: null }, { usuario: { hospital_id: req.hospitalId } }],
+        },
         distinct: ["entidad"],
         select: { entidad: true },
         orderBy: { entidad: "asc" },

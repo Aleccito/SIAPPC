@@ -135,9 +135,23 @@ export function LoginPage() {
         }}
       >
         {/* La versión con lema usa text.secondary, ilegible sobre el azul
-            marino. El lema ya lo dice el titular de abajo. */}
+            marino, así que el lema se pone aparte con el gris del shell. Es
+            lo que explica qué significan las siglas SIAPPC. */}
         <Box sx={{ color: sidebar.text }}>
           <BrandMark withTagline={false} variant="onBlue" />
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              mt: 1,
+              maxWidth: '48ch',
+              letterSpacing: '0.02em',
+              lineHeight: 1.3,
+              color: sidebar.textMuted,
+            }}
+          >
+            {t('brand.tagline')}
+          </Typography>
         </Box>
 
         <Stack spacing={3.5} sx={{ maxWidth: 520 }}>

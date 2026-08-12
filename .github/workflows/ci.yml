@@ -60,6 +60,13 @@ jobs:
       - run: npm ci
         working-directory: backend
 
+      # Las pruebas viven en Pruebas/ y traen su propio package.json: Node
+      # resuelve los paquetes desde la carpeta del archivo hacia arriba, así que
+      # `mysql2` —el que usa helpers.ts para recrear la base— tiene que estar
+      # instalado ahí y no en backend/.
+      - run: npm ci
+        working-directory: Pruebas
+
       # `src/generated/` está en .gitignore —no se commitea código generado—, así
       # que en un clon limpio hay que generarlo antes de compilar nada: sin los
       # tipos del cliente, cada `prisma.*` y cada callback de `$transaction` cae
@@ -73,8 +80,9 @@ jobs:
       - run: npm run typecheck
         working-directory: backend
 
-      # Las pruebas recrean `thermotrace_test` desde db/schema.sql y db/seed.sql
-      # en cada corrida; no hace falta sembrar nada aquí.
+      # Las pruebas recrean `siappc_test` desde db/schema.sql y db/seed.sql
+      # en cada corrida; no hace falta sembrar nada aquí. El script apunta a
+      # ../Pruebas/backend/*.test.ts (ver Pruebas/README.md).
       - run: npm test
         working-directory: backend
 

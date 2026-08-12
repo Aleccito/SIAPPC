@@ -1,0 +1,17 @@
+{
+  "name": "siappc-pruebas",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Dependencias propias de las pruebas. Ver Pruebas/README.md.",
+  "devDependencies": {
+    "mysql2": "^3.11.5",
+    "newman": "^6.2.2",
+    "newman-reporter-htmlextra": "^1.23.1"
+  },
+  "scripts": {
+    "test:postman": "newman run postman/SIAPPC.postman_collection.json -e postman/SIAPPC.postman_environment.json --reporters cli,htmlextra --reporter-htmlextra-export reportes/postman.html",
+    "test:carga": "sh jmeter/correr.sh",
+    "test:backend": "npm --prefix ../backend test"
+  }
+}

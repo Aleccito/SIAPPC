@@ -95,7 +95,7 @@ export default async function bedsRoutes(app: FastifyInstance) {
   app.get(
     "/beds/occupancy",
     { preHandler: [app.requirePermission("admisiones", "ver")] },
-    async (): Promise<BedOccupancy[]> => {
+    async (req): Promise<BedOccupancy[]> => {
       const rows = await prisma.$queryRaw<OcupacionRow[]>`
         SELECT u.unidad_id, u.nombre AS unidad,
                COUNT(c.cama_id) AS total,
@@ -104,7 +104,7 @@ export default async function bedsRoutes(app: FastifyInstance) {
                SUM(c.estado IN ('limpieza', 'mantenimiento')) AS fuera
         FROM unidad u
         LEFT JOIN cama c ON c.unidad_id = u.unidad_id AND c.activo = TRUE
-        WHERE u.activo = TRUE
+        WHERE u.activo = TRUE AND u.hospital_id = ${req.hospitalId}
         GROUP BY u.unidad_id, u.nombre
         ORDER BY u.nombre ASC
       `;
@@ -141,7 +141,10 @@ export default async function bedsRoutes(app: FastifyInstance) {
     createSchema: bedSchema,
     updateSchema: bedPatchSchema,
     query: {
-      where: { activo: true },
+      // La cama no guarda `hospital_id`: lo alcanza por su unidad, que es donde
+      // vive. Guardarlo aquí además sería la dependencia transitiva que el
+      // esquema evita a propósito.
+      where: (req) => ({ activo: true, unidad: { hospital_id: req.hospitalId } }),
       orderBy: [{ unidad_id: "asc" }, { codigo: "asc" }],
       include: CAMA_INCLUDE,
     },

@@ -2,9 +2,9 @@ import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/app.ts";
-import { Prisma } from "../src/generated/prisma/client.ts";
-import { redis } from "../src/lib/redis.ts";
+import { buildApp } from "../../backend/src/app.ts";
+import { Prisma } from "../../backend/src/generated/prisma/client.ts";
+import { redis } from "../../backend/src/lib/redis.ts";
 import { ADMIN, closeConnections, countRows, flushRedis, resetDatabase } from "./helpers.ts";
 
 // El punto de esta suite: el contador vive en Redis, no en la memoria del
