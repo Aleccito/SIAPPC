@@ -40,8 +40,8 @@ solo para desarrollo). El token vive en `sessionStorage` y muere con la pestaña
 | Roles (`/admin/roles`) | Real | `GET/POST /roles`, `GET/PUT /roles/:id/permissions`, `GET /roles/changes` |
 | Auditoría (`/admin/audit`) | Real | `GET /audit`, `GET /audit/entities` |
 | Sensores (`/sensors`) | Real | `GET /sensors/readings`, `GET /sensors/alerts` |
-| Pacientes (`/patients`) | **Simulado** | La API ya existe (`GET/POST /patients`); falta cambiar `patientsApi.ts` |
-| Reportes (`/reports`) | **Simulado** | Fixtures en el navegador, sin endpoint |
+| Pacientes (`/patients`) | Real | `GET/POST /patients`, `GET/PATCH/DELETE /patients/:id` (total en `X-Total-Count`) |
+| Reportes (`/reports`) | Real | `GET /reports` (bitácora de corridas del ETL, desde `etl_ejecucion`) |
 | FlexSim (`/flexsim`) | **Simulado** | Estado derivado del tiempo transcurrido |
 | Power BI (`/powerbi`) | **Simulado** | Placeholder, sin token de incrustación |
 | Recuperar contraseña | **Simulado** | `passwordResetApi.ts` no llama a nada |
@@ -162,7 +162,7 @@ llegar a una invocación por CLI.
 
 - El sondeo de FlexSim se pausa con la pestaña oculta (comportamiento de TanStack
   Query). Usar `refetchIntervalInBackground: true` si corre en pantalla de pared.
-- Los fixtures de Reportes y los modelos de FlexSim siguen en lenguaje de fábrica
-  (`line-a.fsm`, "Downtime by station"), no de hospital.
+- Los modelos de FlexSim siguen en lenguaje de fábrica (`line-a.fsm`,
+  "Downtime by station"), no de hospital.
 - `npm audit` reporta un aviso de react-router que afecta modo RSC. Esta app es
   SPA data router sin RSC, así que la ruta no es alcanzable.

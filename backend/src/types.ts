@@ -195,6 +195,80 @@ export type SensorReading = {
   at: string;
 };
 
+// --- Expediente clínico: Notas SOAP e Historia Clínica General ---------------
+//
+// Las claves van en inglés camelCase como el resto de la API (Patient, User,
+// AuditEntry); los VALORES de los enumerados van tal cual están en la base, en
+// español, igual que se hizo con las severidades de alerta: traducir códigos
+// entre capas solo agrega un sitio donde equivocarse.
+
+export const soapStatuses = ["borrador", "firmada"] as const;
+export type SoapStatus = (typeof soapStatuses)[number];
+
+export type SoapNote = {
+  id: string;
+  patientId: string;
+  authorId: string;
+  authorName: string;
+  /// No nulo = la nota es un addendum de esa otra.
+  parentId: string | null;
+  at: string;
+  subjective: string | null;
+  objective: string | null;
+  assessment: string | null;
+  plan: string | null;
+  status: SoapStatus;
+  signedById: string | null;
+  signedByName: string | null;
+  signedAt: string | null;
+};
+
+/** Las categorías del expediente, tal como las nombra la URL. */
+export const historiaCategorias = [
+  "antecedentes",
+  "alergias",
+  "medicamentos",
+  "diagnosticos",
+  "hospitalizaciones",
+  "procedimientos",
+  "documentos",
+] as const;
+export type HistoriaCategoria = (typeof historiaCategorias)[number];
+
+export type HistoriaEntry = {
+  id: string;
+  category: HistoriaCategoria;
+  recordedAt: string;
+  recordedById: string | null;
+  // El resto de las columnas de cada categoría. Se declara abierto porque las
+  // siete tienen campos distintos y la pantalla las pinta por categoría.
+  [campo: string]: unknown;
+};
+
+/** Una nota de evolución: la tabla `historia_clinica` de siempre. */
+export type EvolucionEntry = {
+  id: string;
+  patientId: string;
+  authorId: string;
+  authorName: string;
+  at: string;
+  diagnosis: string | null;
+  treatment: string | null;
+  notes: string | null;
+};
+
+/** Un renglón del historial de cambios del expediente. */
+export type HistoriaChange = {
+  id: string;
+  category: string;
+  recordId: string;
+  action: "alta" | "modificacion" | "baja";
+  authorId: string | null;
+  authorName: string | null;
+  at: string;
+  detail: string | null;
+};
+
 // Espejo exacto de los ENUM de la tabla `alerta`: se usan tal cual como valores
 // de la API para no mantener una traducción de códigos entre capas.
 export const alertSeverities = ["baja", "media", "alta", "critica"] as const;
@@ -232,4 +306,47 @@ export type SensorAlert = {
   status: AlertStatus;
   at: string;
   resolvedAt: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Tableros por rol (routes/dashboard.ts). Espejo de
+// frontend/src/modules/dashboard/types.ts.
+// ---------------------------------------------------------------------------
+
+/** Estado del equipo tal como lo guarda `dispositivo.estado`. */
+export const deviceStates = ["activo", "inactivo", "mantenimiento", "baja"] as const;
+export type DeviceState = (typeof deviceStates)[number];
+
+/**
+ * Un paciente a cargo del usuario que pregunta, con el resumen que el tablero
+ * necesita para ordenarlos por gravedad sin abrir la ficha de cada uno.
+ */
+export type AssignedPatient = {
+  id: string;
+  name: string;
+  document: string;
+  module: ServiceModule | null;
+  status: PatientStatus;
+  arrivedAt: string;
+  reason: string;
+  assignedAt: string;
+  /** `dispositivo.codigo` de la cama, o null si no tiene equipo asignado. */
+  device: string | null;
+  deviceState: DeviceState | null;
+  /** Alertas sin resolver de ese equipo, y la peor severidad entre ellas. */
+  openAlerts: number;
+  worstSeverity: AlertSeverity | null;
+};
+
+/** Conectividad de un equipo a pie de cama, para el tablero del administrador. */
+export type DeviceStatus = {
+  code: string;
+  model: string | null;
+  state: DeviceState;
+  /** Nombre del paciente asignado, o null si el equipo está libre. */
+  patient: string | null;
+  sensors: number;
+  activeSensors: number;
+  /** Última lectura recibida de cualquiera de sus sensores. */
+  lastReadingAt: string | null;
 };

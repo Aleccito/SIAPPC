@@ -44,7 +44,7 @@ async function readError(response: Response): Promise<string> {
   return response.statusText
 }
 
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function send(path: string, init: RequestInit): Promise<Response> {
   const token = getToken()
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
@@ -58,8 +58,32 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   if (!response.ok) {
     throw new ApiError(response.status, await readError(response))
   }
+  return response
+}
+
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await send(path, init)
   if (response.status === 204) {
     return undefined as T
   }
   return (await response.json()) as T
+}
+
+export type ListResult<T> = {
+  items: T[]
+  total: number
+}
+
+// Las listas del CRUD genérico devuelven el arreglo en el cuerpo y el total en
+// la cabecera `X-Total-Count` (el CORS del backend la expone). Sin cabecera
+// —una respuesta sin paginar— el total es el largo de lo recibido.
+export async function requestList<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<ListResult<T>> {
+  const response = await send(path, init)
+  const items = (await response.json()) as T[]
+  const header = response.headers.get('X-Total-Count')
+  const total = header === null ? items.length : Number(header)
+  return { items, total: Number.isFinite(total) ? total : items.length }
 }

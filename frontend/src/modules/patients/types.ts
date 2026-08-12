@@ -16,9 +16,22 @@ export type Patient = {
   reason: string
 }
 
+// El expediente exige sexo y fecha de nacimiento: la tabla `paciente` los pide
+// y el backend los valida al crear.
+export const sexes = ['M', 'F', 'O'] as const
+
+export type Sex = (typeof sexes)[number]
+
 export type NewPatient = {
   name: string
   document: string
   module: ServiceModule
   reason: string
+  // Fecha ISO ("1990-05-14"), tal como la entrega un <input type="date">.
+  fechaNacimiento: string
+  sexo: Sex
 }
+
+// PATCH acepta cualquier subconjunto; con él la sala de espera mueve a un
+// paciente de `waiting` a `inService` sin reenviar la ficha completa.
+export type PatientChanges = Partial<NewPatient> & { status?: PatientStatus }

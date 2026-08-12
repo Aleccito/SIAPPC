@@ -23,6 +23,10 @@ export class ApiError extends Error {
 }
 
 export const badRequest = (msg: string) => new ApiError(400, msg);
+// 403 y no 401: la sesión es válida y el permiso también; lo que falla es una
+// regla sobre ESTE registro —firmar la nota de otro, por ejemplo—. Un 401
+// mandaría al navegador a pedir credenciales otra vez sin motivo.
+export const forbidden = (msg: string) => new ApiError(403, msg);
 export const notFound = (msg: string) => new ApiError(404, msg);
 export const conflict = (msg: string) => new ApiError(409, msg);
 
