@@ -12,6 +12,7 @@ import PrecisionManufacturingOutlinedIcon from '@mui/icons-material/PrecisionMan
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import SensorsOutlinedIcon from '@mui/icons-material/SensorsOutlined'
 import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined'
+import LocalHotelOutlinedIcon from '@mui/icons-material/LocalHotelOutlined'
 import type { Role } from './auth/types'
 import type { StringKey } from '../shared/i18n/dictionary'
 
@@ -93,6 +94,17 @@ export const modules: NavEntry[] = [
     icon: FolderSharedOutlinedIcon,
     lazy: async () => ({
       Component: (await import('./clinical/pages/ExpedientePage')).ExpedientePage,
+    }),
+  },
+  // Admisión: camas, ingresos, egresos y citas. Sin `requiredRole`, igual que
+  // el expediente: quién entra lo decide `rol_permiso` en el servidor y la
+  // pantalla muestra el 403 que devuelva.
+  {
+    path: '/admissions',
+    label: 'nav.admissions',
+    icon: LocalHotelOutlinedIcon,
+    lazy: async () => ({
+      Component: (await import('./admissions/pages/AdmissionsPage')).AdmissionsPage,
     }),
   },
   {

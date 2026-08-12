@@ -42,11 +42,11 @@ import { usePageHeader } from '../../../app/pageHeader'
 const ALL = '__all__'
 
 export function UsersPage() {
-  const { t, language } = useLanguage()
+  const { t } = useLanguage()
   usePageHeader(t('users.title'), t('users.subtitle'))
   const { user: currentUser } = useAuth()
   const queryClient = useQueryClient()
-  const locale = language === 'es' ? 'es-MX' : 'en-US'
+  const locale = 'es-MX'
 
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState(ALL)

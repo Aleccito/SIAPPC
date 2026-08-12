@@ -2,6 +2,7 @@ import type { StringKey } from '../../shared/i18n/dictionary'
 import { alertSeverities } from '../sensors/types'
 import type { AlertSeverity, AlertStatus } from '../sensors/types'
 import type { DeviceState } from './types'
+import type { AdmissionState, AppointmentState, BedState } from '../admissions/types'
 
 // Cómo se pintan y cómo se nombran los valores que vienen de la base. Vive
 // aparte de los widgets porque tres de ellos muestran severidades y ninguno
@@ -44,4 +45,53 @@ export function bySeverityDesc(a: AlertSeverity, b: AlertSeverity): number {
 
 export function severityRank(severity: AlertSeverity | null): number {
   return severity ? (rank.get(severity) ?? 0) + 1 : 0
+}
+
+// Admisión. Va aquí por lo mismo que las severidades: el estado de una cama y
+// el de una cita se pintan en el tablero y en la pantalla de Admisión, y dos
+// tablas de colores acabarían discrepando.
+
+export const bedStateColor: Record<BedState, 'success' | 'error' | 'info' | 'warning'> = {
+  disponible: 'success',
+  ocupada: 'error',
+  limpieza: 'info',
+  mantenimiento: 'warning',
+}
+
+export const bedStateKey: Record<BedState, StringKey> = {
+  disponible: 'bedState.disponible',
+  ocupada: 'bedState.ocupada',
+  limpieza: 'bedState.limpieza',
+  mantenimiento: 'bedState.mantenimiento',
+}
+
+export const admissionStateColor: Record<AdmissionState, 'success' | 'default' | 'warning'> = {
+  activo: 'success',
+  egresado: 'default',
+  cancelado: 'warning',
+}
+
+export const admissionStateKey: Record<AdmissionState, StringKey> = {
+  activo: 'admissionState.activo',
+  egresado: 'admissionState.egresado',
+  cancelado: 'admissionState.cancelado',
+}
+
+export const appointmentStateColor: Record<
+  AppointmentState,
+  'info' | 'primary' | 'success' | 'default' | 'error'
+> = {
+  programada: 'info',
+  confirmada: 'primary',
+  atendida: 'success',
+  cancelada: 'default',
+  no_asistio: 'error',
+}
+
+export const appointmentStateKey: Record<AppointmentState, StringKey> = {
+  programada: 'appointmentState.programada',
+  confirmada: 'appointmentState.confirmada',
+  atendida: 'appointmentState.atendida',
+  cancelada: 'appointmentState.cancelada',
+  no_asistio: 'appointmentState.no_asistio',
 }

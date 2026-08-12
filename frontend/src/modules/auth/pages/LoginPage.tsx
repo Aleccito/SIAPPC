@@ -24,7 +24,6 @@ import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { useAuth } from '../useAuth'
 import { BrandMark } from '../../../shared/BrandMark'
-import { LanguageToggle } from '../../../shared/i18n/LanguageToggle'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import { brandBlueSoft, sidebar } from '../../../shared/theme'
 import type { StringKey } from '../../../shared/i18n/dictionary'
@@ -273,7 +272,6 @@ export function LoginPage() {
             <BrandMark />
           </Box>
           <Box sx={{ ml: 'auto' }}>
-            <LanguageToggle />
           </Box>
         </Box>
 

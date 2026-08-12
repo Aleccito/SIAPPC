@@ -12,8 +12,8 @@ export function NotificationRow({
   notification: Notification
   dense?: boolean
 }) {
-  const { t, language } = useLanguage()
-  const locale = language === 'es' ? 'es-MX' : 'en-US'
+  const { t } = useLanguage()
+  const locale = 'es-MX'
   const Icon = kindIcon(notification.kind)
 
   return (

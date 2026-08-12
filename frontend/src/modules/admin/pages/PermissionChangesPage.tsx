@@ -28,9 +28,9 @@ import { useLanguage } from '../../../shared/i18n/useLanguage'
 // bitácora completa —altas de usuarios, accesos, bloqueos— sigue en Auditoría,
 // y el botón de arriba lleva allí.
 export function PermissionChangesPage() {
-  const { t, language } = useLanguage()
+  const { t } = useLanguage()
   usePageHeader(t('permissionChanges.title'), t('permissionChanges.subtitle'))
-  const locale = language === 'es' ? 'es-MX' : 'en-US'
+  const locale = 'es-MX'
 
   const changes = useQuery({ queryKey: ['roleChanges'], queryFn: listRoleChanges })
 
