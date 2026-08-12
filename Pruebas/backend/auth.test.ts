@@ -1,8 +1,8 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/app.ts";
-import { Prisma } from "../src/generated/prisma/client.ts";
+import { buildApp } from "../../backend/src/app.ts";
+import { Prisma } from "../../backend/src/generated/prisma/client.ts";
 import {
   authHeader,
   closeConnections,

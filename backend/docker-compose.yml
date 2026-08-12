@@ -1,7 +1,7 @@
 services:
   mariadb:
     image: mariadb:11.4
-    container_name: chamba-mariadb
+    container_name: siappc-mariadb
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}

@@ -1,9 +1,9 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/app.ts";
-import { Prisma } from "../src/generated/prisma/client.ts";
-import { prisma } from "../src/lib/prisma.ts";
+import { buildApp } from "../../backend/src/app.ts";
+import { Prisma } from "../../backend/src/generated/prisma/client.ts";
+import { prisma } from "../../backend/src/lib/prisma.ts";
 import {
   authHeader,
   closeConnections,
@@ -127,7 +127,6 @@ describe("bitácora de auditoría", () => {
         document: "8-111-2222",
         module: "KY-012",
         reason: "Politraumatismo por accidente de tránsito",
-        hospitalId: 1,
         fechaNacimiento: "1990-05-14",
         sexo: "M",
       },

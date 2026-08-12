@@ -21,7 +21,9 @@ const patientSchema = z.object({
   document: z.string().min(1).max(30),
   module: z.enum(serviceModules),
   reason: z.string().min(1).max(255),
-  hospitalId: z.number().int().positive(),
+  // Sin `hospitalId`: lo pone el servidor desde la sesión (req.hospitalId, ver
+  // src/plugins/auth.ts). Un paciente se da de alta en el hospital de quien lo
+  // registra, y eso no es un campo del formulario.
   fechaNacimiento: z.string(), // ISO date, e.g. "1990-05-14"
   sexo: z.enum(["M", "F", "O"]),
   status: z.enum(["waiting", "inService", "discharged"]).default("waiting"),
@@ -39,7 +41,6 @@ function toRow(input: Partial<PatientInput>): Record<string, unknown> {
     ...(input.document !== undefined ? { cedula: input.document } : {}),
     ...(input.module !== undefined ? { modulo: input.module } : {}),
     ...(input.reason !== undefined ? { motivo_consulta: input.reason } : {}),
-    ...(input.hospitalId !== undefined ? { hospital_id: input.hospitalId } : {}),
     ...(input.fechaNacimiento !== undefined
       ? { fecha_nacimiento: new Date(input.fechaNacimiento) }
       : {}),
@@ -61,12 +62,23 @@ export default async function patientsRoutes(app: FastifyInstance) {
     permissions: { ver: null, crear: null, editar: null, eliminar: null },
     createSchema: patientSchema,
     updateSchema: patientPatchSchema,
-    query: { where: { activo: true }, orderBy: { fecha_llegada: "desc" } },
+    // El hospital NO es opcional en ninguna consulta: sale de la sesión y se
+    // aplica siempre, no solo cuando alguien lo pide. Lo mismo vale para la
+    // ficha, la edición y la baja, porque las tres pasan antes por esta
+    // condición: un paciente de otro hospital responde 404, y no 403, porque
+    // decir "existe pero no es tuyo" ya filtra que ese documento está
+    // registrado en algún sitio.
+    query: {
+      where: (req) => ({ activo: true, hospital_id: req.hospitalId }),
+      orderBy: { fecha_llegada: "desc" },
+    },
     // Un paciente no se borra: su historia clínica y su bitácora lo
     // referencian, y el alta es un estado, no una desaparición.
     softDelete: { field: "activo", inactiveValue: false },
     toDto: toPatient,
-    toCreateData: (input) => toRow(input),
+    // El hospital solo se fija al crear: mover un paciente de hospital sería
+    // un traslado, no una edición de su ficha.
+    toCreateData: (input, req) => ({ ...toRow(input), hospital_id: req.hospitalId }),
     toUpdateData: (input) => toRow(input),
     describe: {
       // Sin el motivo de consulta: es dato clínico y vive en `paciente`, con

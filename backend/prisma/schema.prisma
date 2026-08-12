@@ -1,4 +1,4 @@
-// ThermoTrace / Monitoreo Hospitalario — MariaDB 11.4
+// SIAPPC / Monitoreo Hospitalario — MariaDB 11.4
 //
 // ESTE ARCHIVO ES LA FUENTE DE VERDAD DEL ESQUEMA. Para cambiar una tabla se
 // edita aquí y solo aquí:
@@ -303,21 +303,45 @@ enum EstadoSensor {
   fallo
 }
 
+/// Catálogo de variables medibles y su unidad.
+///
+/// Existe porque la unidad NO es un dato del sensor: es un dato de la variable.
+/// La frecuencia cardíaca se mide en lpm la mida el equipo que la mida. Con la
+/// unidad guardada en cada `sensor` —como estaba antes— nada impedía que dos
+/// sensores de la misma variable la reportaran con etiquetas distintas ("bpm"
+/// en uno, "lpm" en otro), y la pantalla de cama las pinta tal cual llegan: la
+/// misma constante vital se leía de dos maneras según el equipo.
+///
+/// El código es la llave primaria y no un entero: es lo que publica la
+/// Raspberry en el tema MQTT ("hr", "spo2"), lo que viaja en la API y lo que ya
+/// usaba `sensor.variable_medida`. Con llave natural, la columna del sensor no
+/// cambia de nombre ni de tipo y las consultas existentes siguen sirviendo.
+model Variable {
+  codigo String @id @db.VarChar(60)
+  unidad String @db.VarChar(20)
+
+  sensores Sensor[]
+
+  @@map("variable")
+}
+
 model Sensor {
   sensor_id       Int          @id @default(autoincrement()) @db.UnsignedInt
   dispositivo_id  Int          @db.UnsignedInt
   modelo          String?      @db.VarChar(80)
+  /// FK a `variable.codigo`. La unidad se lee de ahí, no de aquí.
   variable_medida String       @db.VarChar(60)
-  unidad          String       @db.VarChar(20)
   estado          EstadoSensor @default(activo)
 
   dispositivo Dispositivo @relation(fields: [dispositivo_id], references: [dispositivo_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_sensor_dispositivo")
+  variable    Variable    @relation(fields: [variable_medida], references: [codigo], onDelete: Restrict, onUpdate: Cascade, map: "fk_sensor_variable")
   lecturas    Lectura[]
   // Agregados del ETL (backend/etl/), no del modelo operativo.
   lecturas_hora LecturaHora[]
   alertas_dia   AlertaDia[]
 
   @@unique([dispositivo_id, variable_medida], map: "uq_sensor_disp_var")
+  @@index([variable_medida], map: "ix_sensor_variable")
   @@map("sensor")
 }
 

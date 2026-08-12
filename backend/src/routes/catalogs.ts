@@ -5,9 +5,10 @@ import type { Unit } from "../types.ts";
 
 type UnidadRow = { unidad_id: number; nombre: string; hospital_id: number; activo: boolean };
 
+// Sin `hospitalId`: la unidad se crea en el hospital de quien la crea, que lo
+// pone `authenticate` desde la sesión (ver src/plugins/auth.ts).
 const unitSchema = z.object({
   name: z.string().min(1).max(80),
-  hospitalId: z.number().int().positive().default(1),
 });
 
 // Catálogos que alimentan los selectores de la administración. Las unidades no
@@ -35,15 +36,20 @@ export default async function catalogRoutes(app: FastifyInstance) {
       },
       createSchema: unitSchema,
       updateSchema: unitSchema.partial(),
-      query: { where: { activo: true }, orderBy: { nombre: "asc" } },
+      // Las unidades de ESTE hospital. Alimentan los selectores de personal y
+      // de camas: sin el filtro, un formulario ofrecería unidades ajenas y la
+      // cama acabaría colgando del hospital equivocado.
+      query: {
+        where: (req) => ({ activo: true, hospital_id: req.hospitalId }),
+        orderBy: { nombre: "asc" },
+      },
       // Una unidad borrada sigue siendo la unidad de los usuarios que la
       // tuvieron asignada y de lo que quedó en la bitácora.
       softDelete: { field: "activo", inactiveValue: false },
       toDto: (row) => ({ id: String(row.unidad_id), name: row.nombre }),
-      toCreateData: (input) => ({ nombre: input.name, hospital_id: input.hospitalId }),
+      toCreateData: (input, req) => ({ nombre: input.name, hospital_id: req.hospitalId }),
       toUpdateData: (input) => ({
         ...(input.name !== undefined ? { nombre: input.name } : {}),
-        ...(input.hospitalId !== undefined ? { hospital_id: input.hospitalId } : {}),
       }),
       describe: {
         create: (row) => `creó la unidad ${row.nombre}`,

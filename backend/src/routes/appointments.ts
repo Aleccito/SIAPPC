@@ -94,9 +94,10 @@ export default async function appointmentsRoutes(app: FastifyInstance) {
 
   const paramId = (req: FastifyRequest) => parseOr400(idSchema, (req.params as { id: string }).id);
 
-  async function findCita(id: number): Promise<CitaRow> {
-    const row = (await prisma.cita.findUnique({
-      where: { cita_id: id },
+  // Acotada al hospital de la sesión, como la lista.
+  async function findCita(id: number, req: FastifyRequest): Promise<CitaRow> {
+    const row = (await prisma.cita.findFirst({
+      where: { cita_id: id, paciente: { hospital_id: req.hospitalId } },
       include: CITA_INCLUDE,
     })) as CitaRow | null;
     if (!row) throw notFound(`No existe cita con id ${id}`);
@@ -156,6 +157,7 @@ export default async function appointmentsRoutes(app: FastifyInstance) {
       );
 
       const where = {
+        paciente: { hospital_id: req.hospitalId },
         ...(date ? { fecha_hora: dayRange(date) } : {}),
         ...(state ? { estado: state } : {}),
         ...(professionalId ? { usuario_id: professionalId } : {}),
@@ -187,7 +189,7 @@ export default async function appointmentsRoutes(app: FastifyInstance) {
   app.get(
     "/appointments/:id",
     { preHandler: [app.requirePermission("admisiones", "ver")] },
-    async (req) => toAppointment(await findCita(paramId(req))),
+    async (req) => toAppointment(await findCita(paramId(req), req)),
   );
 
   app.post(
@@ -197,14 +199,15 @@ export default async function appointmentsRoutes(app: FastifyInstance) {
       const input = parseOr400(createSchema, req.body);
       const at = new Date(input.at);
 
+      // Paciente y profesional, los dos de este hospital.
       const paciente = await prisma.paciente.findFirst({
-        where: { paciente_id: input.patientId, activo: true },
+        where: { paciente_id: input.patientId, activo: true, hospital_id: req.hospitalId },
         select: { nombre: true },
       });
       if (!paciente) throw notFound(`No existe paciente con id ${input.patientId}`);
 
       const profesional = await prisma.usuario.findFirst({
-        where: { usuario_id: input.professionalId, activo: true },
+        where: { usuario_id: input.professionalId, activo: true, hospital_id: req.hospitalId },
         select: { nombre: true },
       });
       if (!profesional) throw notFound(`No existe usuario con id ${input.professionalId}`);
@@ -246,7 +249,7 @@ export default async function appointmentsRoutes(app: FastifyInstance) {
     async (req) => {
       const id = paramId(req);
       const input = parseOr400(patchSchema, req.body);
-      const antes = await findCita(id);
+      const antes = await findCita(id, req);
 
       // Reprogramar es cambiar hora, duración o profesional; cualquiera de los
       // tres obliga a revisar el solape con los valores que quedarán.

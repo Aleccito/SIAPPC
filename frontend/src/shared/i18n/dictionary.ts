@@ -110,7 +110,7 @@ const es = {
   'action.close': 'Cerrar',
 
   'brand.name': 'SIAPPC',
-  'brand.tagline': 'Sistema Inteligente de Atención a Pacientes en Estado Crítico',
+  'brand.tagline': 'Sistema Inteligente para la Atención de Pacientes Politraumatizados Críticos',
 
   'login.eyebrow': 'Central de monitoreo',
   'login.headline1': 'Cada signo vital,',

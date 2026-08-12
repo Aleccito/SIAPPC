@@ -24,11 +24,14 @@ import {
   createSoapNote,
   getExpediente,
   listHistoriaChanges,
-  listPatients,
   listSoapNotes,
   saveObservaciones,
   signSoapNote,
 } from '../api/clinicalApi'
+// La lista de pacientes sale del módulo de pacientes: comparte la clave de
+// caché ['patients'] con las demás pantallas, así que debe ser la misma
+// función y la misma forma de respuesta ({ items, total }).
+import { listPatients } from '../../patients/api/patientsApi'
 import { historiaCategories } from '../types'
 import type { HistoriaCategory, HistoriaEntry, SoapNote } from '../types'
 import { useAuth } from '../../auth/useAuth'
@@ -83,7 +86,7 @@ export function ExpedientePage() {
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  const patients = useQuery({ queryKey: ['patients'], queryFn: listPatients })
+  const patients = useQuery({ queryKey: ['patients'], queryFn: () => listPatients() })
 
   const soap = useQuery({
     queryKey: ['soapNotes', patientId],
@@ -158,7 +161,7 @@ export function ExpedientePage() {
           }}
           sx={{ minWidth: 320 }}
         >
-          {patients.data?.map((patient) => (
+          {(patients.data?.items ?? []).map((patient) => (
             <MenuItem key={patient.id} value={patient.id}>
               {patient.name} — {patient.document}
             </MenuItem>

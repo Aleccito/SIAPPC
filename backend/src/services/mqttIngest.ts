@@ -122,6 +122,34 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
     return;
   }
 
+  // La variable tiene que existir en el catálogo antes que el sensor: es de
+  // ahí de donde sale la unidad, y `sensor.variable_medida` es una FK contra
+  // ella. Una variable que nadie dio de alta se registra con la unidad que
+  // reporta el equipo; la primera en llegar es la que queda.
+  const variable = await prisma.variable.findUnique({
+    where: { codigo: payload.variable },
+    select: { unidad: true },
+  });
+
+  if (!variable) {
+    await prisma.variable.create({
+      data: { codigo: payload.variable, unidad: payload.unit },
+    });
+    logger.info(
+      { variable: payload.variable, unidad: payload.unit },
+      "mqtt: variable nueva dada de alta en el catálogo",
+    );
+  } else if (variable.unidad !== payload.unit) {
+    // Manda el catálogo. Aceptar la del equipo es lo que antes dejaba la misma
+    // constante vital escrita con dos unidades distintas según qué Pi la
+    // publicara. La lectura se guarda igual —el valor no se descarta por una
+    // etiqueta— pero queda el aviso para corregir el equipo o el catálogo.
+    logger.warn(
+      { variable: payload.variable, esperada: variable.unidad, recibida: payload.unit },
+      "mqtt: unidad distinta a la del catálogo, se ignora la del equipo",
+    );
+  }
+
   // El sensor se crea la primera vez que ese dispositivo reporta la variable.
   const sensor = await prisma.sensor.upsert({
     where: {
@@ -133,9 +161,10 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
     create: {
       dispositivo_id: dispositivo.dispositivo_id,
       variable_medida: payload.variable,
-      unidad: payload.unit,
     },
-    update: { unidad: payload.unit },
+    // Nada que actualizar: la unidad ya no vive aquí y el resto de las columnas
+    // del sensor no las decide una lectura.
+    update: {},
     select: { sensor_id: true },
   });
 

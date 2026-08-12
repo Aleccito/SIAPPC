@@ -2,9 +2,9 @@ import { after, before, describe, it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/app.ts";
-import { prisma } from "../src/lib/prisma.ts";
-import { redis } from "../src/lib/redis.ts";
+import { buildApp } from "../../backend/src/app.ts";
+import { prisma } from "../../backend/src/lib/prisma.ts";
+import { redis } from "../../backend/src/lib/redis.ts";
 import {
   authHeader,
   closeConnections,
@@ -36,10 +36,12 @@ async function insertReading(value: number): Promise<void> {
     },
     create: {
       dispositivo_id: dispositivo.dispositivo_id,
+      // La unidad no se pasa: la pone el catálogo `variable`, que db/seed.sql
+      // siembra con 'hr' → 'lpm'. Antes este fixture decía "bpm" y la suite
+      // pasaba igual, que es justo lo que el catálogo viene a impedir.
       variable_medida: "hr",
-      unidad: "bpm",
     },
-    update: { unidad: "bpm" },
+    update: {},
     select: { sensor_id: true },
   });
 

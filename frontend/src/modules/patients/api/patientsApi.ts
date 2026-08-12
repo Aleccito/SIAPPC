@@ -2,17 +2,14 @@ import { request, requestList } from '../../../shared/api/http'
 import type { ListResult } from '../../../shared/api/http'
 import type { NewPatient, Patient, PatientChanges } from '../types'
 
-// El despliegue atiende un solo hospital, igual que el alta de usuarios y el
-// catálogo de unidades, que también lo fijan en 1.
-const HOSPITAL_ID = 1
-
 export type PatientQuery = {
   page?: number
   pageSize?: number
 }
 
-// El identificador y la hora de llegada los asigna el servidor: nunca se mandan
-// desde el navegador.
+// El identificador, la hora de llegada y el HOSPITAL los asigna el servidor:
+// nunca se mandan desde el navegador. El hospital sale de la cuenta de la
+// sesión (backend/src/plugins/auth.ts), no de una constante de aquí.
 export async function listPatients(
   query: PatientQuery = {},
 ): Promise<ListResult<Patient>> {
@@ -30,7 +27,7 @@ export async function getPatient(id: string): Promise<Patient> {
 export async function addPatient(patient: NewPatient): Promise<Patient> {
   return request<Patient>('/patients', {
     method: 'POST',
-    body: JSON.stringify({ ...patient, hospitalId: HOSPITAL_ID }),
+    body: JSON.stringify(patient),
   })
 }
 

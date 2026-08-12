@@ -33,6 +33,12 @@ const {
   // Segundos que vive en caché una respuesta de /sensors/*. 0 desactiva la
   // caché sin tocar el límite de peticiones.
   SENSORS_CACHE_TTL = "10",
+  // Techo general de peticiones por minuto y por IP. El valor por defecto es
+  // el de siempre: sin esta variable, el comportamiento no cambia. Se hace
+  // configurable para las pruebas de carga (Pruebas/jmeter/), donde todos los
+  // usuarios virtuales salen de una sola IP y comparten el cubo: con 100 el
+  // limitador responde 429 antes de que se pueda medir nada de la base.
+  RATE_LIMIT_MAX = "100",
 } = process.env;
 
 if (!JWT_SECRET) {
@@ -86,12 +92,20 @@ if (!Number.isInteger(sensorsCacheTtl) || sensorsCacheTtl < 0) {
   process.exit(1);
 }
 
+const rateLimitMax = Number(RATE_LIMIT_MAX);
+
+if (!Number.isInteger(rateLimitMax) || rateLimitMax < 1) {
+  console.error("RATE_LIMIT_MAX debe ser un entero >= 1");
+  process.exit(1);
+}
+
 export const env = {
   port: Number(PORT),
   jwtSecret: JWT_SECRET,
   allowedOrigins,
   redisUrl: REDIS_URL || undefined,
   sensorsCacheTtl,
+  rateLimitMax,
   mqtt: {
     host: MQTT_HOST,
     port: Number(MQTT_PORT),

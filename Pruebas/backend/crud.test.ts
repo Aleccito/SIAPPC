@@ -1,7 +1,7 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/app.ts";
+import { buildApp } from "../../backend/src/app.ts";
 import {
   authHeader,
   closeConnections,
@@ -19,7 +19,6 @@ const NUEVO_PACIENTE = {
   document: "C-900",
   module: "KY-001",
   reason: "Fiebre",
-  hospitalId: 1,
   fechaNacimiento: "1990-05-14",
   sexo: "F",
 } as const;

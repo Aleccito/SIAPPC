@@ -107,9 +107,12 @@ export default async function admissionsRoutes(app: FastifyInstance) {
 
   const paramId = (req: FastifyRequest) => parseOr400(idSchema, (req.params as { id: string }).id);
 
-  async function findAdmission(id: number): Promise<IngresoRow> {
-    const row = (await prisma.ingreso.findUnique({
-      where: { ingreso_id: id },
+  // Acotada al hospital de la sesión, igual que la lista: si no, el detalle y
+  // todo lo que pasa por él —PATCH y el egreso— seguirían alcanzando ingresos
+  // ajenos por su identificador.
+  async function findAdmission(id: number, req: FastifyRequest): Promise<IngresoRow> {
+    const row = (await prisma.ingreso.findFirst({
+      where: { ingreso_id: id, paciente: { hospital_id: req.hospitalId } },
       include: INGRESO_INCLUDE,
     })) as IngresoRow | null;
     if (!row) throw notFound(`No existe ingreso con id ${id}`);
@@ -166,7 +169,11 @@ export default async function admissionsRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const { date, state, page, pageSize } = parseOr400(listQuerySchema, req.query);
 
+      // El hospital va SIEMPRE, igual que en /patients: sin él, esta lista
+      // devuelve el nombre y la cédula de pacientes de otro hospital por el
+      // JOIN, y sería la puerta de atrás del filtro de la sala de espera.
       const where = {
+        paciente: { hospital_id: req.hospitalId },
         ...(date ? { fecha_ingreso: dayRange(date) } : {}),
         ...(state ? { estado: state } : {}),
       };
@@ -200,6 +207,7 @@ export default async function admissionsRoutes(app: FastifyInstance) {
       const { date, page, pageSize } = parseOr400(listQuerySchema, req.query);
 
       const where = {
+        paciente: { hospital_id: req.hospitalId },
         estado: "egresado" as const,
         ...(date ? { fecha_egreso: dayRange(date) } : { fecha_egreso: { not: null } }),
       };
@@ -227,7 +235,7 @@ export default async function admissionsRoutes(app: FastifyInstance) {
   app.get(
     "/admissions/:id",
     { preHandler: [app.requirePermission("admisiones", "ver")] },
-    async (req) => toAdmission(await findAdmission(paramId(req))),
+    async (req) => toAdmission(await findAdmission(paramId(req), req)),
   );
 
   app.post(
@@ -236,8 +244,10 @@ export default async function admissionsRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const input = parseOr400(createSchema, req.body);
 
+      // El paciente tiene que ser de este hospital. Sin esta condición, un
+      // identificador ajeno bastaba para admitirlo aquí.
       const paciente = await prisma.paciente.findFirst({
-        where: { paciente_id: input.patientId, activo: true },
+        where: { paciente_id: input.patientId, activo: true, hospital_id: req.hospitalId },
         select: { nombre: true },
       });
       if (!paciente) throw notFound(`No existe paciente con id ${input.patientId}`);
@@ -290,7 +300,7 @@ export default async function admissionsRoutes(app: FastifyInstance) {
     async (req) => {
       const id = paramId(req);
       const input = parseOr400(patchSchema, req.body);
-      const antes = await findAdmission(id);
+      const antes = await findAdmission(id, req);
 
       if (antes.estado === "egresado") {
         throw conflict("El ingreso ya está cerrado: un egreso no se reabre");
@@ -347,7 +357,7 @@ export default async function admissionsRoutes(app: FastifyInstance) {
     async (req) => {
       const id = paramId(req);
       const { summary } = parseOr400(dischargeSchema, req.body ?? {});
-      const antes = await findAdmission(id);
+      const antes = await findAdmission(id, req);
 
       if (antes.estado !== "activo") {
         throw conflict(`El ingreso #${id} no está activo: está ${antes.estado}`);
