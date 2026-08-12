@@ -88,9 +88,9 @@ function entityTag(theme: Theme, entity: string): { bgcolor: string; color: stri
 }
 
 export function AuditPage() {
-  const { t, language } = useLanguage()
+  const { t } = useLanguage()
   usePageHeader(t('audit.title'), t('audit.subtitle'))
-  const locale = language === 'es' ? 'es-MX' : 'en-US'
+  const locale = 'es-MX'
 
   const [userId, setUserId] = useState(ALL)
   const [entity, setEntity] = useState(ALL)

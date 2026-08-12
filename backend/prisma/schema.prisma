@@ -106,6 +106,9 @@ model Unidad {
 
   hospital Hospital  @relation(fields: [hospital_id], references: [hospital_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_unidad_hospital")
   usuarios Usuario[]
+  // Admisión. Ver el bloque "Admisión" al final del archivo.
+  camas    Cama[]
+  citas    Cita[]
 
   @@unique([hospital_id, nombre], map: "uq_unidad_hospital_nombre")
   @@map("unidad")
@@ -140,6 +143,9 @@ model Usuario {
   notas_soap        NotaSoap[] @relation("NotaSoapAutor")
   notas_soap_firmadas NotaSoap[] @relation("NotaSoapFirmante")
   cambios_historia  HistoriaCambio[]
+  // Admisión. Ver el bloque "Admisión" al final del archivo.
+  ingresos_registrados Ingreso[] @relation("IngresoRegistrante")
+  citas             Cita[]     @relation("CitaProfesional")
 
   @@unique([email], map: "uq_usuario_email")
   @@unique([registro_profesional], map: "uq_usuario_registro")
@@ -221,6 +227,9 @@ model Paciente {
   // clínico" al final del archivo.
   expediente   ExpedienteClinico?
   notas_soap   NotaSoap[]
+  // Admisión. Ver el bloque "Admisión" al final del archivo.
+  ingresos     Ingreso[]
+  citas        Cita[]
 
   @@unique([cedula], map: "uq_paciente_cedula")
   @@index([hospital_id], map: "ix_paciente_hospital")
@@ -824,4 +833,123 @@ model NotaSoap {
   @@index([nota_padre_id], map: "ix_nota_soap_padre")
   @@index([firmada_por], map: "ix_nota_soap_firmante")
   @@map("nota_soap")
+}
+
+// ---------------------------------------------------------------------------
+// Admisión: camas, ingresos y citas
+//
+// Gestión operativa, no historia. La diferencia con `hospitalizacion` —que está
+// más arriba y también tiene fecha de ingreso y de egreso— es de quién es el
+// dato: `hospitalizacion` cuelga del expediente y es lo que el paciente cuenta
+// de su pasado, incluidas estancias en otros establecimientos; `ingreso` cuelga
+// del paciente y es la estancia que este hospital está administrando ahora, con
+// su cama y su unidad. Fundirlas obligaría a que una fila sin cama signifique
+// dos cosas distintas.
+// ---------------------------------------------------------------------------
+
+enum EstadoCama {
+  disponible
+  ocupada
+  limpieza
+  mantenimiento
+}
+
+/// Cama física. Cuelga de la unidad y no del hospital porque la ocupación se
+/// mira siempre por servicio: "UCI al 90%" es la pregunta, "el hospital al 70%"
+/// no la contesta.
+model Cama {
+  cama_id   Int        @id @default(autoincrement()) @db.UnsignedInt
+  unidad_id Int        @db.UnsignedInt
+  codigo    String     @db.VarChar(20)
+  /// Etiqueta libre del tipo de cama: "UCI", "aislamiento", "pediátrica".
+  tipo      String?    @db.VarChar(40)
+  estado    EstadoCama @default(disponible)
+  activo    Boolean    @default(true)
+
+  unidad   Unidad    @relation(fields: [unidad_id], references: [unidad_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_cama_unidad")
+  ingresos Ingreso[]
+
+  @@unique([unidad_id, codigo], map: "uq_cama_unidad_codigo")
+  @@index([estado], map: "ix_cama_estado")
+  @@map("cama")
+}
+
+enum TipoIngreso {
+  urgencia
+  programado
+  traslado
+}
+
+enum EstadoIngreso {
+  activo
+  egresado
+  cancelado
+}
+
+/// Estancia que el hospital administra ahora.
+///
+/// `estado` y `fecha_egreso` no son el mismo dato y por eso van los dos: la
+/// fecha dice cuándo salió, el estado distingue al que salió del que nunca
+/// llegó a ocupar la cama (`cancelado`), que también tiene fecha de egreso
+/// nula. Un índice parcial sobre "los activos" no existe en MariaDB, así que la
+/// consulta del tablero filtra por `estado` con su propio índice.
+model Ingreso {
+  ingreso_id     Int           @id @default(autoincrement()) @db.UnsignedInt
+  paciente_id    Int           @db.UnsignedInt
+  /// Nulo mientras no se le asigna cama: se admite al paciente primero y la
+  /// cama se busca después, que es el orden real en urgencias.
+  cama_id        Int?          @db.UnsignedInt
+  tipo           TipoIngreso   @default(urgencia)
+  estado         EstadoIngreso @default(activo)
+  motivo         String        @db.VarChar(255)
+  fecha_ingreso  DateTime      @default(now()) @db.DateTime(0)
+  fecha_egreso   DateTime?     @db.DateTime(0)
+  resumen_egreso String?       @db.Text
+  registrado_por Int?          @db.UnsignedInt
+
+  paciente  Paciente @relation(fields: [paciente_id], references: [paciente_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_ingreso_paciente")
+  cama      Cama?    @relation(fields: [cama_id], references: [cama_id], onDelete: SetNull, onUpdate: Cascade, map: "fk_ingreso_cama")
+  registrante Usuario? @relation("IngresoRegistrante", fields: [registrado_por], references: [usuario_id], onDelete: SetNull, onUpdate: NoAction, map: "fk_ingreso_registrante")
+
+  @@index([paciente_id, fecha_ingreso], map: "ix_ingreso_paciente_fecha")
+  @@index([estado], map: "ix_ingreso_estado")
+  @@index([fecha_ingreso], map: "ix_ingreso_fecha")
+  @@index([fecha_egreso], map: "ix_ingreso_egreso")
+  @@index([cama_id], map: "ix_ingreso_cama")
+  @@index([registrado_por], map: "ix_ingreso_registrante")
+  @@map("ingreso")
+}
+
+enum EstadoCita {
+  programada
+  confirmada
+  atendida
+  cancelada
+  no_asistio
+}
+
+/// Cita agendada. `usuario_id` es con quién es la cita, no quién la agendó: la
+/// agenda del día se lee por profesional.
+model Cita {
+  cita_id     Int        @id @default(autoincrement()) @db.UnsignedInt
+  paciente_id Int        @db.UnsignedInt
+  usuario_id  Int        @db.UnsignedInt
+  unidad_id   Int?       @db.UnsignedInt
+  fecha_hora  DateTime   @db.DateTime(0)
+  /// Para calcular el fin sin una segunda columna que pueda contradecirla.
+  duracion_min Int       @default(30) @db.UnsignedSmallInt
+  motivo      String     @db.VarChar(255)
+  estado      EstadoCita @default(programada)
+  notas       String?    @db.Text
+
+  paciente Paciente @relation(fields: [paciente_id], references: [paciente_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_cita_paciente")
+  usuario  Usuario  @relation("CitaProfesional", fields: [usuario_id], references: [usuario_id], onDelete: Restrict, onUpdate: Cascade, map: "fk_cita_usuario")
+  unidad   Unidad?  @relation(fields: [unidad_id], references: [unidad_id], onDelete: SetNull, onUpdate: Cascade, map: "fk_cita_unidad")
+
+  @@index([fecha_hora], map: "ix_cita_fecha")
+  @@index([usuario_id, fecha_hora], map: "ix_cita_usuario_fecha")
+  @@index([paciente_id, fecha_hora], map: "ix_cita_paciente_fecha")
+  @@index([estado], map: "ix_cita_estado")
+  @@index([unidad_id], map: "ix_cita_unidad")
+  @@map("cita")
 }

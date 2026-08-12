@@ -22,8 +22,8 @@ import type { StringKey } from '../../../shared/i18n/dictionary'
 const ALL = '__all__'
 
 export function NotificationsPage() {
-  const { t, language } = useLanguage()
-  const locale = language === 'es' ? 'es-MX' : 'en-US'
+  const { t } = useLanguage()
+  const locale = 'es-MX'
   usePageHeader(t('notifications.title'), t('notifications.subtitle'))
   const queryClient = useQueryClient()
   const [kind, setKind] = useState(ALL)

@@ -48,9 +48,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export function ActivityDialog({ user, onClose }: Props) {
-  const { t, language } = useLanguage()
+  const { t } = useLanguage()
   const [days, setDays] = useState(30)
-  const locale = language === 'es' ? 'es-MX' : 'en-US'
+  const locale = 'es-MX'
 
   const { data, isPending, isError } = useQuery({
     queryKey: ['activity', user?.id, days],

@@ -21,8 +21,8 @@ export function VitalsMonitor({
   readings: SensorReading[]
   device: string
 }) {
-  const { t, language } = useLanguage()
-  const locale = language === 'es' ? 'es-MX' : 'en-US'
+  const { t } = useLanguage()
+  const locale = 'es-MX'
 
   // La más reciente de cada variable. `readings` llega ordenado por fecha
   // descendente desde el servidor, así que la primera de cada una es la buena.

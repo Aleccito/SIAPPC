@@ -474,6 +474,62 @@ CREATE TABLE `nota_soap` (
     PRIMARY KEY (`nota_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- CreateTable
+CREATE TABLE `cama` (
+    `cama_id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
+    `unidad_id` INTEGER UNSIGNED NOT NULL,
+    `codigo` VARCHAR(20) NOT NULL,
+    `tipo` VARCHAR(40) NULL,
+    `estado` ENUM('disponible', 'ocupada', 'limpieza', 'mantenimiento') NOT NULL DEFAULT 'disponible',
+    `activo` BOOLEAN NOT NULL DEFAULT true,
+
+    INDEX `ix_cama_estado`(`estado`),
+    UNIQUE INDEX `uq_cama_unidad_codigo`(`unidad_id`, `codigo`),
+    PRIMARY KEY (`cama_id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ingreso` (
+    `ingreso_id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
+    `paciente_id` INTEGER UNSIGNED NOT NULL,
+    `cama_id` INTEGER UNSIGNED NULL,
+    `tipo` ENUM('urgencia', 'programado', 'traslado') NOT NULL DEFAULT 'urgencia',
+    `estado` ENUM('activo', 'egresado', 'cancelado') NOT NULL DEFAULT 'activo',
+    `motivo` VARCHAR(255) NOT NULL,
+    `fecha_ingreso` DATETIME(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+    `fecha_egreso` DATETIME(0) NULL,
+    `resumen_egreso` TEXT NULL,
+    `registrado_por` INTEGER UNSIGNED NULL,
+
+    INDEX `ix_ingreso_paciente_fecha`(`paciente_id`, `fecha_ingreso`),
+    INDEX `ix_ingreso_estado`(`estado`),
+    INDEX `ix_ingreso_fecha`(`fecha_ingreso`),
+    INDEX `ix_ingreso_egreso`(`fecha_egreso`),
+    INDEX `ix_ingreso_cama`(`cama_id`),
+    INDEX `ix_ingreso_registrante`(`registrado_por`),
+    PRIMARY KEY (`ingreso_id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `cita` (
+    `cita_id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
+    `paciente_id` INTEGER UNSIGNED NOT NULL,
+    `usuario_id` INTEGER UNSIGNED NOT NULL,
+    `unidad_id` INTEGER UNSIGNED NULL,
+    `fecha_hora` DATETIME(0) NOT NULL,
+    `duracion_min` SMALLINT UNSIGNED NOT NULL DEFAULT 30,
+    `motivo` VARCHAR(255) NOT NULL,
+    `estado` ENUM('programada', 'confirmada', 'atendida', 'cancelada', 'no_asistio') NOT NULL DEFAULT 'programada',
+    `notas` TEXT NULL,
+
+    INDEX `ix_cita_fecha`(`fecha_hora`),
+    INDEX `ix_cita_usuario_fecha`(`usuario_id`, `fecha_hora`),
+    INDEX `ix_cita_paciente_fecha`(`paciente_id`, `fecha_hora`),
+    INDEX `ix_cita_estado`(`estado`),
+    INDEX `ix_cita_unidad`(`unidad_id`),
+    PRIMARY KEY (`cita_id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- AddForeignKey
 ALTER TABLE `rol_permiso` ADD CONSTRAINT `fk_rolperm_rol` FOREIGN KEY (`rol_id`) REFERENCES `rol`(`rol_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -585,6 +641,27 @@ ALTER TABLE `nota_soap` ADD CONSTRAINT `fk_nota_soap_firmante` FOREIGN KEY (`fir
 -- AddForeignKey
 ALTER TABLE `nota_soap` ADD CONSTRAINT `fk_nota_soap_padre` FOREIGN KEY (`nota_padre_id`) REFERENCES `nota_soap`(`nota_id`) ON DELETE RESTRICT ON UPDATE NO ACTION;
 
+-- AddForeignKey
+ALTER TABLE `cama` ADD CONSTRAINT `fk_cama_unidad` FOREIGN KEY (`unidad_id`) REFERENCES `unidad`(`unidad_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ingreso` ADD CONSTRAINT `fk_ingreso_paciente` FOREIGN KEY (`paciente_id`) REFERENCES `paciente`(`paciente_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ingreso` ADD CONSTRAINT `fk_ingreso_cama` FOREIGN KEY (`cama_id`) REFERENCES `cama`(`cama_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ingreso` ADD CONSTRAINT `fk_ingreso_registrante` FOREIGN KEY (`registrado_por`) REFERENCES `usuario`(`usuario_id`) ON DELETE SET NULL ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE `cita` ADD CONSTRAINT `fk_cita_paciente` FOREIGN KEY (`paciente_id`) REFERENCES `paciente`(`paciente_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `cita` ADD CONSTRAINT `fk_cita_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuario`(`usuario_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `cita` ADD CONSTRAINT `fk_cita_unidad` FOREIGN KEY (`unidad_id`) REFERENCES `unidad`(`unidad_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
 
 -- Lo que el esquema de Prisma no sabe expresar.
 --
@@ -620,4 +697,5 @@ INSERT INTO `_prisma_migrations`
 VALUES
 ('90bb2ab5a35441c4669b07035d4f1fd5e235', '4212cf74b0755b136fc070be0a550194d86e83e3e22473a13194f71919d5c178', NOW(3), '00000000000000_init', NOW(3), 1),
 ('f3cbaf62868ea6bbdddb2410bc41b80737e1', 'be4a479ac3766dd673d710ed317271583e725d349023bf39bb53c7f8da88e7e5', NOW(3), '20260811103526_etl_datamart', NOW(3), 1),
-('e1e3cbe10d726714b50f1f5db0775ab0592e', '9b3657248df7a9545b694e8d245c5a1f956b3d138e70c8a7752312dae295a968', NOW(3), '20260811120000_expediente_clinico_notas_soap', NOW(3), 1);
+('e1e3cbe10d726714b50f1f5db0775ab0592e', '9b3657248df7a9545b694e8d245c5a1f956b3d138e70c8a7752312dae295a968', NOW(3), '20260811120000_expediente_clinico_notas_soap', NOW(3), 1),
+('7f0f4013ec91368cdfb1a0654792a8f79e0b', 'aefa97accd3bda09148a3ceb56fd0c9c7538e88341c4fe5954652500c1eb37db', NOW(3), '20260812142520_admision_camas_ingresos_citas', NOW(3), 1);

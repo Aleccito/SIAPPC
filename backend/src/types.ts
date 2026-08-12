@@ -350,3 +350,90 @@ export type DeviceStatus = {
   /** Última lectura recibida de cualquiera de sus sensores. */
   lastReadingAt: string | null;
 };
+
+// ---------------------------------------------------------------------------
+// Admisión: camas, ingresos y citas (routes/beds.ts, admissions.ts,
+// appointments.ts). Espejo de frontend/src/modules/admissions/types.ts.
+//
+// Igual que en las notas SOAP: claves en inglés camelCase, valores de los
+// enumerados tal cual están en la base, en español.
+// ---------------------------------------------------------------------------
+
+export const bedStates = ["disponible", "ocupada", "limpieza", "mantenimiento"] as const;
+export type BedState = (typeof bedStates)[number];
+
+export type Bed = {
+  id: string;
+  unitId: string;
+  unit: string;
+  code: string;
+  type: string | null;
+  state: BedState;
+  /** Ingreso que la ocupa ahora mismo, o null. */
+  patientId: string | null;
+  patientName: string | null;
+};
+
+/** Una fila de `GET /beds/occupancy`: el resumen por unidad. */
+export type BedOccupancy = {
+  unitId: string;
+  unit: string;
+  total: number;
+  occupied: number;
+  available: number;
+  /** Fuera de servicio: limpieza y mantenimiento juntas. */
+  outOfService: number;
+  /** Ocupadas sobre el total, 0–1. `total` en cero da 0 y no una división. */
+  rate: number;
+};
+
+export const admissionTypes = ["urgencia", "programado", "traslado"] as const;
+export type AdmissionType = (typeof admissionTypes)[number];
+
+export const admissionStates = ["activo", "egresado", "cancelado"] as const;
+export type AdmissionState = (typeof admissionStates)[number];
+
+export type Admission = {
+  id: string;
+  patientId: string;
+  patientName: string;
+  patientDocument: string;
+  bedId: string | null;
+  bedCode: string | null;
+  unitId: string | null;
+  unit: string | null;
+  type: AdmissionType;
+  state: AdmissionState;
+  reason: string;
+  admittedAt: string;
+  dischargedAt: string | null;
+  dischargeSummary: string | null;
+  recordedById: string | null;
+  recordedByName: string | null;
+};
+
+export const appointmentStates = [
+  "programada",
+  "confirmada",
+  "atendida",
+  "cancelada",
+  "no_asistio",
+] as const;
+export type AppointmentState = (typeof appointmentStates)[number];
+
+export type Appointment = {
+  id: string;
+  patientId: string;
+  patientName: string;
+  patientDocument: string;
+  /** Con quién es la cita, no quién la agendó. */
+  professionalId: string;
+  professionalName: string;
+  unitId: string | null;
+  unit: string | null;
+  at: string;
+  durationMin: number;
+  reason: string;
+  state: AppointmentState;
+  notes: string | null;
+};

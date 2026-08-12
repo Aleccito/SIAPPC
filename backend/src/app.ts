@@ -17,6 +17,9 @@ import soapRoutes from "./routes/soap.ts";
 import historiaRoutes from "./routes/historia.ts";
 import reportsRoutes from "./routes/reports.ts";
 import dashboardRoutes from "./routes/dashboard.ts";
+import bedsRoutes from "./routes/beds.ts";
+import admissionsRoutes from "./routes/admissions.ts";
+import appointmentsRoutes from "./routes/appointments.ts";
 
 export async function buildApp() {
   const app = Fastify({
@@ -87,6 +90,9 @@ export async function buildApp() {
   await app.register(historiaRoutes);
   await app.register(reportsRoutes);
   await app.register(dashboardRoutes);
+  await app.register(bedsRoutes);
+  await app.register(admissionsRoutes);
+  await app.register(appointmentsRoutes);
 
   return app;
 }

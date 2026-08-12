@@ -61,8 +61,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function BedMonitorPage() {
-  const { t, language } = useLanguage()
-  const locale = language === 'es' ? 'es-MX' : 'en-US'
+  const { t } = useLanguage()
+  const locale = 'es-MX'
   const { device = '' } = useParams()
   const [tab, setTab] = useState('summary')
 

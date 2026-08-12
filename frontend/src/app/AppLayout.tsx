@@ -22,7 +22,6 @@ import MenuIcon from '@mui/icons-material/Menu'
 import { useAuth } from '../modules/auth/useAuth'
 import { NotificationsBell } from '../modules/notifications/components/NotificationsBell'
 import { BrandLogo } from '../shared/BrandLogo'
-import { LanguageToggle } from '../shared/i18n/LanguageToggle'
 import { useLanguage } from '../shared/i18n/useLanguage'
 import { sidebar } from '../shared/theme'
 import { isNavGroup, modules } from '../modules/registry'
@@ -127,7 +126,7 @@ function NavRow({
 
 function AppLayoutInner() {
   const { user, logout } = useAuth()
-  const { t, language } = useLanguage()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const header = usePageHeaderValue()
@@ -190,7 +189,7 @@ function AppLayoutInner() {
   const visibleModules = modules.filter(
     (entry) => !entry.requiredRole || entry.requiredRole === user?.role,
   )
-  const today = new Date().toLocaleDateString(language === 'es' ? 'es-MX' : 'en-US', {
+  const today = new Date().toLocaleDateString('es-MX', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -423,7 +422,6 @@ function AppLayoutInner() {
             </Typography>
           </Stack>
 
-          <LanguageToggle />
           <NotificationsBell />
         </Toolbar>
 

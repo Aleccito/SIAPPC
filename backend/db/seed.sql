@@ -39,7 +39,8 @@ INSERT INTO permiso (modulo, nombre, descripcion) VALUES
   ('reportes', 'Reportes', 'Resúmenes clínicos y de turno'),
   ('configuracion', 'Configuración', 'Parámetros del sistema'),
   ('usuarios', 'Usuarios', 'Cuentas, roles y accesos'),
-  ('auditoria', 'Auditoría', 'Bitácora de acciones');
+  ('auditoria', 'Auditoría', 'Bitácora de acciones'),
+  ('admisiones', 'Admisión', 'Camas, ingresos, egresos y citas');
 
 -- Matriz de permisos de los roles base.
 INSERT INTO rol_permiso (rol_id, permiso_id, puede_ver, puede_crear, puede_editar, puede_eliminar)
@@ -52,6 +53,8 @@ FROM (
   UNION ALL SELECT 'medico', 'dispositivos', TRUE, FALSE, FALSE, FALSE
   UNION ALL SELECT 'medico', 'alertas', TRUE, FALSE, FALSE, FALSE
   UNION ALL SELECT 'medico', 'reportes', TRUE, TRUE, FALSE, FALSE
+  -- El médico ve la agenda y la ocupación; darlas de alta es de Admisión.
+  UNION ALL SELECT 'medico', 'admisiones', TRUE, FALSE, FALSE, FALSE
 
   UNION ALL SELECT 'enfermero', 'pacientes', TRUE, FALSE, TRUE, FALSE
   -- Enfermería lee el expediente y las notas SOAP, y no las escribe. Lo único
@@ -65,6 +68,9 @@ FROM (
   UNION ALL SELECT 'enfermero', 'dispositivos', TRUE, FALSE, FALSE, FALSE
   UNION ALL SELECT 'enfermero', 'alertas', TRUE, FALSE, TRUE, FALSE
   UNION ALL SELECT 'enfermero', 'reportes', TRUE, TRUE, FALSE, FALSE
+  -- Enfermería edita para mover la cama a limpieza o mantenimiento cuando el
+  -- paciente sale. No admite ni agenda: eso es de Admisión.
+  UNION ALL SELECT 'enfermero', 'admisiones', TRUE, FALSE, TRUE, FALSE
 
   UNION ALL SELECT 'administrativo', 'pacientes', TRUE, TRUE, TRUE, FALSE
   UNION ALL SELECT 'administrativo', 'monitoreo', TRUE, FALSE, FALSE, FALSE
@@ -72,6 +78,9 @@ FROM (
   UNION ALL SELECT 'administrativo', 'alertas', TRUE, FALSE, FALSE, FALSE
   UNION ALL SELECT 'administrativo', 'reportes', TRUE, TRUE, FALSE, FALSE
   UNION ALL SELECT 'administrativo', 'configuracion', TRUE, FALSE, FALSE, FALSE
+  -- El módulo propio del rol: ingresos, egresos, camas y citas. Es lo que le
+  -- da razón de entrar al sistema.
+  UNION ALL SELECT 'administrativo', 'admisiones', TRUE, TRUE, TRUE, TRUE
 
   UNION ALL SELECT 'admin', 'pacientes', TRUE, TRUE, TRUE, TRUE
   -- El administrador del sistema NO es personal clínico: sobre el expediente y
@@ -87,6 +96,7 @@ FROM (
   UNION ALL SELECT 'admin', 'configuracion', TRUE, TRUE, TRUE, TRUE
   UNION ALL SELECT 'admin', 'usuarios', TRUE, TRUE, TRUE, TRUE
   UNION ALL SELECT 'admin', 'auditoria', TRUE, TRUE, TRUE, TRUE
+  UNION ALL SELECT 'admin', 'admisiones', TRUE, TRUE, TRUE, TRUE
 ) AS m
 JOIN rol r ON r.nombre = m.rol
 JOIN permiso p ON p.modulo = m.modulo;
