@@ -20,6 +20,7 @@ import dashboardRoutes from "./routes/dashboard.ts";
 import bedsRoutes from "./routes/beds.ts";
 import admissionsRoutes from "./routes/admissions.ts";
 import appointmentsRoutes from "./routes/appointments.ts";
+import searchRoutes from "./routes/search.ts";
 
 export async function buildApp() {
   const app = Fastify({
@@ -93,6 +94,7 @@ export async function buildApp() {
   await app.register(bedsRoutes);
   await app.register(admissionsRoutes);
   await app.register(appointmentsRoutes);
+  await app.register(searchRoutes);
 
   return app;
 }

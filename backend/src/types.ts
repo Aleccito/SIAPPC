@@ -437,3 +437,62 @@ export type Appointment = {
   state: AppointmentState;
   notes: string | null;
 };
+
+// ---------------------------------------------------------------------------
+// Búsqueda global (routes/search.ts). Espejo de
+// frontend/src/modules/search/types.ts.
+//
+// Los resultados van en tres listas y no en una sola mezclada porque la pantalla
+// los presenta por pestañas: unirlos aquí obligaría a volver a separarlos allá.
+// `kind` viaja igual para que la pestaña "Todos" pueda pintarlos en una lista.
+// ---------------------------------------------------------------------------
+
+export type SearchPatientResult = {
+  kind: "patient";
+  id: string;
+  name: string;
+  document: string;
+  /** Tiene alertas sin resolver de severidad alta o crítica. */
+  critical: boolean;
+  /** Código de la cama del ingreso activo, o null si no está ingresado. */
+  bed: string | null;
+  unit: string | null;
+  /** `dispositivo.codigo` con el que se abre el monitoreo, o null. */
+  device: string | null;
+  /** Diagnóstico activo más reciente del expediente, o null. */
+  diagnosis: string | null;
+};
+
+export type SearchNoteResult = {
+  kind: "soapNote";
+  id: string;
+  patientId: string;
+  patientName: string;
+  at: string;
+  /** Primeras líneas de las cuatro secciones juntas, ya recortadas. */
+  excerpt: string;
+};
+
+export type SearchDocumentResult = {
+  kind: "document";
+  id: string;
+  patientId: string;
+  patientName: string;
+  title: string;
+  /** `documento_clinico.tipo`: laboratorio, imagenologia, receta, … */
+  type: string;
+  at: string;
+  /** Unidad donde está ingresado el paciente, o null. */
+  unit: string | null;
+};
+
+export type SearchResult = SearchPatientResult | SearchNoteResult | SearchDocumentResult;
+
+export type SearchResponse = {
+  /** El término tal como lo interpretó el servidor, para el título de la pantalla. */
+  query: string;
+  patients: SearchPatientResult[];
+  notes: SearchNoteResult[];
+  documents: SearchDocumentResult[];
+  total: number;
+};

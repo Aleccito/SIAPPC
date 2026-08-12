@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.ts";
 import { recordAudit } from "../lib/audit.ts";
-import { badRequest, conflict, notFound, parseOr400 } from "../lib/http.ts";
+import { badRequest, conflict, forbidden, notFound, parseOr400 } from "../lib/http.ts";
 import type { RoleChange, RolePermission, RoleSummary } from "../types.ts";
 
 const createRoleSchema = z.object({
@@ -55,32 +55,54 @@ type RolConConteo = {
   _count: { usuarios: number };
 };
 
-function toRoleSummary(row: RolConConteo): RoleSummary {
+// `es_sistema` y "protegido" son dos cosas distintas y por eso no se mezclan:
+//
+// - `es_sistema` marca los roles base (medico, enfermero, administrativo,
+//   admin). Significa "no se borra": hay código y consultas que dan por hecho
+//   que existen. Sí se pueden editar —etiqueta, descripción y matriz—, que es
+//   justo lo que se pedía.
+// - Protegido es solo `admin`: no se toca ni su etiqueta ni su matriz ni se da
+//   de baja. Es la salvaguarda equivalente a `assertNotLastAdmin` de
+//   routes/users.ts: aquella impide quedarse sin ninguna CUENTA administradora,
+//   esta impide quedarse sin un ROL que pueda administrar. Recortarle permisos
+//   a `admin` deja el sistema sin nadie capaz de devolvérselos.
+//
+// La protección se deriva de `rol.nombre`, que es la llave estable que ya usan
+// el token de sesión y las consultas de permisos (y que el PATCH no recalcula a
+// propósito). Por eso no hace falta una columna nueva ni una migración.
+const ROL_PROTEGIDO = "admin";
+
+const esProtegido = (nombre: string) => nombre === ROL_PROTEGIDO;
+
+function toRoleSummary(row: RolConConteo): RoleSummary & { isProtected: boolean } {
   return {
     id: String(row.rol_id),
     name: row.nombre,
     label: row.etiqueta,
     description: row.descripcion,
     isSystem: row.es_sistema,
+    // Campo aparte de `isSystem` porque ahora responden preguntas distintas:
+    // uno dice "no se borra", el otro "no se toca".
+    isProtected: esProtegido(row.nombre),
     userCount: row._count.usuarios,
   };
 }
 
-/** El rol o un 404, y de paso el 409 de los roles del sistema si se pide. */
+/** El rol o un 404; con `mustBeEditable`, además el 403 del rol protegido. */
 async function findRole(id: number, mustBeEditable: boolean) {
   const role = await prisma.rol.findUnique({ where: { rol_id: id } });
   if (!role) throw notFound("Rol no encontrado");
-  // Los roles base se muestran en solo lectura en la interfaz; el servidor lo
-  // vuelve a exigir por si alguien llama la ruta directamente.
-  if (mustBeEditable && role.es_sistema) {
-    throw conflict("Los roles predefinidos no se editan");
+  // La pantalla ya bloquea el rol protegido, pero el servidor lo vuelve a
+  // exigir: una petición hecha a mano no pasa por la pantalla.
+  if (mustBeEditable && esProtegido(role.nombre)) {
+    throw forbidden("El rol Administrador está protegido y no se puede modificar");
   }
   return role;
 }
 
 // Los roles tampoco pasan por la fábrica de CRUD: el alta deriva el `nombre` de
 // la etiqueta y copia la matriz de otro rol, la edición está prohibida sobre
-// los roles del sistema, y la matriz de permisos es un recurso anidado con su
+// el rol protegido, y la matriz de permisos es un recurso anidado con su
 // propio verbo. Es un CRUD, pero no el CRUD genérico.
 export default async function rolesRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
@@ -319,6 +341,12 @@ export default async function rolesRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const { id } = parseOr400(idParamSchema, req.params);
       const role = await findRole(id, true);
+
+      // Aquí sí manda `es_sistema`: los roles base se pueden editar pero no
+      // borrar. El seed y el alta de usuarios dan por hecho que existen.
+      if (role.es_sistema) {
+        throw conflict(`El rol ${role.etiqueta} es un rol del sistema y no se puede eliminar`);
+      }
 
       // Un rol con cuentas asignadas no se da de baja: `usuario.rol_id` es NOT
       // NULL con ON DELETE RESTRICT, y dejarlo inactivo escondería un rol que

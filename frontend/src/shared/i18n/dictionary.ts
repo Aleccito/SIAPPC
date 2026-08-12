@@ -605,6 +605,167 @@ const es = {
   'dash.appointments.error': 'No se pudo cargar la agenda',
   'dash.appointments.empty': 'No hay citas para hoy.',
   'dash.appointments.seeAll': 'Ver la agenda completa',
+
+  // ---------------------------------------------------------------------------
+  // Búsqueda global (modules/search)
+  // ---------------------------------------------------------------------------
+  'nav.search': 'Búsqueda',
+  'busqueda.title': 'Búsqueda Global',
+  'busqueda.subtitle': 'Pacientes, notas SOAP y documentos en un solo lugar',
+  'busqueda.placeholder': 'Buscar paciente, nota o documento…',
+  'busqueda.prompt': 'Escriba al menos dos caracteres para buscar.',
+  'busqueda.results': 'Resultados de búsqueda para "{q}"',
+  'busqueda.count': '{count} resultados encontrados en el sistema SIAPPC',
+  'busqueda.empty': 'No se encontró nada con ese término.',
+  'busqueda.tab.all': 'Todos',
+  'busqueda.tab.patients': 'Pacientes',
+  'busqueda.tab.notes': 'Notas SOAP',
+  'busqueda.tab.documents': 'Documentos',
+  // El estado no es una columna de `paciente`: sale de si tiene alertas
+  // abiertas de severidad alta o crítica (ver backend/src/routes/search.ts).
+  'busqueda.state.critical': 'Crítico',
+  'busqueda.state.stable': 'Estable',
+  'busqueda.hc': 'HC:',
+  'busqueda.diagnosis': 'Diagnóstico:',
+  'busqueda.noDiagnosis': 'Sin diagnóstico registrado',
+  'busqueda.viewProfile': 'Ver Perfil',
+  'busqueda.monitoring': 'Monitoreo',
+  'busqueda.note': 'Nota SOAP',
+  'busqueda.viewNote': 'Ver Nota',
+  'busqueda.viewDocument': 'Ver Documento',
+  'busqueda.uploadedOn': 'Subido el {date}',
+
+  // ---------------------------------------------------------------------------
+  // Exploración física (modules/clinical)
+  // ---------------------------------------------------------------------------
+  'exploracion.title': 'Exploración Física',
+  'exploracion.subtitle': 'Somatometría, signos vitales y hallazgos por región',
+  'exploracion.back': 'Volver',
+  'exploracion.newSoap': 'Nueva Nota SOAP',
+  'exploracion.generateReport': 'Generar Reporte',
+  'exploracion.pickPatient': 'Elige un paciente para abrir su exploración física.',
+  'exploracion.patientError': 'No se pudo cargar el paciente.',
+  'exploracion.admitted': 'Ingreso',
+  'exploracion.tabPending': 'Esta pestaña todavía no está disponible.',
+  'exploracion.tab.summary': 'Resumen',
+  'exploracion.tab.history': 'Historia Clínica',
+  'exploracion.tab.soap': 'Notas SOAP',
+  'exploracion.tab.monitoring': 'Monitoreo',
+  'exploracion.tab.documents': 'Documentos',
+  'exploracion.somatometria': 'Somatometría de Ingreso',
+  'exploracion.peso': 'Peso',
+  'exploracion.talla': 'Talla',
+  'exploracion.imc': 'IMC',
+  'exploracion.perimetro': 'Perímetro abd.',
+  'exploracion.imc.bajoPeso': 'Bajo peso',
+  'exploracion.imc.normal': 'Normal',
+  'exploracion.imc.sobrepeso': 'Sobrepeso',
+  'exploracion.imc.obesidad': 'Obesidad',
+  'exploracion.signosVitales': 'Signos Vitales de Ingreso',
+  'exploracion.glasgow': 'Glasgow',
+  'exploracion.glasgowHelp': 'Escala de 3 a 15',
+  'exploracion.detalle': 'Exploración Detallada: {region}',
+  'exploracion.regionActiva': 'Región Activa',
+  'exploracion.hallazgoPlaceholder': 'Describe el hallazgo',
+  'exploracion.hallazgo.normal': 'Normal',
+  'exploracion.hallazgo.anormal': 'Anormal',
+  'exploracion.save': 'Guardar',
+  // La pantalla está construida pero no persiste: faltan
+  // GET/PUT /historia/:patientId/exploracion-fisica. El aviso lo dice en
+  // pantalla en vez de fingir que guardó.
+  'exploracion.sinBackend':
+    'Registro no disponible: falta el endpoint de exploración física en el servidor. Lo capturado no se guarda todavía.',
+  'exploracion.region.cabezaCuello': 'Cabeza y cuello',
+  'exploracion.region.torax': 'Tórax',
+  'exploracion.region.abdomen': 'Abdomen',
+  'exploracion.region.extremidadesSuperiores': 'Extremidades superiores',
+  'exploracion.region.extremidadesInferiores': 'Extremidades inferiores',
+  'exploracion.region.neurologico': 'Neurológico',
+  'exploracion.tecnica.inspeccion': 'Inspección',
+  'exploracion.tecnica.palpacion': 'Palpación',
+  'exploracion.tecnica.percusion': 'Percusión',
+  'exploracion.tecnica.auscultacion': 'Auscultación',
+
+  // ---------------------------------------------------------------------------
+  // Antecedentes (modules/clinical)
+  // ---------------------------------------------------------------------------
+  'antecedentes.title': 'Antecedentes Completos',
+  'antecedentes.subtitle': 'Historia clínica del paciente',
+  'antecedentes.back': 'Volver',
+  'antecedentes.noPatient': 'Elige un paciente para ver sus antecedentes',
+  'antecedentes.error': 'No se pudo cargar la información',
+  'antecedentes.empty': 'Sin antecedentes registrados en esta sección',
+  'antecedentes.count': '{count} registros documentados',
+  'antecedentes.add': 'Agregar Antecedente',
+  'antecedentes.cancel': 'Cancelar',
+  'antecedentes.save': 'Guardar',
+  'antecedentes.positive': 'Positivo',
+  // `activo = false` es una baja por error de captura, NO que el paciente
+  // niegue el antecedente. El modelo no distingue "negado", así que la
+  // pantalla no lo pinta.
+  'antecedentes.inactive': 'Dado de baja',
+  'antecedentes.year': 'Año',
+  'antecedentes.admitted': 'Ingreso',
+  'antecedentes.newSoap': 'Nueva Nota SOAP',
+  'antecedentes.generateReport': 'Generar Reporte',
+  'antecedentes.next': 'Sección siguiente',
+  'antecedentes.seeSection': 'Ver sección →',
+  'antecedentes.tab.family': 'Antecedentes Heredofamiliares',
+  'antecedentes.tab.personal': 'Antecedentes Personales Patológicos',
+  'antecedentes.tab.habits': 'Antecedentes No Patológicos',
+  'antecedentes.tab.obstetric': 'Antecedentes Gineco-obstétricos',
+  'antecedentes.hint.family': 'Enfermedades relevantes de familiares directos y su parentesco.',
+  'antecedentes.hint.personal':
+    'Incluye cirugías previas, hospitalizaciones previas, transfusiones, alergias severas y comorbilidades sistémicas activas.',
+  'antecedentes.hint.habits':
+    'Hábitos y estilo de vida: tabaquismo, alcoholismo, alimentación, actividad física.',
+  'antecedentes.hint.obstetric':
+    'Gestas, partos, cesáreas, abortos y antecedentes ginecológicos.',
+  'antecedentes.col.condition': 'Enfermedad / Condición',
+  'antecedentes.col.relationship': 'Relación familiar',
+  'antecedentes.col.status': 'Estado',
+  'antecedentes.col.details': 'Observaciones / Detalles',
+  'antecedentes.field.type': 'Tipo de antecedente',
+  'antecedentes.field.description': 'Enfermedad o condición',
+  'antecedentes.field.relationship': 'Relación familiar',
+  'antecedentes.field.relationshipHint': 'Madre, padre, abuela materna…',
+  'antecedentes.field.year': 'Año aproximado',
+  'antecedentes.type.personal': 'Personal patológico',
+  'antecedentes.type.quirurgico': 'Quirúrgico',
+
+  // ---------------------------------------------------------------------------
+  // Detalle de nota SOAP (modules/clinical)
+  // ---------------------------------------------------------------------------
+  'soapDetalle.titulo': 'Nota SOAP — Detalle',
+  'soapDetalle.fecha': 'Fecha',
+  'soapDetalle.medico': 'Médico',
+  'soapDetalle.estado': 'Estado',
+  // El backend solo conoce `borrador | firmada`; "Completada" es cómo se
+  // nombra en pantalla a una nota firmada, no un tercer estado.
+  'soapDetalle.estado.firmada': 'Completada',
+  'soapDetalle.estado.borrador': 'Borrador',
+  'soapDetalle.ref': 'Ref.',
+  'soapDetalle.progreso': 'Notas de Progreso Clínico',
+  'soapDetalle.subjetivo': 'Subjetivo (S)',
+  'soapDetalle.objetivo': 'Objetivo (O)',
+  'soapDetalle.analisis': 'Evaluación / Análisis (A)',
+  'soapDetalle.plan': 'Plan (P)',
+  'soapDetalle.sinTexto': 'Sin registro',
+  'soapDetalle.esAdenda': 'Esta nota es una adenda de otra nota firmada.',
+  'soapDetalle.firmadaPor': 'Firmada por',
+  'soapDetalle.editar': 'Editar Nota',
+  'soapDetalle.adenda': 'Añadir Adenda',
+
+  // ---------------------------------------------------------------------------
+  // Roles: matriz editable salvo el rol protegido
+  // ---------------------------------------------------------------------------
+  'roles.matrixProtected': 'Protegido',
+  'roles.matrixProtectedHint':
+    'El rol Administrador está protegido: sus permisos no se pueden modificar para que el sistema nunca quede sin quien lo administre.',
+  'roles.field.label': 'Etiqueta',
+  'roles.field.description': 'Descripción',
+  'roles.save': 'Guardar cambios',
+  'roles.saved': 'Rol actualizado',
 } as const
 
 export type StringKey = keyof typeof es
