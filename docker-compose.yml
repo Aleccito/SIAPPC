@@ -120,6 +120,10 @@ services:
       # cada segundo, así que 10 s recorta la mayoría de las consultas del
       # tablero sin que los datos se vean viejos.
       SENSORS_CACHE_TTL: 10
+      # Techo de peticiones por minuto y por IP. Sin definirla en el .env vale
+      # 100, que es lo de siempre. Se sube solo para las pruebas de carga: todos
+      # los usuarios virtuales de JMeter salen de una IP y comparten el cubo.
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
     volumes:
       - ./infra/mosquitto/certs/ca.crt:/certs/ca.crt:ro
     ports:

@@ -1,7 +1,7 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/app.ts";
+import { buildApp } from "../../backend/src/app.ts";
 import { authHeader, closeConnections, flushRedis, loginAsAdmin, resetDatabase } from "./helpers.ts";
 
 // Admisión: camas, ingresos, egresos y citas.
@@ -23,7 +23,6 @@ import { authHeader, closeConnections, flushRedis, loginAsAdmin, resetDatabase }
 const PACIENTE = {
   module: "KY-001",
   reason: "Politraumatismo",
-  hospitalId: 1,
   fechaNacimiento: "1980-01-15",
   sexo: "M",
 } as const;

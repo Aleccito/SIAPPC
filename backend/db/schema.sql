@@ -1,4 +1,4 @@
--- ThermoTrace / Monitoreo Hospitalario - MariaDB 11.4
+-- SIAPPC / Monitoreo Hospitalario - MariaDB 11.4
 --
 -- ARCHIVO GENERADO. NO EDITAR A MANO.
 --   fuente:  prisma/schema.prisma  (+ db/extra.sql)
@@ -189,14 +189,22 @@ CREATE TABLE `dispositivo` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `variable` (
+    `codigo` VARCHAR(60) NOT NULL,
+    `unidad` VARCHAR(20) NOT NULL,
+
+    PRIMARY KEY (`codigo`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `sensor` (
     `sensor_id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
     `dispositivo_id` INTEGER UNSIGNED NOT NULL,
     `modelo` VARCHAR(80) NULL,
     `variable_medida` VARCHAR(60) NOT NULL,
-    `unidad` VARCHAR(20) NOT NULL,
     `estado` ENUM('activo', 'inactivo', 'fallo') NOT NULL DEFAULT 'activo',
 
+    INDEX `ix_sensor_variable`(`variable_medida`),
     UNIQUE INDEX `uq_sensor_disp_var`(`dispositivo_id`, `variable_medida`),
     PRIMARY KEY (`sensor_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -579,6 +587,9 @@ ALTER TABLE `dispositivo` ADD CONSTRAINT `fk_disp_paciente` FOREIGN KEY (`pacien
 ALTER TABLE `sensor` ADD CONSTRAINT `fk_sensor_dispositivo` FOREIGN KEY (`dispositivo_id`) REFERENCES `dispositivo`(`dispositivo_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `sensor` ADD CONSTRAINT `fk_sensor_variable` FOREIGN KEY (`variable_medida`) REFERENCES `variable`(`codigo`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `lectura` ADD CONSTRAINT `fk_lectura_sensor` FOREIGN KEY (`sensor_id`) REFERENCES `sensor`(`sensor_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -698,4 +709,5 @@ VALUES
 ('90bb2ab5a35441c4669b07035d4f1fd5e235', '4212cf74b0755b136fc070be0a550194d86e83e3e22473a13194f71919d5c178', NOW(3), '00000000000000_init', NOW(3), 1),
 ('f3cbaf62868ea6bbdddb2410bc41b80737e1', 'be4a479ac3766dd673d710ed317271583e725d349023bf39bb53c7f8da88e7e5', NOW(3), '20260811103526_etl_datamart', NOW(3), 1),
 ('e1e3cbe10d726714b50f1f5db0775ab0592e', '9b3657248df7a9545b694e8d245c5a1f956b3d138e70c8a7752312dae295a968', NOW(3), '20260811120000_expediente_clinico_notas_soap', NOW(3), 1),
-('7f0f4013ec91368cdfb1a0654792a8f79e0b', 'aefa97accd3bda09148a3ceb56fd0c9c7538e88341c4fe5954652500c1eb37db', NOW(3), '20260812142520_admision_camas_ingresos_citas', NOW(3), 1);
+('7f0f4013ec91368cdfb1a0654792a8f79e0b', 'aefa97accd3bda09148a3ceb56fd0c9c7538e88341c4fe5954652500c1eb37db', NOW(3), '20260812142520_admision_camas_ingresos_citas', NOW(3), 1),
+('077d801e3f5787adb6af147a5a579c89bb27', 'b100116d735347663e30dc277cb7ed7eebb1eed5cb88e230249a98cf57b099d3', NOW(3), '20260812161308_variable_catalogo_unidad', NOW(3), 1);

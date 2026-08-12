@@ -1,14 +1,8 @@
 import { request } from '../../../shared/api/http'
-import type { Patient } from '../../patients/types'
 import type { Expediente, HistoriaChange, NewSoapNote, SoapNote } from '../types'
 
 // Llamadas reales, sin datos de ejemplo: /soap/* y /historia/* existen en el
 // backend (backend/src/routes/soap.ts e historia.ts).
-
-/** La lista de pacientes que alimenta el selector del expediente. */
-export async function listPatients(): Promise<Patient[]> {
-  return request<Patient[]>('/patients')
-}
 
 export async function listSoapNotes(patientId: string): Promise<SoapNote[]> {
   return request<SoapNote[]>(`/soap/notes?patientId=${encodeURIComponent(patientId)}`)

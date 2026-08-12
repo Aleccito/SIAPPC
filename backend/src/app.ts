@@ -53,7 +53,7 @@ export async function buildApp() {
   // Techo general para toda la API. Los endpoints sensibles lo aprietan por su
   // cuenta con `config.rateLimit` — ver POST /auth/login.
   await app.register(rateLimit, {
-    max: 100,
+    max: env.rateLimitMax,
     timeWindow: "1 minute",
     // Con el contador en memoria, cada réplica del backend dejaba pasar el
     // límite completo por su cuenta: dos instancias = el doble de intentos de

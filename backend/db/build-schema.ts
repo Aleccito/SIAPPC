@@ -23,7 +23,7 @@ const ROOT = resolve(import.meta.dirname, "..");
 const MIGRATIONS_DIR = resolve(ROOT, "prisma", "migrations");
 const OUT = resolve(ROOT, "db", "schema.sql");
 
-const HEADER = `-- ThermoTrace / Monitoreo Hospitalario - MariaDB 11.4
+const HEADER = `-- SIAPPC / Monitoreo Hospitalario - MariaDB 11.4
 --
 -- ARCHIVO GENERADO. NO EDITAR A MANO.
 --   fuente:  prisma/schema.prisma  (+ db/extra.sql)

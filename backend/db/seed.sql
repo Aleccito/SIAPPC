@@ -9,8 +9,16 @@
 -- para desarrollo. Antes de exponer esto a cualquier red, cambia la contraseña
 -- del admin y borra este usuario si no lo necesitas.
 
+-- El primer hospital. Va aquí y no en una constante del código porque de él
+-- cuelgan por clave foránea `unidad`, `usuario`, `paciente` y `dispositivo`:
+-- el hospital de un registro es un dato de la base, no un número escrito en el
+-- frontend. Todo lo que se siembra debajo pertenece a este.
+--
+-- Es hospital_id = 1 por ser la primera fila, y de ahí lo toman las cuentas y
+-- unidades del seed. La aplicación NO asume ese 1 en ningún sitio: cada alta
+-- usa el hospital de la sesión (ver src/plugins/auth.ts).
 INSERT INTO hospital (nombre, direccion, telefono)
-VALUES ('Hospital Central', 'Sin dirección registrada', NULL);
+VALUES ('Hospital Santo Tomás', 'Sin dirección registrada', NULL);
 
 INSERT INTO unidad (hospital_id, nombre) VALUES
   (1, 'UCI'),
@@ -18,6 +26,16 @@ INSERT INTO unidad (hospital_id, nombre) VALUES
   (1, 'Admisión'),
   (1, 'Piso 3'),
   (1, 'TI');
+
+-- Variables medibles y su unidad. La unidad vive aquí y no en `sensor`: es un
+-- dato de la variable, no del equipo que la mide. Los códigos son los que
+-- publica la Raspberry en el tema MQTT; una variable nueva la da de alta la
+-- propia ingesta la primera vez que llega (ver src/services/mqttIngest.ts).
+INSERT INTO variable (codigo, unidad) VALUES
+  ('hr', 'lpm'),
+  ('spo2', '%'),
+  ('pa', 'mmHg'),
+  ('temp', '°C');
 
 -- Roles base. `es_sistema` los marca como no editables: la interfaz los muestra
 -- con el candado y la matriz en solo lectura. Los roles personalizados que cree

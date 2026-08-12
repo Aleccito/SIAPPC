@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import mysql from "mysql2/promise";
-import { Prisma } from "../src/generated/prisma/client.ts";
+import { Prisma } from "../../backend/src/generated/prisma/client.ts";
 import type { FastifyInstance } from "fastify";
 
 // Credenciales del admin que siembra db/seed.sql.
@@ -34,7 +34,7 @@ export async function resetDatabase(): Promise<void> {
   await connection.changeUser({ database: name });
 
   for (const file of ["schema.sql", "seed.sql"]) {
-    await connection.query(await readFile(resolve(HERE, "..", "db", file), "utf-8"));
+    await connection.query(await readFile(resolve(HERE, "..", "..", "backend", "db", file), "utf-8"));
   }
 
   await connection.end();
@@ -62,7 +62,7 @@ export function authHeader(token: string): Record<string, string> {
  * parametrizados, con `${}` dentro de la plantilla de `$queryRaw`.
  */
 export async function countRows(sql: Prisma.Sql): Promise<number> {
-  const { prisma } = await import("../src/lib/prisma.ts");
+  const { prisma } = await import("../../backend/src/lib/prisma.ts");
   const rows = await prisma.$queryRaw<{ total: bigint }[]>`SELECT COUNT(*) AS total ${sql}`;
   return Number(rows[0]!.total);
 }
@@ -75,7 +75,7 @@ export async function countRows(sql: Prisma.Sql): Promise<number> {
  * exactamente el fallo que la suite existe para detectar en producción.
  */
 export async function flushRedis(): Promise<void> {
-  const { redis } = await import("../src/lib/redis.ts");
+  const { redis } = await import("../../backend/src/lib/redis.ts");
   if (!redis) throw new Error("las pruebas necesitan REDIS_URL (ver .env.test)");
   for (const prefix of ["siappc-rl:*", "siappc-cache:*", "siappc-jwt:*"]) {
     const keys = await redis.keys(prefix);
@@ -85,8 +85,8 @@ export async function flushRedis(): Promise<void> {
 
 /** Cierra Prisma y el cliente de Redis para que el proceso de pruebas termine. */
 export async function closeConnections(): Promise<void> {
-  const { closePrisma } = await import("../src/lib/prisma.ts");
-  const { closeRedis } = await import("../src/lib/redis.ts");
+  const { closePrisma } = await import("../../backend/src/lib/prisma.ts");
+  const { closeRedis } = await import("../../backend/src/lib/redis.ts");
   await closePrisma();
   await closeRedis();
 }

@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Plan de carga de SIAPPC.
+
+  Se corre SIN interfaz gráfica (la GUI consume recursos que le quitarías al
+  servidor que estás midiendo). Ver Pruebas/jmeter/correr.sh, que lo lanza en
+  un contenedor para no exigir Java instalado.
+
+  Qué mide, y por qué esos endpoints y no otros:
+
+    - GET /sensors/readings   Va por caché en Redis con TTL corto. Con un solo
+                              usuario nunca se ve si la caché sirve; con
+                              muchos, es la diferencia entre responder y
+                              tumbar MariaDB. Es la consulta sobre la tabla
+                              que crece una fila por segundo y por sensor.
+    - GET /beds/occupancy     Agregado con LEFT JOIN y SUM condicional sobre
+                              todas las unidades. No está cacheado.
+    - GET /patients           CRUD por la fábrica, con su COUNT para la
+                              cabecera X-Total-Count: dos consultas por
+                              petición.
+    - GET /dashboard/devices  Subconsulta correlacionada por sensor. Es la
+                              más cara del tablero.
+
+  El login va en un hilo aparte que corre UNA vez y guarda el token en una
+  propiedad global: si cada usuario virtual iniciara sesión, la prueba mediría
+  bcrypt —deliberadamente lento— en vez de las consultas, y además chocaría
+  con el límite de 5 intentos por ventana.
+-->
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="SIAPPC — carga de la API" enabled="true">
+      <stringProp name="TestPlan.comments">Ver Pruebas/README.md</stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">true</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="Variables" enabled="true">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="host" elementType="Argument">
+            <stringProp name="Argument.name">host</stringProp>
+            <stringProp name="Argument.value">${__P(host,localhost)}</stringProp>
+          </elementProp>
+          <elementProp name="port" elementType="Argument">
+            <stringProp name="Argument.name">port</stringProp>
+            <stringProp name="Argument.value">${__P(port,3001)}</stringProp>
+          </elementProp>
+          <elementProp name="usuarios" elementType="Argument">
+            <stringProp name="Argument.name">usuarios</stringProp>
+            <stringProp name="Argument.value">${__P(usuarios,50)}</stringProp>
+          </elementProp>
+          <elementProp name="rampa" elementType="Argument">
+            <stringProp name="Argument.name">rampa</stringProp>
+            <stringProp name="Argument.value">${__P(rampa,20)}</stringProp>
+          </elementProp>
+          <elementProp name="duracion" elementType="Argument">
+            <stringProp name="Argument.name">duracion</stringProp>
+            <stringProp name="Argument.value">${__P(duracion,60)}</stringProp>
+          </elementProp>
+          <elementProp name="email" elementType="Argument">
+            <stringProp name="Argument.name">email</stringProp>
+            <stringProp name="Argument.value">${__P(email,admin@institucion.org)}</stringProp>
+          </elementProp>
+          <elementProp name="password" elementType="Argument">
+            <stringProp name="Argument.name">password</stringProp>
+            <stringProp name="Argument.value">${__P(password,Admin12345)}</stringProp>
+          </elementProp>
+        </collectionProp>
+      </elementProp>
+    </TestPlan>
+    <hashTree>
+
+      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="Servidor" enabled="true">
+        <stringProp name="HTTPSampler.domain">${host}</stringProp>
+        <stringProp name="HTTPSampler.port">${port}</stringProp>
+        <stringProp name="HTTPSampler.protocol">http</stringProp>
+        <stringProp name="HTTPSampler.connect_timeout">5000</stringProp>
+        <stringProp name="HTTPSampler.response_timeout">30000</stringProp>
+        <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+          <collectionProp name="Arguments.arguments"/>
+        </elementProp>
+      </ConfigTestElement>
+      <hashTree/>
+
+      <!-- ================= 1. Sesión, una sola vez ================= -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="0 — Sesión (una vez)" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">1</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">stopthread</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Una vez" enabled="true">
+          <stringProp name="LoopController.loops">1</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /auth/login" enabled="true">
+          <stringProp name="HTTPSampler.path">/auth/login</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"email":"${email}","password":"${password}"}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="JSON" enabled="true">
+            <collectionProp name="HeaderManager.headers">
+              <elementProp name="" elementType="Header">
+                <stringProp name="Header.name">Content-Type</stringProp>
+                <stringProp name="Header.value">application/json</stringProp>
+              </elementProp>
+            </collectionProp>
+          </HeaderManager>
+          <hashTree/>
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extraer token" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">token</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+          <!-- A propiedad global: las variables no cruzan de un grupo de hilos a otro. -->
+          <BeanShellPostProcessor guiclass="TestBeanGUI" testclass="BeanShellPostProcessor" testname="Guardar token global" enabled="true">
+            <stringProp name="filename"></stringProp>
+            <stringProp name="parameters"></stringProp>
+            <boolProp name="resetInterpreter">false</boolProp>
+            <stringProp name="script">props.put("token", vars.get("token"));</stringProp>
+          </BeanShellPostProcessor>
+          <hashTree/>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
+
+      <!-- ================= 2. Carga sostenida ================= -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="1 — Consultas del tablero" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${usuarios}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${rampa}</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">${duracion}</stringProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Bucle" enabled="true">
+          <stringProp name="LoopController.loops">-1</stringProp>
+          <boolProp name="LoopController.continue_forever">true</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Autorización" enabled="true">
+          <collectionProp name="HeaderManager.headers">
+            <elementProp name="" elementType="Header">
+              <stringProp name="Header.name">Authorization</stringProp>
+              <stringProp name="Header.value">Bearer ${__P(token)}</stringProp>
+            </elementProp>
+          </collectionProp>
+        </HeaderManager>
+        <hashTree/>
+
+        <!-- Pausa entre peticiones: sin ella cada usuario virtual golpea en
+             bucle cerrado, que no se parece a nadie usando un tablero. -->
+        <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Pausa 200-700 ms" enabled="true">
+          <stringProp name="ConstantTimer.delay">200</stringProp>
+          <stringProp name="RandomTimer.range">500</stringProp>
+        </UniformRandomTimer>
+        <hashTree/>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /sensors/readings (cacheado)" enabled="true">
+          <stringProp name="HTTPSampler.path">/sensors/readings?limit=100</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /beds/occupancy (agregado)" enabled="true">
+          <stringProp name="HTTPSampler.path">/beds/occupancy</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /patients (CRUD + COUNT)" enabled="true">
+          <stringProp name="HTTPSampler.path">/patients?page=0&amp;pageSize=20</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /dashboard/devices (subconsulta)" enabled="true">
+          <stringProp name="HTTPSampler.path">/dashboard/devices</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
+
+      <ResultCollector guiclass="SimpleDataWriter" testclass="ResultCollector" testname="Resultados" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

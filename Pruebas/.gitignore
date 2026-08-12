@@ -1,0 +1,5 @@
+node_modules/
+# Salidas de las corridas: se regeneran con `npm run test:postman` y
+# `npm run test:carga`. No se commitean.
+reportes/
+jmeter.log

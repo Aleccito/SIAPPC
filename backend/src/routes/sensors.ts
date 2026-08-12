@@ -84,9 +84,10 @@ export default async function sensorsRoutes(app: FastifyInstance) {
       if (variable) conditions.push(Prisma.sql`s.variable_medida = ${variable}`);
 
       const rows = await prisma.$queryRaw<LecturaRow[]>`
-        SELECT l.lectura_id, l.valor, l.fecha_hora, s.variable_medida, s.unidad, d.codigo
+        SELECT l.lectura_id, l.valor, l.fecha_hora, s.variable_medida, v.unidad, d.codigo
         FROM lectura l
         JOIN sensor s ON s.sensor_id = l.sensor_id
+        JOIN variable v ON v.codigo = s.variable_medida
         JOIN dispositivo d ON d.dispositivo_id = s.dispositivo_id
         ${whereClause(conditions)}
         ORDER BY l.fecha_hora DESC
@@ -114,10 +115,11 @@ export default async function sensorsRoutes(app: FastifyInstance) {
       const rows = await prisma.$queryRaw<AlertaRow[]>`
         SELECT a.alerta_id, a.lectura_id, a.tipo, a.severidad, a.mensaje, a.estado,
                a.fecha_hora, a.fecha_resolucion,
-               l.valor, s.variable_medida, s.unidad, d.codigo
+               l.valor, s.variable_medida, v.unidad, d.codigo
         FROM alerta a
         JOIN lectura l ON l.lectura_id = a.lectura_id
         JOIN sensor s ON s.sensor_id = l.sensor_id
+        JOIN variable v ON v.codigo = s.variable_medida
         JOIN dispositivo d ON d.dispositivo_id = s.dispositivo_id
         ${whereClause(conditions)}
         ORDER BY a.fecha_hora DESC, a.alerta_id DESC

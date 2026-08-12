@@ -1,9 +1,9 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { prisma } from "../src/lib/prisma.ts";
-import { correr } from "../etl/run.ts";
-import { agruparLecturasPorHora, contarAlertasPorDia } from "../etl/transform.ts";
-import { closePrisma } from "../src/lib/prisma.ts";
+import { prisma } from "../../backend/src/lib/prisma.ts";
+import { correr } from "../../backend/etl/run.ts";
+import { agruparLecturasPorHora, contarAlertasPorDia } from "../../backend/etl/transform.ts";
+import { closePrisma } from "../../backend/src/lib/prisma.ts";
 import { resetDatabase } from "./helpers.ts";
 
 // Lo que se comprueba aquí es lo que hace confiable a un ETL: que agregue bien,
@@ -19,7 +19,8 @@ async function sembrarSensor(): Promise<number> {
     select: { dispositivo_id: true },
   });
   const sensor = await prisma.sensor.create({
-    data: { dispositivo_id: dispositivo.dispositivo_id, variable_medida: "spo2", unidad: "%" },
+    // La unidad la aporta el catálogo `variable` (db/seed.sql), no el sensor.
+    data: { dispositivo_id: dispositivo.dispositivo_id, variable_medida: "spo2" },
     select: { sensor_id: true },
   });
   return sensor.sensor_id;

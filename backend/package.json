@@ -1,5 +1,5 @@
 {
-  "name": "chambafinal-backend",
+  "name": "siappc-backend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "db:logs": "docker compose logs -f mariadb",
     "migrate": "node --env-file=.env node_modules/prisma/build/index.js migrate deploy",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --test-concurrency=1 --env-file=.env.test \"test/*.test.ts\"",
+    "test": "node --test --test-concurrency=1 --env-file=.env.test \"../Pruebas/backend/*.test.ts\"",
     "dev": "node --env-file=.env --watch src/server.ts",
     "start": "node --env-file=.env src/server.ts",
     "db:migrate": "node --env-file=.env node_modules/prisma/build/index.js migrate dev",

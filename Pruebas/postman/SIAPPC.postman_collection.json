@@ -1,0 +1,1872 @@
+{
+  "info": {
+    "name": "SIAPPC — API REST",
+    "description": "Pruebas funcionales de la API del Sistema Inteligente para la Atención de Pacientes Politraumatizados Críticos.\n\nEl orden importa: `Autenticación > Login` guarda el token en la variable de entorno `token` y el resto de las peticiones lo heredan por la autorización de la colección. Las carpetas de Pacientes, Admisión y Expediente guardan además los identificadores que crean, así que la colección se puede correr entera de arriba abajo con el Runner.\n\nCada petición trae aserciones. Correr la colección sin abrir nada a mano:\n\n    npm run test:postman   (desde Pruebas/)\n\nRequiere el stack levantado. Ver Pruebas/README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Aserciones comunes a TODA petición de la colección.",
+          "pm.test('responde en menos de 2 s', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+          "});",
+          "",
+          "// El contrato de error del backend es siempre { error: ... }: una cadena,",
+          "// o el arreglo de incidencias de zod. Cualquier otra forma deja al",
+          "// usuario con 'Internal Server Error' en pantalla en vez del motivo.",
+          "if (pm.response.code >= 400) {",
+          "    pm.test('el error tiene la forma { error }', function () {",
+          "        pm.expect(pm.response.json()).to.have.property('error');",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Autenticación",
+      "item": [
+        {
+          "name": "Login (guarda el token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('devuelve token y usuario', function () {",
+                  "    pm.expect(body).to.have.property('token');",
+                  "    pm.expect(body.user).to.have.property('role');",
+                  "});",
+                  "// El resto de la colección depende de esto.",
+                  "pm.environment.set('token', body.token);",
+                  "pm.environment.set('usuarioId', body.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login con contraseña incorrecta → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));",
+                  "pm.test('no filtra si el correo existe', function () {",
+                  "    pm.expect(pm.response.json().error).to.not.match(/contrase|existe/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"no-es-la-buena\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sin token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Perfil de la sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('es la cuenta que inició sesión', function () {",
+                  "    pm.expect(pm.response.json().email).to.eql(pm.environment.get('adminEmail'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Pacientes (CRUD completo)",
+      "item": [
+        {
+          "name": "Crear paciente",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cédula única por corrida: la columna tiene índice único y",
+                  "// repetir la colección chocaría con la corrida anterior.",
+                  "pm.environment.set('cedula', 'PM-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 al crear', () => pm.response.to.have.status(201));",
+                  "pm.test('cabecera Location', function () {",
+                  "    pm.expect(pm.response.headers.get('Location')).to.include('/patients/');",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('el servidor asigna id y hora de llegada', function () {",
+                  "    pm.expect(body.id).to.be.a('string');",
+                  "    pm.expect(body.arrivedAt).to.be.a('string');",
+                  "});",
+                  "pm.test('nace en espera', () => pm.expect(body.status).to.eql('waiting'));",
+                  "pm.environment.set('pacienteId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Paciente de Prueba\",\n  \"document\": \"{{cedula}}\",\n  \"module\": \"KY-001\",\n  \"reason\": \"Prueba funcional con Postman\",\n  \"fechaNacimiento\": \"1985-03-12\",\n  \"sexo\": \"M\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear con datos inválidos → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('el cuerpo trae las incidencias de zod', function () {",
+                  "    pm.expect(pm.response.json().error).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"module\": \"NO-EXISTE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar pacientes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('el cuerpo es el arreglo de recursos', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});",
+                  "pm.test('el total va en X-Total-Count, no en el cuerpo', function () {",
+                  "    pm.expect(pm.response.headers.get('X-Total-Count')).to.not.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar paginado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('devuelve como mucho el tamaño de página', function () {",
+                  "    pm.expect(pm.response.json().length).to.be.at.most(2);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/patients?page=0&pageSize=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('es el que se creó', function () {",
+                  "    pm.expect(pm.response.json().document).to.eql(pm.environment.get('cedula'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Id inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/patients/99999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "99999999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Modificar (PATCH parcial)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('cambió el estado sin reenviar la ficha', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('inService');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"inService\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Baja lógica (DELETE → 204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 sin cuerpo', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "    pm.expect(pm.response.text()).to.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tras la baja ya no aparece → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404: la baja es lógica pero desaparece de la API', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Admisión (camas, ingresos, citas)",
+      "item": [
+        {
+          "name": "Ocupación de camas por unidad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json();",
+                  "pm.test('una fila por unidad, con su tasa', function () {",
+                  "    pm.expect(filas).to.be.an('array');",
+                  "    filas.forEach(function (f) {",
+                  "        pm.expect(f).to.have.property('rate');",
+                  "        pm.expect(f.rate).to.be.within(0, 1);",
+                  "        pm.expect(f.occupied + f.available + f.outOfService).to.eql(f.total);",
+                  "    });",
+                  "});",
+                  "if (filas.length) pm.environment.set('unidadId', filas[0].unitId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/beds/occupancy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "beds",
+                "occupancy"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear cama",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('camaCodigo', 'PM-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('nace disponible', () => pm.expect(body.state).to.eql('disponible'));",
+                  "pm.environment.set('camaId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitId\": {{unidadId}},\n  \"code\": \"{{camaCodigo}}\",\n  \"type\": \"prueba\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/beds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "beds"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cama duplicada en la misma unidad → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 por el índice único', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitId\": {{unidadId}},\n  \"code\": \"{{camaCodigo}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/beds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "beds"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Paciente para ingresar",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('cedulaIngreso', 'PM-ING-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.environment.set('pacienteIngresoId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ingreso de Prueba\",\n  \"document\": \"{{cedulaIngreso}}\",\n  \"module\": \"KY-004\",\n  \"reason\": \"Politraumatismo\",\n  \"fechaNacimiento\": \"1979-11-02\",\n  \"sexo\": \"F\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admitir con cama",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('queda internado y con su cama', function () {",
+                  "    pm.expect(body.state).to.eql('activo');",
+                  "    pm.expect(body.bedCode).to.eql(pm.environment.get('camaCodigo'));",
+                  "});",
+                  "pm.environment.set('ingresoId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": {{pacienteIngresoId}},\n  \"bedId\": {{camaId}},\n  \"reason\": \"Prueba funcional\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "La cama quedó ocupada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('ocupada, y sabe por quién', function () {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.state).to.eql('ocupada');",
+                  "    pm.expect(b.patientId).to.eql(pm.environment.get('pacienteIngresoId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/beds/{{camaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "beds",
+                "{{camaId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Paciente extra para el conflicto de cama",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('cedulaExtra', 'PM-EXT-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.environment.set('pacienteExtraId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Segundo Paciente\",\n  \"document\": \"{{cedulaExtra}}\",\n  \"module\": \"KY-012\",\n  \"reason\": \"Provocar el 409 de cama ocupada\",\n  \"fechaNacimiento\": \"1992-07-19\",\n  \"sexo\": \"M\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Segundo ingreso en la misma cama → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409: dos pacientes en una cama', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": {{pacienteExtraId}},\n  \"bedId\": {{camaId}},\n  \"reason\": \"No debería entrar\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ingresos de hoy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('el ingreso recién creado está en el día', function () {",
+                  "    const ids = pm.response.json().map((a) => a.id);",
+                  "    pm.expect(ids).to.include(pm.environment.get('ingresoId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admissions?date=today",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "today"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Fecha imposible → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admissions?date=2026-02-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-02-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dar el egreso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('cierra el ingreso y data la salida', function () {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.state).to.eql('egresado');",
+                  "    pm.expect(b.dischargedAt).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"summary\": \"Evolución favorable\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{ingresoId}}/discharge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{ingresoId}}",
+                "discharge"
+              ]
+            }
+          }
+        },
+        {
+          "name": "La cama pasó a limpieza",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('no vuelve directa a disponible', function () {",
+                  "    pm.expect(pm.response.json().state).to.eql('limpieza');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/beds/{{camaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "beds",
+                "{{camaId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Egresar dos veces → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409: un egreso no se reabre', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{ingresoId}}/discharge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{ingresoId}}",
+                "discharge"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Egresos de hoy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('aparece el que acabamos de egresar', function () {",
+                  "    const ids = pm.response.json().map((a) => a.id);",
+                  "    pm.expect(ids).to.include(pm.environment.get('ingresoId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/discharges?date=today",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "discharges"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "today"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Agendar cita",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Mañana a las 09:00, en la zona del cliente.",
+                  "const d = new Date();",
+                  "d.setDate(d.getDate() + 1);",
+                  "d.setHours(9, 0, 0, 0);",
+                  "pm.environment.set('citaFecha', d.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('nace programada', () => pm.expect(b.state).to.eql('programada'));",
+                  "pm.environment.set('citaId', b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": {{pacienteIngresoId}},\n  \"professionalId\": {{usuarioId}},\n  \"at\": \"{{citaFecha}}\",\n  \"durationMin\": 60,\n  \"reason\": \"Control posterior al egreso\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cita solapada → 409",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Media hora después de una de sesenta minutos: no comparten",
+                  "// hora de inicio y aun así es la misma persona en dos sitios.",
+                  "const d = new Date(pm.environment.get('citaFecha'));",
+                  "d.setMinutes(d.getMinutes() + 30);",
+                  "pm.environment.set('citaSolapada', d.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 por solape de agenda', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": {{pacienteIngresoId}},\n  \"professionalId\": {{usuarioId}},\n  \"at\": \"{{citaSolapada}}\",\n  \"durationMin\": 30,\n  \"reason\": \"Solapada a propósito\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancelar cita",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('cancelada, no borrada', function () {",
+                  "    pm.expect(pm.response.json().state).to.eql('cancelada');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"cancelada\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{citaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "{{citaId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Expediente y Notas SOAP",
+      "item": [
+        {
+          "name": "Expediente del paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('trae al paciente y las siete categorías del árbol', function () {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.patientId).to.eql(pm.environment.get('pacienteIngresoId'));",
+                  "    ['antecedentes','alergias','medicamentos','diagnosticos',",
+                  "     'hospitalizaciones','procedimientos','documentos'].forEach(function (cat) {",
+                  "        pm.expect(b, cat).to.have.property(cat);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/historia/{{pacienteIngresoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "historia",
+                "{{pacienteIngresoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nota de evolución (admin → 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403: el admin solo lee la historia clínica', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "// Igual que con las notas SOAP: la matriz de permisos (backend/db/seed.sql)",
+                  "// da a la cuenta técnica lectura sobre historia_clinica, no escritura.",
+                  "// Escribir evolución es de personal clínico."
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diagnosis\": \"Evolución de prueba\",\n  \"treatment\": \"Observación\",\n  \"notes\": \"Generada por la colección de Postman\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/historia/{{pacienteIngresoId}}/evoluciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "historia",
+                "{{pacienteIngresoId}}",
+                "evoluciones"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Historial de cambios del expediente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/historia/{{pacienteIngresoId}}/cambios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "historia",
+                "{{pacienteIngresoId}}",
+                "cambios"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notas SOAP del paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('es un arreglo', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/soap/notes?patientId={{pacienteIngresoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "soap",
+                "notes"
+              ],
+              "query": [
+                {
+                  "key": "patientId",
+                  "value": "{{pacienteIngresoId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear nota SOAP (admin → 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403: la cuenta técnica no firma contenido clínico', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "// La matriz de permisos da al admin solo lectura sobre notas_soap",
+                  "// (ver backend/db/seed.sql). Escribir una nota es de personal",
+                  "// médico, y esta prueba es la que fija esa regla."
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": {{pacienteIngresoId}},\n  \"subjective\": \"Refiere dolor\",\n  \"plan\": \"Analgesia\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/soap/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "soap",
+                "notes"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Monitoreo y tableros",
+      "item": [
+        {
+          "name": "Lecturas de sensores",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const filas = pm.response.json();",
+                  "pm.test('cada lectura trae su unidad, del catálogo', function () {",
+                  "    filas.forEach(function (r) {",
+                  "        pm.expect(r).to.have.property('unit');",
+                  "        pm.expect(r.unit).to.not.be.empty;",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sensors/readings?limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sensors",
+                "readings"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Alertas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sensors/alerts?limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sensors",
+                "alerts"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Límite fuera de rango → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sensors/readings?limit=99999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sensors",
+                "readings"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "99999"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pacientes a mi cargo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/assigned-patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard",
+                "assigned-patients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Conectividad de equipos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard",
+                "devices"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reportes (corridas del ETL)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('cada corrida trae su estado', function () {",
+                  "    pm.response.json().forEach(function (r) {",
+                  "        pm.expect(['ready', 'running', 'failed']).to.include(r.status);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Administración",
+      "item": [
+        {
+          "name": "Catálogo de unidades",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/units",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "units"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Usuarios",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('nunca devuelve el hash de la contraseña', function () {",
+                  "    pm.expect(pm.response.text()).to.not.include('password_hash');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Roles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Módulos de permiso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('existe el módulo de Admisión', function () {",
+                  "    pm.expect(pm.response.text()).to.include('admisiones');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bitácora",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('paginada, con total', function () {",
+                  "    pm.expect(body).to.have.property('total');",
+                  "    pm.expect(body.entries).to.be.an('array');",
+                  "});",
+                  "pm.test('registró las altas de esta corrida', function () {",
+                  "    const entidades = body.entries.map((e) => e.entity);",
+                  "    pm.expect(entidades).to.include.oneOf(['paciente', 'cama', 'ingreso', 'cita']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/audit?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Entidades presentes en la bitácora",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/audit/entities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit",
+                "entities"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Actividad de una cuenta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/{{usuarioId}}/activity?days=30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{usuarioId}}",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cerrar sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('sesión cerrada', function () {",
+                  "    pm.expect([200, 204]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "El token revocado ya no sirve → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401: el token sigue bien firmado, pero la sesión no vale', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
