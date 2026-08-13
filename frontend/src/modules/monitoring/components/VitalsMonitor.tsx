@@ -126,11 +126,15 @@ export function VitalsMonitor({
                 {t(spec.label)}
               </Typography>
               <Stack direction="row" spacing={0.75} sx={{ alignItems: 'baseline' }}>
+                {/* Dígitos de ancho fijo. La cifra cambia cada segundo: sin
+                    esto, pasar de 99 a 100 mueve la columna entera y el ojo
+                    pierde el número al que estaba mirando. */}
                 <Typography
                   sx={{
                     fontSize: 34,
                     fontWeight: 700,
                     lineHeight: 1.2,
+                    fontVariantNumeric: 'tabular-nums',
                     color: reading ? levelColor[level] : sidebar.textMuted,
                   }}
                 >

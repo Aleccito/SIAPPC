@@ -290,6 +290,30 @@ sano: `docker compose logs -f backend`. Si la base se creó con credenciales
 vacías de un arranque anterior, `docker compose down -v` y arrancar de nuevo con
 el `.env` correcto.
 
+## CI
+
+`.github/workflows/ci.yml` corre en cada push a `dev`/`main` y en cada pull
+request, con cinco jobs. Un push nuevo sobre la misma rama cancela la corrida
+anterior, y cada job tiene tiempo máximo.
+
+| Job | Qué hace |
+|---|---|
+| `backend` | Levanta MariaDB y Redis de servicio, genera el cliente de Prisma, comprueba que el esquema no se haya desviado, `npm run typecheck` y `npm test` (la suite de `Pruebas/backend`, que recrea la base desde `db/schema.sql` y `db/seed.sql`) |
+| `frontend` | `npm run lint` (oxlint) y `npm run build` (con `tsc -b` de por medio) |
+| `postman` | Levanta la API de verdad y corre la colección con Newman; el informe queda como artefacto descargable, también cuando falla |
+| `imagenes` | Construye las imágenes de backend y frontend. Sin publicarlas: no hay registro configurado |
+| `seguridad` | Comprueba que no haya `.env` ni claves privadas versionadas, y audita las dependencias de producción |
+
+El job `backend` incluye dos validaciones de esquema que atrapan un error
+silencioso: que `db/schema.sql` —que es generado y sí se commitea— siga
+coincidiendo con `prisma/schema.prisma`, y que aplicar las migraciones sobre una
+base vacía reproduzca ese mismo esquema. Sin ellas, una instalación nueva podría
+nacer con tablas viejas sin que nadie se entere hasta el despliegue.
+
+No hay job de JMeter, y es deliberado: los runners son máquinas compartidas, así
+que sus tiempos no son comparables entre corridas. La prueba de carga se ejecuta
+a mano (`Pruebas/jmeter/correr.sh`).
+
 ## Estructura
 
 | Carpeta | Qué es | Estado |
@@ -298,6 +322,7 @@ el `.env` correcto.
 | `frontend/` | Tablero web React + Vite — ver [frontend/README.md](frontend/README.md) | Funcionando, con módulos aún simulados |
 | `iot/` | Firmware y scripts de los sensores — ver [iot/README.md](iot/README.md) | Funcionando, corre en la Raspberry, fuera de Compose |
 | `infra/` | Configuración del broker MQTT y generación de certificados | Funcionando |
+| `Pruebas/` | Suite automatizada, colección de Postman y plan de JMeter — ver [Pruebas/README.md](Pruebas/README.md) | Funcionando |
 | `simulation/` | Modelos de FlexSim | Pendiente |
 
 ## Qué está funcionando
@@ -306,14 +331,30 @@ Con `docker compose up` quedan operativos, contra la base real:
 
 - **Autenticación** — login con JWT, `/auth/me`, sesión en `sessionStorage`
 - **Usuarios** — alta, edición, cambio de rol, actividad por usuario
-- **Roles y permisos** — matriz de permisos por módulo, historial de cambios
+- **Roles y permisos** — matriz de permisos por módulo, historial de cambios.
+  Los roles de sistema (`medico`, `enfermero`, `administrativo`, `admin`) se
+  editan pero no se borran, y `admin` además está protegido: no se toca su
+  matriz de permisos
 - **Auditoría** — bitácora de acciones, filtrable por entidad
 - **Pacientes** — registro y consulta de la sala de espera contra `/patients`
-- **Sensores y alertas** — lecturas y alertas que entran por MQTT desde la Pi
+- **Admisión** — camas, ingresos, egresos y citas (`/beds`, `/admissions`,
+  `/discharges`, `/appointments`), pantalla de tres pestañas, permiso
+  `admisiones` en la matriz
+- **Expediente clínico** — notas SOAP con firma y adenda, historia clínica por
+  categoría, exploración física, antecedentes, búsqueda global (`/search`)
+- **Sensores y alertas** — lecturas y alertas que entran por MQTT desde la Pi,
+  además de alertas en vivo por Server-Sent Events (`GET /alerts/stream`); el
+  ETL agrega por lotes cada hora para reportes, el SSE avisa al instante
+- **Multi-hospital** — el hospital de la sesión sale de `req.hospitalId`
+  (`backend/src/plugins/auth.ts`), y las listas quedan acotadas por hospital.
+  Excepción real, no pendiente de documentar: `/sensors/*` y
+  `/dashboard/devices` todavía no filtran por hospital, porque la clave de
+  caché de Redis tampoco lo incluye
 
-Siguen siendo maquetas sin servidor detrás: **Power BI**, **FlexSim**,
-**Reportes** y **recuperación de contraseña**. El
-detalle está en [frontend/README.md](frontend/README.md).
+Siguen siendo maquetas sin servidor detrás: **Power BI**, **FlexSim** y
+**recuperación de contraseña**. Reportes ya es real (`GET /reports`, bitácora
+de corridas del ETL). El detalle está en
+[frontend/README.md](frontend/README.md).
 
 ## IoT
 

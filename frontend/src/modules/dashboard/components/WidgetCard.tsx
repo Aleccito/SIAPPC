@@ -41,14 +41,24 @@ export function WidgetCard({
           <>
             <Tooltip title={t('dash.moveUp')}>
               <span>
-                <IconButton size="small" disabled={!onMoveUp} onClick={onMoveUp}>
+                <IconButton
+                  size="small"
+                  aria-label={t('dash.moveUp')}
+                  disabled={!onMoveUp}
+                  onClick={onMoveUp}
+                >
                   <ArrowUpwardOutlinedIcon fontSize="inherit" />
                 </IconButton>
               </span>
             </Tooltip>
             <Tooltip title={t('dash.moveDown')}>
               <span>
-                <IconButton size="small" disabled={!onMoveDown} onClick={onMoveDown}>
+                <IconButton
+                  size="small"
+                  aria-label={t('dash.moveDown')}
+                  disabled={!onMoveDown}
+                  onClick={onMoveDown}
+                >
                   <ArrowDownwardOutlinedIcon fontSize="inherit" />
                 </IconButton>
               </span>

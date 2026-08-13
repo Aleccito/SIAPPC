@@ -41,6 +41,10 @@ solo para desarrollo). El token vive en `sessionStorage` y muere con la pestaña
 | Auditoría (`/admin/audit`) | Real | `GET /audit`, `GET /audit/entities` |
 | Sensores (`/sensors`) | Real | `GET /sensors/readings`, `GET /sensors/alerts` |
 | Pacientes (`/patients`) | Real | `GET/POST /patients`, `GET/PATCH/DELETE /patients/:id` (total en `X-Total-Count`) |
+| Admisión (`/admissions`, tres pestañas) | Real | `GET /beds`, `GET /beds/occupancy`, `GET/POST/PATCH /admissions`, `GET /discharges`, `GET/POST/PATCH /appointments` |
+| Expediente (`/expediente`) | Real | Notas SOAP con firma y adenda, historia clínica por categoría, exploración física (`/historia/:pacienteId/exploracion-fisica`), antecedentes |
+| Búsqueda global (`/search`) | Real | `GET /search` |
+| Alertas en vivo (tablero) | Real | `GET /alerts/stream` (SSE), hook `src/modules/dashboard/useAlertStream.ts` |
 | Reportes (`/reports`) | Real | `GET /reports` (bitácora de corridas del ETL, desde `etl_ejecucion`) |
 | FlexSim (`/flexsim`) | **Simulado** | Estado derivado del tiempo transcurrido |
 | Power BI (`/powerbi`) | **Simulado** | Placeholder, sin token de incrustación |
@@ -67,12 +71,9 @@ Paleta blanca en [`src/shared/theme.ts`](src/shared/theme.ts).
 
 ## Idioma
 
-Español por defecto, con interruptor `EN`/`ES` en la barra superior y en el
-login. La elección se guarda en `localStorage` y actualiza `<html lang>`.
-
-Todo el texto vive en [`src/shared/i18n/dictionary.ts`](src/shared/i18n/dictionary.ts).
-El diccionario inglés está tipado contra el español, así que una traducción
-faltante rompe la compilación en vez de fallar en silencio.
+Solo español. No hay diccionario en inglés ni selector de idioma: `Language`
+en [`src/shared/i18n/dictionary.ts`](src/shared/i18n/dictionary.ts) es el tipo
+`'es'` a secas. Todo el texto de la interfaz vive en ese diccionario.
 
 ## Estructura
 
@@ -86,10 +87,15 @@ src/
   modules/
     registry.ts        aquí se registra cada módulo
     auth/              login, recuperación, useAuth, ProtectedRoute, RequireRole
-    dashboard/         MainPage
+    dashboard/         MainPage, useAlertStream (SSE)
     admin/             usuarios, roles, matriz de permisos, auditoría
     sensors/           lecturas y alertas de la Pi
     patients/          registro, ficha y filtro por módulo de atención
+    admissions/        camas, ingresos/egresos y citas — pantalla de tres pestañas
+    clinical/          expediente: notas SOAP, historia por categoría, exploración física
+    search/            búsqueda global
+    notifications/     bandeja de notificaciones
+    monitoring/        detalle de dispositivo
     reports/           lista de reportes
     flexsim/           encolar corrida, sondear estado, leer resultados
     powerbi/           placeholder de incrustación

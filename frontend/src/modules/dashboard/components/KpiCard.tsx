@@ -48,7 +48,17 @@ export function KpiCard({
           {t(label)}
         </Typography>
       </Stack>
-      <Typography sx={{ fontSize: 28, fontWeight: 700, lineHeight: 1.1, color: toneColor[tone] }}>
+      {/* Dígitos de ancho fijo: una cifra que se refresca sola no debe bailar
+          de ancho al pasar de 9 a 10. */}
+      <Typography
+        sx={{
+          fontSize: 28,
+          fontWeight: 700,
+          lineHeight: 1.1,
+          color: toneColor[tone],
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
         {value ?? '—'}
       </Typography>
       {hint && (

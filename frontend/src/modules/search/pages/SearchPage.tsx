@@ -90,12 +90,16 @@ export function SearchPage() {
 
   return (
     <Stack spacing={3}>
-      <Box component="form" onSubmit={submit}>
+      {/* `aria-label` además del marcador de posición: el marcador desaparece
+          al escribir y un lector de pantalla se quedaría sin qué anunciar. */}
+      <Box component="form" role="search" onSubmit={submit}>
         <TextField
           fullWidth
+          type="search"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder={t('busqueda.placeholder')}
+          aria-label={t('busqueda.placeholder')}
           slotProps={{
             input: {
               startAdornment: (
