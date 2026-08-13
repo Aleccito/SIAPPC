@@ -1,5 +1,13 @@
 node_modules/
-# Salidas de las corridas: se regeneran con `npm run test:postman` y
-# `npm run test:carga`. No se commitean.
-reportes/
+# De `reportes/` se versiona SOLO el informe de Postman: es un archivo
+# autocontenido —sin CSS ni JS al lado— y es la evidencia de que la colección
+# se corrió entera.
+#
+# El de JMeter queda fuera: son ~120 archivos y 3.2 MB de librerías (jQuery,
+# CSS, plantillas) que se reescriben enteros en cada medición, y su index.html
+# no funciona suelto. Se regenera cuando haga falta:
+#   npm run test:carga
+# y los resultados crudos quedan en reportes/jmeter/resultados.jtl, desde donde
+# `jmeter -g` reconstruye el panel sin volver a medir.
+reportes/jmeter/
 jmeter.log

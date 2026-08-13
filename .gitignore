@@ -16,6 +16,15 @@ CLAUDE.md
 # commitea una clave privada, ni siquiera de desarrollo.
 infra/mosquitto/certs/
 
+# Dependencias. Cada paquete tiene además su propio .gitignore, pero esta regla
+# es la que cubre cualquier carpeta nueva —como Pruebas/— sin que nadie tenga
+# que acordarse de crearlo. Ojo: .gitignore NO desindexa lo que ya entró al
+# índice; para eso, `git rm -r --cached <ruta>`.
+node_modules/
+
+# Salidas de compilación.
+dist/
+
 # Sistema operativo
 .DS_Store
 Thumbs.db

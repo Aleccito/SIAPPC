@@ -5,9 +5,22 @@ on:
     branches: [dev, main]
   pull_request:
 
+# Un push nuevo sobre la misma rama cancela la corrida anterior: sin esto, diez
+# commits seguidos dejan diez corridas compitiendo por los runners y la última
+# —la única que importa— es la que más tarda en empezar.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Mínimo indispensable. Por defecto el token puede escribir en el repositorio, y
+# ningún job de aquí necesita más que leerlo.
+permissions:
+  contents: read
+
 jobs:
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       mariadb:
@@ -31,7 +44,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: |
+            backend/package-lock.json
+            Pruebas/package-lock.json
 
       # Redis va por `docker run` y no como `service`: hace falta pasarle
       # `--requirepass` y los service containers de Actions no dejan cambiar el
@@ -77,6 +92,44 @@ jobs:
         run: npm run generate
         working-directory: backend
 
+      # `db/schema.sql` es GENERADO desde schema.prisma. Se commitea porque es lo
+      # que MariaDB corre en el primer arranque del contenedor, así que puede
+      # quedarse viejo si alguien toca el esquema y olvida `npm run schema:build`.
+      # Una instalación nueva nacería con tablas de ayer y nadie se enteraría
+      # hasta desplegar. Aquí se regenera y se exige que no cambie nada.
+      - name: db/schema.sql está al día
+        working-directory: backend
+        run: |
+          npm run schema:build
+          if ! git diff --quiet db/schema.sql; then
+            echo "::error file=backend/db/schema.sql::schema.sql no coincide con prisma/schema.prisma. Corre 'npm run schema:build' y commitea el resultado."
+            git diff --stat db/schema.sql
+            exit 1
+          fi
+          echo "schema.sql al día"
+
+      # La otra mitad del mismo problema: que las MIGRACIONES lleven a la base
+      # que describe el esquema. `migrate deploy` las aplica sobre una base
+      # vacía y `migrate diff` compara el resultado con schema.prisma; si sobra
+      # o falta algo, sale 2. Es lo que caza una migración escrita a mano —como
+      # la del catálogo de variables— que se desvíe del modelo.
+      - name: Las migraciones reproducen el esquema
+        working-directory: backend
+        env:
+          DB_NAME: siappc_migraciones
+        run: |
+          mysql -h 127.0.0.1 -u root -pci_throwaway_db -e "CREATE DATABASE siappc_migraciones"
+          node --env-file=.env.test node_modules/prisma/build/index.js migrate deploy
+          set +e
+          node --env-file=.env.test node_modules/prisma/build/index.js migrate diff             --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+          codigo=$?
+          set -e
+          if [ "$codigo" -eq 2 ]; then
+            echo "::error::Las migraciones no reproducen prisma/schema.prisma (ver la diferencia arriba)."
+            exit 1
+          fi
+          exit "$codigo"
+
       - run: npm run typecheck
         working-directory: backend
 
@@ -88,6 +141,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -101,7 +155,213 @@ jobs:
       - run: npm ci
         working-directory: frontend
 
+      # El repo tiene oxlint configurado (.oxlintrc.json) y hasta ahora CI no lo
+      # corría: la regla que impide literales sueltos en JSX solo servía si
+      # alguien se acordaba de ejecutarlo a mano.
+      - run: npm run lint
+        working-directory: frontend
+
       # `npm run build` y no `tsc --noEmit`: el build usa `tsc -b` con
       # referencias de proyecto y detecta errores que el otro deja pasar.
       - run: npm run build
         working-directory: frontend
+
+  # Pruebas funcionales de la API con la colección de Postman, corridas con
+  # Newman contra un backend de verdad.
+  #
+  # Va en un job aparte y no dentro de `backend` porque prueba otra cosa: la
+  # suite de node:test llama a `app.inject()` —sin socket, sin red—, y esto
+  # levanta el servidor y le habla por HTTP. Un fallo aquí y verde allá señala
+  # justo lo que la inyección no ve: CORS, cabeceras, serialización, el
+  # arranque real del proceso.
+  #
+  # NO hay job de JMeter, y es deliberado: los runners de GitHub son máquinas
+  # compartidas y de tamaño variable, así que las cifras de latencia que
+  # produjeran no serían comparables entre corridas. Una prueba de carga cuyo
+  # resultado cambia por el vecino no es una prueba, es ruido que rompe el CI
+  # de vez en cuando. Se corre a mano: Pruebas/jmeter/correr.sh.
+  postman:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: ci_throwaway_db
+          MARIADB_DATABASE: siappc
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            Pruebas/package-lock.json
+
+      - name: Levantar Redis
+        run: |
+          docker run -d --name redis -p 6379:6379 redis:7-alpine \
+            redis-server --requirepass ci_throwaway_redis --save '' --appendonly no
+          for i in $(seq 1 30); do
+            if docker exec redis redis-cli -a ci_throwaway_redis --no-auth-warning ping | grep -q PONG; then
+              echo "redis listo"; exit 0
+            fi
+            sleep 1
+          done
+          echo "redis no respondió"; docker logs redis; exit 1
+
+      # La base se crea como en el primer arranque del contenedor: el DDL
+      # generado más la siembra. Es el mismo camino que sigue una instalación
+      # nueva, así que si `schema.sql` quedara desactualizado respecto a las
+      # migraciones, este job lo caza.
+      - name: Sembrar la base
+        run: |
+          mysql -h 127.0.0.1 -u root -pci_throwaway_db siappc < backend/db/schema.sql
+          mysql -h 127.0.0.1 -u root -pci_throwaway_db siappc < backend/db/seed.sql
+
+      - run: npm ci
+        working-directory: backend
+
+      - name: Generar cliente de Prisma
+        run: npm run generate
+        working-directory: backend
+
+      - name: Escribir .env
+        working-directory: backend
+        run: |
+          cat > .env <<'ENV'
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_NAME=siappc
+          DB_USER=root
+          DB_PASSWORD=ci_throwaway_db
+          PORT=3001
+          LOG_LEVEL=silent
+          JWT_SECRET=ci-throwaway-jwt-secret-no-usar-en-ningun-despliegue
+          ALLOWED_ORIGINS=http://localhost:5173
+          MQTT_TLS=false
+          REDIS_URL=redis://:ci_throwaway_redis@127.0.0.1:6379
+          SENSORS_CACHE_TTL=10
+          ENV
+
+      # En segundo plano, y se espera a que /health conteste: arrancar y correr
+      # Newman de inmediato mediría el arranque, no la API.
+      - name: Arrancar el backend
+        working-directory: backend
+        run: |
+          npm start > ../backend.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:3001/health > /dev/null; then
+              echo "backend listo"; exit 0
+            fi
+            sleep 1
+          done
+          echo "el backend no arrancó"; cat ../backend.log; exit 1
+
+      - run: npm ci
+        working-directory: Pruebas
+
+      - name: Colección de Postman
+        working-directory: Pruebas
+        run: npm run test:postman
+
+      # El reporte queda descargable desde la corrida, también cuando falla —que
+      # es justo cuando hace falta ver qué aserción se rompió.
+      - name: Guardar el reporte
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-postman
+          path: Pruebas/reportes/postman.html
+          if-no-files-found: warn
+
+      - name: Log del backend si algo falló
+        if: failure()
+        run: cat backend.log
+
+  # Las imágenes se construyen en cada corrida. Sin esto, un Dockerfile roto
+  # —una dependencia del sistema que ya no está, un COPY a una ruta que se
+  # movió— no se descubre hasta el despliegue, que es el peor momento.
+  #
+  # Solo `build`, sin `push`: aquí no hay registro al que publicar.
+  imagenes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Imagen del backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Imagen del frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Comprobaciones que no son de funcionamiento sino de higiene.
+  seguridad:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Un `.env` commiteado es la fuga más común y la más tonta. Están en
+      # .gitignore, pero un `git add -f` los mete igual y nadie lo nota en la
+      # revisión. Esto lo corta aquí.
+      - name: Ningún .env versionado
+        run: |
+          filtrados=$(git ls-files | grep -E '(^|/)\.env(\.|$)' | grep -v '\.example$' || true)
+          if [ -n "$filtrados" ]; then
+            echo "::error::Hay archivos de entorno versionados:"
+            echo "$filtrados"
+            exit 1
+          fi
+          echo "sin .env versionados"
+
+      - name: Ninguna clave privada versionada
+        run: |
+          claves=$(git ls-files | grep -E '\.(pem|key|p12|pfx)$' || true)
+          if [ -n "$claves" ]; then
+            echo "::error::Hay material criptográfico versionado:"
+            echo "$claves"
+            exit 1
+          fi
+          echo "sin claves versionadas"
+
+      # Solo dependencias de producción y solo severidad alta: auditar las de
+      # desarrollo llena el informe de avisos sobre herramientas que nunca
+      # llegan al contenedor, y a los tres días nadie lee el resultado.
+      - name: Auditoría de dependencias del backend
+        working-directory: backend
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Auditoría de dependencias del frontend
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
