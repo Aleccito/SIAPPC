@@ -21,6 +21,7 @@ import bedsRoutes from "./routes/beds.ts";
 import admissionsRoutes from "./routes/admissions.ts";
 import appointmentsRoutes from "./routes/appointments.ts";
 import alertsStreamRoutes from "./routes/alertsStream.ts";
+import reportesCsvRoutes from "./routes/reportesCsv.ts";
 import searchRoutes from "./routes/search.ts";
 
 export async function buildApp() {
@@ -96,6 +97,7 @@ export async function buildApp() {
   await app.register(admissionsRoutes);
   await app.register(appointmentsRoutes);
   await app.register(alertsStreamRoutes);
+  await app.register(reportesCsvRoutes);
   await app.register(searchRoutes);
 
   return app;

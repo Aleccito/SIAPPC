@@ -12,7 +12,7 @@
 // cada hora", y para eso alcanza con calcular cuánto falta y esperar. Una
 // expresión cron completa sería una biblioteca más para expresar lo mismo.
 
-import { closePrisma } from "../src/lib/prisma.ts";
+import { prisma, closePrisma } from "../src/lib/prisma.ts";
 import { correrTodos, PROCESOS } from "./run.ts";
 
 // Minuto de cada hora en el que corre. No en punto por defecto: a las :00 la
@@ -34,6 +34,41 @@ function msHastaLaProximaCorrida(): number {
   return proxima.getTime() - ahora.getTime();
 }
 
+/**
+ * Días de lecturas crudas que se conservan. CERO = no se borra nada, y es el
+ * valor por defecto a propósito: la poda destruye datos, y eso se enciende a
+ * mano en cada institución, no al desplegar.
+ *
+ * Solo afecta a `lectura`. Los agregados de `lectura_hora` y `alerta_dia` no se
+ * tocan nunca: son los que sostienen los informes y Power BI.
+ */
+const RETENCION_DIAS = Number(process.env.ETL_RETENCION_DIAS ?? "0");
+
+/** Filas por llamada. Un DELETE enorme bloquea la tabla y frena la ingesta. */
+const LOTE_PURGA = 5000;
+
+if (!Number.isInteger(RETENCION_DIAS) || RETENCION_DIAS < 0) {
+  console.error("ETL_RETENCION_DIAS debe ser un entero de días >= 0 (0 desactiva la poda)");
+  process.exit(1);
+}
+
+/**
+ * Poda lo ya agregado, DESPUÉS de la corrida.
+ *
+ * El orden importa: agregar primero y borrar después es lo que garantiza que
+ * ninguna lectura desaparezca sin haber entrado en su bucket. El procedimiento
+ * lo comprueba de todos modos —no borra nada cuyo bucket no exista— pero
+ * invertir el orden dejaría cada corrida podando la ventana anterior.
+ */
+async function purgar(): Promise<void> {
+  if (RETENCION_DIAS === 0) return;
+
+  const borradas = await prisma.$executeRaw`CALL sp_purgar_lecturas(${RETENCION_DIAS}, ${LOTE_PURGA})`;
+  if (borradas > 0) {
+    console.log(`etl: poda — ${borradas} lecturas crudas anteriores a ${RETENCION_DIAS} días`);
+  }
+}
+
 let corriendo = false;
 
 async function tick(): Promise<void> {
@@ -47,6 +82,7 @@ async function tick(): Promise<void> {
   corriendo = true;
   try {
     await correrTodos(PROCESOS);
+    await purgar();
   } catch (err: unknown) {
     // `correrTodos` ya atrapa lo de cada proceso; esto es la red por si falla el
     // propio orquestador. El planificador NO se cae: si se muere el proceso, no

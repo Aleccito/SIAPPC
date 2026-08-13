@@ -45,7 +45,7 @@ solo para desarrollo). El token vive en `sessionStorage` y muere con la pestaña
 | Expediente (`/expediente`) | Real | Notas SOAP con firma y adenda, historia clínica por categoría, exploración física (`/historia/:pacienteId/exploracion-fisica`), antecedentes |
 | Búsqueda global (`/search`) | Real | `GET /search` |
 | Alertas en vivo (tablero) | Real | `GET /alerts/stream` (SSE), hook `src/modules/dashboard/useAlertStream.ts` |
-| Reportes (`/reports`) | Real | `GET /reports` (bitácora de corridas del ETL, desde `etl_ejecucion`) |
+| Reportes (`/reports`) | Real | `GET /reports` (bitácora de corridas del ETL, desde `etl_ejecucion`) y descarga en CSV con `GET /reports/actividad-clinica.csv` (`api/exportApi.ts`) |
 | FlexSim (`/flexsim`) | **Simulado** | Estado derivado del tiempo transcurrido |
 | Power BI (`/powerbi`) | **Simulado** | Placeholder, sin token de incrustación |
 | Recuperar contraseña | **Simulado** | `passwordResetApi.ts` no llama a nada |
@@ -55,6 +55,21 @@ Cada API simulada lleva un comentario `PENDIENTE:` en la línea exacta que hay
 que reemplazar. Las reales pasan todas por
 [`src/shared/api/http.ts`](src/shared/api/http.ts), que agrega el token y
 normaliza los errores del backend.
+
+### Descargas autenticadas
+
+La exportación de informes
+([`src/modules/reports/api/exportApi.ts`](src/modules/reports/api/exportApi.ts))
+es el único caso que no pasa por `http.ts`, y por un motivo concreto: **un
+`<a href>` no manda la cabecera `Authorization`**, y la API la exige. El archivo
+se pide con `fetch`, se convierte en blob y la descarga se dispara con un enlace
+temporal que se revoca enseguida —si no, el blob queda en memoria hasta recargar
+la página—.
+
+El nombre del archivo lo decide el servidor en `Content-Disposition`; aquí solo
+se lee. Repetirlo en el navegador es garantizar que un día digan cosas distintas.
+La pantalla de Reportes propone el mes en curso como rango y deja cambiarlo:
+un informe de actividad sin periodo no significa nada.
 
 ## Stack
 
@@ -96,7 +111,7 @@ src/
     search/            búsqueda global
     notifications/     bandeja de notificaciones
     monitoring/        detalle de dispositivo
-    reports/           lista de reportes
+    reports/           corridas del ETL y exportación de informes a CSV
     flexsim/           encolar corrida, sondear estado, leer resultados
     powerbi/           placeholder de incrustación
 ```

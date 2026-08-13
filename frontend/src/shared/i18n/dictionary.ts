@@ -291,6 +291,12 @@ const es = {
   'reports.col.source': 'Origen',
   'reports.col.status': 'Estado',
   'reports.col.updated': 'Actualizado',
+  'reports.export.title': 'Actividad clínica por profesional',
+  'reports.export.hint':
+    'Notas SOAP escritas y firmadas en el periodo, con los pacientes distintos atendidos. Se descarga en CSV, listo para abrir en Excel.',
+  'reports.export.from': 'Desde',
+  'reports.export.to': 'Hasta',
+  'reports.export.download': 'Descargar CSV',
   'reports.empty': 'No hay reportes.',
   'reportStatus.ready': 'listo',
   'reportStatus.running': 'generando',

@@ -15,9 +15,7 @@
 // deja el agregado bien. Reprocesar un bucket es barato y la carga es idempotente.
 
 import { prisma, closePrisma } from "../src/lib/prisma.ts";
-import { extraerAlertas, extraerLecturas } from "./extract.ts";
-import { agruparLecturasPorHora, contarAlertasPorDia, inicioDeDia, inicioDeHora } from "./transform.ts";
-import { cargarAlertasDia, cargarLecturasHora } from "./load.ts";
+import { inicioDeDia, inicioDeHora } from "./transform.ts";
 
 export const PROCESOS = ["lecturas_hora", "alertas_dia"] as const;
 export type Proceso = (typeof PROCESOS)[number];
@@ -39,25 +37,85 @@ async function ultimaMarca(proceso: Proceso): Promise<Date | null> {
   return previa?.marca_hasta ?? null;
 }
 
+/**
+ * La agregación ocurre DENTRO de la base, con `sp_etl_lecturas_hora`.
+ *
+ * Antes se traían las lecturas crudas a Node para reducirlas aquí. Con una
+ * lectura por segundo y por sensor, eso es mover millones de renglones por la
+ * red para escribir unos cientos: el trabajo real es la agregación, y se hace
+ * junto al dato.
+ *
+ * El procedimiento se invoca con `$executeRaw` y no con `$queryRaw` porque
+ * escribe y no devuelve filas. Un `CALL` que SÍ devuelve resultados no sirve
+ * desde aquí: el adaptador de MariaDB entrega esas filas sin nombres de
+ * columna (por eso los informes de la API consultan vistas).
+ *
+ * `agruparLecturasPorHora` sigue existiendo en transform.ts: es la misma regla
+ * escrita en TypeScript y es lo que prueban las pruebas unitarias, sin base.
+ */
 async function correrLecturas(desde: Date | null) {
-  const lecturas = await extraerLecturas(desde);
-  const filas = agruparLecturasPorHora(lecturas);
-  const escritas = await cargarLecturasHora(filas);
-  return {
-    leidas: lecturas.length,
-    escritas,
-    // La marca es la última fecha REALMENTE procesada, no `new Date()`: entre el
-    // extract y este punto pudieron entrar lecturas nuevas por MQTT, y darlas
-    // por procesadas las perdería para siempre.
-    marca: lecturas.at(-1)?.fecha_hora ?? null,
-  };
+  // Un solo recorrido para las tres cifras que hacen falta:
+  //
+  //   leidas   cuántas lecturas caen en la ventana
+  //   buckets  cuántas filas de `lectura_hora` resultan. NO se puede usar lo
+  //            que devuelve el CALL: `ON DUPLICATE KEY UPDATE` cuenta 1 al
+  //            insertar y 2 al actualizar, así que reprocesar una ventana ya
+  //            cargada informaría el doble de filas escritas.
+  //   marca    la última fecha REALMENTE procesada, no `new Date()`: entre esta
+  //            consulta y el final pueden entrar lecturas nuevas por MQTT, y
+  //            darlas por procesadas las perdería para siempre.
+  const [resumen] = await prisma.$queryRaw<
+    { leidas: bigint; buckets: bigint; marca: Date | null }[]
+  >`
+    SELECT
+      COUNT(*) AS leidas,
+      COUNT(DISTINCT sensor_id, DATE_FORMAT(fecha_hora, '%Y-%m-%d %H:00:00')) AS buckets,
+      MAX(fecha_hora) AS marca
+    FROM lectura
+    WHERE ${desde} IS NULL OR fecha_hora >= ${desde}
+  `;
+
+  const marca = resumen?.marca ?? null;
+  if (!marca) {
+    return { leidas: 0, escritas: 0, marca: null };
+  }
+
+  // La ventana se cierra en `marca` y no en "ahora": lo que llegue mientras
+  // corre el procedimiento queda para la próxima vuelta, que es exactamente lo
+  // que dice la marca de agua que se guarda abajo.
+  await prisma.$executeRaw`CALL sp_etl_lecturas_hora(${desde}, ${marca})`;
+
+  return { leidas: Number(resumen!.leidas), escritas: Number(resumen!.buckets), marca };
 }
 
+/**
+ * Mismo criterio que `correrLecturas`: el conteo lo hace `sp_etl_alertas_dia`
+ * dentro de la base. `contarAlertasPorDia` sigue en transform.ts porque es la
+ * misma regla en TypeScript y es lo que prueban las pruebas sin base de datos.
+ */
 async function correrAlertas(desde: Date | null) {
-  const alertas = await extraerAlertas(desde);
-  const filas = contarAlertasPorDia(alertas);
-  const escritas = await cargarAlertasDia(filas);
-  return { leidas: alertas.length, escritas, marca: alertas.at(-1)?.fecha_hora ?? null };
+  // `buckets` no puede salir del CALL: `ON DUPLICATE KEY UPDATE` informa 1 al
+  // insertar y 2 al actualizar, así que reprocesar contaría el doble.
+  const [resumen] = await prisma.$queryRaw<
+    { leidas: bigint; buckets: bigint; marca: Date | null }[]
+  >`
+    SELECT
+      COUNT(*) AS leidas,
+      COUNT(DISTINCT DATE(a.fecha_hora), l.sensor_id, a.severidad) AS buckets,
+      MAX(a.fecha_hora) AS marca
+    FROM alerta a
+    JOIN lectura l ON l.lectura_id = a.lectura_id
+    WHERE ${desde} IS NULL OR a.fecha_hora >= ${desde}
+  `;
+
+  const marca = resumen?.marca ?? null;
+  if (!marca) {
+    return { leidas: 0, escritas: 0, marca: null };
+  }
+
+  await prisma.$executeRaw`CALL sp_etl_alertas_dia(${desde}, ${marca})`;
+
+  return { leidas: Number(resumen!.leidas), escritas: Number(resumen!.buckets), marca };
 }
 
 /**

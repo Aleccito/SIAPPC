@@ -38,6 +38,10 @@ qué variables lee el backend, con valores de relleno.
 | `MQTT_CA_FILE` | CA que firma el certificado del broker. **Sin esto el proceso se apaga al arrancar** |
 | `MQTT_CLIENT_CERT_FILE`, `MQTT_CLIENT_KEY_FILE` | Certificado de cliente, solo si el broker exige mTLS. Vacíos por defecto |
 | `MQTT_TLS` | Escape para un broker heredado sin TLS. Déjalo en `true` |
+| `REDIS_URL` | Contadores del límite de peticiones y caché de `/sensors/*`. Sin ella el límite cae a un contador en memoria y arranca igual |
+| `SENSORS_CACHE_TTL` | Segundos que vive cada respuesta cacheada de `/sensors/*`. 10 por defecto; `0` desactiva la caché |
+| `RATE_LIMIT_MAX` | Techo de peticiones por minuto y por IP. 100 por defecto; solo se sube para medir con JMeter |
+| `ETL_RETENCION_DIAS` | Días de lecturas crudas que conserva el ETL. **`0` por defecto = no se borra nada.** Lo lee `etl/scheduler.ts`, no la API |
 
 ## Endpoints
 
@@ -48,6 +52,7 @@ que nginx quita al hacer proxy.
 |---|---|
 | `GET /health` | Sonda de vida, `{"status":"ok"}` |
 | `POST /auth/login` | Credenciales por token JWT; registra el acceso en auditoría |
+| `POST /auth/logout` | Revoca el token de la sesión |
 | `GET /auth/me` | Usuario de la sesión |
 | `GET /users` · `GET /users/:id` · `POST /users` · `PATCH /users/:id` · `DELETE /users/:id` | CRUD de usuarios |
 | `GET /users/:id/activity` | Actividad reciente de un usuario |
@@ -76,6 +81,10 @@ que nginx quita al hacer proxy.
 | `GET /historia/:pacienteId/cambios` | Historial de cambios del expediente |
 | `GET /historia/:pacienteId` | Expediente clínico consolidado |
 | `GET /historia/:pacienteId/exploracion-fisica` · `PUT /historia/:pacienteId/exploracion-fisica` | Exploración física (tablas `exploracion_fisica` y `hallazgo_exploracion`) |
+| `GET /dashboard/assigned-patients` | Pacientes asignados al usuario de la sesión |
+| `GET /dashboard/devices` | Dispositivos y su última lectura |
+| `GET /reports` | Últimas corridas del ETL desde `etl_ejecucion` |
+| `GET /reports/actividad-clinica.csv` | Informe de actividad clínica por profesional, en CSV. Ver [Informes en CSV](#informes-en-csv) |
 
 Salvo `/health` y `/auth/login`, todas exigen `Authorization: Bearer <token>`.
 Las de usuarios, roles y auditoría además revalidan el permiso concreto contra
@@ -129,6 +138,8 @@ Lo que va con `$queryRaw` y por qué, para que no se "arregle" pasándolo al ORM
 | `POST /roles` con `baseRole` | Copia la matriz del rol base en una sola sentencia en vez de N+1 viajes |
 | `app.requirePermission` | La columna a leer (`puede_ver`, `puede_crear`, …) se decide en tiempo de ejecución |
 | Ingesta MQTT | `INSERT IGNORE`, que Prisma no expone |
+| `GET /reports/actividad-clinica.csv` | Agregación sobre la vista `v_rep_actividad_clinica`, con el rango de fechas y el `HAVING` que mantiene en el informe a los médicos sin actividad |
+| ETL (`etl/run.ts`) | `$executeRaw` para llamar a los procedimientos de agregación; ver [Vistas y procedimientos](#vistas-y-procedimientos-almacenados) |
 
 Los valores siempre van parametrizados por la plantilla de `$queryRaw`; lo único
 que se arma como texto son fragmentos fijos escritos en el propio código.
@@ -155,6 +166,71 @@ consume `frontend/src/modules/dashboard/useAlertStream.ts`). Es un canal
 aparte del ETL: el ETL (`backend/etl/`) agrega lecturas y alertas por lotes,
 una vez por hora, para alimentar reportes; el SSE no agrega nada ni toca la
 base de reportes, solo avisa en el instante en que ocurre la alerta.
+
+## Informes en CSV
+
+`GET /reports/actividad-clinica.csv` (`src/routes/reportesCsv.ts`) devuelve el
+informe de actividad clínica por profesional como archivo descargable. Exige
+`desde` y `hasta` en formato `YYYY-MM-DD`, con `desde <= hasta`, y el permiso
+`reportes:ver`.
+
+CSV y no XLSX a propósito: un XLSX de verdad exige una biblioteca y solo compensa
+con varias hojas o formato. Tres detalles del formato son para que Excel abra el
+archivo bien a la primera en un equipo en español: **BOM** al inicio (sin él,
+`Médico` sale como `MÃ©dico`), **`;`** como separador y **coma decimal** (con
+punto, `70.5` se lee como texto). Las líneas van con CRLF.
+
+Tres reglas de la consulta que no son evidentes:
+
+- El `LEFT JOIN` contra `usuario` mantiene en el informe a los médicos que **no**
+  escribieron nada en el periodo: un informe de actividad que solo lista a quien
+  trabajó no deja ver quién no lo hizo.
+- El corte superior es `< hasta + 1 día`, no `<= hasta`: si no, se pierde todo lo
+  escrito ese último día después de medianoche.
+- El hospital sale de `req.hospitalId`, nunca de la petición. Un informe es la
+  vía más cómoda para sacar datos de otra institución de una sola vez.
+
+Del lado del navegador lo descarga `frontend/src/modules/reports/api/exportApi.ts`:
+no se puede usar un `<a href>` porque un enlace no manda la cabecera
+`Authorization`, así que pide el archivo con `fetch`, lo pasa a blob y dispara la
+descarga con un enlace temporal. **El nombre del archivo lo decide el servidor**
+en `Content-Disposition`; el frontend solo lo lee.
+
+## Vistas y procedimientos almacenados
+
+Viven en [`db/extra.sql`](db/extra.sql), cada uno con su migración en
+`prisma/migrations/`. Son lo que Prisma no sabe expresar.
+
+| Objeto | Tipo | Para qué |
+|---|---|---|
+| `v_dim_paciente` | Vista | Dimensión de paciente **sin identidad**, para Power BI: edad calculada, sexo, tipo de sangre, módulo, estado, unidad y cama del ingreso activo. No expone nombre, cédula, contacto de emergencia ni motivo de consulta, y recorta `fecha_llegada` a la fecha |
+| `v_rep_actividad_clinica` | Vista | Detalle de notas SOAP con su autor, rol, unidad, si es adenda y los minutos hasta la firma. Es **detalle y no resumen**: una vista no admite parámetros, y el rango cambia en cada informe, así que la vista fija *qué* cuenta y quien la consulta pone el rango y el `GROUP BY` |
+| `sp_etl_lecturas_hora(desde, hasta)` | Procedimiento | Agrega `lectura` en `lectura_hora`. Lo llama el ETL |
+| `sp_etl_alertas_dia(desde, hasta)` | Procedimiento | Agrega `alerta` en `alerta_dia`. Lo llama el ETL |
+| `sp_purgar_lecturas(dias, lote)` | Procedimiento | Borra lecturas crudas ya agregadas. Lo llama el ETL |
+
+### Un `CALL` que devuelve filas NO sirve desde el backend
+
+El adaptador de MariaDB de Prisma entrega las filas de un `CALL` **sin nombres de
+columna**. Por eso la regla del proyecto es:
+
+- **Lo que la API lee va en una VISTA**, que se consulta como una tabla.
+- **Un procedimiento solo se usa si escribe** y no devuelve resultados, y se
+  invoca con `$executeRaw`, nunca con `$queryRaw`.
+
+Es la razón de que existan `v_rep_actividad_clinica` y `v_dim_paciente` en lugar
+de procedimientos de informe: hubo `sp_kpi_tablero` y `sp_rep_actividad_clinica`,
+y la migración `20260813162155_quitar_sp_sin_uso` los eliminó precisamente porque
+la API no podía llamarlos. Un procedimiento que devuelve filas sigue sirviendo
+desde el cliente de MariaDB o desde Power BI, pero no desde aquí.
+
+### Cómo se escriben
+
+El cuerpo de cada procedimiento es **una sola sentencia, sin `BEGIN … END`**. No
+es estilo: `extra.sql` se carga con `multipleStatements`, que parte el texto por
+punto y coma, y un cuerpo con varias sentencias quedaría cortado por la mitad.
+Un procedimiento que necesite `BEGIN` obliga a cambiar antes cómo se carga el
+esquema.
 
 ## Roles
 
@@ -279,7 +355,7 @@ usuario y contraseña.
 
 ## Base de datos
 
-37 modelos en `prisma/schema.prisma`: hospital, unidades, roles y permisos,
+36 modelos en `prisma/schema.prisma`: hospital, unidades, roles y permisos,
 usuarios y especializaciones, pacientes, dispositivos y variables, sensores,
 lecturas, alertas, notificaciones y auditoría, agregados por hora para
 reportes (`LecturaHora`, `AlertaDia`, `EtlEjecucion`), expediente clínico
@@ -301,7 +377,7 @@ Los otros dos archivos de `db/` son consecuencia, no fuente:
 | Archivo | Qué es |
 |---|---|
 | `db/schema.sql` | **Generado.** El DDL completo de una instalación nueva. Lo aplica MariaDB en el primer arranque (`docker-entrypoint-initdb.d`) y las pruebas para recrear la base. No se edita a mano |
-| `db/extra.sql` | Hand-written. Lo que Prisma no sabe expresar —hoy, el `CHECK` de `alerta`—. `schema:build` lo pega al final de `schema.sql`, y cada sentencia tiene que ir además en alguna migración |
+| `db/extra.sql` | Hand-written. Lo que Prisma no sabe expresar: el `CHECK` de `alerta`, las dos vistas y los tres procedimientos (ver [Vistas y procedimientos](#vistas-y-procedimientos-almacenados)). `schema:build` lo pega al final de `schema.sql`, y **cada sentencia tiene que ir además en alguna migración** o las bases ya creadas nunca la reciben |
 | `db/seed.sql` | Hand-written. Roles, hospital y el primer admin |
 
 `schema.sql` incluye al final la tabla `_prisma_migrations` con todas las
@@ -366,8 +442,12 @@ Para verla con interfaz: `npm run studio`.
 ## Pendiente
 
 - El esquema no tiene tablas para corridas de FlexSim ni para el estado del
-  paciente en la fila de servicio; las pantallas de FlexSim y Reportes siguen
-  siendo maquetas.
+  paciente en la fila de servicio; la pantalla de FlexSim sigue siendo maqueta.
+  Reportes ya no lo es: lista las corridas del ETL y exporta el informe de
+  actividad clínica en CSV.
+- El único informe exportable es el de actividad clínica. Cada informe nuevo
+  necesita su propia vista y su ruta, porque un `CALL` con resultados no se puede
+  consumir desde aquí.
 - Los umbrales de alerta son fijos y globales.
 - El `origin` de CORS todavía apunta solo a `http://localhost:5173`. En Docker no
   estorba, porque nginx sirve el frontend y el backend en el mismo origen.

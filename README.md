@@ -31,6 +31,14 @@ el que se pueda arrancar: los valores reales (usuario y contraseña de la base,
 `.env` está en `.gitignore` y ahí se queda. Sus valores no se commitean ni se
 copian a este README, a un issue o al chat del equipo.
 
+Dos variables del `.env` tienen valor por defecto y casi nunca se tocan, pero
+conviene saber que existen:
+
+| Variable | Por defecto | Qué hace |
+|---|---|---|
+| `RATE_LIMIT_MAX` | `100` | Techo de peticiones por minuto y por IP. Solo se sube para medir con JMeter (ver [Pruebas/README.md](Pruebas/README.md)) |
+| `ETL_RETENCION_DIAS` | `0` | Días de lecturas crudas que conserva el ETL. **`0` = no se borra nada**, que es el valor por defecto a propósito: la poda destruye datos y se enciende a mano en cada institución. Solo afecta a `lectura`; los agregados de `lectura_hora` y `alerta_dia` no se tocan nunca |
+
 ### 3. Generar los certificados del broker
 
 El broker MQTT solo acepta conexiones por TLS, así que necesita un certificado
@@ -64,8 +72,8 @@ privada no sale de la máquina del broker.
 docker compose up -d --build
 ```
 
-Eso es todo. Compose levanta MariaDB, Redis, el broker MQTT, el backend y el
-frontend.
+Eso es todo. Compose levanta MariaDB, Redis, el broker MQTT, el backend, el
+planificador del ETL y el frontend.
 
 | Servicio | URL | Notas |
 |---|---|---|
@@ -74,6 +82,7 @@ frontend.
 | MariaDB | localhost:3306 | Solo para conectarse con un cliente de base de datos |
 | Mosquitto | mqtts://localhost:8883 | Broker MQTT, **solo TLS y con usuario** |
 | Redis | — | Sin puerto en el host: solo la red de Compose. Con contraseña |
+| ETL | — | Sin puerto: planificador que agrega para reportes cada hora al minuto `:05`. Misma imagen que el backend. Ver [backend/etl/README.md](backend/etl/README.md) |
 
 Los puertos publicados salen del `.env` (`FRONTEND_PORT`, `BACKEND_PORT`,
 `DB_PORT`). Dentro de la red de Compose la base siempre escucha en 3306, así que
@@ -174,6 +183,14 @@ npm run db:migrate -- --name descripcion   # crea y aplica la migración
 npm run schema:build                       # regenera db/schema.sql
 ```
 
+Lo que Prisma no sabe expresar —el `CHECK` de `alerta`, las vistas y los
+procedimientos almacenados— se escribe a mano en **`backend/db/extra.sql`**, que
+`schema:build` pega al final de `schema.sql`. Cada sentencia de `extra.sql`
+tiene que ir **además** en una migración de `prisma/migrations/`: si no, las
+bases que ya existen nunca la reciben. El detalle de qué vistas y qué
+procedimientos hay, y por qué unos son vistas y otros procedimientos, está en
+[backend/README.md](backend/README.md).
+
 Para aplicar a una base que ya existe lo que otro haya migrado:
 
 ```bash
@@ -195,13 +212,19 @@ antes de Prisma— están en [backend/README.md](backend/README.md).
 | `docker compose logs -f backend` | Sigue los logs del backend |
 | `docker compose logs -f mosquitto` | Sigue los logs del broker MQTT |
 | `cd backend && npm run migrate` | Aplica migraciones pendientes de esquema (desde el host) |
-| `docker compose ps` | Estado de los cinco servicios |
+| `docker compose ps` | Estado de los seis servicios (`mariadb`, `mosquitto`, `redis`, `backend`, `etl`, `frontend`) |
 | `sh infra/mosquitto/gen-certs.sh` | Regenera los certificados de desarrollo del broker |
 
 Después de cambiar código hay que reconstruir: `docker compose up -d --build`.
 Las imágenes son multi-stage y solo conservan lo necesario — el frontend termina
 en nginx con el `dist` (sin `node_modules`), el backend en Node con dependencias
 de producción y las fuentes.
+
+El backend instala con `npm ci --omit=dev --omit=optional --ignore-scripts`.
+`--omit=optional` no es adorno: la CLI de Prisma, TypeScript y el React que
+arrastra Prisma Studio están marcados `devOptional` en el lockfile, y
+`--omit=dev` por sí solo los conserva —viajaban dentro de la imagen de
+producción sin que nada los importara—.
 
 ## Errores comunes
 
@@ -310,6 +333,14 @@ coincidiendo con `prisma/schema.prisma`, y que aplicar las migraciones sobre una
 base vacía reproduzca ese mismo esquema. Sin ellas, una instalación nueva podría
 nacer con tablas viejas sin que nadie se entere hasta el despliegue.
 
+Lo mismo se corre a mano antes de abrir un pull request, con el stack arriba:
+
+```bash
+cd backend  && npm run typecheck && npm test    # 84 pruebas
+cd frontend && npm run build && npm run lint
+cd Pruebas  && npm run test:postman             # 50 peticiones, 143 aserciones
+```
+
 No hay job de JMeter, y es deliberado: los runners son máquinas compartidas, así
 que sus tiempos no son comparables entre corridas. La prueba de carga se ejecuta
 a mano (`Pruebas/jmeter/correr.sh`).
@@ -345,6 +376,10 @@ Con `docker compose up` quedan operativos, contra la base real:
 - **Sensores y alertas** — lecturas y alertas que entran por MQTT desde la Pi,
   además de alertas en vivo por Server-Sent Events (`GET /alerts/stream`); el
   ETL agrega por lotes cada hora para reportes, el SSE avisa al instante
+- **Reportes** — bitácora de corridas del ETL (`GET /reports`) y descarga del
+  informe de actividad clínica por profesional en CSV
+  (`GET /reports/actividad-clinica.csv`, con rango de fechas), listo para abrir
+  en Excel
 - **Multi-hospital** — el hospital de la sesión sale de `req.hospitalId`
   (`backend/src/plugins/auth.ts`), y las listas quedan acotadas por hospital.
   Excepción real, no pendiente de documentar: `/sensors/*` y
@@ -352,9 +387,15 @@ Con `docker compose up` quedan operativos, contra la base real:
   caché de Redis tampoco lo incluye
 
 Siguen siendo maquetas sin servidor detrás: **Power BI**, **FlexSim** y
-**recuperación de contraseña**. Reportes ya es real (`GET /reports`, bitácora
-de corridas del ETL). El detalle está en
+**recuperación de contraseña**. El detalle está en
 [frontend/README.md](frontend/README.md).
+
+Power BI sí tiene ya de qué tirar aunque la pantalla siga siendo maqueta: se
+conecta directo a MariaDB y lee la vista `v_dim_paciente`, que responde las
+mismas preguntas que la tabla `paciente` —cuántos, de qué edad, en qué unidad,
+en qué estado— **sin nombre, cédula, contacto de emergencia ni motivo de
+consulta**. Un informe no debe llevarse datos identificables al portátil de
+quien abra el archivo.
 
 ## IoT
 
