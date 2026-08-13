@@ -54,10 +54,12 @@ son UTC.
 `agruparLecturasPorHora` y `contarAlertasPorDia` son la misma regla escrita en
 TypeScript, y son lo que comprueban las pruebas unitarias sin necesidad de base.
 
-> [`extract.ts`](extract.ts) y [`load.ts`](load.ts) quedaron **sin uso** al mover
-> la agregación a la base: nadie importa ya sus funciones (de `extract.ts` solo se
-> siguen usando los tipos `LecturaCruda` y `AlertaCruda`, desde `transform.ts`).
-> Se conservan como referencia de la versión anterior.
+> **Ya no hay `extract.ts` ni `load.ts`.** El paso a los procedimientos dejó sin
+> uso las dos mitades que rodeaban a la transformación —la extracción por lotes
+> con Prisma y la carga por tandas con `upsert`—, y se borraron en lugar de
+> quedar como referencia: el historial de git ya cumple ese papel. Los tipos
+> `LecturaCruda` y `AlertaCruda`, que eran lo único vivo de `extract.ts`,
+> pasaron a `transform.ts`, su único consumidor.
 
 [`run.ts`](run.ts) orquesta y escribe el resultado en `etl_ejecucion`.
 [`scheduler.ts`](scheduler.ts) lo dispara cada hora y, después, poda.
