@@ -10,7 +10,22 @@
 // se guardó la fecha, y el ETL no desplaza los datos una hora al correr en un
 // contenedor con otro TZ.
 
-import type { AlertaCruda, LecturaCruda } from "./extract.ts";
+// Los tipos de entrada describen los renglones crudos tal como salen de
+// `lectura` y `alerta`. Vivían en extract.ts, que se borró al mover la
+// agregación a la base: la extracción hoy la hace el procedimiento almacenado,
+// pero la forma del renglón sigue haciendo falta para escribir las reglas y
+// para armar los casos de prueba.
+export type LecturaCruda = {
+  sensor_id: number;
+  fecha_hora: Date;
+  valor: unknown;
+};
+
+export type AlertaCruda = {
+  fecha_hora: Date;
+  severidad: "baja" | "media" | "alta" | "critica";
+  lectura: { sensor_id: number };
+};
 
 export type FilaLecturaHora = {
   sensor_id: number;
