@@ -12,6 +12,18 @@ export async function createRole(role: NewRole): Promise<RoleSummary> {
   })
 }
 
+// El `nombre` del rol no viaja: el servidor no lo recalcula al renombrar la
+// etiqueta porque es la llave con la que se resuelven los permisos.
+export async function updateRole(
+  id: string,
+  data: { label?: string; description?: string | null },
+): Promise<RoleSummary> {
+  return request<RoleSummary>(`/roles/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
 export async function getRolePermissions(id: string): Promise<RolePermission[]> {
   return request<RolePermission[]>(`/roles/${id}/permissions`)
 }

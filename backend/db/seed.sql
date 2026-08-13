@@ -37,9 +37,13 @@ INSERT INTO variable (codigo, unidad) VALUES
   ('pa', 'mmHg'),
   ('temp', '°C');
 
--- Roles base. `es_sistema` los marca como no editables: la interfaz los muestra
--- con el candado y la matriz en solo lectura. Los roles personalizados que cree
--- un administrador entran sin esa marca.
+-- Roles base. `es_sistema` los marca como no borrables: se pueden editar la
+-- etiqueta, la descripción y la matriz, pero no darlos de baja porque el resto
+-- del sistema da por hecho que existen. Los roles personalizados que cree un
+-- administrador entran sin esa marca.
+-- Aparte de eso, `admin` está protegido por su `nombre` en
+-- backend/src/routes/roles.ts: no se edita ni se borra, para que nunca quede el
+-- sistema sin un rol capaz de administrarlo.
 INSERT INTO rol (nombre, etiqueta, descripcion, es_sistema) VALUES
   ('medico', 'Médico', 'Personal médico con acceso clínico completo', TRUE),
   ('enfermero', 'Enfermero', 'Personal de enfermería a cargo de pacientes', TRUE),

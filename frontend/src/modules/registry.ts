@@ -191,6 +191,28 @@ export const routeModules: AppModule[] = modules.flatMap((entry) =>
 // Rutas que no son entradas de navegación: se llega a ellas desde una pantalla,
 // no desde la barra lateral.
 export const detailRoutes = [
+  // Búsqueda global. No es entrada de menú: se llega escribiendo en el buscador
+  // de la barra superior, no navegando.
+  {
+    path: '/search',
+    lazy: async () => ({
+      Component: (await import('./search/pages/SearchPage')).SearchPage,
+    }),
+  },
+  // Las dos pantallas del expediente que cuelgan de un paciente concreto: sin
+  // `:patientId` no significan nada, así que tampoco van al menú lateral.
+  {
+    path: '/expediente/:patientId/exploracion-fisica',
+    lazy: async () => ({
+      Component: (await import('./clinical/pages/ExploracionFisicaPage')).ExploracionFisicaPage,
+    }),
+  },
+  {
+    path: '/expediente/:pacienteId/antecedentes',
+    lazy: async () => ({
+      Component: (await import('./clinical/pages/AntecedentesPage')).AntecedentesPage,
+    }),
+  },
   {
     // Detalle de una cama. `:device` es el `dispositivo.codigo` de la Pi, que es
     // lo que identifica la fuente de las lecturas; la cama es una etiqueta que

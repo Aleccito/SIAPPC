@@ -3,7 +3,11 @@ export type RoleSummary = {
   name: string
   label: string
   description: string | null
+  // `isSystem` es "rol base, no se puede borrar"; `isProtected` es "no se toca
+  // nada de él" y hoy solo lo cumple `admin`. Son distintos a propósito: los
+  // demás roles base sí se editan.
   isSystem: boolean
+  isProtected: boolean
   userCount: number
 }
 

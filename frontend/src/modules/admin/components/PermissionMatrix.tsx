@@ -39,7 +39,10 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
   })
 
   const role = roles.data?.find((entry) => entry.id === roleId)
-  const locked = role?.isSystem ?? true
+  // Solo el rol protegido va en solo lectura. Mientras la lista de roles no ha
+  // llegado se bloquea por defecto, para no ofrecer guardar algo que el
+  // servidor podría rechazar.
+  const locked = role?.isProtected ?? true
 
   // El borrador se edita en memoria y solo viaja al servidor al guardar, para
   // que marcar diez casillas no dispare diez peticiones.
@@ -74,7 +77,12 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
             {t('matrix.title')} — {role?.label ?? ''}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {locked ? t('matrix.lockedHint') : t('matrix.editableHint')}
+            {/* El motivo del bloqueo va escrito, no solo insinuado por las
+                casillas grises: el candado dice que no se puede, el texto dice
+                por qué. */}
+            {locked
+              ? t('roles.matrixProtectedHint')
+              : t('matrix.editableHint')}
           </Typography>
         </Box>
         {locked && (
@@ -83,7 +91,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
             color="error"
             variant="outlined"
             icon={<LockOutlinedIcon />}
-            label={t('matrix.locked')}
+            label={t('roles.matrixProtected')}
           />
         )}
       </Stack>
@@ -104,7 +112,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
               <TableCell>{t('matrix.col.module')}</TableCell>
               {permissionActions.map((action) => (
                 <TableCell key={action} align="center" sx={{ width: 110 }}>
-                  {t(`matrix.col.${action}` as StringKey)}
+                  {t(`matrix.col.${action}`)}
                 </TableCell>
               ))}
             </TableRow>
@@ -124,7 +132,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
                         input: {
                           // El nombre accesible tiene que decir módulo Y acción:
                           // sin él son cuarenta casillas llamadas "checkbox".
-                          'aria-label': `${role?.label ?? ''} — ${row.label} — ${t(`matrix.col.${action}` as StringKey)}`,
+                          'aria-label': `${role?.label ?? ''} — ${row.label} — ${t(`matrix.col.${action}`)}`,
                         },
                       }}
                     />
