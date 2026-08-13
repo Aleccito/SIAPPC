@@ -28,7 +28,36 @@ import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 import type { DeviceState } from '../types'
 
-const AUDIT_ROWS = 8
+// El tablero enseña CINCO eventos y solo los de seguridad; la bitácora entera
+// vive en Reportes › Auditoría. Un panel de inicio con todo el registro se
+// convierte en un muro que nadie lee, y lo importante se pierde entre altas y
+// modificaciones rutinarias.
+const SECURITY_ROWS = 5
+
+// De dónde se recorta. Se piden más filas de las que se pintan porque el filtro
+// es del lado del cliente: `GET /audit` acepta UNA acción, y aquí hacen falta
+// varias.
+const SECURITY_WINDOW = 60
+
+/**
+ * Qué cuenta como evento de seguridad.
+ *
+ * Un intento de acceso bloqueado y un borrado lo son por sí mismos. El resto
+ * depende de sobre QUÉ se actuó: tocar cuentas, roles o permisos cambia quién
+ * puede hacer qué, y eso es seguridad; dar de alta un paciente o una cama, no.
+ */
+const SECURITY_ENTITIES = ['usuario', 'rol', 'rol_permiso', 'permiso']
+
+/** Escrituras. LOGIN y LOGOUT correctos son rutina, no un evento de seguridad. */
+const SECURITY_ACTIONS = ['INSERT', 'UPDATE', 'DELETE']
+
+function esEventoDeSeguridad(entry: { action: string; entity: string }): boolean {
+  if (entry.action === 'LOGIN_BLOCKED' || entry.action === 'DELETE') return true
+  // Solo cuenta si además se ESCRIBIÓ sobre esa entidad: sin esta condición,
+  // cada inicio de sesión entraba —`LOGIN` se anota sobre `usuario`— y los
+  // cinco huecos se llenaban de rutina, tapando lo que importa.
+  return SECURITY_ACTIONS.includes(entry.action) && SECURITY_ENTITIES.includes(entry.entity)
+}
 // Un equipo que lleva más de esto sin publicar se da por desconectado. Es el
 // mismo orden de magnitud que el intervalo de publicación de la Raspberry
 // (iot/.env: PUBLISH_INTERVAL) multiplicado por un margen holgado.
@@ -245,13 +274,16 @@ export function SecurityEventsWidget() {
   const { t, language } = useLanguage()
   const audit = useQuery({
     queryKey: ['dashboard', 'audit'],
-    queryFn: () => listAudit({ page: 0, pageSize: AUDIT_ROWS }),
+    queryFn: () => listAudit({ page: 0, pageSize: SECURITY_WINDOW }),
     refetchInterval: REFRESH_INTERVAL_MS,
   })
 
+  const eventos = (audit.data?.entries ?? []).filter(esEventoDeSeguridad).slice(0, SECURITY_ROWS)
+
   if (audit.isError) return <WidgetError message="dash.audit.error" />
-  if (audit.data && audit.data.entries.length === 0)
-    return <WidgetEmpty message="dash.audit.empty" />
+  // Sin eventos de seguridad NO es lo mismo que sin bitácora: el mensaje lo
+  // dice así para que nadie lea el widget vacío como "la auditoría no funciona".
+  if (audit.data && eventos.length === 0) return <WidgetEmpty message="dash.security.empty" />
 
   // `auditoria.accion` es un ENUM, pero la traducción se busca en una tabla y
   // no interpolando la cadena: una acción nueva en la base dejaría al widget
@@ -261,7 +293,7 @@ export function SecurityEventsWidget() {
 
   return (
     <Stack spacing={1} divider={<Divider flexItem />}>
-      {(audit.data?.entries ?? []).map((entry) => (
+      {eventos.map((entry) => (
         <Stack key={entry.id} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <Chip
             size="small"

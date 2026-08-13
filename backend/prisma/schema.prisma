@@ -574,6 +574,8 @@ model ExpedienteClinico {
   procedimientos    Procedimiento[]
   documentos        DocumentoClinico[]
   cambios           HistoriaCambio[]
+  // Exploración física. Ver el bloque del final del archivo.
+  exploracion       ExploracionFisica?
 
   @@map("expediente_clinico")
 }
@@ -976,4 +978,72 @@ model Cita {
   @@index([estado], map: "ix_cita_estado")
   @@index([unidad_id], map: "ix_cita_unidad")
   @@map("cita")
+}
+
+// ---------------------------------------------------------------------------
+// Exploración física
+//
+// Cuelga del expediente (1:1) porque es el examen de ingreso del paciente, no
+// un evento repetido: se corrige, no se acumula. Los hallazgos van en su propia
+// tabla y no en veinticuatro columnas —seis regiones por cuatro técnicas—:
+// añadir una región sería un ALTER TABLE, y la mitad de las columnas estarían
+// siempre vacías.
+//
+// El IMC NO se guarda: es peso/talla². Guardarlo permitiría que contradijera a
+// las dos columnas de las que sale.
+// ---------------------------------------------------------------------------
+
+model ExploracionFisica {
+  exploracion_id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  expediente_id          Int      @unique(map: "uq_exploracion_expediente") @db.UnsignedInt
+  peso_kg                Decimal? @db.Decimal(5, 2)
+  talla_cm               Decimal? @db.Decimal(5, 1)
+  perimetro_abdominal_cm Decimal? @db.Decimal(5, 1)
+  /// Escala de Glasgow, 3 a 15. El resto de los signos vitales llegan del
+  /// monitor por `lectura`: duplicarlos aquí daría dos cifras del mismo momento.
+  glasgow                Int?     @db.UnsignedTinyInt
+  registrado_por         Int?     @db.UnsignedInt
+  actualizado_en         DateTime @default(now()) @updatedAt @db.DateTime(0)
+
+  expediente ExpedienteClinico     @relation(fields: [expediente_id], references: [expediente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_exploracion_expediente")
+  hallazgos  HallazgoExploracion[]
+
+  @@map("exploracion_fisica")
+}
+
+enum RegionExploracion {
+  cabeza_cuello
+  torax
+  abdomen
+  extremidades_superiores
+  extremidades_inferiores
+  neurologico
+}
+
+enum TecnicaExploracion {
+  inspeccion
+  palpacion
+  percusion
+  auscultacion
+}
+
+enum EstadoHallazgo {
+  normal
+  anormal
+}
+
+/// Un hallazgo por región y técnica. La llave única es lo que permite guardar
+/// la pantalla entera con un upsert por celda, sin borrar y reinsertar.
+model HallazgoExploracion {
+  hallazgo_id    Int                @id @default(autoincrement()) @db.UnsignedInt
+  exploracion_id Int                @db.UnsignedInt
+  region         RegionExploracion
+  tecnica        TecnicaExploracion
+  estado         EstadoHallazgo     @default(normal)
+  descripcion    String?            @db.Text
+
+  exploracion ExploracionFisica @relation(fields: [exploracion_id], references: [exploracion_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_hallazgo_exploracion")
+
+  @@unique([exploracion_id, region, tecnica], map: "uq_hallazgo_region_tecnica")
+  @@map("hallazgo_exploracion")
 }

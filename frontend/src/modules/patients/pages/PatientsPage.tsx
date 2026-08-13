@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -11,6 +12,7 @@ import {
   DialogContent,
   DialogTitle,
   LinearProgress,
+  InputAdornment,
   MenuItem,
   Paper,
   Select,
@@ -25,9 +27,10 @@ import {
   Typography,
 } from '@mui/material'
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined'
+import SearchIcon from '@mui/icons-material/Search'
 import { addPatient, listPatients } from '../api/patientsApi'
-import { serviceModules, sexes } from '../types'
-import type { Patient, PatientStatus, ServiceModule, Sex } from '../types'
+import { bloodTypes, serviceModules, sexes } from '../types'
+import type { BloodType, Patient, PatientStatus, ServiceModule, Sex } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 import { usePageHeader } from '../../../app/pageHeader'
@@ -51,6 +54,9 @@ const emptyForm = {
   reason: '',
   fechaNacimiento: '',
   sexo: 'M' as Sex,
+  // Vacío ≠ desconocido a la fuerza: se manda null y la ficha no los pinta.
+  tipoSangre: '' as BloodType | '',
+  contactoEmergencia: '',
 }
 
 const sexKey: Record<Sex, StringKey> = {
@@ -64,6 +70,22 @@ export function PatientsPage() {
   usePageHeader(t('patients.title'))
   const queryClient = useQueryClient()
   const [moduleFilter, setModuleFilter] = useState<ServiceModule | 'all'>('all')
+
+  // El buscador vive en esta pantalla y no en la barra superior: buscar es algo
+  // que se hace desde Pacientes, y un campo presente en todas las pantallas
+  // compite con lo que cada una tiene que hacer.
+  //
+  // No consulta nada por su cuenta: lleva a /search, que es quien lee `q`.
+  const navigate = useNavigate()
+  const [term, setTerm] = useState('')
+
+  function submitSearch(event: FormEvent) {
+    event.preventDefault()
+    const q = term.trim()
+    // El servidor exige dos caracteres; con menos, la navegación sobra.
+    if (q.length < 2) return
+    navigate(`/search?q=${encodeURIComponent(q)}`)
+  }
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [selected, setSelected] = useState<Patient | null>(null)
@@ -88,7 +110,12 @@ export function PatientsPage() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    mutation.mutate(form)
+    // Vacío viaja como null: el servidor distingue "no se sabe" de "".
+    mutation.mutate({
+      ...form,
+      tipoSangre: form.tipoSangre === '' ? null : form.tipoSangre,
+      contactoEmergencia: form.contactoEmergencia.trim() || null,
+    })
   }
 
   return (
@@ -116,6 +143,26 @@ export function PatientsPage() {
             </MenuItem>
           ))}
         </Select>
+        <Box component="form" role="search" onSubmit={submitSearch}>
+          <TextField
+            size="small"
+            type="search"
+            value={term}
+            onChange={(event) => setTerm(event.target.value)}
+            placeholder={t('busqueda.placeholder')}
+            aria-label={t('busqueda.placeholder')}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+            sx={{ width: { xs: '100%', sm: 260 } }}
+          />
+        </Box>
         <Box sx={{ flexGrow: 1 }} />
         <Button
           variant="contained"
@@ -262,6 +309,33 @@ export function PatientsPage() {
                   </MenuItem>
                 ))}
               </TextField>
+              {/* Estos dos NO son obligatorios: de un paciente inconsciente
+                  pueden no saberse al ingresarlo, y exigirlos impediría
+                  registrar justo al más grave. */}
+              <TextField
+                label={t('patients.form.bloodType')}
+                value={form.tipoSangre}
+                onChange={(event) =>
+                  setForm({ ...form, tipoSangre: event.target.value as BloodType | '' })
+                }
+                select
+                fullWidth
+              >
+                <MenuItem value="">{t('patients.form.unknown')}</MenuItem>
+                {bloodTypes.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    {value}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label={t('patients.form.emergencyContact')}
+                value={form.contactoEmergencia}
+                onChange={(event) =>
+                  setForm({ ...form, contactoEmergencia: event.target.value })
+                }
+                fullWidth
+              />
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>

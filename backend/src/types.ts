@@ -1,4 +1,5 @@
 import type { Prisma } from "./generated/prisma/client.ts";
+import type { TipoSangre as PrismaTipoSangre } from "./generated/prisma/enums.ts";
 
 // Mirrors frontend/src/modules/auth/types.ts and patients/types.ts.
 // The frontend owns these shapes; the backend must produce exactly them.
@@ -42,6 +43,16 @@ export type ServiceModule = (typeof serviceModules)[number];
 
 export type PatientStatus = "waiting" | "inService" | "discharged";
 
+/** Espejo del ENUM `sexo` de la tabla `paciente`: los valores son los de la base. */
+export const sexes = ["M", "F", "O"] as const;
+export type Sex = (typeof sexes)[number];
+
+// Los grupos sanguíneos viajan tal como los guarda MariaDB ("A+", "O-"), no con
+// el nombre que Prisma les da en TypeScript (`A_POS`, `O_NEG`): ese nombre es un
+// apaño del generador —un identificador no puede llevar '+'— y no un dato.
+export const bloodTypes = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
+export type BloodType = (typeof bloodTypes)[number];
+
 export type Patient = {
   id: string;
   name: string;
@@ -50,6 +61,11 @@ export type Patient = {
   status: PatientStatus;
   arrivedAt: string;
   reason: string;
+  /// Fecha civil sin hora ("1990-05-14"): la columna es DATE y no guarda hora.
+  birthDate: string;
+  sex: Sex;
+  bloodType: BloodType | null;
+  emergencyContact: string | null;
 };
 
 // Mirrors frontend/src/modules/reports/types.ts. Los tres estados son los que
@@ -164,6 +180,12 @@ export type PacienteRow = {
   estado: PatientStatus;
   motivo_consulta: string | null;
   fecha_llegada: string;
+  // Lo que entrega el cliente de Prisma: DATE como Date y el enumerado con su
+  // nombre de TypeScript (`A_POS`), que routes/patients.ts traduce al valor real.
+  fecha_nacimiento: Date;
+  sexo: Sex;
+  tipo_sangre: PrismaTipoSangre | null;
+  contacto_emergencia: string | null;
 }
 
 export type DispositivoRow = {

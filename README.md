@@ -17,19 +17,19 @@ Docker Desktop (o Docker Engine) con Compose v2. Nada más.
 docker compose version
 ```
 
-### 2. Pedir el `.env` a Ing.Adrian
+### 2. El archivo `.env` de la raíz
 
-**El archivo `.env` de la raíz no está en el repositorio y no se puede
-reconstruir a partir de él.** Pídeselo a **Ing.Adrian** (dueño del proyecto) y
-colócalo en la raíz del repo, junto a `docker-compose.yml`.
+**No está en el repositorio y no se puede reconstruir a partir de él.** Lo
+entrega **Ing.Adrian** (dueño del proyecto) y va en la raíz, junto a
+`docker-compose.yml`.
 
-En el repo solo vive [`.env.example`](.env.example): documenta **qué** variables
-existen, con valores de relleno. Sirve como referencia, no para arrancar — los
-valores reales (usuario y contraseña de la base, `JWT_SECRET`, credenciales del
-broker MQTT) los entrega Ing.Adrian.
+En el repositorio solo vive [`.env.example`](.env.example), que documenta **qué**
+variables existen, con valores de relleno. Es una referencia, no un archivo con
+el que se pueda arrancar: los valores reales (usuario y contraseña de la base,
+`JWT_SECRET`, credenciales del broker MQTT) los entrega Ing.Adrian.
 
-`.env` está en `.gitignore` y ahí se queda: nunca se commitea, y nunca se pegan
-sus valores en este README, en un issue ni en el chat del equipo.
+`.env` está en `.gitignore` y ahí se queda. Sus valores no se commitean ni se
+copian a este README, a un issue o al chat del equipo.
 
 ### 3. Generar los certificados del broker
 
@@ -105,16 +105,35 @@ de Compose no debe poder vaciar los contadores del rate limit.
 ### 5. Entrar
 
 El seed crea el hospital, las unidades, los cuatro roles (`medico`, `enfermero`,
-`administrativo`, `admin`) y una cuenta para entrar:
+`administrativo`, `admin`) y una cuenta por rol:
 
-| Correo | Contraseña |
-|---|---|
-| `admin@institucion.org` | `Admin12345` |
+| Correo | Contraseña | Rol | Unidad |
+|---|---|---|---|
+| `admin@institucion.org` | `Admin12345` | Administrador | TI |
+| `medico@institucion.org` | `Medico12345` | Médico | UCI |
+| `enfermero@institucion.org` | `Enfermero12345` | Enfermero | UCI |
+| `administrativo@institucion.org` | `Admin0perativo12345` | Administrativo | Admisión |
 
-Es la única forma de entrar la primera vez: crear usuarios por la API exige un
-admin ya autenticado. **Esa contraseña está en `backend/db/seed.sql`, o sea en el
-repositorio**, así que sirve solo para desarrollo local. Cámbiala antes de
-exponer el sistema a cualquier red.
+Son cuatro porque **cada rol ve una aplicación distinta**. El acceso lo decide
+la matriz `rol_permiso`, no el código, y el administrador es precisamente la
+cuenta con menos alcance clínico:
+
+- **Médico** — escribe y firma notas SOAP, y edita el expediente. Es el único que
+  puede: al administrador la matriz de permisos le da *solo lectura* sobre el
+  contenido clínico, para que una cuenta técnica no pueda firmar por un médico.
+- **Enfermero** — lee el expediente y las notas, sin firmarlas. Reconoce alertas
+  y mueve camas a limpieza o mantenimiento.
+- **Administrativo** — su tablero propio: ocupación de camas, ingresos y egresos
+  del día, agenda de citas. Da altas, camas y citas.
+- **Admin** — usuarios, roles y bitácora. Escribir una nota clínica con esta
+  cuenta responde `403`: es una cuenta técnica, no personal sanitario.
+
+El administrador es la única forma de entrar la primera vez: crear usuarios por
+la API exige un admin ya autenticado.
+
+**Estas contraseñas están en `backend/db/seed.sql`, o sea en el repositorio.**
+Son datos de prueba: deben cambiarse o eliminarse antes de cualquier despliegue
+en producción.
 
 El seed corre una sola vez, cuando el volumen está vacío. Para volver a
 aplicarlo hay que borrar el volumen con `docker compose down -v`.
@@ -188,8 +207,8 @@ de producción y las fuentes.
 
 **Falta el `.env` de la raíz.** Compose sustituye cadena vacía y avisa con
 `variable is not set`. MariaDB se crea con usuario y contraseña en blanco, el
-backend no logra conectarse y el login falla. Consigue el `.env` con Ing.Adrian,
-borra el volumen y vuelve a empezar:
+backend no logra conectarse y el login falla. Se resuelve con el `.env` correcto
+y borrando el volumen para empezar de cero:
 
 ```bash
 docker compose down -v
@@ -221,7 +240,7 @@ en `backend/.dockerignore`, así que tampoco entra en la imagen.
 son los certificados: es Windows. Con `core.autocrlf=true`, git convierte
 `infra/mosquitto/start.sh` a CRLF al hacer checkout y el `sh` del contenedor lee
 `set -eu\r`. El repositorio trae un `.gitattributes` que fija `eol=lf` para
-`*.sh` y `*.conf`, pero un archivo ya convertido en tu copia de trabajo sigue
+`*.sh` y `*.conf`, pero un archivo ya convertido en la copia de trabajo sigue
 mal. Para reescribir solo ese archivo, sin tocar nada más:
 
 ```bash

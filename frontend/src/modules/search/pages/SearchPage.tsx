@@ -28,7 +28,6 @@ import type {
   SearchResult,
 } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
-import type { StringKey } from '../../../shared/i18n/dictionary'
 import { usePageHeader } from '../../../app/pageHeader'
 
 // Búsqueda global: pacientes, notas SOAP y documentos en una sola pantalla.

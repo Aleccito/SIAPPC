@@ -193,7 +193,7 @@ const es = {
   'dash.widget.activeUsers': 'Cuentas activas',
   'dash.widget.platformUsage': 'Uso por rol y unidad',
   'dash.widget.integrations': 'Integraciones',
-  'dash.widget.securityEvents': 'Auditoría y eventos de seguridad',
+  'dash.widget.securityEvents': 'Eventos de seguridad recientes',
 
   'dash.kpi.assignedPatients': 'Pacientes a cargo',
   'dash.kpi.criticalAlerts': 'Alertas críticas abiertas',
@@ -246,6 +246,10 @@ const es = {
   'dash.usage.byUnit': 'Por unidad',
   'dash.usage.noUnit': 'Sin unidad',
 
+  // Sin eventos de seguridad, que no es lo mismo que sin bitácora.
+  // Cartel del aviso empujado por el servidor (SSE).
+  'dash.live.alert': 'Alerta en {patient}: {detail}',
+  'dash.security.empty': 'Sin eventos de seguridad recientes.',
   'dash.audit.error': 'No se pudo cargar la bitácora',
   'dash.audit.empty': 'No hay movimientos registrados.',
   'dash.audit.system': 'Sistema',
@@ -444,6 +448,9 @@ const es = {
   'patients.form.reason': 'Motivo de consulta',
   'patients.form.birthDate': 'Fecha de nacimiento',
   'patients.form.sex': 'Sexo',
+  'patients.form.bloodType': 'Grupo sanguíneo',
+  'patients.form.emergencyContact': 'Contacto de emergencia',
+  'patients.form.unknown': 'No se conoce',
   'patients.sex.M': 'Masculino',
   'patients.sex.F': 'Femenino',
   'patients.sex.O': 'Otro',
@@ -730,8 +737,13 @@ const es = {
   'antecedentes.field.relationship': 'Relación familiar',
   'antecedentes.field.relationshipHint': 'Madre, padre, abuela materna…',
   'antecedentes.field.year': 'Año aproximado',
+  // Una por cada valor del enum `TipoAntecedente` del backend: el diálogo las
+  // arma como `antecedentes.type.${tipo}`, así que si falta alguna no compila.
   'antecedentes.type.personal': 'Personal patológico',
   'antecedentes.type.quirurgico': 'Quirúrgico',
+  'antecedentes.type.familiar': 'Heredofamiliar',
+  'antecedentes.type.ginecoobstetrico': 'Gineco-obstétrico',
+  'antecedentes.type.habito': 'Hábito',
 
   // ---------------------------------------------------------------------------
   // Detalle de nota SOAP (modules/clinical)

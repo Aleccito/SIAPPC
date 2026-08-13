@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Accordion,
@@ -32,6 +33,7 @@ import {
 // caché ['patients'] con las demás pantallas, así que debe ser la misma
 // función y la misma forma de respuesta ({ items, total }).
 import { listPatients } from '../../patients/api/patientsApi'
+import { SoapNoteDialog } from '../components/SoapNoteDialog'
 import { historiaCategories } from '../types'
 import type { HistoriaCategory, HistoriaEntry, SoapNote } from '../types'
 import { useAuth } from '../../auth/useAuth'
@@ -78,12 +80,20 @@ export function ExpedientePage() {
   const queryClient = useQueryClient()
   usePageHeader(t('clinical.title'), t('clinical.subtitle'))
 
-  const [patientId, setPatientId] = useState('')
+  // El paciente puede venir en la URL (`/expediente?patientId=12`): es como
+  // aterrizan los enlaces "Ver Perfil" de la búsqueda global. Sin esto, el
+  // enlace abría el expediente con el selector vacío.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const patientId = searchParams.get('patientId') ?? ''
+  const setPatientId = (id: string) =>
+    setSearchParams(id === '' ? {} : { patientId: id }, { replace: true })
   const [tab, setTab] = useState<'soap' | 'history'>('soap')
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   // No nulo = lo que se está escribiendo es un addendum de esa nota firmada.
   const [addendumOf, setAddendumOf] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
+  // La nota abierta en el diálogo de detalle, si hay alguna.
+  const [detalle, setDetalle] = useState<SoapNote | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const patients = useQuery({ queryKey: ['patients'], queryFn: () => listPatients() })
@@ -147,26 +157,49 @@ export function ExpedientePage() {
   return (
     <Stack spacing={3}>
       <Paper sx={{ p: 2 }}>
-        <TextField
-          select
-          size="small"
-          label={t('clinical.patient')}
-          value={patientId}
-          onChange={(event) => {
-            setPatientId(event.target.value)
-            setDraft(EMPTY_DRAFT)
-            setAddendumOf(null)
-            setNotes('')
-            setError(null)
-          }}
-          sx={{ minWidth: 320 }}
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1.5 }}
         >
-          {(patients.data?.items ?? []).map((patient) => (
-            <MenuItem key={patient.id} value={patient.id}>
-              {patient.name} — {patient.document}
-            </MenuItem>
-          ))}
-        </TextField>
+          <TextField
+            select
+            size="small"
+            label={t('clinical.patient')}
+            value={patientId}
+            onChange={(event) => {
+              setPatientId(event.target.value)
+              setDraft(EMPTY_DRAFT)
+              setAddendumOf(null)
+              setNotes('')
+              setError(null)
+              setDetalle(null)
+            }}
+            sx={{ minWidth: 320 }}
+          >
+            {(patients.data?.items ?? []).map((patient) => (
+              <MenuItem key={patient.id} value={patient.id}>
+                {patient.name} — {patient.document}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          {/* Las dos pantallas cuelgan de un paciente concreto: sin uno
+              elegido la URL no existe, así que el enlace tampoco se ofrece. */}
+          {patientId !== '' && (
+            <>
+              <Button
+                component={RouterLink}
+                to={`/expediente/${patientId}/exploracion-fisica`}
+              >
+                {t('exploracion.title')}
+              </Button>
+              <Button component={RouterLink} to={`/expediente/${patientId}/antecedentes`}>
+                {t('antecedentes.title')}
+              </Button>
+            </>
+          )}
+        </Stack>
       </Paper>
 
       {patientId === '' && <Alert severity="info">{t('clinical.pickPatient')}</Alert>}
@@ -284,6 +317,9 @@ export function ExpedientePage() {
                       </Typography>
                     )}
                     <Box sx={{ flexGrow: 1 }} />
+                    <Button size="small" onClick={() => setDetalle(note)}>
+                      {t('busqueda.viewNote')}
+                    </Button>
                     {/* Firmar solo aparece en el borrador propio: el backend
                         rechaza el resto, y ofrecer un botón que va a fallar es
                         peor que no ofrecerlo. */}
@@ -414,6 +450,22 @@ export function ExpedientePage() {
           )}
         </>
       )}
+
+      {/* El diálogo no edita ni redacta por su cuenta: la adenda se escribe en
+          el formulario de arriba, que es el que ya sabe hacerlo. No se le pasa
+          `onEdit` porque no existe endpoint para modificar un borrador; lo
+          único que hoy se puede hacer con una nota firmada es la adenda. */}
+      <SoapNoteDialog
+        open={detalle !== null}
+        note={detalle ?? undefined}
+        onClose={() => setDetalle(null)}
+        onAddendum={(note) => {
+          setAddendumOf(note.id)
+          setDraft(EMPTY_DRAFT)
+          setDetalle(null)
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }}
+      />
     </Stack>
   )
 }

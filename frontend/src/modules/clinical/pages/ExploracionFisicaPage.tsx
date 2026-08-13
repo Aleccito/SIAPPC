@@ -1,22 +1,16 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import {
   Alert,
-  Avatar,
   Box,
   Button,
-  Chip,
   LinearProgress,
-  Paper,
   Stack,
   Tab,
   Tabs,
-  Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
-import NoteAddOutlinedIcon from '@mui/icons-material/NoteAddOutlined'
 import { EXPLORACION_TABS, K, formularioVacio } from '../components/exploracionFisica'
 import type { ExploracionForm, Hallazgo, Region, Tecnica } from '../components/exploracionFisica'
 import { SomatometriaCard } from '../components/SomatometriaCard'
@@ -24,6 +18,8 @@ import { SignosVitalesIngresoCard } from '../components/SignosVitalesIngresoCard
 import { ExploracionRegiones } from '../components/ExploracionRegiones'
 import { getPatient } from '../../patients/api/patientsApi'
 import { usePageHeader } from '../../../app/pageHeader'
+import { getExploracion, saveExploracion, dtoAFormulario } from '../api/exploracionApi'
+import { PatientRecordHeader } from '../components/PatientRecordHeader'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 
 // Exploración Física — pestaña «Historia Clínica» del expediente del paciente.
@@ -49,13 +45,9 @@ import { useLanguage } from '../../../shared/i18n/useLanguage'
 // aplicación clínica un peso o un Glasgow de relleno se lee como una medición
 // real del paciente que se tiene delante.
 
-/** Fecha y hora de llegada tal como la guarda el backend (ISO). */
-function formatFecha(value: string, locale: string): string {
-  return new Date(value).toLocaleDateString(locale)
-}
 
 export function ExploracionFisicaPage() {
-  const { t, language } = useLanguage()
+  const { t } = useLanguage()
   const { patientId = '' } = useParams()
 
   const [tab, setTab] = useState('history')
@@ -66,6 +58,27 @@ export function ExploracionFisicaPage() {
     queryKey: ['patient', patientId],
     queryFn: () => getPatient(patientId),
     enabled: patientId !== '',
+  })
+
+  const exploracion = useQuery({
+    queryKey: ['exploracion', patientId],
+    queryFn: () => getExploracion(patientId),
+    enabled: patientId !== '',
+  })
+
+  // Lo guardado llena el formulario una vez, cuando llega. No se sincroniza en
+  // cada render: sobrescribiría lo que el explorador está escribiendo.
+  useEffect(() => {
+    if (exploracion.data) setForm(dtoAFormulario(exploracion.data))
+  }, [exploracion.data])
+
+  const queryClient = useQueryClient()
+  const guardar = useMutation({
+    mutationFn: () => saveExploracion(patientId, form),
+    onSuccess: (dto) => {
+      setForm(dtoAFormulario(dto))
+      queryClient.invalidateQueries({ queryKey: ['exploracion', patientId] })
+    },
   })
 
   usePageHeader(
@@ -98,14 +111,6 @@ export function ExploracionFisicaPage() {
           {t(K.back)}
         </Button>
         <Box sx={{ flexGrow: 1 }} />
-        {/* Desactivados por lo mismo que el resto: no hay endpoint de creación
-            de notas SOAP desde aquí ni de generación de reportes. */}
-        <Button variant="outlined" startIcon={<DescriptionOutlinedIcon />} disabled>
-          {t(K.generateReport)}
-        </Button>
-        <Button variant="contained" startIcon={<NoteAddOutlinedIcon />} disabled>
-          {t(K.newSoap)}
-        </Button>
       </Stack>
 
       <Box sx={{ height: 4 }}>{patient.isPending && patientId !== '' && <LinearProgress />}</Box>
@@ -113,46 +118,7 @@ export function ExploracionFisicaPage() {
       {patientId === '' && <Alert severity="info">{t(K.pickPatient)}</Alert>}
       {patient.isError && <Alert severity="error">{t(K.patientError)}</Alert>}
 
-      {patient.data && (
-        <Paper sx={{ p: 2 }}>
-          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-            <Avatar
-              sx={{ width: 48, height: 48, fontSize: 20, fontWeight: 700, bgcolor: 'primary.main' }}
-            >
-              {patient.data.name.charAt(0)}
-            </Avatar>
-            <Box sx={{ minWidth: 0 }}>
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
-              >
-                <Typography variant="h6" sx={{ lineHeight: 1.2 }}>
-                  {patient.data.name}
-                </Typography>
-                <Chip size="small" variant="outlined" color="primary" label={patient.data.module} />
-              </Stack>
-              {/* Solo lo que la tabla `paciente` guarda de verdad. El mockup
-                  enseña además edad, cama y diagnóstico principal; no están en el
-                  esquema, y ponerlos con un valor cualquiera sería inventarle un
-                  diagnóstico a un paciente. */}
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1, rowGap: 0.25 }}
-              >
-                <span>ID {patient.data.document}</span>
-                <span>·</span>
-                <span>{patient.data.reason}</span>
-                <span>·</span>
-                <span>
-                  {t(K.admitted)}: {formatFecha(patient.data.arrivedAt, language)}
-                </span>
-              </Typography>
-            </Box>
-          </Stack>
-        </Paper>
-      )}
+      {patient.data && <PatientRecordHeader patient={patient.data} />}
 
       <Tabs
         value={tab}
@@ -170,7 +136,7 @@ export function ExploracionFisicaPage() {
 
       {tab === 'history' && (
         <>
-          <Alert severity="info">{t(K.sinBackend)}</Alert>
+          {guardar.isError && <Alert severity="error">{guardar.error.message}</Alert>}
 
           <Box
             sx={{
@@ -201,13 +167,12 @@ export function ExploracionFisicaPage() {
             onChange={cambiarHallazgo}
           />
 
-          {/* PENDIENTE: el `onClick` es la mutación contra
-              `PUT /historia/:patientId/exploracion-fisica` descrita arriba. Sin
-              ruta en el backend el botón va desactivado: un «Guardar» que no
-              guarda es peor que ninguno, porque el explorador cierra la pantalla
-              creyendo que su exploración quedó registrada. */}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="contained" disabled>
+            <Button
+              variant="contained"
+              onClick={() => guardar.mutate()}
+              disabled={patientId === '' || guardar.isPending}
+            >
               {t(K.save)}
             </Button>
           </Box>
