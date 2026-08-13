@@ -87,6 +87,14 @@ export async function flushRedis(): Promise<void> {
 export async function closeConnections(): Promise<void> {
   const { closePrisma } = await import("../../backend/src/lib/prisma.ts");
   const { closeRedis } = await import("../../backend/src/lib/redis.ts");
+  // El bus de alertas en vivo abre SUS PROPIAS conexiones a Redis —una para
+  // publicar y otra suscrita, porque una conexión en modo suscripción no acepta
+  // comandos normales— y las abre al importarse `src/lib/eventos.ts`, cosa que
+  // pasa con solo construir la aplicación. Sin cerrarlas aquí, las pruebas
+  // terminan pero el proceso no sale: quedan dos sockets sujetando el bucle de
+  // eventos, y la corrida se cuelga hasta que alguien la mata.
+  const { cerrarEventos } = await import("../../backend/src/lib/eventos.ts");
   await closePrisma();
   await closeRedis();
+  await cerrarEventos();
 }
