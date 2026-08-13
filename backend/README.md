@@ -60,6 +60,22 @@ que nginx quita al hacer proxy.
 | `GET /patients` · `GET /patients/:id` · `POST /patients` · `PUT|PATCH /patients/:id` · `DELETE /patients/:id` | CRUD de pacientes |
 | `GET /sensors/readings` | Lecturas, filtrables por `device`, `variable`, `limit` |
 | `GET /sensors/alerts` | Alertas, además por `severity` y `status` |
+| `GET /alerts/stream` | Alertas en vivo por Server-Sent Events. Ver [Alertas en vivo](#alertas-en-vivo-sse) |
+| `GET /search` | Búsqueda global (pacientes, notas SOAP, dispositivos), acotada por hospital |
+| `GET /beds` · `GET /beds/:id` · `POST /beds` · `PUT|PATCH /beds/:id` · `DELETE /beds/:id` | CRUD de camas (fábrica `crud.ts`) |
+| `GET /beds/occupancy` | Ocupación agregada por unidad |
+| `GET /admissions` · `GET /admissions/:id` · `POST /admissions` · `PATCH /admissions/:id` | Ingresos: alta ocupa la cama, egreso la manda a `limpieza` |
+| `GET /discharges` | Listado de egresos |
+| `GET /appointments` · `GET /appointments/:id` · `POST /appointments` · `PATCH /appointments/:id` | Citas |
+| `GET /soap/notes` · `GET /soap/notes/:id` · `POST /soap/notes` · `PUT|PATCH /soap/notes/:id` | Notas SOAP |
+| `POST /soap/notes/:id/sign` | Firma la nota; a partir de ahí solo admite adenda |
+| `POST /soap/notes/:id/addendum` | Adenda a una nota ya firmada |
+| `GET/POST /historia/:pacienteId/{antecedentes,alergias,medicamentos,diagnosticos,hospitalizaciones,procedimientos,documentos}` · `PATCH .../:id` | Historia clínica por categoría (mismo patrón repetido por categoría) |
+| `GET /historia/:pacienteId/evoluciones` · `POST /historia/:pacienteId/evoluciones` | Notas de evolución |
+| `PATCH /historia/:pacienteId/observaciones` | Observaciones generales del expediente |
+| `GET /historia/:pacienteId/cambios` | Historial de cambios del expediente |
+| `GET /historia/:pacienteId` | Expediente clínico consolidado |
+| `GET /historia/:pacienteId/exploracion-fisica` · `PUT /historia/:pacienteId/exploracion-fisica` | Exploración física (tablas `exploracion_fisica` y `hallazgo_exploracion`) |
 
 Salvo `/health` y `/auth/login`, todas exigen `Authorization: Bearer <token>`.
 Las de usuarios, roles y auditoría además revalidan el permiso concreto contra
@@ -116,6 +132,38 @@ Lo que va con `$queryRaw` y por qué, para que no se "arregle" pasándolo al ORM
 
 Los valores siempre van parametrizados por la plantilla de `$queryRaw`; lo único
 que se arma como texto son fragmentos fijos escritos en el propio código.
+
+## Multi-hospital
+
+El hospital de la sesión sale de `req.hospitalId`, resuelto en
+`src/plugins/auth.ts` a partir de la cuenta autenticada — no del cuerpo ni de la
+query de la petición. Camas, ingresos, citas, pacientes y expediente quedan
+acotados a ese hospital.
+
+**Lo que todavía NO está acotado por hospital:** `/sensors/*` y
+`/dashboard/devices`. Es una limitación real, no una omisión del README: la
+clave de caché de Redis (`src/lib/cache.ts`) no incluye el hospital ni el
+usuario, así que un filtro por hospital en esas rutas exigiría además meter el
+identificador en la clave de caché — si no, un hospital vería en caché la
+respuesta calculada para otro.
+
+## Alertas en vivo (SSE)
+
+`GET /alerts/stream` empuja alertas nuevas al navegador por Server-Sent Events
+en cuanto se insertan (`src/lib/eventos.ts` como bus interno del proceso; lo
+consume `frontend/src/modules/dashboard/useAlertStream.ts`). Es un canal
+aparte del ETL: el ETL (`backend/etl/`) agrega lecturas y alertas por lotes,
+una vez por hora, para alimentar reportes; el SSE no agrega nada ni toca la
+base de reportes, solo avisa en el instante en que ocurre la alerta.
+
+## Roles
+
+Los cuatro roles del seed (`medico`, `enfermero`, `administrativo`, `admin`)
+llevan `es_sistema = TRUE`: se editan —etiqueta, permisos— pero no se pueden
+borrar (`DELETE /roles/:id` responde 409 sobre un rol de sistema). Aparte de
+eso, `admin` está además protegido: ni su etiqueta ni su matriz de permisos se
+pueden tocar, y el intento responde 403 (`src/routes/roles.ts`). Recortarle
+permisos a `admin` dejaría el sistema sin ningún rol capaz de devolvérselos.
 
 ## Límite de peticiones
 
@@ -195,7 +243,9 @@ mensaje válido:
 
 1. Busca el `dispositivo` por `codigo`. Si no está dado de alta, descarta la
    lectura en vez de inventarle dueño.
-2. Da de alta el `sensor` (dispositivo + variable) si no existía.
+2. Da de alta el `sensor` (dispositivo + variable) si no existía. La unidad de
+   medida vive en el catálogo `variable`, no en `sensor`: `sensor` solo
+   referencia `variable.codigo`.
 3. Inserta la `lectura` con `INSERT IGNORE`: el índice único sobre
    `hash_sha256` descarta reenvíos del buffer de la Pi y duplicados de QoS 1.
 4. Evalúa umbrales y, si toca, inserta la `alerta`.
@@ -229,9 +279,13 @@ usuario y contraseña.
 
 ## Base de datos
 
-17 tablas: hospital, unidades, roles y permisos, usuarios y especializaciones,
-pacientes e historia clínica, dispositivos, sensores, lecturas, alertas,
-notificaciones y auditoría.
+37 modelos en `prisma/schema.prisma`: hospital, unidades, roles y permisos,
+usuarios y especializaciones, pacientes, dispositivos y variables, sensores,
+lecturas, alertas, notificaciones y auditoría, agregados por hora para
+reportes (`LecturaHora`, `AlertaDia`, `EtlEjecucion`), expediente clínico
+(antecedentes, alergias, medicamentos, diagnósticos, hospitalizaciones,
+procedimientos, documentos, notas SOAP con firma y adenda, exploración física
+y sus hallazgos) y admisión (`cama`, `ingreso`, `cita`).
 
 **`prisma/schema.prisma` es la fuente de verdad.** Para cambiar una tabla se
 edita ahí y solo ahí:
