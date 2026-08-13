@@ -120,8 +120,12 @@ export function ExploracionRegiones({ activa, onSelect, hallazgos, onChange }: P
                   slotProps={{
                     primary: {
                       variant: 'body2',
-                      fontWeight: region === activa ? 700 : 400,
-                      color: region === activa ? 'primary.main' : 'text.primary',
+                      // fontWeight y color van en `sx`: como props sueltas no
+                      // pertenecen al tipo de Typography que espera este slot.
+                      sx: {
+                        fontWeight: region === activa ? 700 : 400,
+                        color: region === activa ? 'primary.main' : 'text.primary',
+                      },
                     },
                   }}
                 />

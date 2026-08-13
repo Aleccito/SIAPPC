@@ -41,7 +41,7 @@ const SECTIONS = [
 function Meta({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary" display="block">
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
         {label}
       </Typography>
       <Typography variant="body2" sx={{ fontWeight: 600, color }}>

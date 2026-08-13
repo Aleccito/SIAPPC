@@ -468,6 +468,91 @@ function toEvolucion(row: EvolucionRow): EvolucionEntry {
 
 // ---------------------------------------------------------------------------
 
+// --- Exploración física -----------------------------------------------------
+
+const regiones = [
+  "cabeza_cuello",
+  "torax",
+  "abdomen",
+  "extremidades_superiores",
+  "extremidades_inferiores",
+  "neurologico",
+] as const;
+
+const tecnicas = ["inspeccion", "palpacion", "percusion", "auscultacion"] as const;
+
+const exploracionSchema = z.object({
+  // Rangos amplios a propósito: acotan el disparate de tecleo (un peso de
+  // 6800 kg) sin meterse a decidir qué es un peso plausible, que es criterio
+  // clínico y no de validación.
+  weightKg: z.coerce.number().positive().max(500).nullish(),
+  heightCm: z.coerce.number().positive().max(300).nullish(),
+  abdominalCm: z.coerce.number().positive().max(300).nullish(),
+  glasgow: z.coerce.number().int().min(3).max(15).nullish(),
+  findings: z
+    .array(
+      z.object({
+        region: z.enum(regiones),
+        technique: z.enum(tecnicas),
+        state: z.enum(["normal", "anormal"]),
+        text: z.string().max(2000).nullish(),
+      }),
+    )
+    .default([]),
+});
+
+type HallazgoRow = {
+  region: string;
+  tecnica: string;
+  estado: string;
+  descripcion: string | null;
+};
+
+type ExploracionRow = {
+  peso_kg: unknown;
+  talla_cm: unknown;
+  perimetro_abdominal_cm: unknown;
+  glasgow: number | null;
+  actualizado_en: Date;
+  hallazgos: HallazgoRow[];
+};
+
+/** Los DECIMAL llegan como objeto del driver; el navegador quiere números. */
+const aNumero = (valor: unknown): number | null =>
+  valor === null || valor === undefined ? null : Number(valor);
+
+function toExploracion(row: ExploracionRow) {
+  return {
+    weightKg: aNumero(row.peso_kg),
+    heightCm: aNumero(row.talla_cm),
+    abdominalCm: aNumero(row.perimetro_abdominal_cm),
+    glasgow: row.glasgow,
+    updatedAt: row.actualizado_en.toISOString(),
+    findings: row.hallazgos.map((h) => ({
+      region: h.region,
+      technique: h.tecnica,
+      state: h.estado,
+      text: h.descripcion,
+    })),
+  };
+}
+
+/**
+ * Un paciente sin exploración todavía. Se devuelve esto y no un 404: la
+ * pantalla necesita el formulario vacío para poder capturarla por primera vez,
+ * y "no existe" no es un error aquí.
+ */
+function exploracionVacia() {
+  return {
+    weightKg: null,
+    heightCm: null,
+    abdominalCm: null,
+    glasgow: null,
+    updatedAt: null,
+    findings: [] as { region: string; technique: string; state: string; text: string | null }[],
+  };
+}
+
 export default async function historiaRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
@@ -700,5 +785,87 @@ export default async function historiaRoutes(app: FastifyInstance) {
       ...porCategoria,
       evoluciones: (evoluciones as EvolucionRow[]).map(toEvolucion),
     };
+  });
+
+  // --- Exploración física ---------------------------------------------------
+  //
+  // Una sola fila por expediente: es el examen de ingreso, se corrige, no se
+  // acumula. Por eso PUT y no POST, y por eso el guardado es un reemplazo
+  // completo de lo que la pantalla tiene en el formulario.
+
+  app.get("/historia/:pacienteId/exploracion-fisica", { preHandler: ver }, async (req) => {
+    const { pacienteId } = parseOr400(pacienteParam, req.params);
+    const expediente = await expedienteDeLectura(pacienteId);
+    if (!expediente) return exploracionVacia();
+
+    const fila = await prisma.exploracionFisica.findUnique({
+      where: { expediente_id: expediente.expediente_id },
+      include: { hallazgos: true },
+    });
+    return fila ? toExploracion(fila) : exploracionVacia();
+  });
+
+  app.put("/historia/:pacienteId/exploracion-fisica", { preHandler: editar }, async (req) => {
+    const { pacienteId } = parseOr400(pacienteParam, req.params);
+    const input = parseOr400(exploracionSchema, req.body);
+
+    const guardada = await prisma.$transaction(async (tx) => {
+      const expedienteId = await abrirExpediente(tx, pacienteId);
+
+      // La somatometría se reemplaza entera; el IMC no se guarda porque sale
+      // de peso y talla y podría contradecirlas.
+      const datos = {
+        peso_kg: input.weightKg ?? null,
+        talla_cm: input.heightCm ?? null,
+        perimetro_abdominal_cm: input.abdominalCm ?? null,
+        glasgow: input.glasgow ?? null,
+        registrado_por: Number(req.user.sub),
+      };
+      const exploracion = await tx.exploracionFisica.upsert({
+        where: { expediente_id: expedienteId },
+        create: { expediente_id: expedienteId, ...datos },
+        update: datos,
+        select: { exploracion_id: true },
+      });
+
+      // Los hallazgos se reemplazan en bloque: dos consultas en vez de un
+      // `upsert` por celda.
+      //
+      // Con seis regiones por cuatro técnicas, el bucle eran hasta 24 idas a la
+      // base dentro de la transacción, y una transacción interactiva de Prisma
+      // aborta a los 5 segundos por omisión: bajo carga, la exploración se
+      // perdía entera. Borrar y reinsertar cambia `hallazgo_id`, y eso da
+      // igual porque ninguna otra tabla lo referencia —la bitácora anota
+      // `exploracion_id`, no la celda—.
+      await tx.hallazgoExploracion.deleteMany({
+        where: { exploracion_id: exploracion.exploracion_id },
+      });
+      if (input.findings.length > 0) {
+        await tx.hallazgoExploracion.createMany({
+          data: input.findings.map((hallazgo) => ({
+            exploracion_id: exploracion.exploracion_id,
+            region: hallazgo.region,
+            tecnica: hallazgo.technique,
+            estado: hallazgo.state,
+            descripcion: hallazgo.text ?? null,
+          })),
+        });
+      }
+
+      await anotarCambio(tx, req, {
+        expedienteId,
+        categoria: "exploracion-fisica",
+        registroId: exploracion.exploracion_id,
+        accion: "modificacion",
+        detalle: "actualizó la exploración física",
+      });
+
+      return tx.exploracionFisica.findUnique({
+        where: { exploracion_id: exploracion.exploracion_id },
+        include: { hallazgos: true },
+      });
+    });
+
+    return toExploracion(guardada!);
   });
 }

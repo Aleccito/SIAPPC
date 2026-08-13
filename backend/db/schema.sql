@@ -538,6 +538,34 @@ CREATE TABLE `cita` (
     PRIMARY KEY (`cita_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- CreateTable
+CREATE TABLE `exploracion_fisica` (
+    `exploracion_id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
+    `expediente_id` INTEGER UNSIGNED NOT NULL,
+    `peso_kg` DECIMAL(5, 2) NULL,
+    `talla_cm` DECIMAL(5, 1) NULL,
+    `perimetro_abdominal_cm` DECIMAL(5, 1) NULL,
+    `glasgow` TINYINT UNSIGNED NULL,
+    `registrado_por` INTEGER UNSIGNED NULL,
+    `actualizado_en` DATETIME(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+
+    UNIQUE INDEX `uq_exploracion_expediente`(`expediente_id`),
+    PRIMARY KEY (`exploracion_id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `hallazgo_exploracion` (
+    `hallazgo_id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
+    `exploracion_id` INTEGER UNSIGNED NOT NULL,
+    `region` ENUM('cabeza_cuello', 'torax', 'abdomen', 'extremidades_superiores', 'extremidades_inferiores', 'neurologico') NOT NULL,
+    `tecnica` ENUM('inspeccion', 'palpacion', 'percusion', 'auscultacion') NOT NULL,
+    `estado` ENUM('normal', 'anormal') NOT NULL DEFAULT 'normal',
+    `descripcion` TEXT NULL,
+
+    UNIQUE INDEX `uq_hallazgo_region_tecnica`(`exploracion_id`, `region`, `tecnica`),
+    PRIMARY KEY (`hallazgo_id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- AddForeignKey
 ALTER TABLE `rol_permiso` ADD CONSTRAINT `fk_rolperm_rol` FOREIGN KEY (`rol_id`) REFERENCES `rol`(`rol_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -673,6 +701,12 @@ ALTER TABLE `cita` ADD CONSTRAINT `fk_cita_usuario` FOREIGN KEY (`usuario_id`) R
 -- AddForeignKey
 ALTER TABLE `cita` ADD CONSTRAINT `fk_cita_unidad` FOREIGN KEY (`unidad_id`) REFERENCES `unidad`(`unidad_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
+-- AddForeignKey
+ALTER TABLE `exploracion_fisica` ADD CONSTRAINT `fk_exploracion_expediente` FOREIGN KEY (`expediente_id`) REFERENCES `expediente_clinico`(`expediente_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `hallazgo_exploracion` ADD CONSTRAINT `fk_hallazgo_exploracion` FOREIGN KEY (`exploracion_id`) REFERENCES `exploracion_fisica`(`exploracion_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
 
 -- Lo que el esquema de Prisma no sabe expresar.
 --
@@ -710,4 +744,5 @@ VALUES
 ('f3cbaf62868ea6bbdddb2410bc41b80737e1', 'be4a479ac3766dd673d710ed317271583e725d349023bf39bb53c7f8da88e7e5', NOW(3), '20260811103526_etl_datamart', NOW(3), 1),
 ('e1e3cbe10d726714b50f1f5db0775ab0592e', '9b3657248df7a9545b694e8d245c5a1f956b3d138e70c8a7752312dae295a968', NOW(3), '20260811120000_expediente_clinico_notas_soap', NOW(3), 1),
 ('7f0f4013ec91368cdfb1a0654792a8f79e0b', 'aefa97accd3bda09148a3ceb56fd0c9c7538e88341c4fe5954652500c1eb37db', NOW(3), '20260812142520_admision_camas_ingresos_citas', NOW(3), 1),
-('077d801e3f5787adb6af147a5a579c89bb27', 'b100116d735347663e30dc277cb7ed7eebb1eed5cb88e230249a98cf57b099d3', NOW(3), '20260812161308_variable_catalogo_unidad', NOW(3), 1);
+('077d801e3f5787adb6af147a5a579c89bb27', 'b100116d735347663e30dc277cb7ed7eebb1eed5cb88e230249a98cf57b099d3', NOW(3), '20260812161308_variable_catalogo_unidad', NOW(3), 1),
+('fbad8c4c792dea91ac2b74a5a0b82f47ef51', '792a7ddea535394bf4b0b218c4fcd25d08a437593666aa6154664a6c4881240b', NOW(3), '20260813134114_exploracion_fisica', NOW(3), 1);

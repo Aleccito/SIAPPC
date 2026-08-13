@@ -8,11 +8,20 @@ import { useLanguage } from '../../../shared/i18n/useLanguage'
 // pantallas del expediente.
 //
 // Solo pinta lo que la tabla `paciente` guarda de verdad: nombre, cédula,
-// estado, módulo, motivo de consulta y hora de llegada. El diseño pide además
-// foto, cama, edad y diagnóstico principal, y ninguno de esos cuatro sale de la
-// API de pacientes hoy —la cama vive en el módulo de admisión y la edad exige
-// `fecha_nacimiento`, que `GET /patients` no devuelve—, así que no se inventan:
-// las iniciales hacen de foto y los demás sencillamente no aparecen.
+// estado, módulo, motivo de consulta, hora de llegada y —desde que
+// `GET /patients` los devuelve— fecha de nacimiento, sexo, grupo sanguíneo y
+// contacto de emergencia. La edad no se guarda en ninguna parte: se calcula de
+// la fecha de nacimiento al pintarla, que es la única forma de que no envejezca
+// mal.
+//
+// Siguen faltando de lo que pide el diseño la foto, la cama y el diagnóstico
+// principal: la cama vive en el módulo de admisión y el diagnóstico en el
+// expediente, así que no se inventan —las iniciales hacen de foto y los otros
+// dos sencillamente no aparecen—.
+//
+// Grupo sanguíneo y contacto de emergencia son opcionales en la base: cuando
+// vienen nulos se omite el dato entero, etiqueta incluida, en vez de dejar un
+// guion que se lee como "no tiene".
 
 const STATUS_COLOR = {
   waiting: 'warning',
@@ -20,9 +29,28 @@ const STATUS_COLOR = {
   discharged: 'success',
 } as const
 
+// La fecha de nacimiento llega como "1990-05-14". Se parte a mano en vez de
+// pasarla por `new Date`, que la leería como medianoche UTC y restaría un día en
+// husos negativos: aquí solo se comparan tres números.
+function ageFrom(birthDate: string): number | null {
+  // Solo la parte de la fecha: `birthDate` llega como
+  // "1990-05-14T00:00:00-05:00" y el resto sobra para calcular una edad.
+  const [year, month, day] = birthDate.slice(0, 10).split('-').map(Number)
+  if (!year || !month || !day) return null
+
+  const today = new Date()
+  let age = today.getFullYear() - year
+  // Aún no ha sido su cumpleaños este año.
+  if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) {
+    age -= 1
+  }
+  return age >= 0 ? age : null
+}
+
 export function PatientRecordHeader({ patient }: { patient: Patient }) {
   const { t } = useLanguage()
   const locale = 'es-MX'
+  const age = ageFrom(patient.birthDate)
 
   return (
     <Paper sx={{ p: 2 }}>
@@ -59,12 +87,36 @@ export function PatientRecordHeader({ patient }: { patient: Patient }) {
             sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1, rowGap: 0.25 }}
           >
             <span>ID {patient.document}</span>
+            {age !== null && (
+              <>
+                <span>·</span>
+                <span>{t('bed.years', { count: String(age) })}</span>
+              </>
+            )}
+            <span>·</span>
+            <span>{t(`patients.sex.${patient.sex}`)}</span>
+            {patient.bloodType && (
+              <>
+                <span>·</span>
+                <span>
+                  {t('bed.field.blood')}: {patient.bloodType}
+                </span>
+              </>
+            )}
             <span>·</span>
             <span>{patient.reason}</span>
             <span>·</span>
             <span>
               {t('antecedentes.admitted')}: {new Date(patient.arrivedAt).toLocaleString(locale)}
             </span>
+            {patient.emergencyContact && (
+              <>
+                <span>·</span>
+                <span>
+                  {t('bed.field.contact')}: {patient.emergencyContact}
+                </span>
+              </>
+            )}
           </Typography>
         </Box>
 

@@ -22,7 +22,6 @@ import { getRolePermissions, listRoles, saveRolePermissions } from '../api/roles
 import { permissionActions } from '../types'
 import type { PermissionAction, RolePermission } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
-import type { StringKey } from '../../../shared/i18n/dictionary'
 
 // La matriz de permisos de un rol, sin cabecera de página ni navegación: la usan
 // tanto el panel dentro de Roles y Permisos como la ruta directa

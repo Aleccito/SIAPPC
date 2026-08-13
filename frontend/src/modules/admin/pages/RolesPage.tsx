@@ -18,7 +18,6 @@ import { NewRoleDialog } from '../components/NewRoleDialog'
 import { PermissionMatrix } from '../components/PermissionMatrix'
 import type { RoleSummary } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
-import type { StringKey } from '../../../shared/i18n/dictionary'
 import { usePageHeader } from '../../../app/pageHeader'
 
 // Etiqueta y descripción del rol elegido. Va en el mismo panel que la matriz
