@@ -5,7 +5,13 @@ COPY package.json package-lock.json ./
 # --ignore-scripts: every runtime dependency here is plain JavaScript, nothing
 # compiles on install. Running install hooks would buy nothing and hand
 # arbitrary code execution to any package in the tree.
-RUN npm ci --omit=dev --ignore-scripts
+#
+# --omit=optional matters more than it looks. Several dev tools —the Prisma CLI,
+# TypeScript, and the React that Prisma Studio drags along— are marked
+# `devOptional` in the lockfile, and `--omit=dev` alone keeps those: it only
+# drops entries flagged `dev`. They shipped inside the runtime image without
+# being imported by anything the server runs.
+RUN npm ci --omit=dev --omit=optional --ignore-scripts
 
 # Stage 2: generate the Prisma client. Needs the dev dependencies (the `prisma`
 # CLI) and the schema, and produces src/generated/, which is the only thing that

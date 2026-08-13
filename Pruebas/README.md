@@ -60,6 +60,12 @@ contenido clínico, y `401` con el token ya revocado tras cerrar sesión.
 
 Última corrida: **50 peticiones, 143 aserciones, 0 fallos**, 9 s.
 
+**Hueco conocido:** la descarga de informes en CSV
+(`GET /reports/actividad-clinica.csv`) todavía no está en la colección ni en la
+suite automatizada. Es la única ruta de la API sin prueba, y conviene cubrirla
+—al menos el `400` con rango invertido y el aislamiento por hospital— antes de
+darla por terminada.
+
 ## 3. JMeter
 
 ```bash

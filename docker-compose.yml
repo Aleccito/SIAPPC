@@ -176,6 +176,8 @@ services:
       # Minuto de cada hora en el que corre. No en punto: a las :00 la hora
       # recién cerrada todavía recibe lecturas atrasadas del buffer de las Pi.
       ETL_MINUTO: ${ETL_MINUTO:-5}
+      # 0 = sin poda. Ver .env.example.
+      ETL_RETENCION_DIAS: ${ETL_RETENCION_DIAS:-0}
     depends_on:
       mariadb:
         condition: service_healthy

@@ -45,7 +45,9 @@ Dado que el ETL ya no necesita mantener conexiones abiertas de la forma en que s
 
 Cloud SQL ofrece **MySQL**, no MariaDB, como motor gestionado. `backend/db/schema.sql` fue inspeccionado buscando features específicos de MariaDB (tipos `JSON` nativo con validación distinta, `ENGINE=` explícito, secuencias, `RETURNING`, etc.): usa `AUTO_INCREMENT` en las llaves primarias y `DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci` por tabla — ambos son sintaxis común a MySQL y MariaDB, sin hallazgo de motor de almacenamiento forzado distinto del default (InnoDB) ni de construcciones exclusivas de MariaDB en lo revisado.
 
-Con esa evidencia, el esquema **parece** portable a MySQL/Cloud SQL, pero esto no es una garantía completa: no se auditó línea por línea la totalidad del archivo (748 líneas) ni el comportamiento en tiempo de ejecución de Prisma con el adaptador `mariadb` declarado en `src/lib/prisma.ts`, ni las 1050 líneas de `schema.prisma`. Se declara como punto a verificar antes de migrar, no como hecho confirmado. Si se prefiere evitar el riesgo, la alternativa es correr MariaDB en una VM de Compute Engine o en GKE con un volumen persistente, en vez de Cloud SQL.
+**Actualización — ya no es solo DDL de tablas.** `db/schema.sql` incluye ahora, pegado desde `db/extra.sql`, dos vistas (`v_dim_paciente`, `v_rep_actividad_clinica`) y tres procedimientos almacenados (`sp_etl_lecturas_hora`, `sp_etl_alertas_dia`, `sp_purgar_lecturas`). Los procedimientos usan `CREATE OR REPLACE PROCEDURE`, que es **sintaxis de MariaDB**: MySQL no admite `OR REPLACE` en `CREATE PROCEDURE`. Migrar a Cloud SQL for MySQL exigiría reescribir esas tres definiciones como `DROP PROCEDURE IF EXISTS` + `CREATE PROCEDURE`, y verificar el manejo del delimitador (aquí cada cuerpo es una sola sentencia sin `BEGIN … END` porque el archivo se carga con `multipleStatements`). Las dos vistas sí usan `CREATE OR REPLACE VIEW`, que MySQL también soporta. Los procedimientos los llama el ETL con `$executeRaw`; las vistas las consultan la ruta de informes CSV y Power BI.
+
+Con esa evidencia, el esquema de **tablas** parece portable a MySQL/Cloud SQL, pero esto no es una garantía completa: no se auditó línea por línea la totalidad del archivo (748 líneas) ni el comportamiento en tiempo de ejecución de Prisma con el adaptador `mariadb` declarado en `src/lib/prisma.ts`, ni las 1050 líneas de `schema.prisma`. Se declara como punto a verificar antes de migrar, no como hecho confirmado. Si se prefiere evitar el riesgo, la alternativa es correr MariaDB en una VM de Compute Engine o en GKE con un volumen persistente, en vez de Cloud SQL.
 
 ## 2. Variables de entorno y secretos
 
@@ -77,10 +79,11 @@ De `.env.example` (raíz), variables que docker-compose consume además de las d
 - `MQTT_USER`, `MQTT_PASSWORD`, `MQTT_TLS_PORT`
 - `REDIS_PASSWORD` (obligatoria en compose: `${REDIS_PASSWORD:?falta REDIS_PASSWORD en el .env de la raiz}`)
 - `ETL_MINUTO` (default `5` en compose)
+- `ETL_RETENCION_DIAS` (default `0` en compose y en el código). La lee `etl/scheduler.ts`, no la API: son los días de lecturas crudas que se conservan, y `0` significa que la poda no borra nada. Un valor distinto de un entero >= 0 apaga el planificador al arrancar
 
 **Van a Secret Manager**: `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `JWT_SECRET`, `MQTT_PASSWORD`, `REDIS_PASSWORD`, y las claves privadas TLS si se usa mTLS de cliente (`MQTT_CLIENT_KEY_FILE`).
 
-**Van como configuración normal (no secreta)**: `ALLOWED_ORIGINS`, `PORT`, `MQTT_HOST`, `MQTT_PORT`, tópicos MQTT, `RATE_LIMIT_MAX`, `SENSORS_CACHE_TTL`, `ETL_MINUTO`, nombres de usuario no sensibles (`DB_USER`, `MQTT_USER` — aunque su exposición conjunta con la contraseña también amerita cuidado).
+**Van como configuración normal (no secreta)**: `ALLOWED_ORIGINS`, `PORT`, `MQTT_HOST`, `MQTT_PORT`, tópicos MQTT, `RATE_LIMIT_MAX`, `SENSORS_CACHE_TTL`, `ETL_MINUTO`, `ETL_RETENCION_DIAS`, nombres de usuario no sensibles (`DB_USER`, `MQTT_USER` — aunque su exposición conjunta con la contraseña también amerita cuidado).
 
 ## 3. Certificados del broker MQTT
 

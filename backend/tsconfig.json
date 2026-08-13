@@ -13,5 +13,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["db/**/*.ts", "src/**/*.ts"]
+  "include": ["db/**/*.ts", "etl/**/*.ts", "src/**/*.ts"]
 }
