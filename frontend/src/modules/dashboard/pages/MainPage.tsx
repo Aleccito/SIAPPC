@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
-import { Box, Button, Stack } from '@mui/material'
+import { Alert, Box, Button, Stack } from '@mui/material'
 import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined'
 import { useAuth } from '../../auth/useAuth'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import { usePageHeader } from '../../../app/pageHeader'
+import { useAlertStream } from '../useAlertStream'
 import { WidgetCard } from '../components/WidgetCard'
 import { useDashboardOrder } from '../useDashboardOrder'
 import { dashboardFor, widgets } from '../widgets/registry'
@@ -41,8 +42,28 @@ export function MainPage() {
   const defaults = useMemo(() => dashboardFor(role), [role])
   const { order, move, reset, customized } = useDashboardOrder(role ?? 'default', defaults)
 
+  // Alertas en vivo. El tablero sigue repreguntando cada 15 s por su cuenta:
+  // esto es lo que llega ANTES, no lo único que llega.
+  const { ultima, descartar } = useAlertStream()
+
   return (
     <Stack spacing={2}>
+      {/* Aviso empujado por el servidor. Va arriba del todo y por encima del
+          orden que el usuario haya elegido: una alerta crítica no se coloca
+          donde toque, se ve. */}
+      {ultima && (
+        <Alert
+          severity={ultima.severity === 'critica' ? 'error' : 'warning'}
+          variant="filled"
+          onClose={descartar}
+        >
+          {t('dash.live.alert', {
+            patient: ultima.patientName ?? ultima.device,
+            detail: ultima.message ?? `${ultima.variable} ${ultima.value} ${ultima.unit}`,
+          })}
+        </Alert>
+      )}
+
       {customized && (
         <Button
           size="small"

@@ -3,6 +3,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.ts";
 import { env } from "../env.ts";
+import { publicarAlerta } from "../lib/eventos.ts";
 
 // Forma de siappc/<device>/telemetry, ver iot/src/publisher.py:build_payload.
 // `variable` no es un enum cerrado: sensor.variable_medida es VARCHAR(60) y
@@ -190,14 +191,45 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
       select: { lectura_id: true },
     });
     if (lectura) {
-      await prisma.alerta.create({
+      const creada = await prisma.alerta.create({
         data: {
           lectura_id: lectura.lectura_id,
           tipo: alert.tipo,
           severidad: alert.severidad,
           mensaje: alert.mensaje,
         },
+        select: { alerta_id: true, fecha_hora: true },
       });
+
+      // Aviso en vivo al tablero. Va DESPUÉS de guardar y nunca antes: si el
+      // proceso muriera entre el aviso y el INSERT, habría avisado de algo que
+      // no existe. Y va fuera de cualquier transacción porque no puede
+      // deshacer la alerta si falla.
+      const contexto = await prisma.dispositivo.findUnique({
+        where: { dispositivo_id: dispositivo.dispositivo_id },
+        select: {
+          hospital_id: true,
+          paciente: { select: { paciente_id: true, nombre: true } },
+          hospital: { select: { hospital_id: true } },
+        },
+      });
+
+      if (contexto) {
+        publicarAlerta({
+          alertId: String(creada.alerta_id),
+          hospitalId: contexto.hospital_id,
+          device: payload.device,
+          patientId: contexto.paciente ? String(contexto.paciente.paciente_id) : null,
+          patientName: contexto.paciente?.nombre ?? null,
+          variable: payload.variable,
+          value: payload.value,
+          unit: variable?.unidad ?? payload.unit,
+          severity: alert.severidad,
+          type: alert.tipo,
+          message: alert.mensaje,
+          at: creada.fecha_hora.toISOString(),
+        });
+      }
     }
   }
 }

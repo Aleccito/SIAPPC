@@ -123,6 +123,36 @@ FROM (
 JOIN rol r ON r.nombre = m.rol
 JOIN permiso p ON p.modulo = m.modulo;
 
+-- Una cuenta por rol para probar la aplicación sin tener que crearlas a mano.
+--
+-- MISMA ADVERTENCIA que la del administrador: estas contraseñas están en el
+-- repositorio y son públicas de hecho. Sirven para desarrollo y demostración.
+-- Antes de exponer esto a cualquier red, se borran estas cuatro cuentas.
+--
+-- Cada una entra a lo que su rol permite, que es justo lo interesante al
+-- probar: el médico escribe notas SOAP y el administrador NO —sobre contenido
+-- clínico solo lee—; enfermería lee el expediente pero no lo firma; el
+-- administrativo maneja camas, ingresos y citas.
+--
+--   medico@institucion.org          Medico12345
+--   enfermero@institucion.org       Enfermero12345
+--   administrativo@institucion.org  Admin0perativo12345
+INSERT INTO usuario (hospital_id, rol_id, unidad_id, nombre, tipo_personal, email, password_hash)
+SELECT 1, r.rol_id, u.unidad_id, m.nombre, m.tipo, m.email, m.hash
+FROM (
+  SELECT 'medico' AS rol, 'UCI' AS unidad, 'Carlos Méndez' AS nombre, 'medico' AS tipo,
+         'medico@institucion.org' AS email,
+         '$2a$10$FHzEl7XJiy9CWHKEXGvlbeg2EF5IC47IUrjBe8f2Md.ufqIEtNvp2' AS hash
+  UNION ALL SELECT 'enfermero', 'UCI', 'Lucía Ramos', 'enfermeria',
+         'enfermero@institucion.org',
+         '$2a$10$4fAyrXPGO4vEokKGyRZ7H.h7JSM6dQTSoz6nX26QozUQzlbEAXTjO'
+  UNION ALL SELECT 'administrativo', 'Admisión', 'Pedro Solís', 'administrativo',
+         'administrativo@institucion.org',
+         '$2a$10$Mky6kHx2dDCH26hufx1ILeXkfJ64TTWS1gM9ZgditbqZWdxRGsKV6'
+) AS m
+JOIN rol r ON r.nombre = m.rol
+JOIN unidad u ON u.nombre = m.unidad AND u.hospital_id = 1;
+
 -- Contraseña: Admin12345 (bcrypt, 10 rondas)
 INSERT INTO usuario (hospital_id, rol_id, unidad_id, nombre, tipo_personal, email, password_hash)
 VALUES (

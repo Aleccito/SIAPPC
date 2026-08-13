@@ -247,6 +247,8 @@ const es = {
   'dash.usage.noUnit': 'Sin unidad',
 
   // Sin eventos de seguridad, que no es lo mismo que sin bitácora.
+  // Cartel del aviso empujado por el servidor (SSE).
+  'dash.live.alert': 'Alerta en {patient}: {detail}',
   'dash.security.empty': 'Sin eventos de seguridad recientes.',
   'dash.audit.error': 'No se pudo cargar la bitácora',
   'dash.audit.empty': 'No hay movimientos registrados.',
