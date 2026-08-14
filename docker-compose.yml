@@ -8,10 +8,18 @@ services:
       MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
+      # Base de la simulación, en este mismo servidor pero en esquema aparte.
+      # La lee el script de init de abajo, no el servidor: MariaDB no conoce
+      # esta variable. El porqué de la separación está en ese script.
+      SIM_DB_NAME: ${SIM_DB_NAME:-siappc_sim}
     ports:
       - '${DB_PORT}:3306'
     volumes:
       - mariadb_data:/var/lib/mysql
+      # Crea la base de la simulación y le da permisos al usuario de la
+      # aplicación. Prefijo 00 para que corra antes del esquema clínico; los
+      # scripts de esta carpeta se ejecutan en orden alfabético.
+      - ./simulation/db/init/00-base-sim.sh:/docker-entrypoint-initdb.d/00-base-sim.sh:ro
       # Only runs on first boot, when the data volume is empty. Generated from
       # backend/prisma/schema.prisma by `npm run schema:build` — do not edit it
       # by hand. Later schema changes go through Prisma migrations:
@@ -188,6 +196,61 @@ services:
       ETL_MINUTO: ${ETL_MINUTO:-5}
       # 0 = sin poda. Ver .env.example.
       ETL_RETENCION_DIAS: ${ETL_RETENCION_DIAS:-0}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  # Simulador de eventos discretos: el gemelo en código del modelo de FlexSim
+  # para el flujo del politraumatizado. Ver simulation/README.md.
+  #
+  # Va en un PERFIL propio, así que `docker compose up` no lo levanta. Es un
+  # proceso por lotes —corre, escribe en la base y termina con código 0—, no un
+  # servicio: arrancarlo con el resto volvería a simular en cada reinicio del
+  # stack y reescribiría los resultados sin que nadie lo pidiera.
+  #
+  #   docker compose --profile sim run --rm sim escenarios --replicas 30
+  #   docker compose --profile sim run --rm sim comparar --metrica tiempo_sistema_medio
+  #
+  # Escribe en `siappc_sim`, NO en la base clínica. Sus tablas y sus once vistas
+  # de análisis las crea el propio simulador al arrancar.
+  sim:
+    build: ./simulation
+    container_name: siappc-sim
+    profiles: ['sim']
+    environment:
+      # Si DB_PASSWORD lleva `@`, `/` o `:`, hay que codificarla en porcentaje:
+      # esto es una URL, no una lista de campos.
+      SIAPPC_BD_URL: mysql+pymysql://${DB_USER}:${DB_PASSWORD}@mariadb:3306/${SIM_DB_NAME:-siappc_sim}?charset=utf8mb4
+    volumes:
+      # Solo lectura: se edita un YAML en el equipo y se vuelve a correr sin
+      # reconstruir la imagen.
+      - ./simulation/config:/app/config:ro
+      # Los mismos resultados en CSV, para Excel o R. La imagen corre con un
+      # usuario sin privilegios (uid 1000): si aparece un error de permisos, la
+      # carpeta existe pero pertenece a root, y se arregla con `chown`.
+      - ./simulation/salidas:/app/salidas
+    command: ['escenarios', '--replicas', '30']
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  # Cliente SQL para mirar los resultados de la simulación a mano. Mismo perfil
+  # que `sim`: es herramienta de análisis, no parte del sistema del hospital, y
+  # no tiene por qué estar escuchando mientras corre el tablero.
+  #
+  #   docker compose --profile sim up -d adminer
+  #
+  # En 8081 y no en 8080: ese lo ocupa el tablero.
+  adminer:
+    image: adminer:4-standalone
+    container_name: siappc-adminer
+    profiles: ['sim']
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: mariadb
+      ADMINER_DESIGN: dracula
+    ports:
+      - '${ADMINER_PORT:-8081}:8080'
     depends_on:
       mariadb:
         condition: service_healthy

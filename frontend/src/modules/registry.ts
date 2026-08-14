@@ -7,7 +7,6 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import ListAltOutlinedIcon from '@mui/icons-material/ListAltOutlined'
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined'
-import PrecisionManufacturingOutlinedIcon from '@mui/icons-material/PrecisionManufacturingOutlined'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import SensorsOutlinedIcon from '@mui/icons-material/SensorsOutlined'
 import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined'
@@ -17,8 +16,14 @@ import TabletMacOutlinedIcon from '@mui/icons-material/TabletMacOutlined'
 import type { Role } from './auth/types'
 import type { StringKey } from '../shared/i18n/dictionary'
 
-// Each module registers its route and nav entry here. Adding the Power BI or
-// FlexSim module later means appending one entry, not editing the layout.
+// Each module registers its route and nav entry here. Adding a module later
+// means appending one entry, not editing the layout.
+//
+// Aquí NO están ni Power BI ni FlexSim, y es a propósito. Los informes de
+// simulación se hacen conectando Power BI directo a MariaDB (base `siappc_sim`,
+// ver simulation/README.md), y el simulador es un proceso por lotes que corre
+// desde Compose. Ninguna de las dos cosas necesita una pantalla en el tablero,
+// y las que había mostraban datos inventados.
 export type AppModule = {
   path: string
   label: StringKey
@@ -58,14 +63,6 @@ export const modules: NavEntry[] = [
     icon: DashboardOutlinedIcon,
     lazy: async () => ({
       Component: (await import('./dashboard/pages/MainPage')).MainPage,
-    }),
-  },
-  {
-    path: '/flexsim',
-    label: 'nav.flexsim',
-    icon: PrecisionManufacturingOutlinedIcon,
-    lazy: async () => ({
-      Component: (await import('./flexsim/pages/FlexSimPage')).FlexSimPage,
     }),
   },
   {

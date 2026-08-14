@@ -1,0 +1,11 @@
+.git
+.gitignore
+salidas/
+docs/
+tests/
+**/__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.env
+README.md

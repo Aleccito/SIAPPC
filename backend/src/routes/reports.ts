@@ -3,8 +3,12 @@
 // No hay una tabla de "reportes" propia porque no hay nada más que reportar
 // todavía: lo que la pantalla muestra es qué proceso corrió, sobre qué fuente,
 // cómo terminó y cuándo. Eso es exactamente un renglón de `etl_ejecucion` (ver
-// backend/etl/README.md). El día que haya reportes de Power BI o de FlexSim con
-// vida propia, se suman a esta lista sin cambiar la forma de la respuesta.
+// backend/etl/README.md). El día que haya reportes con vida propia, se suman a
+// esta lista sin cambiar la forma de la respuesta.
+//
+// Las corridas del simulador NO salen aquí, y no es un olvido: viven en otra
+// base (`siappc_sim`), las lanza Compose por lotes y se leen desde Power BI o
+// Adminer. Esta pantalla informa de lo que corre dentro del sistema.
 
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";

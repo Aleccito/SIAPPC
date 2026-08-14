@@ -21,7 +21,6 @@ export const locales: Record<Language, string> = { es: 'es-MX' }
 
 const es = {
   'nav.dashboard': 'Inicio',
-  'nav.flexsim': 'FlexSim',
   'nav.patients': 'Pacientes',
   'nav.sensors': 'Monitoreo',
   // Entrada aparte de 'nav.sensors' aunque las dos hablen de monitoreo: aquella
@@ -380,36 +379,12 @@ const es = {
   'dash.audit.system': 'Sistema',
 
   'dash.integrations.api': 'API SIAPPC',
-  'dash.integrations.powerbi': 'Power BI',
-  'dash.integrations.flexsim': 'FlexSim',
   'dash.integrations.up': 'Responde correctamente',
   'dash.integrations.down': 'No responde',
-  'dash.integrations.notConfigured': 'Sin configurar: falta el servicio en el backend',
   'dash.integrations.ok': 'En línea',
   'dash.integrations.off': 'No disponible',
   'dash.integrations.checking': 'Comprobando…',
 
-  'powerbi.title': 'Power BI',
-  'powerbi.loading': 'Cargando reporte…',
-  'powerbi.placeholder':
-    'El reporte se mostrará aquí en cuanto se configure el espacio de trabajo de Power BI del hospital.',
-  'powerbi.unavailable': 'Reporte no disponible',
-  'powerbi.report': 'Reporte {id}',
-
-  'flexsim.title': 'FlexSim',
-  'flexsim.queueRun': 'Encolar corrida',
-  'flexsim.queueError': 'No se pudo encolar la corrida',
-  'flexsim.empty': 'Aún no hay corridas. Elige un modelo y encola una.',
-  'flexsim.col.run': 'Corrida',
-  'flexsim.col.model': 'Modelo',
-  'flexsim.col.status': 'Estado',
-  'flexsim.col.throughput': 'Rendimiento',
-  'flexsim.col.utilization': 'Utilización',
-  'flexsim.col.bottleneck': 'Cuello de botella',
-  'runStatus.queued': 'en cola',
-  'runStatus.running': 'corriendo',
-  'runStatus.completed': 'completada',
-  'runStatus.failed': 'fallida',
 
   'reports.title': 'Reportes',
   'reports.col.name': 'Nombre',

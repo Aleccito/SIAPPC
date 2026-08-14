@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.env
+# Los CSV de cada corrida no se versionan: se regeneran corriendo. La carpeta sí
+# tiene que existir antes de levantar el compose —es un bind mount, y si Docker
+# la crea, la crea como root y el contenedor no puede escribir en ella—, así que
+# se conserva con un .gitkeep.
+salidas/*
+!salidas/.gitkeep

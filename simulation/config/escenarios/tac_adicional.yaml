@@ -1,0 +1,27 @@
+# Escenario: un segundo tomografo dedicado a urgencias.
+#
+# Por que este escenario: es la medida mejor puntuada de la encuesta (item 38,
+# 3 de 6 respuestas) y el item 39 pregunta explicitamente por su prioridad.
+#
+# Que hay que mirar: utilizacion y espera de ZonaTAC en v_cuellos_botella, y si
+# el tiempo total en el sistema se mueve fuera del intervalo de confianza del
+# escenario base. Advertencia: como este modelo NO incluye a los pacientes no
+# traumatizados que compiten por el mismo tomografo, la utilizacion del TAC va a
+# salir baja y el escenario probablemente no muestre casi mejora. Eso no
+# significa que un segundo TAC no sirva: significa que el modelo todavia no
+# representa la demanda que satura el equipo.
+
+extiende: ../base.yaml
+
+meta:
+  nombre: "Escenario: segundo equipo de TAC"
+  descripcion: >-
+    Igual al modelo base pero con dos tomografos operativos para urgencias.
+
+zonas:
+  ZonaTAC:
+    capacidad: 2
+    fuente: encuesta
+    nota: >-
+      Item 29: 3 de 6 encuestados reportan 2 equipos operativos habituales. Este
+      escenario prueba esa configuracion.

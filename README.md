@@ -354,7 +354,7 @@ a mano (`Pruebas/jmeter/correr.sh`).
 | `iot/` | Firmware y scripts de los sensores — ver [iot/README.md](iot/README.md) | Funcionando, corre en la Raspberry, fuera de Compose |
 | `infra/` | Configuración del broker MQTT y generación de certificados | Funcionando |
 | `Pruebas/` | Suite automatizada, colección de Postman y plan de JMeter — ver [Pruebas/README.md](Pruebas/README.md) | Funcionando |
-| `simulation/` | Modelos de FlexSim | Pendiente |
+| `simulation/` | Simulador de eventos discretos, gemelo del modelo de FlexSim — ver [simulation/README.md](simulation/README.md) | Funcionando, por lotes, en el perfil `sim` de Compose |
 
 ## Qué está funcionando
 
@@ -386,16 +386,54 @@ Con `docker compose up` quedan operativos, contra la base real:
   `/dashboard/devices` todavía no filtran por hospital, porque la clave de
   caché de Redis tampoco lo incluye
 
-Siguen siendo maquetas sin servidor detrás: **Power BI**, **FlexSim** y
-**recuperación de contraseña**. El detalle está en
-[frontend/README.md](frontend/README.md).
+Sigue siendo maqueta sin servidor detrás la **recuperación de contraseña**. El
+detalle está en [frontend/README.md](frontend/README.md).
 
-Power BI sí tiene ya de qué tirar aunque la pantalla siga siendo maqueta: se
-conecta directo a MariaDB y lee la vista `v_dim_paciente`, que responde las
-mismas preguntas que la tabla `paciente` —cuántos, de qué edad, en qué unidad,
-en qué estado— **sin nombre, cédula, contacto de emergencia ni motivo de
-consulta**. Un informe no debe llevarse datos identificables al portátil de
-quien abra el archivo.
+## Simulación
+
+`simulation/` es un modelo de eventos discretos en Python que **replica el
+Process Flow de FlexSim** para el flujo del politraumatizado con triaje rojo.
+No sustituye a FlexSim: es su gemelo de verificación, y sirve para lo que en
+FlexSim sale caro —comprobar la lógica por duplicado y barrer escenarios: 30
+réplicas de 5 escenarios en 85 segundos, con sus intervalos de confianza—.
+
+Corre por lotes, en su propio perfil de Compose, así que `docker compose up` no
+lo dispara:
+
+```bash
+docker compose --profile sim run --rm sim escenarios --replicas 30
+docker compose --profile sim up -d adminer      # cliente SQL en :8081
+```
+
+Escribe en la base **`siappc_sim`**, en el mismo servidor MariaDB pero en un
+esquema aparte. La razón está en
+[`simulation/db/init/00-base-sim.sh`](simulation/db/init/00-base-sim.sh), y en
+corto es doble: los dos esquemas declaran una tabla `paciente` con columnas que
+no tienen nada que ver, y un resultado de simulación es sintético y desechable,
+así que no le tocan los respaldos ni la retención de la base clínica.
+
+El paso a paso de uso está en
+[simulation/GUIA_DE_USO.md](simulation/GUIA_DE_USO.md).
+
+## Power BI
+
+No hay pantalla de Power BI en el tablero, y no hace falta: Power BI se conecta
+directo a MariaDB y lee vistas. Son dos informes distintos contra el mismo
+servidor.
+
+- **Clínico** — base `siappc`, vista `v_dim_paciente`. Responde las mismas
+  preguntas que la tabla `paciente` —cuántos, de qué edad, en qué unidad, en qué
+  estado— **sin nombre, cédula, contacto de emergencia ni motivo de consulta**.
+  Un informe no debe llevarse datos identificables al portátil de quien abra el
+  archivo. El datamart que lo sostiene lo alimenta el ETL: ver
+  [backend/etl/README.md](backend/etl/README.md).
+- **Simulación** — base `siappc_sim`, once vistas encabezadas por
+  `v_resumen_escenario` y `v_cuellos_botella`. La lista completa y qué cargar
+  para un informe que se entienda están en
+  [simulation/README.md](simulation/README.md).
+
+Lo que no debe hacerse es mezclar los dos en la misma tabla del modelo: no son
+el mismo paciente ni el mismo mundo.
 
 ## IoT
 

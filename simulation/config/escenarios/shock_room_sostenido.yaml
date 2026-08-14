@@ -1,0 +1,26 @@
+# Escenario: corregir el hallazgo 5.1 (liberacion temprana del shock room).
+#
+# El problema: en el modelo actual la "Zona de salida" de ZonaShockRoom esta
+# inmediatamente despues del bloque Shock Room. Es decir, el paciente libera la
+# camilla ANTES de la evaluacion primaria ATLS y antes de las intervenciones
+# criticas. En la realidad el paciente sigue ocupando fisicamente esa camilla
+# durante todo ese tramo.
+#
+# Consecuencia: el modelo actual subestima la ocupacion del shock room, y por lo
+# tanto subestima la cola de entrada. Este escenario sostiene la zona durante
+# todo el tramo (evaluacion primaria e intervencion critica incluidas).
+#
+# Que hay que mirar: utilizacion y espera de ZonaShockRoom frente al escenario
+# base. La diferencia es la magnitud del error que introduce el modelo actual.
+# Si es grande, corregirlo deja de ser opcional.
+
+extiende: ../base.yaml
+
+meta:
+  nombre: "Escenario: shock room sostenido"
+  descripcion: >-
+    Misma configuracion que el modelo base, pero la camilla de shock room se
+    mantiene ocupada durante la evaluacion primaria y la intervencion critica.
+
+opciones:
+  sostener_shock_room: true

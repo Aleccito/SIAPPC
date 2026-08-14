@@ -329,10 +329,13 @@ type IntegrationRow = {
 /**
  * Estado de las integraciones.
  *
- * La API se comprueba de verdad contra `GET /health`. Power BI y FlexSim se
- * declaran no configurados porque lo están: su capa de datos en el frontend
- * todavía no habla con ningún servicio (ver los PENDIENTE de powerbiApi.ts y
- * flexsimApi.ts).
+ * Solo la API, y se comprueba de verdad contra `GET /health`.
+ *
+ * Aquí estaban también Power BI y FlexSim, siempre en "sin configurar". Se
+ * quitaron cuando dejaron de ser integraciones del tablero: los informes se
+ * hacen conectando Power BI directo a MariaDB, y la simulación corre por lotes
+ * desde Compose (ver simulation/README.md). Ninguna de las dos pasa por el
+ * navegador, así que el tablero no tiene nada que informar sobre ellas.
  */
 export function IntegrationsWidget() {
   const { t } = useLanguage()
@@ -349,12 +352,6 @@ export function IntegrationsWidget() {
       detail: health.data?.status === 'ok' ? 'dash.integrations.up' : 'dash.integrations.down',
       ok: health.isLoading ? null : health.data?.status === 'ok',
     },
-    // PENDIENTE: `GET /powerbi/embed-token`, que emite el token de incrustación
-    // desde el service principal. Sin él no hay nada que consultar.
-    { name: t('dash.integrations.powerbi'), detail: 'dash.integrations.notConfigured', ok: false },
-    // PENDIENTE: `GET /flexsim/runs`, servido por el servicio de trabajos que
-    // lanza FlexSim en modo headless.
-    { name: t('dash.integrations.flexsim'), detail: 'dash.integrations.notConfigured', ok: false },
   ]
 
   return (
