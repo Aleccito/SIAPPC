@@ -84,7 +84,12 @@ const es = {
   'monitor.live': 'En vivo',
   'monitor.noSignal': 'Sin señal',
   'monitor.thresholds': 'Configurar Umbrales',
-  'monitor.ecgDecorative': 'Trazo ilustrativo',
+  // El trazo ya NO es del todo inventado: la separación entre complejos sale de
+  // la FC medida, así que el ritmo es real. La forma de la onda sigue siendo
+  // sintética mientras el equipo no publique la señal. El rótulo dice
+  // exactamente eso, ni de más ni de menos.
+  'monitor.ecgDecorative': 'Ritmo real · trazo no diagnóstico',
+  'monitor.ecgLive': 'Señal del equipo · no diagnóstico',
   'monitor.updated': 'Última actualización',
   'monitor.noReadings': 'Sin lecturas de este dispositivo',
   'monitor.hr': 'FC (FRECUENCIA CARDÍACA)',
@@ -169,6 +174,13 @@ const es = {
   // celda que ya lleva el número grande y su unidad.
   'central.lastKnown': 'últ. {value}',
   'central.noSignal': 'SIN SEÑAL',
+  // Ocupa el hueco del trazo cuando no hay onda que dibujar. Dice el motivo, que
+  // no es el mismo en los tres casos y lleva a sitios distintos: sin equipo hay
+  // que pedir uno a biomédica, sin lecturas hay que revisar el equipo, y una
+  // señal perdida hace un rato puede ser un electrodo suelto.
+  'central.trace.noDevice': 'Sin equipo: no hay onda que mostrar',
+  'central.trace.never': 'Este equipo todavía no ha mandado ninguna lectura',
+  'central.trace.lost': 'Sin señal: la última lectura no es de este minuto',
 
   'central.ago.never': 'Sin lecturas',
   'central.ago.now': 'hace un momento',

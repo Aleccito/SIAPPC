@@ -19,6 +19,11 @@ const {
   // conectarse y, si desaparece sin avisar, lo publica el broker por él
   // (Last Will). Mismo comodín, misma razón.
   MQTT_STATUS_TOPIC = "siappc/+/status",
+  // Onda cruda (ECG). Va por un tema APARTE de la telemetría y no como una
+  // variable más porque no es la misma clase de dato: `telemetry` son cifras
+  // sueltas que se guardan en `lectura`, y esto son cientos de muestras por
+  // segundo que NO se guardan en ninguna tabla. Ver services/waveform.ts.
+  MQTT_WAVEFORM_TOPIC = "siappc/+/waveform",
   // Solo para apuntar a un broker heredado sin TLS. En Compose nunca se usa:
   // el broker no tiene listener en texto plano.
   MQTT_TLS = "true",
@@ -113,6 +118,7 @@ export const env = {
     password: MQTT_PASSWORD || undefined,
     telemetryTopic: MQTT_TELEMETRY_TOPIC,
     statusTopic: MQTT_STATUS_TOPIC,
+    waveformTopic: MQTT_WAVEFORM_TOPIC,
     // null = conexión en texto plano. Con TLS activo el certificado del broker
     // se valida siempre contra esta CA: no hay interruptor para saltarse la
     // verificación, porque un `rejectUnauthorized: false` olvidado deja la

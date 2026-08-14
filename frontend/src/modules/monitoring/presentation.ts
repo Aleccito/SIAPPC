@@ -97,6 +97,38 @@ export function isStale(at: string | null): boolean {
   return elapsed > STALE_AFTER_MS
 }
 
+/**
+ * ¿Hay señal VIGENTE que dibujar?
+ *
+ * Decide si se pinta el trazo, y es más estricta que `isStale` a propósito: solo
+ * cuenta una lectura de este minuto. Entre uno y dos minutos la cifra todavía se
+ * da por buena —una FC no cambia tanto en noventa segundos— pero una ONDA de
+ * hace noventa segundos ya no describe nada de lo que está pasando.
+ *
+ * Sin esto, el trazo se quedaba quieto pero seguía dibujado, y una cama sin
+ * equipo y sin una sola lectura enseñaba un ECG completo. Que no se moviera no
+ * lo hacía menos falso: lo que se ve es una onda, y no había ninguna.
+ *
+ * Y cuando no hay señal NO se dibuja una línea plana: en un ECG eso es asistolia,
+ * o sea un hallazgo clínico. La ausencia de datos se dice con palabras.
+ */
+export function hasLiveSignal(bed: MonitoredBed): boolean {
+  if (!bed.device || !bed.vitals.at) return false
+  const elapsed = Date.now() - new Date(bed.vitals.at).getTime()
+  return elapsed < MINUTO
+}
+
+/**
+ * Por qué no hay trazo. Los tres casos llevan a acciones distintas: sin equipo
+ * hay que pedir uno, sin ninguna lectura hay que revisar el que hay, y una señal
+ * perdida hace un rato suele ser un electrodo suelto.
+ */
+export function traceReason(bed: MonitoredBed): StringKey {
+  if (!bed.device) return 'central.trace.noDevice'
+  if (!bed.vitals.at) return 'central.trace.never'
+  return 'central.trace.lost'
+}
+
 /** Un número de la cabecera de la cama, ya resuelto: qué es, cuánto y de qué color. */
 export type Metric = {
   id: 'hr' | 'spo2' | 'resp' | 'gcs'

@@ -30,21 +30,45 @@ const sweep = keyframes`
   to { transform: translateX(-${PATTERN}px); }
 `
 
+/** Complejos que dibuja un patrón completo. Define cuántos latidos es un barrido. */
+const BEATS_PER_PATTERN = 4
+
+// Ritmos fuera de esto no se pintan más rápido ni más lento: se recortan.
+//
+// No es para "corregir" el dato —la cifra de FC se enseña tal cual la midió el
+// equipo, y si son 210 se leen 210—, es para que el DIBUJO siga siendo legible.
+// Por debajo de 30 el barrido tarda tanto que parece congelado, que es justo lo
+// que significa "sin señal" en esta pantalla; por encima de 220 los complejos se
+// juntan hasta ser una mancha. Los dos extremos comunicarían algo falso.
+const MIN_BPM = 30
+const MAX_BPM = 220
+
 /**
  * @param animated Barrido continuo. Es la única señal de que el trazo está
  *   VIVO: sin lecturas recientes se queda quieto, y una línea congelada se lee
  *   de lejos como "este equipo no está mandando nada". Moverlo siempre diría lo
  *   contrario justo cuando importa que no.
+ * @param bpm Frecuencia cardiaca MEDIDA. El barrido dura lo que tardan
+ *   `BEATS_PER_PATTERN` latidos a ese ritmo, así que la separación entre
+ *   complejos es la real: una taquicardia se ve apretada y una bradicardia
+ *   espaciada, sin leer la cifra. La FORMA de la onda sigue siendo sintética
+ *   —la Pi no publica la onda—, pero el RITMO ya no es inventado.
+ *   `null` deja el barrido de 4 s, que equivale a 60 lpm.
  */
 export function EcgTrace({
   color,
   height = 96,
   animated = false,
+  bpm = null,
 }: {
   color: string
   height?: number
   animated?: boolean
+  bpm?: number | null
 }) {
+  const ritmo = bpm === null ? null : Math.min(MAX_BPM, Math.max(MIN_BPM, bpm))
+  // 4 latidos a `ritmo` lpm son 4 / (ritmo/60) segundos.
+  const duracionMs = ritmo === null ? null : (BEATS_PER_PATTERN * 60_000) / ritmo
   return (
     <Box
       component="svg"
@@ -65,7 +89,9 @@ export function EcgTrace({
           // sitio distinto en cada tarjeta según lo que mida su panel.
           transformBox: 'fill-box',
           transformOrigin: 'center',
-          animation: animated ? `${sweep} ${motion.sweep} linear infinite` : 'none',
+          animation: animated
+            ? `${sweep} ${duracionMs === null ? motion.sweep : `${Math.round(duracionMs)}ms`} linear infinite`
+            : 'none',
           // Movimiento constante y periférico: es exactamente lo que marea a
           // quien pidió menos movimiento. Se queda el trazo, se va el barrido.
           '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
