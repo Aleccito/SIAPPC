@@ -489,10 +489,11 @@ Para verla con interfaz: `npm run studio`.
 
 ## Pendiente
 
-- El esquema no tiene tablas para corridas de FlexSim ni para el estado del
-  paciente en la fila de servicio; la pantalla de FlexSim sigue siendo maqueta.
-  Reportes ya no lo es: lista las corridas del ETL y exporta el informe de
-  actividad clínica en CSV.
+- Este esquema no tiene tablas para corridas de simulación, y ya no le hacen
+  falta: viven en la base `siappc_sim`, que es del simulador y la crea él mismo
+  (ver [simulation/README.md](../simulation/README.md)). La pantalla que había
+  para eso se quitó. Reportes tampoco es maqueta: lista las corridas del ETL y
+  exporta el informe de actividad clínica en CSV.
 - El único informe exportable es el de actividad clínica. Cada informe nuevo
   necesita su propia vista y su ruta, porque un `CALL` con resultados no se puede
   consumir desde aquí.

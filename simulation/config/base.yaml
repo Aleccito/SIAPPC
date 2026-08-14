@@ -1,0 +1,387 @@
+# =====================================================================
+# SIAPPC - Configuracion base: espejo del Process Flow actual de FlexSim
+# =====================================================================
+#
+# COMO SE LEE ESTE ARCHIVO
+#
+# Cada parametro puede escribirse de dos formas:
+#
+#   triaje: "uniform(3,5)"          <- forma corta, queda marcado sin_declarar
+#   triaje:                          <- forma completa, trazable
+#     dist: "uniform(3,5)"
+#     fuente: modelo_actual
+#     nota: "de donde sale este numero"
+#
+# Fuentes admitidas, de mas a menos confiable:
+#   dato_real      medido en el Hospital Santo Tomas
+#   encuesta       derivado del cuestionario a personal (n = 6)
+#   modelo_actual  valor que ya esta puesto en el modelo de FlexSim
+#   literatura     tomado de una fuente publicada y citada
+#   estimado       calculado a partir de algo indirecto
+#   supuesto       elegido por nosotros, sin respaldo
+#   prueba         valor temporal, solo para que el modelo corra
+#
+# ADVERTENCIA HONESTA: hoy este modelo NO tiene ningun parametro con fuente
+# dato_real. Los tiempos vienen del modelo de FlexSim y de una encuesta de seis
+# respuestas; las probabilidades de ruta son supuestos nuestros. El modelo sirve
+# para comparar escenarios entre si, no para afirmar cuanto tarda de verdad un
+# paciente en el Santo Tomas. Corra `siappc parametros` para ver el conteo.
+
+meta:
+  nombre: "SIAPPC - modelo espejo del Process Flow actual"
+  descripcion: >-
+    Flujo del paciente politraumatizado con triaje rojo del Hospital Santo Tomas,
+    desde la llegada en ambulancia hasta el alta, la muerte o la rehabilitacion.
+    Replica en codigo las 24 actividades, 10 zonas y 7 bloques Decidir del modelo
+    construido en FlexSim, para verificacion cruzada y barrido de escenarios.
+  version_modelo: "1.0.0"
+  unidad_tiempo: minutos
+
+simulacion:
+  horizonte:
+    valor: 129600          # 90 dias
+    fuente: supuesto
+    nota: >-
+      El cuello de botella que se ve depende del horizonte: en horas manda el TAC,
+      en semanas manda la UCI. 90 dias permite que se acumulen las estancias
+      largas (UCI, hospitalizacion, rehabilitacion) y aparezca el bloqueo aguas
+      arriba.
+  calentamiento:
+    valor: 21600           # 15 dias
+    fuente: supuesto
+    nota: >-
+      El modelo arranca con el hospital vacio, que no es un estado realista. Se
+      descartan los primeros 15 dias para medir sobre un sistema ya cargado. Debe
+      revisarse mirando la serie de ocupacion de UCI: si sigue subiendo al dia 15,
+      hay que alargarlo.
+  replicas:
+    valor: 30
+    fuente: supuesto
+    nota: "30 replicas hacen razonable la aproximacion normal del intervalo de confianza."
+  semilla:
+    valor: 20260814
+    fuente: supuesto
+    nota: "Fija la aleatoriedad. Misma semilla = mismos resultados, siempre."
+  guardar_series: primera_replica   # ninguna | primera_replica | todas
+  intervalo_serie: 60               # minutos entre puntos de la serie temporal
+
+# ---------------------------------------------------------------------
+# Llegada de pacientes  (bloque "Fuente Entre llegadas")
+# ---------------------------------------------------------------------
+llegadas:
+  entre_llegadas:
+    dist: "exponential(360)"
+    fuente: supuesto
+    nota: >-
+      Uno cada 6 horas en promedio, es decir 4 politraumatizados rojos por dia.
+      ESTE ES EL PARAMETRO MAS IMPORTANTE Y EL MENOS respaldado del modelo: casi
+      todos los resultados escalan con el. Debe salir del registro de urgencias
+      del hospital (conteo de activaciones de trauma por dia y por hora). La
+      exponencial implica llegadas sin memoria, razonable para trauma, pero
+      ignora el patron dia/noche y fin de semana.
+
+# ---------------------------------------------------------------------
+# Etiquetas del paciente  (bloque "Asignar atributos")
+# ---------------------------------------------------------------------
+etiquetas:
+  edad:
+    dist: "uniform(18,75)"
+    fuente: supuesto
+    nota: >-
+      Hoy la edad no cambia ninguna ruta del modelo: se registra pero no decide
+      nada. Se conserva porque ya existe en FlexSim y porque es el enganche
+      natural si mas adelante se quiere diferenciar al paciente geriatrico.
+  glasgow:
+    dist: "duniform(3,15)"
+    fuente: supuesto
+    nota: >-
+      Uniforme discreta entre 3 y 15. Igual que la edad, hoy no condiciona la
+      ruta. Lo realista seria que un Glasgow bajo aumentara la probabilidad de
+      TAC craneal, especialista y UCI; se deja anotado como mejora, no se
+      implementa para no alejarse del modelo actual.
+  estable:
+    p: 0.60
+    fuente: supuesto
+    nota: >-
+      Probabilidad de que el paciente sea hemodinamicamente estable. Es la
+      variable que gobierna toda la topologia del flujo: el estable va a la via
+      diagnostica (laboratorio, Rx, FAST, TAC) y el inestable a la intervencion
+      critica. Debe salir del registro de trauma; mientras tanto es un supuesto.
+
+# ---------------------------------------------------------------------
+# Zonas con capacidad limitada  (bloques "Zona" de FlexSim)
+# ---------------------------------------------------------------------
+zonas:
+  ZonaShockRoom:
+    capacidad: 3
+    fuente: modelo_actual
+    nota: >-
+      Camillas de shock room operativas simultaneamente. La encuesta pregunta
+      esto (item 28) pero las respuestas no quedaron cuantificadas en el informe.
+  ZonaPersonalMedico:
+    capacidad: 6
+    fuente: modelo_actual
+    nota: >-
+      Capacidad simple, sin turnos ni roles. Representa cuantos pacientes puede
+      atender el equipo a la vez, no cuantas personas hay. Es la simplificacion
+      mas fuerte del modelo actual.
+  ZonaLaboratorio:
+    capacidad: 2
+    fuente: modelo_actual
+    nota: "Puestos de procesamiento de muestras atendiendo a la vez."
+  ZonaRadiologia:
+    capacidad: 1
+    fuente: modelo_actual
+    nota: >-
+      Un solo equipo, compartido por Rx de torax/pelvis y por el FAST. En el
+      modelo actual el paciente sale y vuelve a entrar entre uno y otro, asi que
+      puede hacer cola dos veces.
+  ZonaTAC:
+    capacidad: 1
+    fuente: encuesta
+    nota: >-
+      El hospital reporta publicamente un tomografo de 64 cortes, y la encuesta
+      (item 29) se reparte entre 1 y 2 equipos operativos. Se toma 1 como caso
+      base y 2 se prueba en el escenario tac_adicional.
+  ZonaEspecialistas:
+    capacidad: 2
+    fuente: modelo_actual
+    nota: "Puestos de valoracion por especialista."
+  ZonaQuirofano:
+    capacidad: 2
+    fuente: modelo_actual
+    nota: "Quirofanos disponibles para emergencia."
+  ZonaUCI:
+    capacidad: 8
+    fuente: modelo_actual
+    nota: "Camas de UCI. Es el unico recurso del modelo cuyo servicio dura dias."
+  ZonaHospitalizacion:
+    capacidad: 20
+    fuente: modelo_actual
+    nota: "Camas de sala."
+  ZonaRehabilitacion:
+    capacidad: 15
+    fuente: modelo_actual
+    nota: "Plazas de rehabilitacion."
+
+# ---------------------------------------------------------------------
+# Duraciones de las 24 actividades
+# ---------------------------------------------------------------------
+actividades:
+
+  triaje:
+    dist: "uniform(3,5)"
+    fuente: modelo_actual
+    nota: >-
+      Valor que ya tiene el bloque Demora en FlexSim, coherente con la encuesta
+      (item 13: todos responden menos de 10 minutos). Ojo conceptual: como el
+      modelo solo simula triaje rojo, aqui no se clasifica a nadie; es tiempo de
+      recepcion, no de decision.
+
+  traslado_shock_room:
+    dist: "triangular(2,7,25)"
+    fuente: encuesta
+    nota: >-
+      Item 14, respuestas muy dispersas: 2 personas dicen menos de 5 min, 1 dice
+      5-10, 1 dice 11-15 y 2 dicen mas de 15. La triangular cubre ese rango con
+      moda en 7. La dispersion probablemente refleja espera por camillero, no
+      tiempo de recorrido: si se confirma, deberia separarse en dos bloques.
+
+  shock_room:
+    dist: "uniform(3,8)"
+    fuente: supuesto
+    nota: >-
+      Recepcion y traspaso dentro del shock room, antes de la evaluacion
+      primaria. No hay pregunta de la encuesta que lo cubra.
+
+  x_control_cervical:
+    dist: "uniform(0.5,2)"
+    fuente: estimado
+    nota: "Reparto del total ATLS de la encuesta (item 15) entre las seis etapas."
+  a_via_aerea:
+    dist: "uniform(1,4)"
+    fuente: encuesta
+    nota: "Item 16: 5 de 6 respuestas dicen menos de 5 minutos para la via aerea."
+  b_ventilacion:
+    dist: "uniform(0.5,3)"
+    fuente: estimado
+    nota: "Reparto del total ATLS de la encuesta entre las seis etapas."
+  c_circulacion:
+    dist: "uniform(1,4)"
+    fuente: estimado
+    nota: >-
+      Se le da mas peso que a las otras etapas porque incluye accesos vasculares.
+      Item 17 (control inicial de hemorragias) apunta a menos de 5 min en 3 de 6.
+  d_neurologico:
+    dist: "uniform(0.5,2)"
+    fuente: estimado
+    nota: "Reparto del total ATLS de la encuesta entre las seis etapas."
+  e_exposicion:
+    dist: "uniform(0.5,2)"
+    fuente: estimado
+    nota: >-
+      Suma de las seis etapas: entre 4 y 17 minutos, media 10.5, que cae dentro
+      de lo que responde la encuesta para el ATLS completo (item 15: mitad dice
+      menos de 10 min, mitad dice 10-20 min).
+
+  laboratorios:
+    dist: "triangular(15,35,75)"
+    fuente: encuesta
+    nota: >-
+      Item 18, la respuesta mas dispersa de toda la encuesta: va de 15-30 min
+      hasta mas de 60. Advertencia de modelado: aqui el laboratorio esta en serie,
+      el paciente espera el resultado sin hacer nada mas. En la practica la toma
+      de muestra ocurre temprano y el procesamiento corre en paralelo con imagen.
+      Corregirlo es una de las mejoras previstas en el plan de migracion.
+
+  rx_torax_pelvis:
+    dist: "uniform(15,45)"
+    fuente: encuesta
+    nota: "Item 20: 4 respuestas en 15-30 min y 2 en 31-45 min."
+
+  fast:
+    dist: "uniform(5,20)"
+    fuente: encuesta
+    nota: >-
+      Item 19: 3 respuestas menos de 10 min y 3 en 16-20 min. Advertencia: en el
+      modelo actual el FAST ocupa ZonaRadiologia como parada aparte. Segun la
+      literatura clinica el eFAST se hace a pie de camilla durante la evaluacion
+      primaria, de modo que no deberia competir por el equipo de radiologia. Es
+      una diferencia conocida entre el modelo y la realidad.
+
+  tac:
+    dist: "triangular(15,30,60)"
+    fuente: encuesta
+    nota: "Item 21: 1 respuesta menos de 20 min, 3 en 20-40 min y 2 en 41-60 min."
+
+  control_hemorragias:
+    dist: "uniform(20,60)"
+    fuente: modelo_actual
+    nota: "Demora sin restriccion en el modelo actual: no reclama sala propia."
+  lesion_neurologica:
+    dist: "uniform(20,60)"
+    fuente: modelo_actual
+    nota: "Demora sin restriccion en el modelo actual."
+  trauma_toracico:
+    dist: "uniform(20,60)"
+    fuente: modelo_actual
+    nota: "Demora sin restriccion en el modelo actual."
+
+  espera_especialista:
+    dist: "uniform(15,60)"
+    fuente: modelo_actual
+    nota: >-
+      OJO: esta es una demora ciega. El paciente siempre espera entre 15 y 60
+      minutos pase lo que pase, porque no esta conectada a ningun recurso. Es
+      coherente con la encuesta (item 22) pero rompe el analisis de escenarios:
+      aumentar especialistas NO reduce esta espera. El escenario
+      mas_especialistas.yaml existe justamente para demostrarlo.
+
+  valoracion_especialista:
+    dist: "uniform(10,30)"
+    fuente: supuesto
+    nota: "No cubierto por la encuesta."
+
+  espera_quirofano:
+    dist: "triangular(20,45,120)"
+    fuente: modelo_actual
+    nota: >-
+      Misma advertencia que espera_especialista: demora ciega, desconectada de la
+      ocupacion real de ZonaQuirofano. Coherente con la encuesta (item 23:
+      la mitad responde 30-60 min).
+
+  cirugia:
+    dist: "triangular(60,120,240)"
+    fuente: supuesto
+    nota: >-
+      No cubierto por la encuesta. No incluye tiempo de preparacion ni de limpieza
+      de sala, que en la practica reducen la capacidad efectiva del quirofano.
+
+  traslado_uci:
+    dist: "uniform(10,20)"
+    fuente: modelo_actual
+    nota: >-
+      Contradice a la encuesta: el item 24 dice que la mitad de los encuestados
+      observa mas de 60 minutos para el traslado a UCI. La diferencia se explica
+      porque el modelo mide recorrido y la realidad incluye espera por camillero
+      y por disponibilidad de cama. Es el mejor argumento para modelar el
+      transporte como recurso limitado en la siguiente iteracion.
+
+  estancia_uci:
+    dist: "lognormal2(2880,2160)"
+    fuente: supuesto
+    nota: >-
+      Media 2 dias, desviacion 1.5 dias, asimetrica a la derecha (pocos pacientes
+      con estancias muy largas). La forma es razonable; los numeros no estan
+      respaldados y deben salir del registro del hospital.
+
+  hospitalizacion:
+    dist: "lognormal2(7200,4320)"
+    fuente: supuesto
+    nota: "Media 5 dias, desviacion 3 dias. Sin respaldo."
+
+  rehabilitacion:
+    dist: "lognormal2(14400,7200)"
+    fuente: supuesto
+    nota: "Media 10 dias, desviacion 5 dias. Sin respaldo."
+
+# ---------------------------------------------------------------------
+# Los bloques Decidir  (la etiqueta 'estable' resuelve el primero)
+# ---------------------------------------------------------------------
+decisiones:
+
+  tipo_lesion_critica:
+    control_hemorragias:
+      p: 0.45
+      fuente: supuesto
+      nota: "Reparto de los pacientes inestables entre las tres intervenciones."
+    trauma_toracico:
+      p: 0.30
+      fuente: supuesto
+      nota: "Las tres ramas deben sumar exactamente 1."
+    lesion_neurologica:
+      p: 0.25
+      fuente: supuesto
+      nota: "Sin respaldo; debe salir del registro de trauma."
+
+  requiere_especialista:
+    p: 0.70
+    fuente: supuesto
+    nota: "Solo se aplica al paciente estable, que es quien pasa por diagnostico."
+
+  requiere_cirugia:
+    p: 0.45
+    fuente: supuesto
+    nota: >-
+      En el modelo actual es una sola probabilidad para todos. Lo realista seria
+      condicionarla a la estabilidad: el inestable opera mucho mas. Se deja como
+      esta para no separarse del modelo de FlexSim.
+
+  requiere_uci:
+    p: 0.70
+    fuente: supuesto
+    nota: "Quien no requiere UCI sale por Alta directa."
+
+  muerte_en_uci:
+    p: 0.15
+    fuente: supuesto
+    nota: >-
+      Es una salida del modelo, no un resultado del modelo. El simulador no
+      calcula mortalidad: la mortalidad entra como parametro. Nunca debe
+      presentarse como si la simulacion la hubiera predicho.
+
+  requiere_rehabilitacion:
+    p: 0.50
+    fuente: supuesto
+    nota: "Quien no requiere rehabilitacion sale por Alta."
+
+# ---------------------------------------------------------------------
+# Opciones de modelado
+# ---------------------------------------------------------------------
+opciones:
+  sostener_shock_room: false
+  # false = reproduce el modelo actual: la Zona de salida esta justo despues del
+  #         bloque Shock Room, asi que la sala se libera antes de la evaluacion
+  #         primaria y de las intervenciones criticas.
+  # true  = aplica la correccion del hallazgo 5.1: la sala se sostiene durante
+  #         todo el tramo. Ver el escenario shock_room_sostenido.yaml.

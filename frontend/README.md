@@ -46,8 +46,7 @@ solo para desarrollo). El token vive en `sessionStorage` y muere con la pestaña
 | Búsqueda global (`/search`) | Real | `GET /search` |
 | Alertas en vivo (tablero) | Real | `GET /alerts/stream` (SSE), hook `src/modules/dashboard/useAlertStream.ts` |
 | Reportes (`/reports`) | Real | `GET /reports` (bitácora de corridas del ETL, desde `etl_ejecucion`) y descarga en CSV con `GET /reports/actividad-clinica.csv` (`api/exportApi.ts`) |
-| FlexSim (`/flexsim`) | **Simulado** | Estado derivado del tiempo transcurrido |
-| Power BI | **Fuera del menú** | El módulo sigue en `src/modules/powerbi/`, pero no está registrado en `registry.ts`: no tiene entrada de navegación ni ruta. Los informes se hacen conectando Power BI directo a MariaDB (vista `v_dim_paciente`) |
+| Simulación y Power BI | **Fuera del tablero** | Ya no son pantallas. Ver [Lo que se quitó](#lo-que-se-quitó-simulación-y-power-bi) |
 | Recuperar contraseña | **Simulado** | `passwordResetApi.ts` no llama a nada |
 | Panel principal (`/`) | **Simulado** | Tres tarjetas de texto, sin datos |
 
@@ -112,8 +111,6 @@ src/
     notifications/     bandeja de notificaciones
     monitoring/        detalle de dispositivo
     reports/           corridas del ETL y exportación de informes a CSV
-    flexsim/           encolar corrida, sondear estado, leer resultados
-    powerbi/           placeholder de incrustación
 ```
 
 Un módulo es dueño de `types.ts`, `api/` y `pages/`. Los módulos importan de
@@ -161,29 +158,33 @@ Pendiente todavía:
 - ningún secreto debe ir jamás en una variable `VITE_*`: se empaquetan en el
   bundle y viajan al navegador
 
-### Power BI
+## Lo que se quitó: simulación y Power BI
 
-El navegador nunca emite un token de incrustación. El servidor guarda el service
-principal y entrega un token corto por petición. Confirmar qué SKU tiene la
-organización antes de diseñar la pantalla: "embed for your organization" exige
-licencia Pro/PPU por usuario, "embed for your customers" exige capacidad F/EM.
-Nunca usar publish-to-web; es público.
+Había dos pantallas, `/flexsim` y `/powerbi`, y ya no están. Sus módulos, sus
+entradas de menú, sus claves del diccionario y sus dos filas del widget de
+integraciones se borraron.
 
-### FlexSim
+No fue una limpieza de código muerto: es que **ninguna de las dos cosas pasa por
+el navegador**, así que una pantalla solo podía ser una maqueta.
 
-FlexSim es una aplicación de escritorio de Windows sin API web. Nunca se llama
-desde el navegador. El servidor encola un trabajo, corre FlexSim headless por
-CLI, y FlexSim escribe resultados en MariaDB por ODBC. La interfaz encola
-corridas y sondea el estado. La simulación es batch asíncrono, siempre.
+- **La simulación** corre por lotes desde Compose (`docker compose --profile sim
+  run --rm sim ...`) y escribe en la base `siappc_sim`. Ver
+  [simulation/README.md](../simulation/README.md). La pantalla que había
+  encolaba corridas falsas y derivaba su estado del tiempo transcurrido; los
+  resultados de verdad no salen de ahí.
+- **Power BI** se conecta directo a MariaDB y lee vistas: `v_dim_paciente` para
+  lo clínico, y las once vistas de `siappc_sim` para la simulación. La pantalla
+  que había era un marcador de posición sin token de incrustación.
 
-Los nombres de modelo que manda el cliente se validan en el servidor antes de
-llegar a una invocación por CLI.
+Si algún día se quiere incrustar un informe en el tablero, el diseño no cambia
+por haber borrado la maqueta, y sigue valiendo lo que ya se sabía: el navegador
+nunca emite el token de incrustación —lo emite el servidor desde el service
+principal, corto y por petición—, hay que confirmar el SKU de la organización
+antes de diseñar la pantalla ("embed for your organization" exige Pro/PPU por
+usuario; "embed for your customers", capacidad F/EM), y nunca se usa
+publish-to-web, que es público.
 
 ## Pendientes conocidos
 
-- El sondeo de FlexSim se pausa con la pestaña oculta (comportamiento de TanStack
-  Query). Usar `refetchIntervalInBackground: true` si corre en pantalla de pared.
-- Los modelos de FlexSim siguen en lenguaje de fábrica (`line-a.fsm`,
-  "Downtime by station"), no de hospital.
 - `npm audit` reporta un aviso de react-router que afecta modo RSC. Esta app es
   SPA data router sin RSC, así que la ruta no es alcanzable.

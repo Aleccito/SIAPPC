@@ -1,0 +1,31 @@
+# Escenario de esfuerzo: el doble de llegadas.
+#
+# Por que este escenario: no es una prediccion, es una prueba de verificacion.
+# Un modelo correcto tiene que reaccionar de forma coherente cuando se le
+# aprieta: las colas deben crecer primero donde el recurso esta mas cargado, y
+# el orden de los cuellos de botella debe tener sentido clinico.
+#
+# Que hay que mirar:
+#   1. Que zona se satura primero (utilizacion cerca de 100 y cola creciente).
+#   2. Si el numero de pacientes que quedan dentro del sistema al final crece
+#      sin control: eso indica que el sistema ya no es estable a esa demanda.
+#   3. Si el tiempo total en el sistema se dispara, revisar que no sea por un
+#      recurso de estancia larga (UCI, rehabilitacion) mal dimensionado.
+#
+# Si al duplicar la demanda no se satura nada, hay un error en el modelo.
+
+extiende: ../base.yaml
+
+meta:
+  nombre: "Escenario: demanda alta"
+  descripcion: >-
+    Ocho politraumatizados rojos por dia en lugar de cuatro. Prueba de esfuerzo
+    para ver que recurso cede primero.
+
+llegadas:
+  entre_llegadas:
+    dist: "exponential(180)"
+    fuente: prueba
+    nota: >-
+      Uno cada 3 horas. Valor de prueba deliberado, no es una proyeccion de
+      demanda del hospital.

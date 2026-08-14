@@ -1,0 +1,30 @@
+# Escenario: el doble de puestos de valoracion por especialista.
+#
+# Por que este escenario: la encuesta senala la espera por especialista como la
+# etapa con mayores demoras (item 33, 3 de 6 respuestas).
+#
+# QUE SE ESPERA VER, Y POR QUE ES EL RESULTADO MAS IMPORTANTE DEL PROYECTO:
+# este escenario casi no debe cambiar nada. La razon es que en el modelo actual
+# "Espera_Especialista" es una Demora ciega uniform(15,60), desconectada de
+# ZonaEspecialistas. El paciente espera entre 15 y 60 minutos aunque haya diez
+# especialistas libres. Duplicar la capacidad solo puede afectar a la cola de la
+# valoracion en si, que es pequena.
+#
+# Ese resultado (o su ausencia) es la demostracion cuantitativa de por que hay
+# que migrar esas dos esperas a Adquirir personal / Adquirir ubicacion contra un
+# recurso real, tal como propone el documento de migracion. Sirve para el
+# informe: no es una opinion, es un experimento.
+
+extiende: ../base.yaml
+
+meta:
+  nombre: "Escenario: mas especialistas"
+  descripcion: >-
+    Duplica los puestos de valoracion por especialista para comprobar que la
+    espera modelada como demora ciega no responde a la capacidad.
+
+zonas:
+  ZonaEspecialistas:
+    capacidad: 4
+    fuente: supuesto
+    nota: "Se duplica la capacidad del modelo actual para medir su efecto real."
