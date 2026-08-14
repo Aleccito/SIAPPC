@@ -82,6 +82,17 @@ function MetricCell({ metric }: { metric: Metric }) {
           {t(metric.unit)}
         </Typography>
       </Stack>
+      {/* El último valor real, cuando la cifra vigente ya no se da por buena.
+          Va debajo y en pequeño a propósito: es contexto de lo que hubo, no una
+          medición de ahora, y no debe competir con las camas que sí miden. */}
+      {metric.lastKnown !== null && (
+        <Typography
+          variant="caption"
+          sx={{ display: 'block', color: sidebar.textMuted, fontVariantNumeric: 'tabular-nums' }}
+        >
+          {t('central.lastKnown', { value: String(metric.lastKnown) })}
+        </Typography>
+      )}
     </Box>
   )
 }
@@ -93,6 +104,7 @@ export function BedCard({ bed }: { bed: MonitoredBed }) {
   const accent = stateHex[state]
   const age = bed.birthDate ? ageFrom(bed.birthDate) : null
   const ago = agoKey(bed.vitals.at)
+  const sinSenal = isStale(bed.vitals.at)
 
   // Cama libre: tarjeta gris y nada más. No lleva panel de cifras porque no hay
   // nadie de quien medirlas, y un panel lleno de rayas invitaría a mirarlo.
@@ -189,6 +201,22 @@ export function BedCard({ bed }: { bed: MonitoredBed }) {
       </Typography>
 
       <Box sx={{ bgcolor: '#000000', borderRadius: 2, p: 1.5, mt: 1.5 }}>
+        {/* Rótulo sobre el panel, no un texto más abajo: lo que hay que ver de
+            lejos es que este panel entero dejó de valer, no una cifra suelta. */}
+        {sinSenal && (
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              mb: 1,
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              color: sidebar.textMuted,
+            }}
+          >
+            {t('central.noSignal')}
+          </Typography>
+        )}
         <Box
           sx={{
             display: 'grid',

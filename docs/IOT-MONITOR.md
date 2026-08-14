@@ -51,9 +51,23 @@ Will retenido en el tema de estado para que la desaparición del equipo se note
 sin esperar un tiempo de espera. **No hay modo sin cifrar**: el broker solo
 escucha en 8883.
 
-**Variables**: `hr`, `spo2`, `pr`, `perfusion`, `resp`. Tienen que existir en el
-catálogo de la base — un sensor con una variable fuera del catálogo se rechaza,
-y hay una prueba que lo cubre (`Pruebas/backend/variable.test.ts`).
+**Variables**: `hr`, `spo2`, `pr`, `perfusion`, `resp`.
+
+Por MQTT **no hace falta darlas de alta a mano**: `ingestReading` crea la
+variable la primera vez que llega, con la unidad que reporta el equipo, y crea
+también el `sensor` que une dispositivo y variable. Si la variable ya existe con
+otra unidad, manda el catálogo: la lectura se guarda igual —el valor no se tira
+por una etiqueta— y queda un aviso en el log.
+
+Lo que **sí** tiene que estar dado de alta antes es el **dispositivo**. Sin una
+fila en `dispositivo` con ese `codigo` no hay hospital al que colgar la lectura,
+y se descarta con un `warn` en el log del backend. Es el fallo silencioso más
+probable al conectar una Pi nueva: todo parece funcionar en la Pi y en el broker,
+y en la base no aparece nada.
+
+(El rechazo de variables fuera del catálogo que cubre
+`Pruebas/backend/variable.test.ts` es del alta de sensores por la API REST, no
+de esta ruta.)
 
 No hay presión arterial ni temperatura corporal, y no es un hueco pendiente:
 `lectura.valor` es un escalar y una PA es un par sistólica/diastólica. La única
@@ -141,9 +155,19 @@ se siguió fue adaptar el IoT a la infraestructura, no al revés.
 3. Poner `MQTT_USER` y `MQTT_PASSWORD` con los mismos valores del `.env` de la
    raíz, que es de donde `infra/mosquitto/start.sh` genera el archivo de
    contraseñas del broker.
-4. Dar de alta el `dispositivo.codigo` en la base y sus sensores con variables
-   del catálogo, o el backend rechazará las lecturas.
-5. **`paho-mqtt` sube a `>=2.0`.** El código ya usaba `CallbackAPIVersion.VERSION2`,
+4. Dar de alta el `dispositivo.codigo` en la base, con el mismo valor que
+   `DEVICE_CODE`. Sin eso las lecturas se descartan en silencio. Las variables y
+   los sensores se crean solos al llegar la primera lectura.
+5. Si la Pi alcanza el broker por la IP de la red —y no por `localhost`—, el
+   certificado del broker tiene que llevar esa IP como SAN:
+
+   ```sh
+   MQTT_EXTRA_SANS="IP:192.168.x.y" sh infra/mosquitto/gen-certs.sh
+   ```
+
+   Sin ese SAN la Pi rechaza el certificado, que es lo que debe hacer. Al
+   regenerarlo cambia también `ca.crt`, así que hay que volver a copiarlo.
+6. **`paho-mqtt` sube a `>=2.0`.** El código ya usaba `CallbackAPIVersion.VERSION2`,
    así que es lo correcto, pero obliga a reinstalar dependencias en la Pi.
 
 ---
