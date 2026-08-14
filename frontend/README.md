@@ -47,7 +47,7 @@ solo para desarrollo). El token vive en `sessionStorage` y muere con la pestaña
 | Alertas en vivo (tablero) | Real | `GET /alerts/stream` (SSE), hook `src/modules/dashboard/useAlertStream.ts` |
 | Reportes (`/reports`) | Real | `GET /reports` (bitácora de corridas del ETL, desde `etl_ejecucion`) y descarga en CSV con `GET /reports/actividad-clinica.csv` (`api/exportApi.ts`) |
 | FlexSim (`/flexsim`) | **Simulado** | Estado derivado del tiempo transcurrido |
-| Power BI (`/powerbi`) | **Simulado** | Placeholder, sin token de incrustación |
+| Power BI | **Fuera del menú** | El módulo sigue en `src/modules/powerbi/`, pero no está registrado en `registry.ts`: no tiene entrada de navegación ni ruta. Los informes se hacen conectando Power BI directo a MariaDB (vista `v_dim_paciente`) |
 | Recuperar contraseña | **Simulado** | `passwordResetApi.ts` no llama a nada |
 | Panel principal (`/`) | **Simulado** | Tres tarjetas de texto, sin datos |
 

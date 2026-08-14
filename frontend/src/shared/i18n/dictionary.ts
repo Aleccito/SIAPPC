@@ -21,7 +21,6 @@ export const locales: Record<Language, string> = { es: 'es-MX' }
 
 const es = {
   'nav.dashboard': 'Inicio',
-  'nav.powerbi': 'Power BI',
   'nav.flexsim': 'FlexSim',
   'nav.patients': 'Pacientes',
   'nav.sensors': 'Monitoreo',

@@ -1,7 +1,6 @@
 import type { ComponentType } from 'react'
 import type { SvgIconComponent } from '@mui/icons-material'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
-import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
@@ -59,14 +58,6 @@ export const modules: NavEntry[] = [
     icon: DashboardOutlinedIcon,
     lazy: async () => ({
       Component: (await import('./dashboard/pages/MainPage')).MainPage,
-    }),
-  },
-  {
-    path: '/powerbi',
-    label: 'nav.powerbi',
-    icon: InsightsOutlinedIcon,
-    lazy: async () => ({
-      Component: (await import('./powerbi/pages/PowerBiPage')).PowerBiPage,
     }),
   },
   {
