@@ -30,6 +30,7 @@ const es = {
   // camas de una unidad. Se deja el rótulo largo para que no se confundan en el
   // menú; renombrar 'nav.sensors' tocaría también los enlaces que vuelven a él.
   'nav.central': 'Central de Monitoreo',
+  'nav.rounds': 'Ronda',
   'nav.reports': 'Reportes',
   'nav.reportsList': 'Listado',
   'nav.notifications': 'Notificaciones',
@@ -135,6 +136,34 @@ const es = {
     'Estimada a partir del pletismógrafo, no medida por flujo ni por impedancia.',
   'central.gcs.notLive':
     'Escala de Glasgow de la exploración física. La escribe un clínico: no se actualiza en tiempo real.',
+  // Ronda (modules/monitoring/pages/RoundsPage.tsx). La pantalla de la tablet:
+  // una cama a la vez, girando sola, saltando a la que acaba de dar alerta.
+  //
+  // Reutiliza las claves de la central para lo que es lo mismo —los estados
+  // clínicos, la antigüedad de la lectura, los rótulos de las cifras—: dos
+  // pantallas que nombran distinto el mismo dato acaban divergiendo.
+  'rounds.title': 'Ronda',
+  'rounds.subtitle': 'Una cama a la vez. Salta sola a la que abre una alerta.',
+  'rounds.position': 'Cama {current} de {total}',
+  'rounds.prev': 'Cama anterior',
+  'rounds.next': 'Cama siguiente',
+  'rounds.pause': 'Detener el giro',
+  'rounds.resume': 'Reanudar el giro',
+  'rounds.auto': 'Girando cada {seconds} s',
+  'rounds.paused': 'Giro detenido',
+  'rounds.jumped': 'Alerta nueva en la cama {bed}: se saltó aquí y se detuvo el giro.',
+  'rounds.goToBed': 'Ir a la cama {bed}',
+  'rounds.bedList': 'Camas de la ronda',
+  'rounds.error': 'No se pudieron cargar las camas',
+  'rounds.empty': 'Ninguna cama de esta unidad tiene paciente. La ronda solo recorre camas ocupadas.',
+  'rounds.openAlerts': '{count} alertas abiertas',
+  'rounds.noAlerts': 'Sin alertas abiertas',
+  'rounds.openMonitor': 'Abrir el monitor completo',
+  // Solo se enseña cuando el bloqueo está puesto de verdad. El navegador puede
+  // no soportarlo o retirarlo por batería baja, y prometer que la pantalla no se
+  // apagará cuando sí lo hará es peor que no decir nada.
+  'rounds.screenOn': 'Pantalla siempre encendida',
+
   'central.ago.never': 'Sin lecturas',
   'central.ago.now': 'hace un momento',
   'central.ago.minutes': 'hace {n} min',

@@ -1,7 +1,5 @@
 # --- necesarias siempre ---
 pygame>=2.5
-# Cliente MQTT: es como salen los signos vitales al backend.
-paho-mqtt>=1.6
 
 # --- solo en el Raspberry Pi (I2C y GPIO) ---
 # En Windows/Mac no se instalan, y el codigo funciona igual en modo --demo.
@@ -10,3 +8,6 @@ gpiozero>=2.0 ; platform_system == "Linux"
 # Backend de gpiozero que anda tanto en Pi 4 como en Pi 5 (RPi.GPIO no sirve en Pi 5)
 lgpio>=0.2 ; platform_system == "Linux"
 
+# --- para publicar al backend ---
+# Cliente MQTT. Sin esto el monitor funciona igual, pero no publica nada.
+paho-mqtt>=2.0
