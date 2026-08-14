@@ -98,11 +98,17 @@ function NavRow({
           color: sidebar.textMuted,
           justifyContent: collapsed ? 'center' : undefined,
           px: collapsed ? 1 : undefined,
-          '&:hover': { bgcolor: sidebar.hoverBg, color: sidebar.text },
+          // El hover solo se aplica con ratón: en táctil el navegador lo dispara
+          // al tocar y se queda pegado hasta que se toca otra cosa.
+          '@media (hover: hover) and (pointer: fine)': {
+            '&:hover': { bgcolor: sidebar.hoverBg, color: sidebar.text },
+          },
           '&.active': {
             bgcolor: sidebar.activeBg,
             color: '#ffffff',
-            '&:hover': { bgcolor: sidebar.activeBg },
+            '@media (hover: hover) and (pointer: fine)': {
+              '&:hover': { bgcolor: sidebar.activeBg },
+            },
           },
         }}
       >
@@ -126,7 +132,7 @@ function NavRow({
 
 function AppLayoutInner() {
   const { user, logout } = useAuth()
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const header = usePageHeaderValue()
@@ -189,7 +195,7 @@ function AppLayoutInner() {
   const visibleModules = modules.filter(
     (entry) => !entry.requiredRole || entry.requiredRole === user?.role,
   )
-  const today = new Date().toLocaleDateString('es-MX', {
+  const today = new Date().toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -201,7 +207,40 @@ function AppLayoutInner() {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default' }}>
+      {/* Primer elemento tabulable de la página, e invisible hasta que recibe el
+          foco. Sin él, llegar al contenido con el teclado obliga a recorrer las
+          quince entradas del menú EN CADA PANTALLA: el menú es idéntico en
+          todas, así que se retabula lo mismo una y otra vez.
+          Es un enlace de verdad y no un botón: lleva a un sitio de esta página,
+          y los lectores de pantalla lo anuncian entre los enlaces de salto. */}
+      <Box
+        component="a"
+        href="#contenido"
+        sx={{
+          position: 'fixed',
+          top: 8,
+          left: 8,
+          zIndex: (theme) => theme.zIndex.tooltip,
+          px: 2,
+          py: 1,
+          borderRadius: 2,
+          bgcolor: 'primary.main',
+          color: '#ffffff',
+          fontWeight: 600,
+          fontSize: 14,
+          textDecoration: 'none',
+          // Fuera de pantalla, no `display: none`: lo que está oculto del todo no
+          // recibe foco y el enlace no existiría para el teclado.
+          transform: 'translateY(-200%)',
+          transition: 'transform 160ms cubic-bezier(0.23, 1, 0.32, 1)',
+          '&:focus-visible': { transform: 'none' },
+          '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+        }}
+      >
+        {t('layout.skipToContent')}
+      </Box>
+
       {/* Columna normal del flex, no un <Drawer>. El papel del Drawer es
           `position: fixed` y MUI le fija el ancho por dentro: plegarlo exigía
           pelear con esa anchura desde fuera y el resultado era una barra que
@@ -225,7 +264,15 @@ function AppLayoutInner() {
           color: sidebar.text,
           overflowX: 'hidden',
           overflowY: 'auto',
-          transition: 'width 180ms ease',
+          // Llegar al final del menú no debe arrastrar la página de detrás: el
+          // menú es una columna propia y su desplazamiento se queda en ella.
+          overscrollBehavior: 'contain',
+          // El menú va pegado al borde izquierdo y llega hasta abajo: en un
+          // móvil con muesca o barra de gestos, el botón de cerrar sesión queda
+          // debajo del sistema sin esto.
+          pl: 'env(safe-area-inset-left)',
+          pb: 'env(safe-area-inset-bottom)',
+          transition: 'width 180ms cubic-bezier(0.23, 1, 0.32, 1)',
           '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
         }}
       >
@@ -303,7 +350,9 @@ function AppLayoutInner() {
                       borderRadius: 2,
                       mb: 0.5,
                       color: sidebar.textMuted,
-                      '&:hover': { bgcolor: sidebar.hoverBg, color: sidebar.text },
+                      '@media (hover: hover) and (pointer: fine)': {
+                        '&:hover': { bgcolor: sidebar.hoverBg, color: sidebar.text },
+                      },
                     }}
                   >
                     <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>
@@ -371,7 +420,12 @@ function AppLayoutInner() {
             <IconButton
               onClick={handleLogout}
               aria-label={t('action.signOut')}
-              sx={{ color: sidebar.textMuted, '&:hover': { color: sidebar.text } }}
+              sx={{
+                color: sidebar.textMuted,
+                '@media (hover: hover) and (pointer: fine)': {
+                  '&:hover': { color: sidebar.text },
+                },
+              }}
             >
               <LogoutIcon fontSize="small" />
             </IconButton>
@@ -425,7 +479,20 @@ function AppLayoutInner() {
           <NotificationsBell />
         </Toolbar>
 
-        <Box sx={{ p: 3 }}>
+        {/* El landmark principal de la aplicación, y el destino del enlace de
+            salto. `scrollMarginTop` deja aire por debajo de la barra superior
+            cuando el navegador salta hasta aquí. */}
+        <Box
+          component="main"
+          id="contenido"
+          aria-label={t('layout.mainContent')}
+          sx={{
+            p: 3,
+            scrollMarginTop: 16,
+            pr: 'calc(24px + env(safe-area-inset-right))',
+            pb: 'calc(24px + env(safe-area-inset-bottom))',
+          }}
+        >
           <Outlet />
         </Box>
       </Box>

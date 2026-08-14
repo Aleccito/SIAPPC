@@ -35,7 +35,7 @@ export function BedTable({ beds }: { beds: MonitoredBed[] }) {
       {/* La tabla no encoge por debajo de su ancho útil: con nueve columnas, en
           una pantalla estrecha se desplaza dentro de su caja en vez de aplastar
           las cifras hasta partirlas en dos líneas. */}
-      <Table size="small" sx={{ minWidth: 900 }}>
+      <Table aria-label={t('central.title')} size="small" sx={{ minWidth: 900 }}>
         <TableHead>
           <TableRow>
             {/* Las tres primeras columnas atraviesan las dos filas de cabecera:

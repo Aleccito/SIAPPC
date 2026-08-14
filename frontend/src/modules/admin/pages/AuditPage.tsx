@@ -2,10 +2,8 @@ import { useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   Alert,
-  Box,
   Button,
   Chip,
-  LinearProgress,
   MenuItem,
   Paper,
   Stack,
@@ -19,6 +17,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import { alpha } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { listAudit, listAuditEntities } from '../api/auditApi'
@@ -88,9 +87,8 @@ function entityTag(theme: Theme, entity: string): { bgcolor: string; color: stri
 }
 
 export function AuditPage() {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   usePageHeader(t('audit.title'), t('audit.subtitle'))
-  const locale = 'es-MX'
 
   const [userId, setUserId] = useState(ALL)
   const [entity, setEntity] = useState(ALL)
@@ -211,8 +209,8 @@ export function AuditPage() {
       {audit.isError && <Alert severity="error">{t('audit.error')}</Alert>}
 
       <TableContainer component={Paper}>
-        <Box sx={{ height: 4 }}>{audit.isFetching && <LinearProgress />}</Box>
-        <Table size="small">
+        <LoadingBar loading={audit.isFetching} />
+        <Table aria-label={t('audit.title')} size="small">
           <TableHead>
             <TableRow>
               <TableCell sx={{ width: 200 }}>{t('audit.col.when')}</TableCell>

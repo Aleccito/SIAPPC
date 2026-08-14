@@ -40,7 +40,7 @@ solo para desarrollo). El token vive en `sessionStorage` y muere con la pestaña
 | Roles (`/admin/roles`) | Real | `GET/POST /roles`, `GET/PUT /roles/:id/permissions`, `GET /roles/changes` |
 | Auditoría (`/admin/audit`) | Real | `GET /audit`, `GET /audit/entities` |
 | Sensores (`/sensors`) | Real | `GET /sensors/readings`, `GET /sensors/alerts` |
-| Pacientes (`/patients`) | Real | `GET/POST /patients`, `GET/PATCH/DELETE /patients/:id` (total en `X-Total-Count`) |
+| Pacientes (`/patients`) | Real | Lista: `GET /dashboard/assigned-patients`. Alta y ficha: `GET/POST /patients`, `GET/PATCH/DELETE /patients/:id` (total en `X-Total-Count`). Personal a cargo: `GET/POST /patients/:id/assignments`, `DELETE /patients/:id/assignments/:userId` |
 | Admisión (`/admissions`, tres pestañas) | Real | `GET /beds`, `GET /beds/occupancy`, `GET/POST/PATCH /admissions`, `GET /discharges`, `GET/POST/PATCH /appointments` |
 | Expediente (`/expediente`) | Real | Notas SOAP con firma y adenda, historia clínica por categoría, exploración física (`/historia/:pacienteId/exploracion-fisica`), antecedentes |
 | Búsqueda global (`/search`) | Real | `GET /search` |
@@ -105,7 +105,7 @@ src/
     dashboard/         MainPage, useAlertStream (SSE)
     admin/             usuarios, roles, matriz de permisos, auditoría
     sensors/           lecturas y alertas de la Pi
-    patients/          registro, ficha y filtro por módulo de atención
+    patients/          registro, ficha, asignación de cama y de personal a cargo
     admissions/        camas, ingresos/egresos y citas — pantalla de tres pestañas
     clinical/          expediente: notas SOAP, historia por categoría, exploración física
     search/            búsqueda global

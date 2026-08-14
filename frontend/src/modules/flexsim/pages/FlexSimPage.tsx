@@ -2,10 +2,8 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Alert,
-  Box,
   Button,
   Chip,
-  LinearProgress,
   MenuItem,
   Paper,
   Select,
@@ -18,6 +16,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { listRuns, models, startRun } from '../api/flexsimApi'
 import type { RunStatus } from '../types'
@@ -95,10 +94,8 @@ export function FlexSimPage() {
 
       <TableContainer component={Paper}>
         {/* Height is reserved so the 1s poll does not shift the table. */}
-        <Box sx={{ height: 4 }}>
-          {(isPending || mutation.isPending) && <LinearProgress />}
-        </Box>
-        <Table size="small">
+        <LoadingBar loading={isPending || mutation.isPending} />
+        <Table aria-label={t('flexsim.title')} size="small">
           <TableHead>
             <TableRow>
               <TableCell>{t('flexsim.col.run')}</TableCell>

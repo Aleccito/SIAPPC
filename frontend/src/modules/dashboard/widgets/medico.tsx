@@ -15,6 +15,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import AirlineSeatFlatOutlinedIcon from '@mui/icons-material/AirlineSeatFlatOutlined'
 import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined'
@@ -34,7 +35,7 @@ import {
   severityRank,
   triageLevel,
 } from '../presentation'
-import { REFRESH_INTERVAL_MS, useAssignedPatients, useOpenAlerts } from '../queries'
+import { REFRESH_INTERVAL_MS, useAssignedPatients, useBedOccupancy, useOpenAlerts } from '../queries'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { ClinicalState } from '../presentation'
 import type { AssignedPatient } from '../types'
@@ -53,8 +54,10 @@ function byGravity(a: AssignedPatient, b: AssignedPatient): number {
 }
 
 export function MedicoKpisWidget() {
+  const { t } = useLanguage()
   const patients = useAssignedPatients()
   const alerts = useOpenAlerts()
+  const beds = useBedOccupancy()
 
   const criticas = alerts.data?.filter((a) => a.severity === 'critica').length ?? null
   // "Pendientes de evaluación" son los que todavía no tienen exploración
@@ -62,14 +65,20 @@ export function MedicoKpisWidget() {
   // el servidor calcula contra `exploracion_fisica`.
   const sinEvaluar = patients.data?.filter((p) => !p.examined).length ?? null
 
+  // Camas libres de TODO el hospital, sumando las unidades. La central de
+  // monitoreo solo pinta camas ocupadas —una cama vacía no tiene nada que
+  // monitorear—, así que la capacidad que queda tiene que verse aquí.
+  const libres = beds.data?.reduce((suma, unidad) => suma + unidad.available, 0) ?? null
+
   return (
-    <Box
-      sx={{
-        display: 'grid',
-        gap: 1.5,
-        gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
-      }}
-    >
+    <Stack spacing={1.5}>
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 1.5,
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
+        }}
+      >
       <KpiCard
         label="dash.kpi.assignedPatients"
         value={patients.data?.length ?? null}
@@ -87,7 +96,29 @@ export function MedicoKpisWidget() {
         icon={AssignmentLateOutlinedIcon}
         tone={sinEvaluar ? 'warning' : 'ok'}
       />
-    </Box>
+        <KpiCard
+          label="dash.kpi.freeBeds"
+          value={libres}
+          icon={AirlineSeatFlatOutlinedIcon}
+          tone={libres === 0 ? 'warning' : 'neutral'}
+        />
+      </Box>
+
+      {/* Atajo a la central: desde el tablero, lo siguiente que se hace cuando
+          hay una crítica es abrir el monitor, y hasta ahora eso obligaba a
+          buscar la entrada en el menú lateral. */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          size="small"
+          variant="outlined"
+          component={RouterLink}
+          to="/monitoring"
+          startIcon={<AirlineSeatFlatOutlinedIcon />}
+        >
+          {t('dash.openCentral')}
+        </Button>
+      </Box>
+    </Stack>
   )
 }
 
@@ -213,7 +244,7 @@ export function AssignedPatientsWidget() {
         ))}
       </Stack>
 
-      <Table size="small">
+      <Table aria-label={t('dash.widget.assignedPatients')} size="small">
         <TableHead>
           <TableRow>
             <TableCell>{t('dash.col.patient')}</TableCell>
@@ -347,7 +378,7 @@ export function AssignedPatientsWidget() {
 }
 
 export function ActiveAlertsWidget() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   const { data, isError } = useOpenAlerts()
 
   if (isError) return <WidgetError message="sensors.alerts.error" />
@@ -374,7 +405,7 @@ export function ActiveAlertsWidget() {
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {alert.variable} · {alert.value} {alert.unit} ·{' '}
-              {new Date(alert.at).toLocaleString(language)}
+              {new Date(alert.at).toLocaleString(locale)}
             </Typography>
           </Box>
           <Button size="small" component={RouterLink} to={`/monitoring/${alert.device}`}>

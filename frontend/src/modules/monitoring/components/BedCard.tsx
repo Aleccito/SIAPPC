@@ -1,4 +1,5 @@
 import { Box, Chip, Link, Paper, Stack, Tooltip, Typography } from '@mui/material'
+import { keyframes } from '@emotion/react'
 import { Link as RouterLink } from 'react-router-dom'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
@@ -12,10 +13,28 @@ import { agoKey, figure, hexOf, metricsOf, stateHex } from '../presentation'
 import { isOccupied } from '../queries'
 import { clinicalState, clinicalStateColor, clinicalStateKey } from '../../dashboard/presentation'
 import { ageFrom } from '../../patients/presentation'
-import { sidebar } from '../../../shared/theme'
+import { motion, sidebar } from '../../../shared/theme'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { Metric } from '../presentation'
 import type { MonitoredBed } from '../types'
+
+// El latido de una cama crítica: un anillo del color del estado que aparece y se
+// va sobre el borde, una vez cada 2,4 s.
+//
+// Es la ÚNICA animación de esta pantalla que se repite sola, y solo la llevan
+// las camas críticas. Justificación: la central se mira de pie y desde el
+// pasillo, y el ojo periférico detecta movimiento mucho antes que color. Sin
+// esto, una cama que pasa a crítica solo cambia de tono y espera a que alguien
+// la esté mirando de frente.
+//
+// Va con `opacity` y nada más —ni tamaño, ni sombra, ni el borde real— para que
+// corra en el compositor y no reflote la rejilla entera, y sube solo hasta 0.85:
+// un parpadeo a opacidad plena convierte la pantalla en una alarma de la que la
+// gente aprende a apartar la vista.
+const criticalPulse = keyframes`
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.85; }
+`
 
 const METRIC_ICON: Record<Metric['id'], SvgIconComponent> = {
   hr: FavoriteBorderIcon,
@@ -103,7 +122,33 @@ export function BedCard({ bed }: { bed: MonitoredBed }) {
   return (
     <Paper
       variant="outlined"
-      sx={{ p: 2, borderRadius: 3, borderWidth: 2, borderColor: accent }}
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        borderWidth: 2,
+        borderColor: accent,
+        position: 'relative',
+        ...(state === 'critico' && {
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            // Encima del borde de 2 px, no dentro: el anillo lo envuelve en vez
+            // de comerse una franja del contenido.
+            inset: -2,
+            borderRadius: 'inherit',
+            border: `2px solid ${accent}`,
+            pointerEvents: 'none',
+            opacity: 0,
+            animation: `${criticalPulse} ${motion.pulse} ease-in-out infinite`,
+          },
+          // Quien pidió menos movimiento se queda sin el latido, pero NO sin el
+          // aviso: el anillo se planta fijo. Reducir movimiento es quitar
+          // movimiento, no quitar información clínica.
+          '@media (prefers-reduced-motion: reduce)': {
+            '&::after': { animation: 'none', opacity: 0.85 },
+          },
+        }),
+      }}
     >
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
         <LocalHotelOutlinedIcon fontSize="small" sx={{ color: accent }} />
@@ -162,7 +207,10 @@ export function BedCard({ bed }: { bed: MonitoredBed }) {
             colorea con el estado de la cama para que el barrido visual de la
             rejilla funcione sin leer una sola cifra. */}
         <Box sx={{ mt: 1.5, border: `1px solid ${sidebar.border}`, borderRadius: 1 }}>
-          <EcgTrace color={accent} height={52} />
+          {/* Solo barre si la última lectura es de este minuto: el trazo quieto
+              es lo que distingue una cama que sigue mandando de una cuyo equipo
+              se cayó hace media hora. */}
+          <EcgTrace color={accent} height={52} animated={ago.key === 'central.ago.now'} />
         </Box>
       </Box>
 

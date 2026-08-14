@@ -1,6 +1,6 @@
 import { request, requestList } from '../../../shared/api/http'
 import type { ListResult } from '../../../shared/api/http'
-import type { NewPatient, Patient, PatientChanges } from '../types'
+import type { CareAssignment, NewPatient, Patient, PatientChanges } from '../types'
 
 export type PatientQuery = {
   page?: number
@@ -45,4 +45,25 @@ export async function updatePatient(
 // El backend responde 204: el paciente no se borra, se marca inactivo.
 export async function removePatient(id: string): Promise<void> {
   await request<void>(`/patients/${id}`, { method: 'DELETE' })
+}
+
+// Equipo a cargo. Estos tres endpoints son los que llenan `medico_paciente`:
+// antes solo se leía, y por eso la pantalla de Pacientes salía vacía.
+export async function listAssignments(patientId: string): Promise<CareAssignment[]> {
+  return request<CareAssignment[]>(`/patients/${patientId}/assignments`)
+}
+
+export async function assignCare(
+  patientId: string,
+  body: { userId: number; reason?: string },
+): Promise<CareAssignment> {
+  return request<CareAssignment>(`/patients/${patientId}/assignments`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+// 204: la asignación no se borra, se marca inactiva. El historial se conserva.
+export async function unassignCare(patientId: string, userId: number): Promise<void> {
+  await request<void>(`/patients/${patientId}/assignments/${userId}`, { method: 'DELETE' })
 }

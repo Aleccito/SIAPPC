@@ -4,12 +4,12 @@ import {
   Alert,
   Box,
   Button,
-  LinearProgress,
   Paper,
   Stack,
   TextField,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import { listBedOccupancy, setBedCapacity } from '../api/admissionsApi'
 import { ApiError } from '../../../shared/api/http'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
@@ -108,7 +108,7 @@ export function BedCapacityCard({ onSaved }: { onSaved: () => void }) {
 
   return (
     <Paper sx={{ p: 2 }}>
-      <Box sx={{ height: 4, mb: 1 }}>{occupancy.isFetching && <LinearProgress />}</Box>
+      <LoadingBar loading={occupancy.isFetching} sx={{ mb: 1 }} />
       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
         {t('beds.capacity.title')}
       </Typography>

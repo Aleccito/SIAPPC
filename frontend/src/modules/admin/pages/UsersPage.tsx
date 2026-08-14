@@ -2,12 +2,10 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Alert,
-  Box,
   Button,
   Chip,
   IconButton,
   InputAdornment,
-  LinearProgress,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -24,6 +22,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import AddIcon from '@mui/icons-material/Add'
 import BlockIcon from '@mui/icons-material/Block'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined'
@@ -42,11 +41,10 @@ import { usePageHeader } from '../../../app/pageHeader'
 const ALL = '__all__'
 
 export function UsersPage() {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   usePageHeader(t('users.title'), t('users.subtitle'))
   const { user: currentUser } = useAuth()
   const queryClient = useQueryClient()
-  const locale = 'es-MX'
 
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState(ALL)
@@ -100,9 +98,18 @@ export function UsersPage() {
 
       <Paper sx={{ p: 2 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          {/* `aria-label` además del marcador: el marcador desaparece en cuanto
+              se escribe la primera letra, y sin él el campo se queda sin nombre
+              justo cuando ya hay algo que corregir. `type="search"` da la cruz
+              de borrar del navegador y el teclado de búsqueda en móvil;
+              `autoComplete="off"` evita que el gestor de contraseñas se ofrezca
+              a rellenar un buscador. */}
           <TextField
             size="small"
+            type="search"
             placeholder={t('users.search')}
+            aria-label={t('users.search')}
+            autoComplete="off"
             value={search}
             onChange={(event) => resetPageAnd(setSearch)(event.target.value)}
             sx={{ flexGrow: 1 }}
@@ -174,10 +181,8 @@ export function UsersPage() {
 
       <TableContainer component={Paper}>
         {/* Altura reservada: al cambiar un estado la tabla no debe saltar. */}
-        <Box sx={{ height: 4 }}>
-          {(users.isPending || mutation.isPending) && <LinearProgress />}
-        </Box>
-        <Table size="small">
+        <LoadingBar loading={users.isPending || mutation.isPending} />
+        <Table aria-label={t('users.title')} size="small">
           <TableHead>
             <TableRow>
               <TableCell>{t('users.col.name')}</TableCell>

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { dictionaries } from './dictionary'
+import { dictionaries, locales } from './dictionary'
 import type { StringKey } from './dictionary'
 import { LanguageContext } from './languageContext'
 
@@ -19,7 +19,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  const value = useMemo(() => ({ language: 'es' as const, t }), [t])
+  const value = useMemo(
+    () => ({ language: 'es' as const, locale: locales.es, t }),
+    [t],
+  )
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
 }

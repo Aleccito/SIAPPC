@@ -32,8 +32,7 @@ const STATUS_COLOR = {
 } as const
 
 export function PatientRecordHeader({ patient }: { patient: Patient }) {
-  const { t } = useLanguage()
-  const locale = 'es-MX'
+  const { t, locale } = useLanguage()
   const age = ageFrom(patient.birthDate)
 
   return (

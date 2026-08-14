@@ -180,7 +180,7 @@ export const widgets: Record<string, DashboardWidget> = {
 
 // Qué ve cada rol, en su orden por defecto. Las llaves son `rol.nombre` de la
 // base, los mismos valores que usa `requiredRole` en modules/registry.ts.
-export const roleDashboards: Record<string, string[]> = {
+const roleDashboards: Record<string, string[]> = {
   medico: ['medicoKpis', 'assignedPatients', 'activeAlerts', 'criticalTrends'],
   enfermero: ['nurseAssignments', 'alertAck', 'nurseReminders', 'nursingNotes'],
   administrativo: ['bedOccupancy', 'admissionsToday', 'appointments', 'recentReports'],
@@ -196,7 +196,7 @@ export const roleDashboards: Record<string, string[]> = {
 // Un administrador puede crear roles nuevos (ver modules/auth/types.ts: `Role`
 // es string, no una unión). Ese rol no tiene tablero propio, así que recibe el
 // mínimo común: lo que cualquier usuario con sesión puede leer.
-export const fallbackDashboard = ['activeAlerts', 'recentReports']
+const fallbackDashboard = ['activeAlerts', 'recentReports']
 
 export function dashboardFor(role: Role | undefined): string[] {
   return (role !== undefined ? roleDashboards[role] : undefined) ?? fallbackDashboard

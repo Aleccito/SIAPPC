@@ -26,12 +26,14 @@ export function NotificationRow({
    */
   onMarkRead?: (id: string) => void
 }) {
-  const { t } = useLanguage()
-  const locale = 'es-MX'
+  const { t, locale } = useLanguage()
   const Icon = kindIcon(notification.kind)
 
   return (
     <Paper
+      // Siempre `li`: las dos vistas que la pintan —la bandeja y el panel de la
+      // campana— la envuelven en un `ul`.
+      component="li"
       sx={{
         p: dense ? 1.25 : 2,
         display: 'flex',
@@ -97,7 +99,11 @@ export function NotificationRow({
             haría nada y sería una promesa vacía en cada renglón. */}
         {onMarkRead && !notification.read && (
           <Tooltip title={t('notifications.markRead')}>
-            <IconButton size="small" onClick={() => onMarkRead(notification.id)}>
+            <IconButton
+              size="small"
+              aria-label={t('notifications.markRead')}
+              onClick={() => onMarkRead(notification.id)}
+            >
               <DoneIcon fontSize="small" />
             </IconButton>
           </Tooltip>

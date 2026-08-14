@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Alert,
   Box,
@@ -9,7 +9,6 @@ import {
   Fade,
   IconButton,
   InputAdornment,
-  Link,
   Paper,
   Stack,
   TextField,
@@ -25,6 +24,7 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { useAuth } from '../useAuth'
 import { BrandMark } from '../../../shared/BrandMark'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
+import { useDesktopAutoFocus } from '../../../shared/useDesktopAutoFocus'
 import { brandBlueSoft, sidebar } from '../../../shared/theme'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 
@@ -55,14 +55,12 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useLanguage()
+  const autoFocus = useDesktopAutoFocus()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
-  const [resetSuccess] = useState(
-    () => Boolean((location.state as { resetSuccess?: boolean } | null)?.resetSuccess),
-  )
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   async function handleSubmit(event: FormEvent) {
@@ -347,7 +345,6 @@ export function LoginPage() {
                   </Typography>
                 </Stack>
 
-                {resetSuccess && <Alert severity="success">{t('verify.success')}</Alert>}
                 {error && <Alert severity="error">{error}</Alert>}
 
                 <TextField
@@ -361,8 +358,10 @@ export function LoginPage() {
                     setEmail(event.target.value)
                     setError(null)
                   }}
+                  name="username"
                   autoComplete="username"
-                  autoFocus
+                  spellCheck={false}
+                  autoFocus={autoFocus}
                   required
                   disabled={pending}
                   fullWidth
@@ -376,7 +375,9 @@ export function LoginPage() {
                       setPassword(event.target.value)
                       setError(null)
                     }}
+                    name="password"
                     autoComplete="current-password"
+                    spellCheck={false}
                     required
                     disabled={pending}
                     fullWidth
@@ -405,14 +406,22 @@ export function LoginPage() {
                       },
                     }}
                   />
-                  <Link
-                    component={RouterLink}
-                    to="/forgot-password"
-                    variant="body2"
-                    sx={{ alignSelf: 'flex-end', textDecoration: 'none' }}
-                  >
-                    {t('login.forgotPassword')}
-                  </Link>
+                  {/* Aquí había un enlace a /forgot-password. La pantalla que
+                      abría era una maqueta: `passwordResetApi` no llamaba a
+                      ningún endpoint —esperaba 400 ms y devolvía— y el backend
+                      no tiene ruta de restablecimiento ni tabla de tokens. El
+                      código de seis dígitos daba por bueno cualquiera de seis
+                      caracteres, y el paso siguiente —fijar la contraseña
+                      nueva— ni siquiera existía: al «verificar» se volvía al
+                      login con la contraseña de antes.
+                      Un camino que no lleva a ninguna parte es peor que no
+                      ofrecerlo: quien lo recorre cree haber recuperado el acceso
+                      y sigue sin poder entrar. Queda el aviso de a quién
+                      dirigirse, que es lo único cierto mientras no haya
+                      endpoint. */}
+                  <Alert severity="info" sx={{ py: 0.25 }}>
+                    {t('login.passwordHelp')}
+                  </Alert>
                 </Stack>
 
                 <Button

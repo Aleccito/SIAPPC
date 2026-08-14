@@ -51,3 +51,13 @@ export type NewPatient = {
 // PATCH acepta cualquier subconjunto; con él la sala de espera mueve a un
 // paciente de `waiting` a `inService` sin reenviar la ficha completa.
 export type PatientChanges = Partial<NewPatient> & { status?: PatientStatus }
+
+// Quién está a cargo de un paciente. La tabla `medico_paciente` no es exclusiva
+// de médicos —su llave es el usuario—, así que enfermería también aparece aquí.
+export type CareAssignment = {
+  userId: number
+  name: string
+  role: string
+  assignedAt: string
+  reason: string | null
+}

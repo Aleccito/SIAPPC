@@ -26,6 +26,26 @@ export const sidebar = {
   collapsedWidth: 72,
 } as const
 
+// Curvas y tiempos de las animaciones, en un solo sitio.
+//
+// Esta es una interfaz de vigilancia: el movimiento se reserva para lo que
+// significa algo —una cama que se descompensa, un aviso que acaba de entrar, una
+// señal que sigue llegando— y se mantiene por debajo del umbral en el que
+// distrae a quien está mirando cifras. Nada rebota, nada gira, nada se repite en
+// pantalla salvo el barrido del trazo y el latido de una cama crítica.
+//
+// Las curvas de CSS de serie son demasiado flojas; estas son las variantes
+// fuertes. `enter` para lo que aparece (empieza rápido: la interfaz responde
+// antes de que el ojo llegue), `move` para lo que se desplaza en pantalla.
+export const motion = {
+  enter: 'cubic-bezier(0.23, 1, 0.32, 1)',
+  move: 'cubic-bezier(0.77, 0, 0.175, 1)',
+  /** Un ciclo del latido de una cama crítica. Lento a propósito. */
+  pulse: '2400ms',
+  /** Un barrido completo del trazo de ECG: cuatro complejos ≈ 60 lpm. */
+  sweep: '4000ms',
+} as const
+
 export const theme = createTheme({
   palette: {
     mode: 'light',

@@ -8,7 +8,6 @@ import {
   Paper as MuiPaper,
   TextField,
   Chip,
-  LinearProgress,
   Paper,
   Stack,
   Table,
@@ -19,6 +18,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import { listReports } from '../api/reportsApi'
 import { descargarActividadClinica } from '../api/exportApi'
 import type { ReportStatus } from '../types'
@@ -40,7 +40,7 @@ const statusKey: Record<ReportStatus, StringKey> = {
 }
 
 export function ReportsPage() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   usePageHeader(t('reports.title'))
   const { data, isPending } = useQuery({
     queryKey: ['reports'],
@@ -119,8 +119,8 @@ export function ReportsPage() {
 
       <TableContainer component={Paper}>
         {/* Height is reserved so a refetch does not shift the table. */}
-        <Box sx={{ height: 4 }}>{isPending && <LinearProgress />}</Box>
-        <Table size="small">
+        <LoadingBar loading={isPending} />
+        <Table aria-label={t('reports.title')} size="small">
           <TableHead>
             <TableRow>
               <TableCell>{t('reports.col.name')}</TableCell>
@@ -152,7 +152,7 @@ export function ReportsPage() {
                   />
                 </TableCell>
                 <TableCell>
-                  {new Date(report.updatedAt).toLocaleString(language)}
+                  {new Date(report.updatedAt).toLocaleString(locale)}
                 </TableCell>
               </TableRow>
             ))}

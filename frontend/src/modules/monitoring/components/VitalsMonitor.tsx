@@ -1,4 +1,4 @@
-import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material'
+import { Box, Button, Chip, Paper, Stack, Tooltip, Typography } from '@mui/material'
 import TuneOutlinedIcon from '@mui/icons-material/Tune'
 import { levelColor, levelOf, vitals } from '../vitals'
 import { EcgTrace } from './EcgTrace'
@@ -15,8 +15,7 @@ export function VitalsMonitor({
   readings: SensorReading[]
   device: string
 }) {
-  const { t } = useLanguage()
-  const locale = 'es-MX'
+  const { t, locale } = useLanguage()
 
   // La más reciente de cada variable. `readings` llega ordenado por fecha
   // descendente desde el servidor, así que la primera de cada una es la buena.
@@ -41,8 +40,13 @@ export function VitalsMonitor({
         <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
           {t('monitor.title')} — {bed}
         </Typography>
+        {/* Que el equipo deje de mandar es la información más importante de esta
+            pantalla y hasta ahora solo cambiaba de color. `role="status"` la
+            anuncia cuando cambia. */}
         <Chip
           size="small"
+          role="status"
+          aria-live="polite"
           label={newest ? t('monitor.live') : t('monitor.noSignal')}
           sx={{
             bgcolor: 'transparent',
@@ -50,18 +54,25 @@ export function VitalsMonitor({
             fontWeight: 600,
           }}
         />
-        <Button
-          size="small"
-          startIcon={<TuneOutlinedIcon />}
-          // PENDIENTE: los umbrales viven en código (modules/monitoring/vitals.ts
-          // y la ingesta del backend). Configurarlos por paciente pide una tabla
-          // que todavía no existe, así que el botón queda desactivado en vez de
-          // abrir un formulario que no guardaría nada.
-          disabled
-          sx={{ color: sidebar.textMuted }}
-        >
-          {t('monitor.thresholds')}
-        </Button>
+        {/* PENDIENTE: los umbrales viven en código (modules/monitoring/vitals.ts
+            y la ingesta del backend). Configurarlos por paciente pide una tabla
+            que todavía no existe, así que el botón queda desactivado en vez de
+            abrir un formulario que no guardaría nada.
+            El tooltip va en un `span`: un botón desactivado no emite eventos de
+            ratón y sin envoltorio el aviso no llegaría a aparecer nunca —que es
+            justo el caso en el que hace falta. */}
+        <Tooltip title={t('action.noBackend')}>
+          <span>
+            <Button
+              size="small"
+              startIcon={<TuneOutlinedIcon />}
+              disabled
+              sx={{ color: sidebar.textMuted }}
+            >
+              {t('monitor.thresholds')}
+            </Button>
+          </span>
+        </Tooltip>
       </Stack>
 
       <Box
@@ -82,7 +93,9 @@ export function VitalsMonitor({
             {t('monitor.ecgDecorative')}
           </Typography>
         </Stack>
-        <EcgTrace color="#22c55e" />
+        {/* El barrido dice lo mismo que el distintivo de arriba, pero sin leer:
+            sin lecturas el trazo se queda parado. */}
+        <EcgTrace color="#22c55e" animated={Boolean(newest)} />
       </Box>
 
       <Box

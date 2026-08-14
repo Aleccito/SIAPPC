@@ -6,7 +6,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  LinearProgress,
   Paper,
   Stack,
   Table,
@@ -17,6 +16,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { getRolePermissions, listRoles, saveRolePermissions } from '../api/rolesApi'
 import { permissionActions } from '../types'
@@ -102,10 +102,8 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
       {mutation.isSuccess && <Alert severity="success">{t('matrix.saved')}</Alert>}
 
       <TableContainer component={Paper}>
-        <Box sx={{ height: 4 }}>
-          {(permissions.isPending || mutation.isPending) && <LinearProgress />}
-        </Box>
-        <Table size="small">
+        <LoadingBar loading={permissions.isPending || mutation.isPending} />
+        <Table aria-label={t('matrix.title')} size="small">
           <TableHead>
             <TableRow>
               <TableCell>{t('matrix.col.module')}</TableCell>

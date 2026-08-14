@@ -117,13 +117,3 @@ export async function addAppointment(appointment: NewAppointment): Promise<Appoi
     body: JSON.stringify(appointment),
   })
 }
-
-export async function updateAppointment(
-  id: string,
-  changes: Partial<NewAppointment> & { state?: string },
-): Promise<Appointment> {
-  return request<Appointment>(`/appointments/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(changes),
-  })
-}

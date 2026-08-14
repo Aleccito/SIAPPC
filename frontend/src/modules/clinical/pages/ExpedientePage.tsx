@@ -10,7 +10,6 @@ import {
   Button,
   Chip,
   Divider,
-  LinearProgress,
   MenuItem,
   Paper,
   Stack,
@@ -19,6 +18,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import {
   addSoapAddendum,
@@ -33,9 +33,12 @@ import {
 // caché ['patients'] con las demás pantallas, así que debe ser la misma
 // función y la misma forma de respuesta ({ items, total }).
 import { listPatients } from '../../patients/api/patientsApi'
+import { listMonitoredBeds } from '../../monitoring/api/monitoringApi'
+import { VitalsMonitor } from '../../monitoring/components/VitalsMonitor'
+import { listReadings } from '../../sensors/api/sensorsApi'
 import { SoapNoteDialog } from '../components/SoapNoteDialog'
-import { historiaCategories } from '../types'
-import type { HistoriaCategory, HistoriaEntry, SoapNote } from '../types'
+import { ExpedienteResumen } from '../components/ExpedienteResumen'
+import type { SoapNote } from '../types'
 import { useAuth } from '../../auth/useAuth'
 import { usePageHeader } from '../../../app/pageHeader'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
@@ -54,28 +57,8 @@ type Draft = Record<SectionKey, string>
 
 const EMPTY_DRAFT: Draft = { subjective: '', objective: '', assessment: '', plan: '' }
 
-/** Un renglón de cualquier categoría: pares campo/valor, sin los vacíos. */
-function EntryFields({ entry }: { entry: HistoriaEntry }) {
-  const fields = Object.entries(entry).filter(
-    ([key, value]) => key !== 'id' && value !== null && value !== undefined && value !== '',
-  )
-  return (
-    <Stack spacing={0.25}>
-      {fields.map(([key, value]) => (
-        <Typography key={key} variant="body2">
-          <Box component="span" sx={{ color: 'text.secondary' }}>
-            {key}:{' '}
-          </Box>
-          {String(value)}
-        </Typography>
-      ))}
-    </Stack>
-  )
-}
-
 export function ExpedientePage() {
-  const { t } = useLanguage()
-  const locale = 'es-MX'
+  const { t, locale } = useLanguage()
   const { user } = useAuth()
   const queryClient = useQueryClient()
   usePageHeader(t('clinical.title'), t('clinical.subtitle'))
@@ -87,7 +70,7 @@ export function ExpedientePage() {
   const patientId = searchParams.get('patientId') ?? ''
   const setPatientId = (id: string) =>
     setSearchParams(id === '' ? {} : { patientId: id }, { replace: true })
-  const [tab, setTab] = useState<'soap' | 'history'>('soap')
+  const [tab, setTab] = useState<'soap' | 'history' | 'monitoring'>('soap')
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   // No nulo = lo que se está escribiendo es un addendum de esa nota firmada.
   const [addendumOf, setAddendumOf] = useState<string | null>(null)
@@ -108,6 +91,27 @@ export function ExpedientePage() {
     queryKey: ['expediente', patientId],
     queryFn: () => getExpediente(patientId),
     enabled: patientId !== '',
+  })
+
+  // De qué equipo son los signos vitales de este paciente. La relación
+  // paciente → dispositivo solo la resuelve `GET /monitoring/beds`, que es la
+  // misma fuente que usa la central: no hay endpoint "dame el equipo de este
+  // paciente".
+  const camas = useQuery({
+    queryKey: ['monitoredBeds'],
+    queryFn: () => listMonitoredBeds(),
+    enabled: patientId !== '' && tab === 'monitoring',
+  })
+
+  const device = camas.data?.find((cama) => cama.patientId === patientId)?.device ?? null
+
+  const readings = useQuery({
+    queryKey: ['readings', { device, limit: 60 }],
+    queryFn: () => listReadings({ device: device!, limit: 60 }),
+    enabled: device !== null,
+    // Mismo refresco que la central: esta pestaña es telemetría en vivo, no una
+    // foto del expediente.
+    refetchInterval: 5000,
   })
 
   const changes = useQuery({
@@ -214,16 +218,15 @@ export function ExpedientePage() {
         <>
           <Tabs
             value={tab}
-            onChange={(_, next: 'soap' | 'history') => setTab(next)}
+            onChange={(_, next: 'soap' | 'history' | 'monitoring') => setTab(next)}
             sx={{ borderBottom: 1, borderColor: 'divider' }}
           >
             <Tab value="soap" label={t('clinical.tab.soap')} />
             <Tab value="history" label={t('clinical.tab.history')} />
+            <Tab value="monitoring" label={t('clinical.tab.monitoring')} />
           </Tabs>
 
-          <Box sx={{ height: 4 }}>
-            {(soap.isFetching || expediente.isFetching) && <LinearProgress />}
-          </Box>
+          <LoadingBar loading={soap.isFetching || expediente.isFetching} />
 
           {tab === 'soap' && (
             <Stack spacing={2}>
@@ -346,50 +349,27 @@ export function ExpedientePage() {
             </Stack>
           )}
 
+          {tab === 'monitoring' &&
+            (device === null ? (
+              // Sin equipo no hay nada que enseñar, y decirlo es más útil que
+              // un panel vacío: el paciente puede no tener cama, o la cama no
+              // tener dispositivo a pie de cama.
+              <Alert severity="info">{t('clinical.monitoring.noDevice')}</Alert>
+            ) : (
+              <VitalsMonitor
+                bed={camas.data?.find((cama) => cama.device === device)?.bed ?? device}
+                device={device}
+                readings={readings.data ?? []}
+              />
+            ))}
+
           {tab === 'history' && (
             <Stack spacing={2}>
               {expediente.isError && <Alert severity="error">{t('clinical.error')}</Alert>}
 
               {expediente.data && (
                 <>
-                  <Paper sx={{ p: 2.5 }}>
-                    <Typography variant="h6">{expediente.data.patientName}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {expediente.data.document}
-                      {expediente.data.openedAt
-                        ? ` · ${t('historia.openedAt')} ${new Date(
-                            expediente.data.openedAt,
-                          ).toLocaleDateString(locale)}`
-                        : ''}
-                    </Typography>
-                  </Paper>
-
-                  {historiaCategories.map((category: HistoriaCategory) => {
-                    const entries = expediente.data[category] ?? []
-                    return (
-                      <Accordion key={category} disableGutters>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Typography sx={{ flexGrow: 1 }}>
-                            {t(`historia.cat.${category}` as StringKey)}
-                          </Typography>
-                          <Chip size="small" label={entries.length} />
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          {entries.length === 0 ? (
-                            <Typography variant="body2" color="text.secondary">
-                              {t('historia.empty')}
-                            </Typography>
-                          ) : (
-                            <Stack spacing={1.5} divider={<Divider flexItem />}>
-                              {entries.map((entry) => (
-                                <EntryFields key={entry.id} entry={entry} />
-                              ))}
-                            </Stack>
-                          )}
-                        </AccordionDetails>
-                      </Accordion>
-                    )
-                  })}
+                  <ExpedienteResumen expediente={expediente.data} locale={locale} />
 
                   {/* Observaciones: lo único del expediente que enfermería
                       escribe. Quien no tenga permiso recibe 403 del servidor y

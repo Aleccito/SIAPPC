@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Box, Button, LinearProgress, Paper, Stack, Typography } from '@mui/material'
+import { Button, Paper, Stack, Typography } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import DoneAllIcon from '@mui/icons-material/DoneAll'
 import { NotificationRow } from '../components/NotificationRow'
 import { dayHeading, groupByDay } from '../presentation'
@@ -17,8 +18,7 @@ import { useLanguage } from '../../../shared/i18n/useLanguage'
 // verdad es filtrar en el WHERE; el día que haga falta, se agrega allí.
 
 export function NotificationsPage() {
-  const { t } = useLanguage()
-  const locale = 'es-MX'
+  const { t, locale } = useLanguage()
   usePageHeader(t('notifications.title'), t('notifications.subtitle'))
 
   const [page, setPage] = useState(0)
@@ -65,9 +65,7 @@ export function NotificationsPage() {
       </Stack>
 
       {/* Altura reservada: al marcar todas como leídas la lista no debe saltar. */}
-      <Box sx={{ height: 4 }}>
-        {(notifications.isPending || notifications.isFetching || ocupado) && <LinearProgress />}
-      </Box>
+      <LoadingBar loading={notifications.isPending || notifications.isFetching || ocupado} />
 
       {notifications.isError && (
         <Paper sx={{ p: 4 }}>
@@ -94,13 +92,23 @@ export function NotificationsPage() {
           >
             {dayHeading(key, t, locale)}
           </Typography>
-          {items.map((notification) => (
-            <NotificationRow
-              key={notification.id}
-              notification={notification}
-              onMarkRead={(id) => markRead.mutate(id)}
-            />
-          ))}
+          {/* Lista de verdad y no una pila de tarjetas sueltas: así el lector de
+              pantalla dice cuántos avisos hay y por cuál va, en vez de leer
+              párrafos seguidos sin principio ni final. */}
+          <Stack
+            component="ul"
+            spacing={1.5}
+            sx={{ listStyle: 'none', m: 0, p: 0 }}
+            aria-label={dayHeading(key, t, locale)}
+          >
+            {items.map((notification) => (
+              <NotificationRow
+                key={notification.id}
+                notification={notification}
+                onMarkRead={(id) => markRead.mutate(id)}
+              />
+            ))}
+          </Stack>
         </Stack>
       ))}
 

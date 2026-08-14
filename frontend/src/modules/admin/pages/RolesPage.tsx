@@ -4,13 +4,13 @@ import {
   Alert,
   Box,
   Button,
-  LinearProgress,
   MenuItem,
   Paper,
   Stack,
   TextField,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import AddIcon from '@mui/icons-material/Add'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { listRoles, updateRole } from '../api/rolesApi'
@@ -167,7 +167,7 @@ export function RolesPage() {
       </Stack>
 
       {roles.isError && <Alert severity="error">{t('roles.loadError')}</Alert>}
-      <Box sx={{ height: 4 }}>{roles.isPending && <LinearProgress />}</Box>
+      <LoadingBar loading={roles.isPending} />
 
       {roles.data?.length === 0 && (
         <Paper sx={{ p: 4 }}>

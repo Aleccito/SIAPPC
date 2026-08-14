@@ -86,11 +86,25 @@ export default async function dashboardRoutes(app: FastifyInstance) {
     async (req) => {
       const usuarioId = Number(req.user.sub);
 
-      const asignaciones = await prisma.medicoPaciente.findMany({
-        where: { usuario_id: usuarioId, activo: true, paciente: { activo: true } },
+      // Quién ve TODOS los pacientes del hospital y quién solo los suyos.
+      //
+      // El personal clínico trabaja sobre su propia lista: es el contrato de
+      // este endpoint y por eso el identificador sale del token y nunca de la
+      // query. Pero admin y administrativo no tienen pacientes asignados —no
+      // atienden— y con la regla estricta su pantalla de Pacientes salía vacía
+      // aunque el hospital tuviera gente ingresada.
+      //
+      // Se decide por el ROL y no por un permiso: `pacientes.ver` lo tienen los
+      // cuatro roles, así que no distingue. Sigue sin poderse pedir "los de
+      // otro": o son los tuyos, o son todos los de tu hospital.
+      const quien = await prisma.usuario.findUnique({
+        where: { usuario_id: usuarioId },
+        select: { rol: { select: { nombre: true } } },
+      });
+      const veTodos = quien?.rol.nombre === "admin" || quien?.rol.nombre === "administrativo";
+
+      const PACIENTE_INCLUDE = {
         include: {
-          paciente: {
-            include: {
               // Un paciente puede arrastrar equipos dados de baja; solo
               // interesa el que está midiendo ahora.
               dispositivos: {
@@ -103,18 +117,34 @@ export default async function dashboardRoutes(app: FastifyInstance) {
               expediente: { include: { exploracion: { select: { glasgow: true } } } },
               // Dónde está ingresado AHORA. Un paciente acumula ingresos a lo
               // largo del tiempo; el abierto es como mucho uno.
-              ingresos: {
-                where: { estado: "activo" },
-                include: { cama: { include: { unidad: true } } },
-                orderBy: { fecha_ingreso: "desc" },
-                take: 1,
-              },
-            },
+          ingresos: {
+            where: { estado: "activo" },
+            include: { cama: { include: { unidad: true } } },
+            orderBy: { fecha_ingreso: "desc" },
+            take: 1,
           },
         },
-        orderBy: { fecha_asignacion: "desc" },
-        take: ASSIGNED_LIMIT,
-      });
+      } as const;
+
+      // Las dos ramas terminan en la misma forma —paciente + fecha— para que
+      // todo lo de abajo (alertas, signos, DTO) siga siendo un solo camino.
+      // Para quien ve todos, la "fecha de asignación" es la de llegada: no hay
+      // asignación que fechar, y el campo es obligatorio en el DTO.
+      const asignaciones = veTodos
+        ? (
+            await prisma.paciente.findMany({
+              where: { activo: true, hospital_id: req.hospitalId },
+              ...PACIENTE_INCLUDE,
+              orderBy: { fecha_llegada: "desc" },
+              take: ASSIGNED_LIMIT,
+            })
+          ).map((paciente) => ({ paciente, fecha_asignacion: paciente.fecha_llegada }))
+        : await prisma.medicoPaciente.findMany({
+            where: { usuario_id: usuarioId, activo: true, paciente: { activo: true } },
+            include: { paciente: PACIENTE_INCLUDE },
+            orderBy: { fecha_asignacion: "desc" },
+            take: ASSIGNED_LIMIT,
+          });
 
       const devices = asignaciones
         .map((a) => a.paciente.dispositivos[0]?.codigo)

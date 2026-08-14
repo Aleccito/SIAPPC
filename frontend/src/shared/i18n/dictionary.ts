@@ -5,6 +5,20 @@
 // componentes.
 export type Language = 'es'
 
+/**
+ * El BCP-47 con el que se formatean fechas y números de cada idioma.
+ *
+ * Va aparte del código de idioma porque no son lo mismo: `'es'` elige el
+ * diccionario, `'es-MX'` elige el formato. Estaban confundidos —la mitad de las
+ * pantallas pasaba `language` a `toLocaleString` y la otra mitad se escribía
+ * `'es-MX'` a mano en una constante local—, y con eso el mismo instante salía
+ * "15/10/2025" en una pantalla y "10/15/2025" en otra.
+ *
+ * Es un mapa y no una constante suelta porque es el único sitio que habría que
+ * tocar el día que vuelva a haber un segundo idioma.
+ */
+export const locales: Record<Language, string> = { es: 'es-MX' }
+
 const es = {
   'nav.dashboard': 'Inicio',
   'nav.powerbi': 'Power BI',
@@ -39,6 +53,8 @@ const es = {
   'bed.newSoap': 'Nueva Nota SOAP',
   'bed.generateReport': 'Generar Reporte',
   'bed.tabPending': 'Esta pestaña todavía no tiene contenido: falta el endpoint que la alimenta.',
+  'bed.loadError': 'No se pudo cargar la cama de este dispositivo.',
+  'bed.soapError': 'No se pudieron cargar las notas SOAP.',
   'bed.info': 'Información del Paciente',
   'bed.lastSoap': 'Última Nota SOAP',
   'bed.status.critico': 'Crítico',
@@ -92,6 +108,9 @@ const es = {
   'central.summary': 'Monitoreo activo para {count} pacientes en {unit}',
   'central.error': 'No se pudieron cargar las camas',
   'central.empty': 'No hay camas registradas en esta unidad.',
+  'central.free': '{count} libres',
+  'central.allFree':
+    'Ninguna cama de esta unidad tiene paciente. La central solo muestra camas ocupadas.',
   'central.available': 'Disponible',
   'central.noPatient': 'Sin paciente asignado',
   'central.noDevice': 'Sin equipo a pie de cama',
@@ -155,14 +174,19 @@ const es = {
 
   'layout.mainNav': 'Navegación principal',
   'layout.toggleNav': 'Plegar o desplegar la navegación',
-  'layout.toggleGroup': 'Mostrar u ocultar las subsecciones',
   'layout.notifications': 'Notificaciones',
+  'layout.skipToContent': 'Saltar al contenido',
+  'layout.mainContent': 'Contenido principal',
 
   'action.signIn': 'Iniciar sesión',
   'action.signOut': 'Cerrar sesión',
   'action.cancel': 'Cancelar',
   'action.save': 'Guardar',
   'action.close': 'Cerrar',
+  'action.loading': 'Cargando…',
+  // Por qué un botón está apagado. Va en un tooltip: un control desactivado sin
+  // explicación se lee como una avería del sistema.
+  'action.noBackend': 'Todavía no disponible: falta el servicio en el servidor',
 
   'brand.name': 'SIAPPC',
   'brand.tagline': 'Sistema Inteligente para la Atención de Pacientes Politraumatizados Críticos',
@@ -191,30 +215,12 @@ const es = {
   'login.password': 'Contraseña',
   'login.showPassword': 'Mostrar contraseña',
   'login.hidePassword': 'Ocultar contraseña',
-  'login.forgotPassword': '¿Olvidó su contraseña?',
+  // Sustituye al enlace de "¿Olvidó su contraseña?". Dice a quién acudir en vez
+  // de prometer un restablecimiento que el servidor no sabe hacer.
+  'login.passwordHelp':
+    '¿Olvidó su contraseña? Solicite el restablecimiento al administrador del sistema.',
   'login.pending': 'Iniciando sesión…',
   'login.failed': 'No se pudo iniciar sesión',
-
-  'forgotPassword.title': 'Recuperar contraseña',
-  'forgotPassword.hint':
-    'Ingrese su correo institucional registrado para recibir las instrucciones de restablecimiento.',
-  'forgotPassword.warning':
-    'El enlace de recuperación expirará automáticamente en 15 minutos por motivos de seguridad.',
-  'forgotPassword.submit': 'Enviar enlace de recuperación',
-  'forgotPassword.backToLogin': 'Volver al inicio de sesión',
-  'forgotPassword.pending': 'Enviando…',
-  'forgotPassword.failed': 'No se pudo enviar el enlace',
-
-  'verify.title': 'Verificación de seguridad',
-  'verify.hint':
-    'Ingrese el código de seguridad de 6 dígitos enviado a su dispositivo móvil registrado.',
-  'verify.resendQuestion': '¿No recibió el código?',
-  'verify.resend': 'Reenviar',
-  'verify.resendIn': 'en',
-  'verify.submit': 'Verificar',
-  'verify.pending': 'Verificando…',
-  'verify.failed': 'Código incorrecto',
-  'verify.success': 'Código verificado. Ahora puede iniciar sesión.',
 
   'dashboard.welcome': 'Bienvenido, {name}',
 
@@ -248,6 +254,8 @@ const es = {
 
   'dash.kpi.assignedPatients': 'Pacientes a cargo',
   'dash.kpi.criticalAlerts': 'Alertas críticas abiertas',
+  'dash.kpi.freeBeds': 'Camas libres',
+  'dash.openCentral': 'Ver central de monitoreo',
   'dash.kpi.pendingAssessment': 'Pendientes de evaluación',
   'dash.kpi.devices': 'Equipos registrados',
   'dash.kpi.devicesLive': 'Emitiendo',
@@ -323,7 +331,6 @@ const es = {
   'dash.live.alert': 'Alerta en {patient}: {detail}',
   'dash.security.empty': 'Sin eventos de seguridad recientes.',
   'dash.audit.error': 'No se pudo cargar la bitácora',
-  'dash.audit.empty': 'No hay movimientos registrados.',
   'dash.audit.system': 'Sistema',
 
   'dash.integrations.api': 'API SIAPPC',
@@ -448,19 +455,13 @@ const es = {
   'roles.title': 'Gestión de Roles y Permisos',
   'roles.subtitle': 'Define qué puede ver y hacer cada tipo de usuario en el sistema.',
   'roles.new.button': 'Nuevo Rol',
-  'roles.assigned': 'Usuarios asignados',
   'roles.selector': 'Rol',
   'roles.usersCount': 'usuarios',
   'roles.usersCountOne': 'usuario',
-  'roles.systemRole': 'Rol base del sistema',
-  'roles.customRole': 'Rol personalizado',
-  'roles.predefined': 'Predefinido',
-  'roles.editPermissions': 'Ver/Editar Permisos',
   'roles.col.role': 'Rol',
   'roles.col.type': 'Tipo',
   'roles.col.users': 'Usuarios',
   'roles.col.actions': 'Acciones',
-  'roles.noDescription': 'Sin descripción',
   'roles.empty': 'Todavía no hay roles configurados.',
 
   'audit.title': 'Auditoría',
@@ -497,8 +498,6 @@ const es = {
 
   'matrix.title': 'Matriz de Permisos',
   'matrix.back': 'Volver a Roles',
-  'matrix.locked': 'Predefinido Bloqueado',
-  'matrix.lockedHint': 'Permisos preestablecidos y no editables para el rol base',
   'matrix.editableHint': 'Marca lo que este rol puede hacer en cada módulo.',
   'matrix.col.module': 'Módulos de Sistema',
   'matrix.col.ver': 'Ver',
@@ -571,8 +570,6 @@ const es = {
   // traslado a UCI concreto no está registrado en ninguna columna.
   'patients.col.admission': 'Ingreso',
   'patients.col.bed': 'Cama',
-  'patients.col.hr': 'FC (lpm)',
-  'patients.col.spo2': 'SpO2 (%)',
   'patients.form.title': 'Registrar paciente',
   'patients.form.name': 'Nombre completo',
   'patients.form.document': 'Documento de identidad',
@@ -640,6 +637,9 @@ const es = {
   'clinical.pickPatient': 'Elija un paciente para ver su expediente.',
   'clinical.tab.soap': 'Notas SOAP',
   'clinical.tab.history': 'Historia Clínica',
+  'clinical.tab.monitoring': 'Monitoreo',
+  'clinical.monitoring.noDevice':
+    'Este paciente no tiene equipo de monitoreo a pie de cama, así que no hay signos vitales en vivo que mostrar.',
   'clinical.error': 'No se pudo cargar el expediente',
 
   'soap.new': 'Nueva nota SOAP',
@@ -690,6 +690,8 @@ const es = {
   'admissions.reason': 'Motivo del ingreso',
   'admissions.noBed': 'Sin cama asignada',
   'admissions.bedOptional': 'Se puede admitir sin cama y asignarla después.',
+  'admissions.noFreeBeds':
+    'Ninguna de las {total} camas está disponible: el egreso las deja en limpieza. Cámbielas de estado en la pestaña Camas.',
   'admissions.empty': 'Todavía no hay ingresos registrados.',
   'admissions.col.patient': 'Paciente',
   'admissions.col.bed': 'Cama',
@@ -719,6 +721,29 @@ const es = {
   'patients.bed.loadError': 'No se pudo cargar la lista de camas',
   'patients.bed.error': 'No se pudo asignar la cama',
   'patients.bed.defaultReason': 'Ingreso registrado desde la lista de pacientes',
+
+  'patients.action.assignCare': 'Asignar personal',
+  'patients.action.edit': 'Editar ficha',
+  'patients.edit.title': 'Ficha del paciente',
+  'patients.edit.subtitle': 'Actualizar los datos de {patient} que cambian con el tiempo.',
+  'patients.edit.contactHelp': 'Quién avisar y su teléfono. Déjelo vacío si no se conoce.',
+  'patients.edit.loadError': 'No se pudo cargar la ficha del paciente',
+  'patients.edit.error': 'No se pudieron guardar los cambios',
+  'patients.edit.deactivate': 'Dar de baja',
+  'patients.edit.deactivateConfirm': 'Confirmar la baja',
+  'patients.edit.deactivateWarning':
+    'El registro NO se borra: queda inactivo y deja de aparecer en las listas. Su historia clínica, sus ingresos y la bitácora se conservan, así que si el paciente vuelve su información sigue completa.',
+  'patients.care.title': 'Personal a cargo',
+  'patients.care.subtitle': 'Quién tiene a {patient} bajo su cuidado.',
+  'patients.care.field': 'Añadir del personal clínico',
+  'patients.care.submit': 'Asignar',
+  'patients.care.none': 'Nadie tiene asignado a este paciente todavía.',
+  'patients.care.noneFree':
+    'No queda personal clínico activo por asignar. Registre médicos o enfermería desde Usuarios.',
+  'patients.care.error': 'No se pudo cambiar el personal a cargo',
+  // Segundo paso de quitar a alguien: dice qué va a pasar y a quién, no
+  // "¿está seguro?".
+  'patients.care.confirmRemove': 'Pulsa otra vez para quitar a {name}',
 
   'beds.capacity.title': 'Camas por unidad',
   'beds.capacity.hint':
@@ -777,7 +802,6 @@ const es = {
   // ---------------------------------------------------------------------------
   // Búsqueda global (modules/search)
   // ---------------------------------------------------------------------------
-  'nav.search': 'Búsqueda',
   'busqueda.title': 'Búsqueda Global',
   'busqueda.subtitle': 'Pacientes, notas SOAP y documentos en un solo lugar',
   'busqueda.placeholder': 'Buscar paciente, nota o documento…',
@@ -814,6 +838,10 @@ const es = {
   'exploracion.pickPatient': 'Elige un paciente para abrir su exploración física.',
   'exploracion.patientError': 'No se pudo cargar el paciente.',
   'exploracion.admitted': 'Ingreso',
+  'exploracion.resumen.vacio':
+    'Todavía no se ha registrado ningún hallazgo. Captúrelos en la pestaña Historia Clínica.',
+  'exploracion.resumen.anormales': '{count} hallazgos anormales',
+  'exploracion.resumen.exploradas': '{count} de {total} regiones exploradas',
   'exploracion.tabPending': 'Esta pestaña todavía no está disponible.',
   'exploracion.tab.summary': 'Resumen',
   'exploracion.tab.history': 'Historia Clínica',

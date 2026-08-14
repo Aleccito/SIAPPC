@@ -79,7 +79,13 @@ export function BedOccupancyWidget() {
               })}
             </Typography>
           </Stack>
+          {/* La barra no aporta ningún dato que no esté ya escrito arriba
+              —ocupadas sobre total— y abajo —libres y fuera de servicio—: es la
+              misma cifra dibujada. Se oculta al lector de pantalla en vez de
+              ponerle nombre, que solo haría repetir el porcentaje una tercera
+              vez. */}
           <LinearProgress
+            aria-hidden="true"
             variant="determinate"
             value={Math.round(unit.rate * 100)}
             color={occupancyColor(unit.rate)}
@@ -99,7 +105,7 @@ export function BedOccupancyWidget() {
 
 /** Ingresos y egresos del día. */
 export function AdmissionsTodayWidget() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
 
   const admissions = useQuery({
     queryKey: ['dashboard', 'admissions', 'today'],
@@ -145,7 +151,7 @@ export function AdmissionsTodayWidget() {
                 </Typography>
                 <Typography variant="caption" color="text.secondary" noWrap>
                   {admission.bedCode ?? t('dash.admissions.noBed')} ·{' '}
-                  {new Date(admission.admittedAt).toLocaleTimeString(language, {
+                  {new Date(admission.admittedAt).toLocaleTimeString(locale, {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}
@@ -165,7 +171,7 @@ export function AdmissionsTodayWidget() {
 
 /** Agenda de citas del día. */
 export function AppointmentsWidget() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   const { data, isError } = useQuery({
     queryKey: ['dashboard', 'appointments', 'today'],
     queryFn: () => listAppointments({ date: 'today' }),
@@ -186,7 +192,7 @@ export function AppointmentsWidget() {
             sx={{ alignItems: 'center' }}
           >
             <Typography variant="caption" sx={{ fontWeight: 700, minWidth: 44 }}>
-              {new Date(appointment.at).toLocaleTimeString(language, {
+              {new Date(appointment.at).toLocaleTimeString(locale, {
                 hour: '2-digit',
                 minute: '2-digit',
               })}
@@ -220,7 +226,7 @@ export function AppointmentsWidget() {
  * entrega (`etl_ejecucion`).
  */
 export function RecentReportsWidget() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   const reports = useQuery({
     queryKey: ['dashboard', 'reports'],
     queryFn: listReports,
@@ -232,7 +238,7 @@ export function RecentReportsWidget() {
 
   return (
     <Stack spacing={1}>
-      <Table size="small">
+      <Table aria-label={t('dash.widget.recentReports')} size="small">
         <TableHead>
           <TableRow>
             <TableCell>{t('reports.col.name')}</TableCell>
@@ -253,7 +259,7 @@ export function RecentReportsWidget() {
                 />
               </TableCell>
               <TableCell sx={{ color: 'text.secondary' }}>
-                {new Date(report.updatedAt).toLocaleString(language)}
+                {new Date(report.updatedAt).toLocaleString(locale)}
               </TableCell>
             </TableRow>
           ))}

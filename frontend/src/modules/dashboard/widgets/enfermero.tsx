@@ -42,7 +42,7 @@ export function NurseAssignmentsWidget() {
 
   return (
     <Stack spacing={1}>
-      <Table size="small">
+      <Table aria-label={t('dash.widget.nurseAssignments')} size="small">
         <TableHead>
           <TableRow>
             <TableCell>{t('dash.col.patient')}</TableCell>
@@ -99,7 +99,7 @@ export function NurseAssignmentsWidget() {
  * y lo que alguien ya reconoció pero todavía no cierra.
  */
 export function AlertAcknowledgementWidget() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   const alerts = useQuery({
     queryKey: ['dashboard', 'nurseAlerts'],
     queryFn: () => listAlerts({ limit: ALERTS_LIMIT }),
@@ -163,7 +163,7 @@ export function AlertAcknowledgementWidget() {
                   {alert.message ?? alert.type}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {t(statusKey[alert.status])} · {new Date(alert.at).toLocaleString(language)}
+                  {t(statusKey[alert.status])} · {new Date(alert.at).toLocaleString(locale)}
                 </Typography>
               </Box>
               <Button size="small" component={RouterLink} to={`/monitoring/${alert.device}`}>

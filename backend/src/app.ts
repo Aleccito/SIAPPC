@@ -34,8 +34,23 @@ export async function buildApp() {
     // En Compose el navegador nunca habla con este proceso: nginx hace de
     // intermediario y todas las peticiones llegan con su IP. Sin esto, el
     // límite de intentos contaría a todo el hospital como un solo cliente.
-    // nginx ya manda X-Forwarded-For (ver frontend/nginx.conf).
-    trustProxy: true,
+    // nginx manda X-Forwarded-For (ver frontend/nginx.conf).
+    //
+    // NO `true`. Con `true` se confía en toda la cadena, y como Fastify toma la
+    // entrada MÁS A LA IZQUIERDA de X-Forwarded-For, `req.ip` acaba siendo el
+    // valor que escribió el cliente. Con eso, el tope de 5 intentos por
+    // IP+correo de /auth/login y el general de 100/min se saltan cambiando una
+    // cabecera, y la IP que queda en la bitácora es la que quiso el atacante.
+    //
+    // La lista dice DE QUIÉN nos fiamos, no cuántos saltos hay: solo de
+    // direcciones privadas, que es donde vive nginx dentro de Compose. Una
+    // cabecera con una IP pública inventada ya no se acepta.
+    //
+    // Sigue siendo falsificable por quien alcance el puerto 3001 directamente
+    // desde una red privada. Ese puerto se publica en docker-compose.yml para
+    // las pruebas de carga; en un despliegue real no debe publicarse, y nginx
+    // debe ser lo único que llegue a este proceso.
+    trustProxy: ["loopback", "linklocal", "uniquelocal"],
   });
 
   // Forma única de los errores para toda la API, incluidos los que lanza

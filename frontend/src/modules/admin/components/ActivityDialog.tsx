@@ -2,14 +2,12 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Alert,
-  Box,
   Button,
   ButtonGroup,
   Dialog,
   DialogContent,
   DialogTitle,
   IconButton,
-  LinearProgress,
   Paper,
   Stack,
   Table,
@@ -19,6 +17,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import CloseIcon from '@mui/icons-material/Close'
 import { listUserActivity } from '../api/usersApi'
 import type { User } from '../../auth/types'
@@ -48,9 +47,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export function ActivityDialog({ user, onClose }: Props) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const [days, setDays] = useState(30)
-  const locale = 'es-MX'
 
   const { data, isPending, isError } = useQuery({
     queryKey: ['activity', user?.id, days],
@@ -112,8 +110,8 @@ export function ActivityDialog({ user, onClose }: Props) {
           {isError && <Alert severity="error">{t('users.activity.error')}</Alert>}
 
           <Paper>
-            <Box sx={{ height: 4 }}>{isPending && <LinearProgress />}</Box>
-            <Table size="small">
+            <LoadingBar loading={isPending} />
+            <Table aria-label={t('users.activity.title')} size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>{t('users.activity.col.when')}</TableCell>

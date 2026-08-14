@@ -8,7 +8,6 @@ import {
   Button,
   Chip,
   InputAdornment,
-  LinearProgress,
   Paper,
   Stack,
   Tab,
@@ -16,6 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined'
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
@@ -55,7 +55,7 @@ function tabIndexOf(result: SearchResult): number {
 }
 
 export function SearchPage() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   usePageHeader(t('busqueda.title'), t('busqueda.subtitle'))
 
   const [params, setParams] = useSearchParams()
@@ -100,6 +100,7 @@ export function SearchPage() {
           onChange={(event) => setDraft(event.target.value)}
           placeholder={t('busqueda.placeholder')}
           aria-label={t('busqueda.placeholder')}
+          autoComplete="off"
           slotProps={{
             input: {
               startAdornment: (
@@ -133,7 +134,7 @@ export function SearchPage() {
           </Tabs>
 
           {/* Altura reservada para que un refetch no salte la lista entera. */}
-          <Box sx={{ height: 4 }}>{isFetching && <LinearProgress />}</Box>
+          <LoadingBar loading={isFetching} />
 
           {visible.length === 0 && !isFetching && (
             <Typography variant="body2" color="text.secondary" sx={{ py: 4 }} align="center">
@@ -146,9 +147,9 @@ export function SearchPage() {
               return <PatientCard key={`p-${result.id}`} patient={result} />
             }
             if (result.kind === 'soapNote') {
-              return <NoteCard key={`n-${result.id}`} note={result} language={language} />
+              return <NoteCard key={`n-${result.id}`} note={result} locale={locale} />
             }
-            return <DocumentCard key={`d-${result.id}`} document={result} language={language} />
+            return <DocumentCard key={`d-${result.id}`} document={result} locale={locale} />
           })}
         </Stack>
       )}
@@ -246,7 +247,7 @@ function PatientCard({ patient }: { patient: SearchPatientResult }) {
   )
 }
 
-function NoteCard({ note, language }: { note: SearchNoteResult; language: string }) {
+function NoteCard({ note, locale }: { note: SearchNoteResult; locale: string }) {
   const { t } = useLanguage()
 
   return (
@@ -268,7 +269,7 @@ function NoteCard({ note, language }: { note: SearchNoteResult; language: string
           {t('busqueda.note')} — {note.patientName}
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          {new Date(note.at).toLocaleDateString(language)}
+          {new Date(note.at).toLocaleDateString(locale)}
         </Typography>
       </Stack>
       <Typography variant="body2" color="text.secondary" noWrap>
@@ -280,10 +281,10 @@ function NoteCard({ note, language }: { note: SearchNoteResult; language: string
 
 function DocumentCard({
   document,
-  language,
+  locale,
 }: {
   document: SearchDocumentResult
-  language: string
+  locale: string
 }) {
   const { t } = useLanguage()
 
@@ -312,7 +313,7 @@ function DocumentCard({
       </Stack>
       <Typography variant="body2" color="text.secondary">
         {t('busqueda.uploadedOn', {
-          date: new Date(document.at).toLocaleDateString(language),
+          date: new Date(document.at).toLocaleDateString(locale),
         })}
         {document.unit !== null && ` • ${document.unit}`}
       </Typography>

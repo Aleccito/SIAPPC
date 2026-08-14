@@ -1594,7 +1594,457 @@
       ]
     },
     {
-      "name": "6. Administración",
+      "name": "6. Personal a cargo del paciente",
+      "description": "`medico_paciente`: quién tiene a cada paciente bajo su cuidado.\n\nDecide qué lista `GET /dashboard/assigned-patients` —la pantalla de Pacientes— y a quién le llegan las notificaciones. Antes solo se leía: la tabla se llenaba por SQL a mano y la pantalla salía vacía.\n\nVa ANTES de Administración a propósito: esa carpeta termina cerrando la sesión y revocando el token.",
+      "item": [
+        {
+          "name": "Paciente para asignar",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cédula única por corrida: la columna es única y repetir la",
+                  "// colección chocaría con la corrida anterior.",
+                  "pm.environment.set('cedulaCargo', 'PM-AC-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 al crear', () => pm.response.to.have.status(201));",
+                  "pm.environment.set('pacienteCargoId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Paciente Con Equipo\",\n  \"document\": \"{{cedulaCargo}}\",\n  \"reason\": \"Prueba de personal a cargo\",\n  \"fechaNacimiento\": \"1979-11-04\",\n  \"sexo\": \"F\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Un médico del hospital",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const medico = pm.response.json().find((u) => u.role === 'medico' && u.active);",
+                  "pm.test('el seed trae al menos un médico activo', function () {",
+                  "    pm.expect(medico, 'sin médico activo no se puede asignar').to.not.be.undefined;",
+                  "});",
+                  "pm.environment.set('medicoCargoId', medico.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nadie a cargo todavía",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('un paciente recién registrado no tiene a nadie', function () {",
+                  "    pm.expect(pm.response.json()).to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteCargoId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteCargoId}}",
+                "assignments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Asignar al médico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 al asignar', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('devuelve a quién se asignó y desde cuándo', function () {",
+                  "    pm.expect(String(body.userId)).to.eql(String(pm.environment.get('medicoCargoId')));",
+                  "    pm.expect(body.assignedAt).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": {{medicoCargoId}},\n  \"reason\": \"Médico tratante\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteCargoId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteCargoId}}",
+                "assignments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ya está a cargo → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409: la misma persona no se asigna dos veces', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": {{medicoCargoId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteCargoId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteCargoId}}",
+                "assignments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ahora sí aparece a cargo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "pm.test('exactamente uno a cargo', () => pm.expect(lista).to.have.lengthOf(1));",
+                  "pm.test('trae nombre y rol para pintarlo', function () {",
+                  "    pm.expect(lista[0].name).to.be.a('string');",
+                  "    pm.expect(lista[0].role).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteCargoId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteCargoId}}",
+                "assignments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sin userId → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400: el cuerpo se valida', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"sin usuario\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteCargoId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteCargoId}}",
+                "assignments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Usuario inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404: el usuario también sale acotado por hospital', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 999999\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteCargoId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteCargoId}}",
+                "assignments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Paciente inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 y no 403: no se revela que exista en otro hospital', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/patients/999999/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "999999",
+                "assignments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Quitar del cuidado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204: no se borra, se marca inactivo', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteCargoId}}/assignments/{{medicoCargoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteCargoId}}",
+                "assignments",
+                "{{medicoCargoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Quitar dos veces → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404: ya no está a cargo', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteCargoId}}/assignments/{{medicoCargoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteCargoId}}",
+                "assignments",
+                "{{medicoCargoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Volver a asignar el mismo día",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// `uq_medico_paciente` es (usuario, paciente, FECHA): insertar otra vez",
+                  "// el mismo día chocaría con la llave si el endpoint no reactivara el",
+                  "// renglón que la baja dejó en `activo = false`.",
+                  "pm.test('201: reactiva el renglón del día', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": {{medicoCargoId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{pacienteCargoId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{pacienteCargoId}}",
+                "assignments"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Administración",
       "item": [
         {
           "name": "Catálogo de unidades",

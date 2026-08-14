@@ -6,7 +6,6 @@ import {
   Box,
   Button,
   Chip,
-  LinearProgress,
   Link,
   Paper,
   Stack,
@@ -14,6 +13,7 @@ import {
   Tabs,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AddIcon from '@mui/icons-material/Add'
 import { createAntecedente, listAntecedentes } from '../api/antecedentesApi'
@@ -147,9 +147,7 @@ export function AntecedentesPage() {
 
       {pacienteId === '' && <Alert severity="info">{t('antecedentes.noPatient')}</Alert>}
 
-      <Box sx={{ height: 4 }}>
-        {(patient.isFetching || antecedentes.isFetching) && <LinearProgress />}
-      </Box>
+      <LoadingBar loading={patient.isFetching || antecedentes.isFetching} />
 
       {patient.isError && <Alert severity="error">{t('antecedentes.error')}</Alert>}
       {patient.data && <PatientRecordHeader patient={patient.data} />}

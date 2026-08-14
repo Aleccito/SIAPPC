@@ -8,7 +8,6 @@ import {
   Divider,
   IconButton,
   InputAdornment,
-  LinearProgress,
   Link,
   Menu,
   MenuItem,
@@ -22,6 +21,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import ArrowOutwardOutlinedIcon from '@mui/icons-material/ArrowOutwardOutlined'
 import BedOutlinedIcon from '@mui/icons-material/BedOutlined'
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined'
@@ -33,6 +33,8 @@ import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined
 import SearchIcon from '@mui/icons-material/Search'
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
 import { AssignBedDialog } from '../components/AssignBedDialog'
+import { AssignDoctorDialog } from '../components/AssignDoctorDialog'
+import { EditPatientDialog } from '../components/EditPatientDialog'
 import { NewPatientDialog } from '../components/NewPatientDialog'
 import { ageFrom, initialsOf } from '../presentation'
 import { KpiCard } from '../../dashboard/components/KpiCard'
@@ -42,10 +44,8 @@ import {
   clinicalState,
   clinicalStateColor,
   clinicalStateKey,
-  hrTone,
   severityColor,
   severityRank,
-  spo2Tone,
 } from '../../dashboard/presentation'
 import { useAssignedPatients, useBedOccupancy, useOpenAlerts } from '../../dashboard/queries'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
@@ -55,6 +55,7 @@ import type { AssignedPatient } from '../../dashboard/types'
 import type { AdmissionType } from '../../admissions/types'
 import type { AlertSeverity } from '../../sensors/types'
 import { usePageHeader } from '../../../app/pageHeader'
+import { useQueryParam } from '../../../shared/useQueryParam'
 
 // Gestión de Pacientes.
 //
@@ -145,14 +146,38 @@ export function PatientsPage() {
   const alerts = useOpenAlerts()
   const beds = useBedOccupancy()
 
-  const [unit, setUnit] = useState<string | 'all'>('all')
-  const [state, setState] = useState<ClinicalState | 'all'>('all')
-  const [range, setRange] = useState<DateRange>('any')
-  const [term, setTerm] = useState('')
-  const [page, setPage] = useState(0)
+  // Los cuatro filtros y la página van en la URL. Con `useState` la pantalla no
+  // se podía enviar —"los críticos de UCI" era una explicación en vez de un
+  // enlace—, Atrás salía de Pacientes en lugar de deshacer el último filtro, y
+  // recargar devolvía a la lista completa.
+  //
+  // Los diálogos NO: cuál está abierto es estado efímero, y una dirección que
+  // reabre un formulario a medio rellenar no es lo que nadie espera al pegarla.
+  const [unit, setUnit] = useQueryParam('unidad', 'all')
+  const [stateParam, setState] = useQueryParam('estado', 'all')
+  const [rangeParam, setRange] = useQueryParam('desde', 'any')
+  const [term, setTerm] = useQueryParam('q', '')
+  const [pageParam, setPageParam] = useQueryParam('pagina', '1')
   const [formOpen, setFormOpen] = useState(false)
+
+  // La URL la puede escribir cualquiera: un valor que no está en la lista se
+  // trata como "sin filtrar" en vez de dejar la pantalla vacía sin explicar por
+  // qué. La página va 1-based de cara fuera —`?pagina=1` es la primera— y
+  // 0-based por dentro, que es lo que necesita `slice`.
+  const state = (CLINICAL_STATES as readonly string[]).includes(stateParam)
+    ? (stateParam as ClinicalState)
+    : 'all'
+  const range = (DATE_RANGES.some((r) => r.value === rangeParam)
+    ? rangeParam
+    : 'any') as DateRange
+  const page = Math.max(0, (Number(pageParam) || 1) - 1)
+  const setPage = (next: number) => setPageParam(String(next + 1))
   // Paciente al que se le está asignando cama; null = dialogo cerrado.
   const [bedFor, setBedFor] = useState<AssignedPatient | null>(null)
+  // Paciente al que se le está asignando personal; null = dialogo cerrado.
+  const [careFor, setCareFor] = useState<AssignedPatient | null>(null)
+  // Paciente cuya ficha se está editando; null = dialogo cerrado.
+  const [editing, setEditing] = useState<AssignedPatient | null>(null)
 
   // Los memos dependen de `patients.data` y no de una copia con `?? []`: ese
   // literal sería un array nuevo en cada render y los recalcularía siempre.
@@ -206,6 +231,12 @@ export function PatientsPage() {
   const bedTotal = occupancy?.reduce((sum, u) => sum + u.total, 0) ?? null
   const bedFree = occupancy?.reduce((sum, u) => sum + u.available, 0) ?? null
 
+  // Cambiar un filtro vuelve a la primera página: quedarse en la 4 de una lista
+  // que ahora tiene dos deja la pantalla en blanco sin decir por qué.
+  //
+  // Las dos escrituras caen sobre la misma URL y no se pisan: `useQueryParam`
+  // actualiza en forma funcional, así que la segunda parte del estado que dejó
+  // la primera.
   function resetPage<T>(set: (value: T) => void) {
     return (value: T) => {
       set(value)
@@ -215,21 +246,16 @@ export function PatientsPage() {
 
   return (
     <Stack spacing={3}>
-      {/* El título y el breadcrumb los pinta AppLayout desde usePageHeader;
-          aquí solo va la acción, que es de esta pantalla. */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          variant="contained"
-          startIcon={<PersonAddAltOutlinedIcon />}
-          onClick={() => setFormOpen(true)}
-        >
-          {t('patients.add')}
-        </Button>
-      </Box>
-
-      {/* Barra de filtros. Los tres son campos de vista: no viajan al servidor. */}
+      {/* Barra de filtros. Los tres son campos de vista: no viajan al servidor.
+          El título y el breadcrumb los pinta AppLayout desde usePageHeader; aquí
+          solo va la acción, que es de esta pantalla y comparte fila con los
+          filtros. */}
       <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={2}
+          sx={{ alignItems: { xs: 'stretch', md: 'center' } }}
+        >
           <TextField
             select
             size="small"
@@ -276,6 +302,21 @@ export function PatientsPage() {
               </MenuItem>
             ))}
           </TextField>
+
+          {/* Separador elástico: el `spacing` del Stack pone margin-left a cada
+              hijo con un selector descendente que gana al `ml: auto` del sx del
+              botón. Un hueco que crece sí empuja. Solo en md+: en columna no
+              hay derecha a la que pegarse. */}
+          <Box sx={{ display: { xs: 'none', md: 'block' }, flexGrow: 1 }} />
+
+          <Button
+            variant="contained"
+            startIcon={<PersonAddAltOutlinedIcon />}
+            onClick={() => setFormOpen(true)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            {t('patients.add')}
+          </Button>
         </Stack>
       </Paper>
 
@@ -364,6 +405,9 @@ export function PatientsPage() {
               onChange={(event) => resetPage(setTerm)(event.target.value)}
               placeholder={t('patients.search')}
               aria-label={t('patients.search')}
+              // Un buscador no es una credencial: sin esto el gestor de
+              // contraseñas se ofrece a rellenarlo en cada visita.
+              autoComplete="off"
               slotProps={{
                 input: {
                   startAdornment: (
@@ -389,36 +433,45 @@ export function PatientsPage() {
             )}
           </Stack>
 
-          <Box sx={{ height: 4 }}>{patients.isPending && <LinearProgress />}</Box>
+          <LoadingBar loading={patients.isPending} />
 
           {patients.isError ? (
             <WidgetError message="patients.error" />
           ) : (
             <Box sx={{ overflowX: 'auto' }}>
-              <Table size="small">
+              <Table aria-label={t('patients.list.title')} size="small">
                 <TableHead>
                   <TableRow>
                     <TableCell>{t('patients.col.patient')}</TableCell>
                     <TableCell>{t('patients.col.status')}</TableCell>
                     <TableCell>{t('patients.col.admission')}</TableCell>
                     <TableCell>{t('patients.col.bed')}</TableCell>
-                    <TableCell align="right">{t('patients.col.hr')}</TableCell>
-                    <TableCell align="right">{t('patients.col.spo2')}</TableCell>
-                    {/* Falta la columna TEMP (°C) del diseño, a propósito:
-                        la variable `temp` está en el catálogo sembrado, pero
-                        NINGÚN publicador la emite —iot/src/main.py publica hr,
-                        spo2 y ecg; iot/monitor/net/publisher.py añade pr,
-                        perfusion y resp— y mqttIngest.ts no tiene umbral para
-                        ella. La única "temp" del monitor es la del die del
-                        MAX30102, que es la temperatura del chip y no la del
-                        paciente. Una columna que siempre diría "—" es ruido, y
-                        rellenarla con 38.2° sería inventar un signo vital. */}
+                    {/* Esta tabla NO lleva signos vitales. Ni FC, ni SpO2, ni la
+                        TEMP (°C) del diseño —esa además no la publica ningún
+                        equipo: `temp` está en el catálogo sembrado, pero
+                        iot/src/main.py emite hr, spo2 y ecg,
+                        iot/monitor/net/publisher.py añade pr, perfusion y resp,
+                        y mqttIngest.ts no tiene umbral para ella—.
+                        Las cifras se refrescan en la central y en el monitor de
+                        cada cama, que es donde se vigilan; aquí eran una foto
+                        que envejecía sin avisar, y una FC de hace veinte
+                        minutos leída como si fuera de ahora es peor que no
+                        enseñarla. Esta pantalla es gestión: quién está a cargo
+                        de quién, en qué cama y desde cuándo. El ESTADO clínico
+                        de la columna correspondiente ya resume la gravedad, y
+                        el menú de cada renglón lleva al monitor en un clic. */}
                     <TableCell padding="checkbox" />
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {shown.map((patient) => (
-                    <PatientRow key={patient.id} patient={patient} onAssignBed={setBedFor} />
+                    <PatientRow
+                      key={patient.id}
+                      patient={patient}
+                      onAssignBed={setBedFor}
+                      onAssignCare={setCareFor}
+                      onEdit={setEditing}
+                    />
                   ))}
                 </TableBody>
               </Table>
@@ -467,44 +520,22 @@ export function PatientsPage() {
 
       <NewPatientDialog open={formOpen} onClose={() => setFormOpen(false)} />
       <AssignBedDialog patient={bedFor} onClose={() => setBedFor(null)} />
+      <AssignDoctorDialog patient={careFor} onClose={() => setCareFor(null)} />
+      <EditPatientDialog patient={editing} onClose={() => setEditing(null)} />
     </Stack>
-  )
-}
-
-/** Una cifra de signo vital con su color; ausente se pinta como raya. */
-function VitalCell({ value, tone }: { value: number | null; tone: 'error' | 'warning' | undefined }) {
-  if (value === null) {
-    return (
-      <TableCell align="right">
-        <Typography variant="body2" color="text.disabled">
-          —
-        </Typography>
-      </TableCell>
-    )
-  }
-
-  return (
-    <TableCell align="right">
-      <Typography
-        variant="body2"
-        sx={{
-          fontWeight: tone ? 700 : 500,
-          color: tone ? `${tone}.main` : 'text.primary',
-          fontVariantNumeric: 'tabular-nums',
-        }}
-      >
-        {value}
-      </Typography>
-    </TableCell>
   )
 }
 
 function PatientRow({
   patient,
   onAssignBed,
+  onAssignCare,
+  onEdit,
 }: {
   patient: AssignedPatient
   onAssignBed: (patient: AssignedPatient) => void
+  onAssignCare: (patient: AssignedPatient) => void
+  onEdit: (patient: AssignedPatient) => void
 }) {
   const { t } = useLanguage()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
@@ -583,15 +614,6 @@ function PatientRow({
         )}
       </TableCell>
 
-      <VitalCell
-        value={patient.vitals.hr}
-        tone={patient.vitals.hr !== null ? hrTone(patient.vitals.hr) : undefined}
-      />
-      <VitalCell
-        value={patient.vitals.spo2}
-        tone={patient.vitals.spo2 !== null ? spo2Tone(patient.vitals.spo2) : undefined}
-      />
-
       <TableCell padding="checkbox">
         <IconButton
           size="small"
@@ -612,6 +634,22 @@ function PatientRow({
             }}
           >
             {t(patient.bed ? 'patients.action.changeBed' : 'patients.action.assignBed')}
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setAnchor(null)
+              onAssignCare(patient)
+            }}
+          >
+            {t('patients.action.assignCare')}
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setAnchor(null)
+              onEdit(patient)
+            }}
+          >
+            {t('patients.action.edit')}
           </MenuItem>
           {patient.device && (
             <MenuItem

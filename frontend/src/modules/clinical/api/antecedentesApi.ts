@@ -52,14 +52,3 @@ export async function createAntecedente(
     body: JSON.stringify(antecedente),
   })
 }
-
-/** Baja de un antecedente equivocado: se marca inactivo, no se borra. */
-export async function deactivateAntecedente(
-  pacienteId: string,
-  id: string,
-): Promise<Antecedente> {
-  return request<Antecedente>(`/historia/${pacienteId}/antecedentes/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ active: false }),
-  })
-}
