@@ -122,6 +122,7 @@ class Publisher:
         self.device = cfg.device.device_id
         self.telemetry_topic = iot_env.telemetry_topic(self.device)
         self.status_topic = iot_env.status_topic(self.device)
+        self.waveform_topic = iot_env.waveform_topic(self.device)
         self.status = PublisherStatus(enabled=self.cfg.enabled)
 
         self._buffer: Buffer | None = None
@@ -347,6 +348,48 @@ class Publisher:
             with self._lock:
                 self.status.pending_readings = self._buffer.count()
             self._wake.set()
+
+    def publish_waveform(self, samples, hz: int, variable: str = "ecg") -> None:
+        """Manda un lote de muestras crudas para dibujar la onda en el navegador.
+
+        NO pasa por el buffer, y esa es la diferencia de fondo con
+        `publish_vitals`. Las cifras son historia clinica: si el broker no esta,
+        se guardan en SQLite y salen al reconectar, porque una FC de hace diez
+        minutos sigue valiendo. Una onda de hace diez minutos no le sirve a
+        nadie: o se ve ahora o no se ve. Encolarla solo llenaria el disco de la
+        Pi para acabar dibujando un trozo de pasado sobre la pantalla del
+        presente.
+
+        Por eso tambien va en QoS 0 y no en el `self.cfg.qos` del resto: sin
+        confirmacion y sin reintento. Un lote perdido es una decima de segundo
+        de trazo que no se dibuja; reintentarlo seria peor que perderlo.
+
+        Si no hay conexion, se descarta en silencio. No cuenta como fallo: no
+        publicar la onda no rompe nada, el monitor de cabecera la sigue
+        dibujando en su propia pantalla y las cifras siguen su camino aparte.
+        """
+        if not self.cfg.enabled or self._client is None:
+            return
+        if not self._client.is_connected() or not samples:
+            return
+
+        payload = json.dumps({
+            "device": self.device,
+            "variable": variable,
+            "hz": int(hz),
+            # Instante de la PRIMERA muestra. Las demas se situan sumando 1/hz:
+            # una marca por muestra triplicaria el tamano del mensaje para
+            # repetir un dato que se deduce.
+            "ts": time.time(),
+            # Tres decimales bastan para dibujar y recortan el mensaje a la
+            # mitad frente al float completo de Python.
+            "samples": [round(float(v), 3) for v in samples],
+        })
+
+        try:
+            self._client.publish(self.waveform_topic, payload, qos=0)
+        except Exception as exc:  # noqa: BLE001 - la onda nunca tumba el monitor
+            self.status.last_error = str(exc)[:110]
 
     # -- hilo de red -------------------------------------------------------
 

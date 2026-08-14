@@ -51,6 +51,36 @@ Will retenido en el tema de estado para que la desaparición del equipo se note
 sin esperar un tiempo de espera. **No hay modo sin cifrar**: el broker solo
 escucha en 8883.
 
+**Tercer tema: la onda cruda.**
+
+| Tema | Qué lleva |
+|---|---|
+| `siappc/<device>/waveform` | Un lote de muestras de ECG, una vez por segundo |
+
+```json
+{ "device": "…", "variable": "ecg", "hz": 250, "ts": 0, "samples": [0.1, -0.2, …] }
+```
+
+`ts` es el instante de la **primera** muestra; las demás se sitúan sumando
+`1/hz`. Una marca por muestra triplicaría el mensaje para repetir un dato que se
+deduce.
+
+Tres diferencias de fondo con la telemetría, y ninguna es un detalle:
+
+- **No se guarda en ninguna tabla.** 250 Hz son 21,6 millones de filas por día y
+  por cama. El backend la valida, se la pasa a quien tenga esa cama abierta en el
+  navegador y la olvida. Si nadie mira, se descarta al recibirla.
+- **Va en QoS 0**, no en 1 como las cifras. Un lote perdido es una décima de
+  segundo de trazo; reentregarlo tres segundos tarde sería dibujar pasado sobre
+  el presente.
+- **No pasa por el buffer SQLite de la Pi.** Las cifras se encolan si el broker
+  no está, porque una FC de hace diez minutos sigue valiendo. Una onda de hace
+  diez minutos no le sirve a nadie.
+
+Del lado del backend vive en `services/waveform.ts` y se sirve por SSE en
+`GET /monitoring/:device/waveform`, con el mismo permiso `monitoreo:ver` que el
+resto. Cubierto por `Pruebas/backend/waveform.test.ts`.
+
 **Variables**: `hr`, `spo2`, `pr`, `perfusion`, `resp`.
 
 Por MQTT **no hace falta darlas de alta a mano**: `ingestReading` crea la

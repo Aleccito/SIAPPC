@@ -96,10 +96,19 @@ export function BedMonitorPage() {
   // Lecturas reales del dispositivo, por la misma ruta que alimenta Sensores.
   // `refetchInterval`: el monitor tiene que envejecer solo; la Pi publica cada
   // segundo y una pantalla de cama que hay que recargar a mano no sirve.
+  //
+  // 2 s y no los 5 de la central: aquí hay UNA cama y la consulta es ligera,
+  // mientras que la central pide las veinte de la unidad. Además esta es la
+  // pantalla en la que alguien se queda mirando una cifra concreta, y ahí cinco
+  // segundos se notan.
+  //
+  // Preguntar más a menudo que el TTL de la caché del servidor (3 s) no
+  // traería nada: la mayoría de estas peticiones las responde Redis sin tocar
+  // la base, que es justo para lo que está.
   const readings = useQuery({
     queryKey: ['readings', { device, limit: 60 }],
     queryFn: () => listReadings({ device, limit: 60 }),
-    refetchInterval: 5000,
+    refetchInterval: 2000,
   })
 
   // El id numérico del paciente, que es lo que piden `/historia/:id` y `/soap`.

@@ -124,10 +124,20 @@ services:
       # que permite correr más de una réplica del backend: con el contador en
       # memoria, cada réplica dejaba pasar el límite completo por su cuenta.
       REDIS_URL: redis://:${REDIS_PASSWORD:?falta REDIS_PASSWORD en el .env de la raiz}@redis:6379
-      # Segundos que vive en caché una respuesta de /sensors/*. La Pi publica
-      # cada segundo, así que 10 s recorta la mayoría de las consultas del
-      # tablero sin que los datos se vean viejos.
-      SENSORS_CACHE_TTL: 10
+      # Segundos que vive en caché una respuesta de /sensors/*.
+      #
+      # Estaba en 10 y era demasiado para una pantalla de vigilancia: se SUMA al
+      # sondeo del navegador (5 s), así que el monitor de cabecera podía enseñar
+      # una cifra de hace quince segundos. En la Pi la lectura ya estaba, y en la
+      # base también; la espera era toda nuestra.
+      #
+      # 3 s sigue absorbiendo lo que la caché existe para absorber: varias
+      # tabletas y varios puestos mirando la MISMA cama no multiplican las
+      # consultas a la base, que es el caso que importa. Lo que se pierde es
+      # ahorro cuando hay un solo espectador, y ahí no había nada que ahorrar.
+      #
+      # 0 desactiva la caché por completo.
+      SENSORS_CACHE_TTL: 3
       # Techo de peticiones por minuto y por IP. Sin definirla en el .env vale
       # 100, que es lo de siempre. Se sube solo para las pruebas de carga: todos
       # los usuarios virtuales de JMeter salen de una IP y comparten el cubo.

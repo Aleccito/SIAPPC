@@ -179,6 +179,17 @@ export function BedTable({ beds }: { beds: MonitoredBed[] }) {
                         {t(metric.unit)}
                       </Typography>
                     </Stack>
+                    {/* La lectura envejeció: la columna enseña la raya y el
+                        último valor real queda debajo, en pequeño. */}
+                    {metric.lastKnown !== null && (
+                      <Typography
+                        variant="caption"
+                        color="text.disabled"
+                        sx={{ display: 'block', fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        {t('central.lastKnown', { value: String(metric.lastKnown) })}
+                      </Typography>
+                    )}
                   </TableCell>
                 ))}
 

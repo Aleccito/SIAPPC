@@ -230,6 +230,12 @@ def main() -> int:
     snapshot = VitalsSnapshot()
     exit_reason = "shutdown"
 
+    # Muestras de ECG a la espera de salir, y cuando salio el ultimo lote.
+    # Se acumulan aca y no dentro del publicador porque el publicador no sabe
+    # nada del ritmo del bucle de adquisicion: lo suyo es mandar lo que le den.
+    onda: list[float] = []
+    onda_enviada = time.time()
+
     try:
         while ui.handle_events():
             # Con los sensores apagados no hay nada que procesar: los numeros
@@ -252,6 +258,13 @@ def main() -> int:
                     millivolts, beats = ecg_proc.process(chunk.values)
                     if recording:
                         ui.push_ecg(millivolts)
+                        # La misma senial que se dibuja aca se acumula para
+                        # mandarla al navegador. Es `millivolts` y no
+                        # `chunk.values` a proposito: el crudo del ADS1115 trae
+                        # la deriva de linea de base del AD8232, y quien mire la
+                        # onda en el tablero tiene que ver lo mismo que quien
+                        # esta de pie frente a esta pantalla.
+                        onda.extend(millivolts)
                         for _ in range(beats):
                             ui.on_beat(ppg_proc.spo2)
                             measurement.note_beat()
@@ -300,6 +313,21 @@ def main() -> int:
                 if alarms.should_sound():
                     sound.alarm(alarms.highest_level)
                 publisher.tick(snapshot, alarms)
+
+                # La onda sale una vez por segundo, no muestra a muestra: un
+                # mensaje MQTT por cada una de las 250 muestras seria 250 viajes
+                # por segundo y por cama para dibujar lo mismo.
+                #
+                # Va a la frecuencia nativa del ADS1115, sin diezmar. A 250 Hz un
+                # lote de un segundo son 250 muestras —por debajo del tope de 500
+                # que valida el backend— y unos 1,7 KB/s por cama, que en la red
+                # del hospital no es nada. Remuestrear ahorraria la mitad a
+                # cambio de deformar los complejos, que es justo lo que se quiere
+                # ver.
+                if onda and time.time() - onda_enviada >= 1.0:
+                    publisher.publish_waveform(onda, cfg.ecg.sample_rate_hz)
+                    onda.clear()
+                    onda_enviada = time.time()
 
             measurement.update(snapshot)
             ui.render(snapshot)
