@@ -18,7 +18,6 @@ import { authHeader, closeConnections, flushRedis, loginAsAdmin, resetDatabase }
 const OTRO_HOSPITAL = 999;
 
 const PACIENTE = {
-  module: "KY-001",
   reason: "Prueba de hospital",
   fechaNacimiento: "1990-04-04",
   sexo: "F",

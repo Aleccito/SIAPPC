@@ -21,7 +21,6 @@ import { authHeader, closeConnections, flushRedis, loginAsAdmin, resetDatabase }
 // cambio de estado mal propagado se nota.
 
 const PACIENTE = {
-  module: "KY-001",
   reason: "Politraumatismo",
   fechaNacimiento: "1980-01-15",
   sexo: "M",
@@ -363,6 +362,98 @@ describe("Admisión — camas, ingresos y citas", () => {
         headers: medico,
       });
       assert.equal(lectura.statusCode, 200, lectura.body);
+    });
+  });
+
+  // PUT /beds/capacity: cuántas camas tiene la unidad, como un número.
+  //
+  // Se comprueba lo que distingue a este endpoint de repetir POST /beds: que es
+  // idempotente, que rellena los huecos de numeración en vez de seguir
+  // contando, y que NO se lleva por delante una cama con paciente dentro.
+  //
+  // Va sobre Trauma y no sobre la UCI a propósito: las pruebas de arriba dejan
+  // camas en la UCI —`resetDatabase` corre una vez por archivo, no por prueba—
+  // y estas afirmaciones son sobre el total exacto de la unidad.
+  describe("capacidad de camas", () => {
+    const UNIDAD = 2;
+
+    async function fijar(total: number) {
+      return app.inject({
+        method: "PUT",
+        url: "/beds/capacity",
+        headers: administrativo,
+        payload: { unitId: UNIDAD, total },
+      });
+    }
+
+    /** Los códigos de las camas activas de la unidad, ordenados. */
+    async function codigos(): Promise<string[]> {
+      const res = await app.inject({ method: "GET", url: "/beds", headers: administrativo });
+      assert.equal(res.statusCode, 200, res.body);
+      return (res.json() as { unitId: string; code: string }[])
+        .filter((cama) => cama.unitId === String(UNIDAD))
+        .map((cama) => cama.code)
+        .sort();
+    }
+
+    it("crea las camas que faltan y es idempotente", async () => {
+      const res = await fijar(4);
+      assert.equal(res.statusCode, 200, res.body);
+      assert.equal(res.json().total, 4);
+      assert.deepEqual(await codigos(), ["C-01", "C-02", "C-03", "C-04"]);
+
+      // La misma petición otra vez deja 4, no 8: es el caso real de pulsarlo
+      // dos veces porque la primera respuesta tardó.
+      const otra = await fijar(4);
+      assert.equal(otra.json().total, 4);
+      assert.deepEqual(await codigos(), ["C-01", "C-02", "C-03", "C-04"]);
+    });
+
+    it("reducir da de baja las libres, y el hueco lo reutiliza la siguiente", async () => {
+      await fijar(3);
+      assert.deepEqual(await codigos(), ["C-01", "C-02", "C-03"]);
+
+      await fijar(2);
+      assert.deepEqual(await codigos(), ["C-01", "C-02"], "se quita la de código más alto");
+
+      // Al volver a subir NO aparece una C-04: el hueco de la C-03 se rellena
+      // primero, que es lo que mantiene la numeración sin agujeros.
+      await fijar(3);
+      assert.deepEqual(await codigos(), ["C-01", "C-02", "C-03"]);
+    });
+
+    it("no deja sin cama a un paciente ingresado", async () => {
+      await fijar(2);
+      const res = await app.inject({ method: "GET", url: "/beds", headers: administrativo });
+      const cama = (res.json() as { id: string; unitId: string }[]).find(
+        (c) => c.unitId === String(UNIDAD),
+      );
+      assert.ok(cama);
+
+      const paciente = await nuevoPaciente("8-777-7777", "Ocupa Cama");
+      const ingreso = await app.inject({
+        method: "POST",
+        url: "/admissions",
+        headers: administrativo,
+        payload: { patientId: Number(paciente), bedId: Number(cama.id), reason: "Politrauma" },
+      });
+      assert.equal(ingreso.statusCode, 201, ingreso.body);
+
+      // Pedir menos camas de las ocupadas se rechaza ENTERO: el servidor no
+      // decide por su cuenta a qué paciente deja fuera.
+      const rechazo = await fijar(0);
+      assert.equal(rechazo.statusCode, 409, rechazo.body);
+      assert.deepEqual(await codigos(), ["C-01", "C-02"], "no se tocó ninguna cama");
+    });
+
+    it("la capacidad la fija quien puede editar admisiones, no cualquiera", async () => {
+      const res = await app.inject({
+        method: "PUT",
+        url: "/beds/capacity",
+        headers: medico,
+        payload: { unitId: UNIDAD, total: 5 },
+      });
+      assert.equal(res.statusCode, 403, res.body);
     });
   });
 

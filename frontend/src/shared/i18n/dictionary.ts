@@ -161,6 +161,7 @@ const es = {
   'action.signIn': 'Iniciar sesión',
   'action.signOut': 'Cerrar sesión',
   'action.cancel': 'Cancelar',
+  'action.save': 'Guardar',
   'action.close': 'Cerrar',
 
   'brand.name': 'SIAPPC',
@@ -226,7 +227,6 @@ const es = {
   'dash.subtitle.generic': 'Resumen de la plataforma.',
 
   'dash.pendingEndpoint': 'Pendiente: {endpoint}',
-  'dash.pendingShort': 'Pendiente',
 
   'dash.widget.medicoKpis': 'Resumen del día',
   'dash.widget.assignedPatients': 'Monitoreo de pacientes politraumatizados (ATLS)',
@@ -261,7 +261,6 @@ const es = {
   'dash.col.location': 'Ubicación',
   'dash.col.vitals': 'Signos vitales',
   'dash.col.glasgowTriage': 'Glasgow / TR',
-  'dash.col.module': 'Módulo',
   'dash.col.bed': 'Cama',
   'dash.col.sensors': 'Sensores',
   'dash.col.lastReading': 'Última lectura',
@@ -299,8 +298,6 @@ const es = {
   'dash.alerts.ackPending':
     'Reconocer una alerta desde aquí queda pendiente del endpoint de actualización.',
   'dash.trends.empty': 'Ningún paciente a cargo tiene alertas abiertas.',
-  'dash.nurseAssignments.bedsPending':
-    'La cama y la unidad de cada paciente llegarán con el módulo de camas.',
   'dash.reminders.pending':
     'Los recordatorios de procedimiento y observación aún no tienen dónde guardarse.',
   'dash.nursingNotes.pending': 'Las notas de enfermería llegarán con el módulo de Notas SOAP.',
@@ -710,6 +707,27 @@ const es = {
   'admissionState.cancelado': 'Cancelado',
 
   'beds.new': 'Registrar cama',
+  'patients.action.assignBed': 'Asignar cama',
+  'patients.action.changeBed': 'Cambiar de cama',
+  'patients.bed.title': 'Cama del paciente',
+  'patients.bed.field': 'Cama libre',
+  'patients.bed.placing': 'Colocar a {patient} en una cama.',
+  'patients.bed.moving': '{patient} está en {bed}. Se le pasará a la que elija.',
+  'patients.bed.submit': 'Asignar',
+  'patients.bed.noneFree':
+    'No hay camas libres. Añada camas o libere alguna desde Admisión.',
+  'patients.bed.loadError': 'No se pudo cargar la lista de camas',
+  'patients.bed.error': 'No se pudo asignar la cama',
+  'patients.bed.defaultReason': 'Ingreso registrado desde la lista de pacientes',
+
+  'beds.capacity.title': 'Camas por unidad',
+  'beds.capacity.hint':
+    'Indique cuántas camas tiene cada unidad. Las que falten se crean numeradas; las que sobren se retiran, siempre que estén libres.',
+  'beds.capacity.field': 'Camas',
+  'beds.capacity.current': '{occupied} ocupadas de {total}',
+  'beds.capacity.belowOccupied': 'Hay {occupied} camas ocupadas',
+  'beds.capacity.error': 'No se pudo cambiar la cantidad de camas',
+  'beds.capacity.noUnits': 'No hay unidades registradas en este hospital.',
   'beds.save': 'Guardar',
   'beds.free': 'Libre',
   'beds.empty': 'Esta unidad todavía no tiene camas registradas.',

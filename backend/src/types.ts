@@ -38,8 +38,17 @@ export type RoleSummary = {
   userCount: number;
 };
 
-export const serviceModules = ["KY-001", "KY-004", "KY-012", "KY-019"] as const;
-export type ServiceModule = (typeof serviceModules)[number];
+// Los "módulos de atención" (KY-001, KY-004…) se retiraron de la aplicación.
+// Eran una lista fija de códigos que NO decía dónde está el paciente, y lo que
+// hace falta saber de él es su cama (`ingreso` → `cama` → `unidad`).
+//
+// La columna `paciente.modulo` sigue en la base con lo que se registró en su
+// día —borrarla es una migración que destruye ese histórico— pero no se pide al
+// registrar, no se escribe y ya no sale en ninguna respuesta.
+//
+// OJO al leer este archivo: los `modulo` de `PermisoRow`, `RolPermisoRow` y
+// `RolePermission` son otra cosa por completo (pacientes, alertas, reportes…),
+// son los módulos de la matriz de permisos y no tienen nada que ver.
 
 export type PatientStatus = "waiting" | "inService" | "discharged";
 
@@ -57,12 +66,6 @@ export type Patient = {
   id: string;
   name: string;
   document: string;
-  /**
-   * Módulo de atención. Nulable porque el alta dejó de preguntarlo: solo lo
-   * tienen los pacientes registrados cuando el formulario aún lo pedía. Quien
-   * lo pinte tiene que contemplar el null en vez de rellenarlo.
-   */
-  module: ServiceModule | null;
   status: PatientStatus;
   arrivedAt: string;
   reason: string;
@@ -181,7 +184,6 @@ export type PacienteRow = {
   paciente_id: number;
   nombre: string;
   cedula: string;
-  modulo: ServiceModule | null;
   estado: PatientStatus;
   motivo_consulta: string | null;
   fecha_llegada: string;
@@ -432,7 +434,6 @@ export type AssignedPatient = {
   id: string;
   name: string;
   document: string;
-  module: ServiceModule | null;
   status: PatientStatus;
   arrivedAt: string;
   reason: string;
@@ -451,6 +452,12 @@ export type AssignedPatient = {
   /** Unidad y cama del ingreso activo; null si no lo tiene o si no hay cama. */
   unit: string | null;
   bed: string | null;
+  /**
+   * Ingreso abierto del paciente, o null si no tiene ninguno. Va en el DTO
+   * porque es lo que permite cambiarle la cama desde la lista de pacientes sin
+   * volver a pedir sus ingresos: `PATCH /admissions/:id` necesita este id.
+   */
+  admissionId: string | null;
   /**
    * Fecha civil de nacimiento ("1990-05-14T00:00:00-05:00"). La EDAD no viaja:
    * no se guarda en ninguna columna y calcularla en el servidor la congelaría
@@ -615,6 +622,13 @@ export type BedOccupancy = {
   outOfService: number;
   /** Ocupadas sobre el total, 0–1. `total` en cero da 0 y no una división. */
   rate: number;
+};
+
+/** Lo que devuelve PUT /beds/capacity: cuántas camas tiene la unidad al final. */
+export type BedCapacity = {
+  unitId: string;
+  unit: string;
+  total: number;
 };
 
 export const admissionTypes = ["urgencia", "programado", "traslado"] as const;

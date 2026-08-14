@@ -42,6 +42,7 @@ import {
 } from '../api/admissionsApi'
 import { admissionTypes, bedStates } from '../types'
 import type { AdmissionType, BedState } from '../types'
+import { BedCapacityCard } from '../components/BedCapacityCard'
 import { listPatients } from '../../patients/api/patientsApi'
 import { listUnits, listUsers } from '../../admin/api/usersApi'
 import {
@@ -315,6 +316,10 @@ export function AdmissionsPage() {
 
       {tab === 1 && (
         <Stack spacing={2}>
+          {/* Primero cuántas camas hay —la pregunta que se hace al montar la
+              unidad—, y luego la tabla para tocar una cama concreta. */}
+          <BedCapacityCard onSaved={() => refresh('beds', 'bedOccupancy')} />
+
           <Button
             variant="contained"
             startIcon={<BedOutlinedIcon />}

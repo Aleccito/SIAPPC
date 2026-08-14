@@ -13,6 +13,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { registerCrud } from "../lib/crud.ts";
+import { conflict, notFound, parseOr400 } from "../lib/http.ts";
 import { prisma } from "../lib/prisma.ts";
 import { bedStates } from "../types.ts";
 import type { Bed, BedOccupancy, BedState } from "../types.ts";
@@ -60,6 +61,13 @@ const bedSchema = z.object({
 });
 
 const bedPatchSchema = bedSchema.partial();
+
+// El techo no es una regla clínica, es un cortafuegos: un cero de más en el
+// formulario no debe crear diez mil camas en una transacción.
+const capacitySchema = z.object({
+  unitId: z.coerce.number().int().positive(),
+  total: z.coerce.number().int().min(0).max(500),
+});
 
 type BedInput = z.infer<typeof bedSchema>;
 
@@ -123,6 +131,119 @@ export default async function bedsRoutes(app: FastifyInstance) {
           outOfService: Number(row.fuera ?? 0),
           rate: total === 0 ? 0 : occupied / total,
         };
+      });
+    },
+  );
+
+  // Capacidad de una unidad: cuántas camas tiene, como UN número.
+  //
+  // El CRUD de abajo da de alta camas de una en una, que es lo correcto cuando
+  // se añade una cama concreta con su código. Pero la pregunta que se hace de
+  // verdad al montar una unidad es "¿de cuántas camas dispone la UCI?", y
+  // responderla a base de doce altas seguidas es una forma tonta de gastar el
+  // tiempo de alguien.
+  //
+  // Es idempotente: se manda el total que debe haber, no cuántas añadir. Pedir
+  // dos veces 12 deja 12, no 24 — importa porque este botón se pulsa dos veces
+  // cuando la primera respuesta tarda.
+  //
+  // Reducir NO borra camas ocupadas. Si se piden menos de las que están en uso,
+  // la operación se rechaza entera en vez de decidir por su cuenta a qué
+  // paciente deja sin cama.
+  app.put(
+    "/beds/capacity",
+    { preHandler: [app.requirePermission("admisiones", "editar")] },
+    async (req) => {
+      const { unitId, total } = parseOr400(capacitySchema, req.body);
+
+      // La unidad tiene que ser de este hospital: el identificador viene del
+      // cuerpo, así que sin esta comprobación se podrían montar camas en la
+      // unidad de otro hospital.
+      const unidad = await prisma.unidad.findFirst({
+        where: { unidad_id: unitId, hospital_id: req.hospitalId },
+        select: { unidad_id: true, nombre: true },
+      });
+      if (!unidad) throw notFound("La unidad no existe en este hospital");
+
+      return prisma.$transaction(async (tx) => {
+        const existentes = await tx.cama.findMany({
+          where: { unidad_id: unitId, activo: true },
+          select: { cama_id: true, codigo: true, ingresos: { where: { estado: "activo" }, select: { ingreso_id: true }, take: 1 } },
+          orderBy: { codigo: "asc" },
+        });
+
+        const ocupadas = existentes.filter((cama) => cama.ingresos.length > 0);
+        if (total < ocupadas.length) {
+          throw conflict(
+            `${unidad.nombre} tiene ${ocupadas.length} camas ocupadas: no puede quedarse con ${total}`,
+          );
+        }
+
+        if (total > existentes.length) {
+          let faltan = total - existentes.length;
+
+          // Primero se REACTIVAN las que se dieron de baja aquí mismo, antes de
+          // crear ninguna.
+          //
+          // No es un atajo, es obligatorio: la baja es lógica (`activo=false`)
+          // pero `uq_cama_unidad_codigo` es (unidad_id, codigo) y NO distingue
+          // activas de inactivas. Un INSERT de C-03 con una C-03 inactiva
+          // delante choca contra el índice, y con `skipDuplicates` se descarta
+          // en silencio: la unidad se quedaba con menos camas de las pedidas y
+          // el endpoint respondía como si todo hubiera ido bien.
+          const bajas = await tx.cama.findMany({
+            where: { unidad_id: unitId, activo: false },
+            select: { cama_id: true },
+            orderBy: { codigo: "asc" },
+            take: faltan,
+          });
+          if (bajas.length > 0) {
+            await tx.cama.updateMany({
+              where: { cama_id: { in: bajas.map((cama) => cama.cama_id) } },
+              // Vuelve disponible: una cama que regresa al servicio no arrastra
+              // el estado que tenía el día que se retiró.
+              data: { activo: true, estado: "disponible" },
+            });
+            faltan -= bajas.length;
+          }
+
+          if (faltan > 0) {
+            // Los códigos se numeran rellenando huecos, no continuando desde el
+            // último, para que la unidad no acabe con una numeración con
+            // agujeros que nadie sabe leer. Se comparan contra TODAS las camas
+            // de la unidad —activas e inactivas— por lo mismo que arriba: el
+            // índice único no distingue.
+            const todas = await tx.cama.findMany({
+              where: { unidad_id: unitId },
+              select: { codigo: true },
+            });
+            const usados = new Set(todas.map((cama) => cama.codigo));
+            const nuevas: { unidad_id: number; codigo: string }[] = [];
+            for (let n = 1; nuevas.length < faltan; n += 1) {
+              const codigo = `C-${String(n).padStart(2, "0")}`;
+              if (!usados.has(codigo)) nuevas.push({ unidad_id: unitId, codigo });
+            }
+            // `skipDuplicates` queda solo para la carrera contra otra pestaña
+            // haciendo esto mismo; la unicidad la garantiza el índice.
+            await tx.cama.createMany({ data: nuevas, skipDuplicates: true });
+          }
+        }
+
+        if (total < existentes.length) {
+          // Se quitan las libres de código más alto: son las últimas que se
+          // añadieron y las que menos historia arrastran.
+          const libres = existentes.filter((cama) => cama.ingresos.length === 0);
+          const sobran = libres.slice(-(existentes.length - total));
+          await tx.cama.updateMany({
+            where: { cama_id: { in: sobran.map((cama) => cama.cama_id) } },
+            // Baja lógica, igual que el DELETE del CRUD: los ingresos pasados
+            // apuntan a la cama y la bitácora la referencia por id.
+            data: { activo: false },
+          });
+        }
+
+        const camas = await tx.cama.count({ where: { unidad_id: unitId, activo: true } });
+        return { unitId: String(unitId), unit: unidad.nombre, total: camas };
       });
     },
   );

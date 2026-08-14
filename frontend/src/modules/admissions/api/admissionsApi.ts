@@ -4,6 +4,7 @@ import type {
   Admission,
   Appointment,
   Bed,
+  BedCapacity,
   BedOccupancy,
   NewAdmission,
   NewAppointment,
@@ -33,6 +34,19 @@ export async function addBed(bed: NewBed): Promise<Bed> {
 
 export async function updateBed(id: string, changes: Partial<NewBed>): Promise<Bed> {
   return request<Bed>(`/beds/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })
+}
+
+/**
+ * Fija cuántas camas tiene una unidad. Se manda el total que debe haber, no
+ * cuántas añadir: es idempotente, así que pulsar dos veces no duplica nada.
+ *
+ * El servidor responde 409 si se piden menos camas de las que están ocupadas.
+ */
+export async function setBedCapacity(unitId: string, total: number): Promise<BedCapacity> {
+  return request<BedCapacity>('/beds/capacity', {
+    method: 'PUT',
+    body: JSON.stringify({ unitId, total }),
+  })
 }
 
 // ---------------------------------------------------------------------------

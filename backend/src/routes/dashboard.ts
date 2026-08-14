@@ -29,7 +29,6 @@ import type {
   DeviceStatus,
   PatientStatus,
   PatientVitals,
-  ServiceModule,
 } from "../types.ts";
 
 // Techo de la lista de pacientes a cargo. Un médico no lleva cien camas; el
@@ -194,7 +193,6 @@ export default async function dashboardRoutes(app: FastifyInstance) {
           id: String(paciente.paciente_id),
           name: paciente.nombre,
           document: paciente.cedula,
-          module: (paciente.modulo as ServiceModule | null) ?? null,
           status: paciente.estado as PatientStatus,
           arrivedAt: paciente.fecha_llegada.toISOString(),
           reason: paciente.motivo_consulta ?? "",
@@ -206,6 +204,7 @@ export default async function dashboardRoutes(app: FastifyInstance) {
           record: expediente ? String(expediente.expediente_id) : null,
           unit: cama?.unidad.nombre ?? null,
           bed: cama?.codigo ?? null,
+          admissionId: ingreso ? String(ingreso.ingreso_id) : null,
           birthDate: civilDateIso(paciente.fecha_nacimiento),
           // El tipo de ingreso es lo ÚNICO que la base sabe sobre por qué está
           // aquí: `ingreso.tipo` ∈ {urgencia, programado, traslado}. No hay

@@ -62,11 +62,6 @@ export function PatientRecordHeader({ patient }: { patient: Patient }) {
               color={STATUS_COLOR[patient.status]}
               label={t(`patientStatus.${patient.status}`)}
             />
-            {/* Solo los pacientes registrados cuando el alta pedía módulo lo
-                tienen. Sin él no se pinta un chip vacío. */}
-            {patient.module && (
-              <Chip size="small" variant="outlined" color="primary" label={patient.module} />
-            )}
           </Stack>
 
           <Typography

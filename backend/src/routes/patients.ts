@@ -32,11 +32,6 @@ function toPatient(row: PacienteRow): Patient {
     id: String(row.paciente_id),
     name: row.nombre,
     document: row.cedula,
-    // Null es null: antes se caía a `serviceModules[0]`, y eso le atribuía el
-    // módulo KY-001 a cualquier paciente que no tuviera ninguno. Desde que el
-    // alta dejó de preguntarlo, ese apaño habría puesto a TODOS los pacientes
-    // nuevos en un módulo donde nadie los ingresó.
-    module: (row.modulo ?? null) as Patient["module"],
     status: row.estado,
     arrivedAt: new Date(row.fecha_llegada).toISOString(),
     reason: row.motivo_consulta ?? "",

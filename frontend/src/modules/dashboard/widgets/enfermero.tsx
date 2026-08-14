@@ -46,7 +46,6 @@ export function NurseAssignmentsWidget() {
         <TableHead>
           <TableRow>
             <TableCell>{t('dash.col.patient')}</TableCell>
-            <TableCell>{t('dash.col.module')}</TableCell>
             <TableCell>{t('dash.col.bed')}</TableCell>
             <TableCell>{t('dash.col.device')}</TableCell>
           </TableRow>
@@ -59,15 +58,20 @@ export function NurseAssignmentsWidget() {
                   {patient.name}
                 </Typography>
               </TableCell>
-              <TableCell>{patient.module ?? '—'}</TableCell>
               <TableCell>
-                {/* PENDIENTE: la cama y su unidad los entrega `GET /beds`, del
-                    módulo de ingreso/egreso/camas. Hoy `paciente.modulo` es el
-                    módulo de atención, que no es la cama, así que la columna
-                    queda vacía en vez de mostrar una en su lugar. */}
-                <Typography variant="caption" color="text.disabled">
-                  {t('dash.pendingShort')}
-                </Typography>
+                {/* La cama sale del ingreso activo del paciente. Antes esta
+                    columna decía "pendiente" y a su lado había otra con el
+                    módulo de atención (KY-001…), que no era una ubicación:
+                    ahora está la cama de verdad y el módulo desapareció. */}
+                {patient.bed ? (
+                  <Typography variant="body2">
+                    {t('dash.bedAt', { unit: patient.unit ?? '', bed: patient.bed })}
+                  </Typography>
+                ) : (
+                  <Typography variant="caption" color="text.disabled">
+                    {t('dash.noBed')}
+                  </Typography>
+                )}
               </TableCell>
               <TableCell>
                 {patient.device ? (
@@ -84,10 +88,6 @@ export function NurseAssignmentsWidget() {
           ))}
         </TableBody>
       </Table>
-      <Divider />
-      <Typography variant="caption" color="text.disabled">
-        {t('dash.nurseAssignments.bedsPending')}
-      </Typography>
     </Stack>
   )
 }

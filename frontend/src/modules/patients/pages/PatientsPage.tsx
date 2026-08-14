@@ -32,6 +32,7 @@ import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
+import { AssignBedDialog } from '../components/AssignBedDialog'
 import { NewPatientDialog } from '../components/NewPatientDialog'
 import { ageFrom, initialsOf } from '../presentation'
 import { KpiCard } from '../../dashboard/components/KpiCard'
@@ -150,6 +151,8 @@ export function PatientsPage() {
   const [term, setTerm] = useState('')
   const [page, setPage] = useState(0)
   const [formOpen, setFormOpen] = useState(false)
+  // Paciente al que se le está asignando cama; null = dialogo cerrado.
+  const [bedFor, setBedFor] = useState<AssignedPatient | null>(null)
 
   // Los memos dependen de `patients.data` y no de una copia con `?? []`: ese
   // literal sería un array nuevo en cada render y los recalcularía siempre.
@@ -415,7 +418,7 @@ export function PatientsPage() {
                 </TableHead>
                 <TableBody>
                   {shown.map((patient) => (
-                    <PatientRow key={patient.id} patient={patient} />
+                    <PatientRow key={patient.id} patient={patient} onAssignBed={setBedFor} />
                   ))}
                 </TableBody>
               </Table>
@@ -463,6 +466,7 @@ export function PatientsPage() {
       </Box>
 
       <NewPatientDialog open={formOpen} onClose={() => setFormOpen(false)} />
+      <AssignBedDialog patient={bedFor} onClose={() => setBedFor(null)} />
     </Stack>
   )
 }
@@ -495,7 +499,13 @@ function VitalCell({ value, tone }: { value: number | null; tone: 'error' | 'war
   )
 }
 
-function PatientRow({ patient }: { patient: AssignedPatient }) {
+function PatientRow({
+  patient,
+  onAssignBed,
+}: {
+  patient: AssignedPatient
+  onAssignBed: (patient: AssignedPatient) => void
+}) {
   const { t } = useLanguage()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
 
@@ -590,11 +600,19 @@ function PatientRow({ patient }: { patient: AssignedPatient }) {
         >
           <MoreHorizIcon fontSize="small" />
         </IconButton>
-        {/* El menú solo ofrece lo que existe: el monitor de cama del equipo del
-            paciente y su exploración física. No hay "dar de alta" ni "trasladar"
-            porque esta pantalla no escribe ingresos —eso es Admisión— y un
-            elemento de menú que abre un 403 es peor que no estar. */}
+        {/* El menú solo ofrece lo que existe: colocar al paciente en una cama,
+            el monitor de su equipo y su exploración física. No hay "dar de
+            alta" ni "trasladar" porque eso es Admisión, y un elemento de menú
+            que abre un 403 es peor que no estar. */}
         <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}>
+          <MenuItem
+            onClick={() => {
+              setAnchor(null)
+              onAssignBed(patient)
+            }}
+          >
+            {t(patient.bed ? 'patients.action.changeBed' : 'patients.action.assignBed')}
+          </MenuItem>
           {patient.device && (
             <MenuItem
               component={RouterLink}

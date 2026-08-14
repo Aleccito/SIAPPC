@@ -1,8 +1,8 @@
-// The hospital attends patients at numbered service modules. A patient is
-// always assigned to exactly one of them.
-export const serviceModules = ['KY-001', 'KY-004', 'KY-012', 'KY-019'] as const
-
-export type ServiceModule = (typeof serviceModules)[number]
+// Los "módulos de atención" (KY-001, KY-004…) ya no existen en la aplicación.
+// Eran una lista fija de códigos que no describía dónde está el paciente, y lo
+// que hace falta saber es su CAMA. La columna `paciente.modulo` sigue en la
+// base con lo que se registró en su día, pero ninguna pantalla la pide ni la
+// enseña, y la API ya no la entrega.
 
 export type PatientStatus = 'waiting' | 'inService' | 'discharged'
 
@@ -22,10 +22,6 @@ export type Patient = {
   id: string
   name: string
   document: string
-  // Nulable porque el alta dejó de preguntarlo: solo lo tienen los pacientes
-  // registrados cuando el formulario aún lo pedía. Quien lo pinte contempla el
-  // null en vez de rellenarlo.
-  module: ServiceModule | null
   status: PatientStatus
   arrivedAt: string
   reason: string

@@ -38,6 +38,13 @@ export type BedOccupancy = {
   rate: number
 }
 
+/** Lo que devuelve PUT /beds/capacity: cuántas camas tiene la unidad al final. */
+export type BedCapacity = {
+  unitId: string
+  unit: string
+  total: number
+}
+
 export const admissionTypes = ['urgencia', 'programado', 'traslado'] as const
 
 export type AdmissionType = (typeof admissionTypes)[number]
