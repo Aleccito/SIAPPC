@@ -3,14 +3,12 @@ import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Alert,
-  Box,
   Button,
   Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  LinearProgress,
   MenuItem,
   Paper,
   Select,
@@ -26,6 +24,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import BedOutlinedIcon from '@mui/icons-material/BedOutlined'
 import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
 import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined'
@@ -42,18 +41,19 @@ import {
 } from '../api/admissionsApi'
 import { admissionTypes, bedStates } from '../types'
 import type { AdmissionType, BedState } from '../types'
+import { BedCapacityCard } from '../components/BedCapacityCard'
 import { listPatients } from '../../patients/api/patientsApi'
 import { listUnits, listUsers } from '../../admin/api/usersApi'
 import {
   admissionStateColor,
   admissionStateKey,
+  admissionTypeKey,
   appointmentStateColor,
   appointmentStateKey,
   bedStateColor,
   bedStateKey,
 } from '../../dashboard/presentation'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
-import type { StringKey } from '../../../shared/i18n/dictionary'
 import { usePageHeader } from '../../../app/pageHeader'
 
 // Admisión: camas, ingresos y citas en una sola pantalla con tres pestañas.
@@ -65,12 +65,6 @@ import { usePageHeader } from '../../../app/pageHeader'
 // Quién puede escribir lo decide `rol_permiso` en el servidor. Aquí no hay
 // comprobación de rol: los botones se ven, y el 403 que devuelva el backend se
 // muestra tal cual. Esconder el botón y no revalidar sería lo peligroso.
-
-const ADMISSION_TYPE_KEY: Record<AdmissionType, StringKey> = {
-  urgencia: 'admissionType.urgencia',
-  programado: 'admissionType.programado',
-  traslado: 'admissionType.traslado',
-}
 
 const emptyBed = { code: '', unitId: '', type: '' }
 const emptyAdmission = { patientId: '', bedId: '', type: 'urgencia' as AdmissionType, reason: '' }
@@ -92,7 +86,7 @@ function toIso(local: string): string {
 }
 
 export function AdmissionsPage() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   usePageHeader(t('admissions.title'), t('admissions.subtitle'))
   const queryClient = useQueryClient()
   const [tab, setTab] = useState(0)
@@ -239,8 +233,8 @@ export function AdmissionsPage() {
           </Button>
 
           <TableContainer component={Paper}>
-            <Box sx={{ height: 4 }}>{loading && <LinearProgress />}</Box>
-            <Table size="small">
+            <LoadingBar loading={loading} />
+            <Table aria-label={t('admissions.tab.admissions')} size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>{t('admissions.col.patient')}</TableCell>
@@ -280,8 +274,8 @@ export function AdmissionsPage() {
                         </Typography>
                       )}
                     </TableCell>
-                    <TableCell>{t(ADMISSION_TYPE_KEY[admission.type])}</TableCell>
-                    <TableCell>{new Date(admission.admittedAt).toLocaleString(language)}</TableCell>
+                    <TableCell>{t(admissionTypeKey[admission.type])}</TableCell>
+                    <TableCell>{new Date(admission.admittedAt).toLocaleString(locale)}</TableCell>
                     <TableCell>
                       <Chip
                         size="small"
@@ -321,6 +315,10 @@ export function AdmissionsPage() {
 
       {tab === 1 && (
         <Stack spacing={2}>
+          {/* Primero cuántas camas hay —la pregunta que se hace al montar la
+              unidad—, y luego la tabla para tocar una cama concreta. */}
+          <BedCapacityCard onSaved={() => refresh('beds', 'bedOccupancy')} />
+
           <Button
             variant="contained"
             startIcon={<BedOutlinedIcon />}
@@ -331,8 +329,8 @@ export function AdmissionsPage() {
           </Button>
 
           <TableContainer component={Paper}>
-            <Box sx={{ height: 4 }}>{loading && <LinearProgress />}</Box>
-            <Table size="small">
+            <LoadingBar loading={loading} />
+            <Table aria-label={t('admissions.tab.beds')} size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>{t('beds.col.code')}</TableCell>
@@ -418,8 +416,8 @@ export function AdmissionsPage() {
           {staff.isError && <Alert severity="info">{t('appointments.staffForbidden')}</Alert>}
 
           <TableContainer component={Paper}>
-            <Box sx={{ height: 4 }}>{loading && <LinearProgress />}</Box>
-            <Table size="small">
+            <LoadingBar loading={loading} />
+            <Table aria-label={t('admissions.tab.appointments')} size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>{t('appointments.col.at')}</TableCell>
@@ -442,7 +440,7 @@ export function AdmissionsPage() {
                 {appointments.data?.items.map((appointment) => (
                   <TableRow key={appointment.id} hover>
                     <TableCell>
-                      {new Date(appointment.at).toLocaleString(language)}
+                      {new Date(appointment.at).toLocaleString(locale)}
                       <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                         {t('appointments.minutes', { minutes: String(appointment.durationMin) })}
                       </Typography>
@@ -505,6 +503,18 @@ export function AdmissionsPage() {
                 ))}
               </TextField>
 
+              {/* Sin camas `disponible` el desplegable solo ofrece "sin cama", y
+                  eso se lee como si la pantalla estuviera rota. Casi siempre lo
+                  que pasa es que las camas están en `limpieza`: el egreso las
+                  deja ahí y solo vuelven a estar libres a mano, desde la
+                  pestaña Camas. Decirlo aquí evita buscar el fallo donde no
+                  está. */}
+              {!beds.isPending && freeBeds.length === 0 && (
+                <Alert severity="info">
+                  {t('admissions.noFreeBeds', { total: String(beds.data?.items.length ?? 0) })}
+                </Alert>
+              )}
+
               <TextField
                 select
                 label={t('admissions.col.type')}
@@ -518,7 +528,7 @@ export function AdmissionsPage() {
               >
                 {admissionTypes.map((type) => (
                   <MenuItem key={type} value={type}>
-                    {t(ADMISSION_TYPE_KEY[type])}
+                    {t(admissionTypeKey[type])}
                   </MenuItem>
                 ))}
               </TextField>

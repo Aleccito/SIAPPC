@@ -5,8 +5,8 @@ distintos:
 
 | Carpeta | Qué es | Responde a |
 |---|---|---|
-| `backend/` | Suite automatizada (`node:test`), 84 pruebas | ¿Las reglas del negocio se sostienen? |
-| `postman/` | Colección funcional, 50 peticiones / 143 aserciones | ¿La API cumple su contrato de extremo a extremo? |
+| `backend/` | Suite automatizada (`node:test`), 99 pruebas | ¿Las reglas del negocio se sostienen? |
+| `postman/` | Colección funcional, 62 peticiones / 177 aserciones | ¿La API cumple su contrato de extremo a extremo? |
 | `jmeter/` | Plan de carga | ¿Aguanta con muchos usuarios a la vez? |
 | `reportes/` | Salidas generadas. **No se editan a mano.** | |
 
@@ -26,11 +26,12 @@ Corre desde `backend/`, porque necesita su `.env.test` y su `node_modules`:
 cd backend && npm test
 ```
 
-**84 pruebas, 84 pasan.** Cubren autenticación y revocación de sesión, la matriz
+**99 pruebas, 99 pasan.** Cubren autenticación y revocación de sesión, la matriz
 de permisos contra `rol_permiso`, el CRUD genérico, la caché de Redis, el límite
 de intentos de login, el ETL contra la base, las notas SOAP con su firma, el
-expediente, admisión (camas/ingresos/citas), el catálogo de variables y el
-aislamiento entre hospitales.
+expediente, admisión (camas/ingresos/citas), el personal a cargo de cada
+paciente (`medico_paciente`), el catálogo de variables y el aislamiento entre
+hospitales.
 
 Los archivos viven aquí pero importan el código con rutas relativas
 (`../../backend/src/...`). El `package.json` de esta carpeta existe por una sola
@@ -58,7 +59,11 @@ con id inexistente, `409` al duplicar cama y al meter dos pacientes en la misma,
 `409` por solape de agenda, `403` cuando la cuenta técnica intenta escribir
 contenido clínico, y `401` con el token ya revocado tras cerrar sesión.
 
-Última corrida: **50 peticiones, 143 aserciones, 0 fallos**, 9 s.
+Última corrida: **62 peticiones, 177 aserciones, 0 fallos**, 7 s.
+
+La carpeta **6. Personal a cargo del paciente** va ANTES de Administración a
+propósito: esa última cierra la sesión y revoca el token, así que cualquier
+carpeta posterior correría con un token muerto.
 
 **Hueco conocido:** la descarga de informes en CSV
 (`GET /reports/actividad-clinica.csv`) todavía no está en la colección ni en la
@@ -109,6 +114,15 @@ RATE_LIMIT_MAX=20000
 | `GET /beds/occupancy` (agregado) | 1281 | 69 ms | 163 | 256 | 301 |
 
 **5110 peticiones, 0 errores, 79 peticiones/s, media 64 ms.**
+
+> Esta tabla es de ANTES de añadir al plan
+> `GET /dashboard/assigned-patients` y `GET /patients/{id}/assignments`. Los dos
+> muestreadores nuevos ya están en el `.jmx` y responden 200 en una corrida de
+> humo, pero la medición sostenida está sin repetir: las cifras de arriba no los
+> incluyen. `assigned-patients` es la consulta más pesada del tablero —cruza
+> ingreso, cama, unidad, expediente, alertas y la última lectura de cada signo—
+> y con sesión de `admin` recorre TODOS los pacientes del hospital, así que se
+> espera por encima de las cuatro de la tabla.
 
 Lo que se lee de ahí:
 

@@ -4,7 +4,8 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.ts";
 import { revokeToken } from "../lib/sessions.ts";
 import { notFound } from "../lib/http.ts";
-import { verifyPassword } from "../lib/passwords.ts";
+import { costOf, verifyAgainstDummy, verifyPassword } from "../lib/passwords.ts";
+import { redis } from "../lib/redis.ts";
 import { toUser, USER_INCLUDE } from "./users.ts";
 import type { UsuarioConRelaciones } from "./users.ts";
 
@@ -16,6 +17,66 @@ const credentialsSchema = z.object({
 function attemptedEmail(req: FastifyRequest): string {
   const body = req.body as { email?: unknown } | undefined;
   return typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+}
+
+const LOGIN_WINDOW_SECONDS = 15 * 60;
+
+/**
+ * Con qué coste de bcrypt se compara cuando el correo no existe.
+ *
+ * Sale de la propia base —el coste va escrito en el prefijo de cada hash— para
+ * que fallar sin cuenta cueste lo mismo que fallar con ella. Fijarlo en el
+ * código volvería a separar los dos tiempos en cuanto la base y `SALT_ROUNDS`
+ * no coincidieran, que es exactamente lo que pasaba aquí.
+ *
+ * Se pregunta una vez por proceso y se guarda la promesa, no el número: así dos
+ * peticiones simultáneas al arrancar comparten la misma consulta en vez de
+ * lanzar una cada una. Si la consulta falla, `costOf` de una cadena vacía
+ * devuelve `SALT_ROUNDS` y el login sigue funcionando.
+ */
+let costoSeñuelo: Promise<number> | null = null;
+
+function dummyCost(): Promise<number> {
+  costoSeñuelo ??= prisma.usuario
+    .findFirst({ select: { password_hash: true }, orderBy: { usuario_id: "asc" } })
+    .then((fila) => costOf(fila?.password_hash ?? ""))
+    .catch(() => costOf(""));
+  return costoSeñuelo;
+}
+
+/**
+ * ¿Es este el PRIMER bloqueo de esta clave en esta ventana?
+ *
+ * `onExceeded` del plugin se dispara en CADA petición pasada del tope, no una
+ * sola vez al cruzarlo. Sin esta guarda, quien siga insistiendo escribe un
+ * renglón de auditoría por intento: la tabla que sirve para detectar el ataque
+ * se llena con el ataque, y encima con escrituras que nadie espera (la llamada
+ * va sin `await`, así que tampoco hay contrapresión). Comprobado antes del
+ * arreglo: 3 peticiones bloqueadas, 3 renglones idénticos.
+ *
+ * `SET NX EX` sobre la misma clave del límite: el primero se la lleva y los
+ * demás se van en silencio hasta que expira, igual que la ventana.
+ *
+ * Con Redis caído se devuelve `false`. No es una pérdida real: sin Redis el
+ * límite tampoco cuenta (`skipOnError` en app.ts), así que no habría 429 ni
+ * `onExceeded` que registrar; y ante la duda, perder un renglón es mejor que
+ * inundar la bitácora. Sin REDIS_URL —solo `npm run dev`— se registra siempre,
+ * que es lo que había.
+ */
+async function firstBlockInWindow(key: string): Promise<boolean> {
+  if (!redis) return true;
+  try {
+    const won = await redis.set(
+      `siappc-lb:${key}`,
+      "1",
+      "EX",
+      LOGIN_WINDOW_SECONDS,
+      "NX",
+    );
+    return won === "OK";
+  } catch {
+    return false;
+  }
 }
 
 // Queda constancia del bloqueo en la misma bitácora que el resto: contar
@@ -42,7 +103,7 @@ async function recordBlockedLogin(email: string, ip: string): Promise<void> {
 export default async function authRoutes(app: FastifyInstance) {
   const loginRateLimit = {
     max: 5,
-    timeWindow: "15 minutes",
+    timeWindow: LOGIN_WINDOW_SECONDS * 1000,
     // La clave junta IP y correo intentado. Solo con la IP, un atacante desde
     // otra red deja fuera al usuario legítimo; solo con el correo, basta rotar
     // direcciones. El techo global de 100/min cubre el caso de una sola IP
@@ -52,10 +113,15 @@ export default async function authRoutes(app: FastifyInstance) {
     // cuerpo todavía no está parseado y `req.body` sería undefined.
     hook: "preHandler" as const,
     keyGenerator: (req: FastifyRequest) => `${req.ip}|${attemptedEmail(req)}`,
-    onExceeded: (req: FastifyRequest) => {
-      recordBlockedLogin(attemptedEmail(req), req.ip).catch((err: unknown) => {
-        req.log.error({ err }, "auth: no se pudo registrar el bloqueo de login");
-      });
+    onExceeded: (req: FastifyRequest, key: string) => {
+      firstBlockInWindow(key)
+        .then((primero) => {
+          if (!primero) return;
+          return recordBlockedLogin(attemptedEmail(req), req.ip);
+        })
+        .catch((err: unknown) => {
+          req.log.error({ err }, "auth: no se pudo registrar el bloqueo de login");
+        });
     },
   };
 
@@ -73,8 +139,20 @@ export default async function authRoutes(app: FastifyInstance) {
       include: USER_INCLUDE,
     });
 
-    // Same error for "no existe" and "clave incorrecta": don't leak which one failed.
-    if (!row || !row.activo || !(await verifyPassword(password, row.password_hash))) {
+    // Same error for "no existe" and "clave incorrecta": don't leak which one
+    // failed. El mensaje ya era igual; lo que delataba la diferencia era el
+    // TIEMPO — sin usuario no se llegaba a bcrypt y la respuesta salía en 8 ms
+    // en vez de 110. Sin cuenta se compara igualmente contra un hash de mentira
+    // (ver verifyAgainstDummy) para que las dos ramas cuesten lo mismo.
+    //
+    // La cuenta suspendida entra por la misma puerta y a propósito: si se
+    // cortara antes de comparar, volvería a haber dos tiempos distintos y
+    // "suspendida" sería distinguible de "no existe".
+    const passwordOk = row
+      ? await verifyPassword(password, row.password_hash)
+      : await verifyAgainstDummy(password, await dummyCost());
+
+    if (!row || !row.activo || !passwordOk) {
       return reply.code(401).send({ error: "Credenciales inválidas" });
     }
 

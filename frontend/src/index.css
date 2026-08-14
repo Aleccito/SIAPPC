@@ -4,3 +4,61 @@ body,
   height: 100%;
   margin: 0;
 }
+
+/* La aplicación es de tema claro y no tiene modo oscuro. Decirlo aquí es lo que
+   hace que el navegador pinte en claro lo que dibuja él y no nosotros —las
+   barras de desplazamiento y los controles nativos—, en vez de dejarlos oscuros
+   sobre una interfaz blanca en un equipo configurado en oscuro. */
+:root {
+  color-scheme: light;
+}
+
+/* Toque, en todo lo pulsable.
+
+   `touch-action: manipulation` quita la espera de ~300 ms que el navegador móvil
+   se toma tras cada toque por si viene un segundo toque de zoom. No desactiva el
+   zoom con dos dedos: solo el de doble toque, que aquí no hace falta.
+
+   El resalte por defecto de Android es un rectángulo azul que ignora el radio de
+   los botones y aparece sobre las tarjetas enteras. Se sustituye por uno tenue;
+   el estado real de pulsado ya lo da el `scale(0.97)` del tema. */
+button,
+[role='button'],
+a,
+label,
+summary,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgb(15 23 42 / 0.08);
+}
+
+/* Titulares sin viudas: `balance` reparte las líneas para que la última no
+   quede con una sola palabra colgando. Se limita a los seis niveles de
+   encabezado porque el navegador solo equilibra unas pocas líneas y en un
+   párrafo largo no hace nada. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-wrap: balance;
+}
+
+/* Al saltar a un ancla, el destino no debe quedar pegado bajo la barra
+   superior. */
+:target {
+  scroll-margin-top: 16px;
+}
+
+/* Llegar al final de un diálogo o de un panel no arrastra la página de detrás.
+   MUI ya bloquea el desplazamiento del cuerpo mientras hay un diálogo abierto,
+   pero no en los `Popover` —el de la campana, sin ir más lejos—, y ahí el
+   encadenamiento sí ocurre. */
+.MuiDialog-paper,
+.MuiPopover-paper,
+.MuiDrawer-paper {
+  overscroll-behavior: contain;
+}

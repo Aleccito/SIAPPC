@@ -5,17 +5,21 @@ import {
   Alert,
   Box,
   Button,
-  LinearProgress,
   Stack,
   Tab,
   Tabs,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { EXPLORACION_TABS, K, formularioVacio } from '../components/exploracionFisica'
 import type { ExploracionForm, Hallazgo, Region, Tecnica } from '../components/exploracionFisica'
 import { SomatometriaCard } from '../components/SomatometriaCard'
 import { SignosVitalesIngresoCard } from '../components/SignosVitalesIngresoCard'
 import { ExploracionRegiones } from '../components/ExploracionRegiones'
+import { ResumenExploracion } from '../components/ResumenExploracion'
+import { listMonitoredBeds } from '../../monitoring/api/monitoringApi'
+import { VitalsMonitor } from '../../monitoring/components/VitalsMonitor'
+import { listReadings } from '../../sensors/api/sensorsApi'
 import { getPatient } from '../../patients/api/patientsApi'
 import { usePageHeader } from '../../../app/pageHeader'
 import { getExploracion, saveExploracion, dtoAFormulario } from '../api/exploracionApi'
@@ -72,6 +76,27 @@ export function ExploracionFisicaPage() {
     if (exploracion.data) setForm(dtoAFormulario(exploracion.data))
   }, [exploracion.data])
 
+  // Equipo a pie de cama de este paciente, para la pestaña de Monitoreo. La
+  // relación paciente → dispositivo solo la resuelve `GET /monitoring/beds`,
+  // que es la misma fuente que usa la central: no hay endpoint que la dé
+  // directamente. Se pide solo con la pestaña abierta.
+  const camas = useQuery({
+    queryKey: ['monitoredBeds'],
+    queryFn: () => listMonitoredBeds(),
+    enabled: patientId !== '' && tab === 'monitoring',
+  })
+
+  const device = camas.data?.find((cama) => cama.patientId === patientId)?.device ?? null
+
+  const readings = useQuery({
+    queryKey: ['readings', { device, limit: 60 }],
+    queryFn: () => listReadings({ device: device!, limit: 60 }),
+    enabled: device !== null,
+    // Telemetría en vivo, no una foto del expediente: mismo refresco que la
+    // central de monitoreo.
+    refetchInterval: 5000,
+  })
+
   const queryClient = useQueryClient()
   const guardar = useMutation({
     mutationFn: () => saveExploracion(patientId, form),
@@ -113,7 +138,7 @@ export function ExploracionFisicaPage() {
         <Box sx={{ flexGrow: 1 }} />
       </Stack>
 
-      <Box sx={{ height: 4 }}>{patient.isPending && patientId !== '' && <LinearProgress />}</Box>
+      <LoadingBar loading={patient.isPending && patientId !== ''} />
 
       {patientId === '' && <Alert severity="info">{t(K.pickPatient)}</Alert>}
       {patient.isError && <Alert severity="error">{t(K.patientError)}</Alert>}
@@ -132,7 +157,26 @@ export function ExploracionFisicaPage() {
         ))}
       </Tabs>
 
-      {tab !== 'history' && <Alert severity="info">{t(K.tabPending)}</Alert>}
+      {/* Solo «Notas SOAP» y «Documentos» siguen sin contenido: las notas viven
+          en la pantalla de Expediente, y de documentos no hay ni tabla. */}
+      {(tab === 'soap' || tab === 'documents') && (
+        <Alert severity="info">{t(K.tabPending)}</Alert>
+      )}
+
+      {/* El resumen lee el MISMO formulario que la pestaña de captura, así que
+          refleja lo que hay en pantalla aunque todavía no se haya guardado. */}
+      {tab === 'summary' && <ResumenExploracion form={form} />}
+
+      {tab === 'monitoring' &&
+        (device === null ? (
+          <Alert severity="info">{t('clinical.monitoring.noDevice')}</Alert>
+        ) : (
+          <VitalsMonitor
+            bed={camas.data?.find((cama) => cama.device === device)?.bed ?? device}
+            device={device}
+            readings={readings.data ?? []}
+          />
+        ))}
 
       {tab === 'history' && (
         <>

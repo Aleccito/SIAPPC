@@ -3,7 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Sin `user-scalable=no` ni `maximum-scale`: ampliar con los dedos es la
+         única forma que tiene mucha gente de leer una cifra pequeña, y en una
+         pantalla de signos vitales eso no se bloquea. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- La aplicación es de tema claro y solo claro. Declararlo aquí evita que
+         Android e iOS pinten la barra del navegador en oscuro sobre una
+         interfaz blanca. -->
+    <meta name="theme-color" content="#ffffff" />
     <title>SIAPPC</title>
   </head>
   <body>

@@ -125,7 +125,6 @@ describe("bitácora de auditoría", () => {
       payload: {
         name: "Paciente Uno",
         document: "8-111-2222",
-        module: "KY-012",
         reason: "Politraumatismo por accidente de tránsito",
         fechaNacimiento: "1990-05-14",
         sexo: "M",

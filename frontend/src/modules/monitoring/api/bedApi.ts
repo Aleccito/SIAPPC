@@ -1,16 +1,45 @@
+import { listMonitoredBeds } from './monitoringApi'
+import { listSoapNotes } from '../../clinical/api/clinicalApi'
+import { getPatient, listAssignments } from '../../patients/api/patientsApi'
+import { ageFrom } from '../../patients/presentation'
+import { clinicalState } from '../../dashboard/presentation'
+
+// Ficha del paciente que ocupa la cama de un dispositivo.
+//
+// Antes esto era un objeto en duro con UN solo dispositivo (`RPI-01`), y
+// cualquier otro equipo caía en `null`: la pantalla decía "este dispositivo no
+// tiene paciente asignado" aunque en la base sí lo tuviera. Ahora se compone de
+// tres llamadas reales, porque no hay un endpoint que devuelva esta ficha
+// entera:
+//
+//   1. `GET /monitoring/beds` — del código de equipo al paciente, su cama y su
+//      estado clínico. Es la única fuente que relaciona dispositivo con cama.
+//   2. `GET /patients/:id` — grupo sanguíneo, contacto de emergencia, motivo de
+//      consulta y fecha de nacimiento.
+//   3. `GET /patients/:id/assignments` — quién está a cargo.
+//
+// CUATRO campos del diseño no existen en el esquema y salen en `null`, que la
+// pantalla pinta como raya: diagnóstico principal, alergias, seguro médico y
+// número de expediente con formato "PT-8821". No se inventan — un dato clínico
+// falso en una ficha es peor que un hueco visible. Añadirlos es ampliar
+// `paciente`, no tocar este archivo.
+
 export type BedPatient = {
   bed: string
   name: string
   patientId: string
-  age: number
+  /** null cuando la fecha de nacimiento no se puede interpretar. */
+  age: number | null
   birthDate: string
-  bloodType: string
+  bloodType: string | null
   allergies: string[]
-  diagnosis: string
-  doctor: string
+  /** Motivo de consulta: es lo que la base guarda. NO es un diagnóstico. */
+  reason: string
+  diagnosis: string | null
+  doctor: string | null
   admittedAt: string
-  emergencyContact: string
-  insurance: string
+  emergencyContact: string | null
+  insurance: string | null
   status: 'critico' | 'estable' | 'observacion'
 }
 
@@ -23,51 +52,76 @@ export type SoapNote = {
   plan: string
 }
 
-// PENDIENTE: ficha del paciente y nota SOAP de ejemplo. La tabla `paciente` del
-// esquema guarda nombre, cédula, módulo y motivo de consulta, pero no
-// diagnóstico principal, grupo sanguíneo, alergias, médico responsable ni
-// seguro; y `historia_clinica` / `notas_soap` no tienen endpoint todavía.
-// Conectarlo pide ampliar el esquema y añadir las rutas — la forma de estos
-// tipos es la definitiva.
-//
-// Los signos vitales del monitor NO son de ejemplo: salen de
-// `GET /sensors/readings` del dispositivo, que es la ingesta MQTT real.
-const patients: Record<string, BedPatient> = {
-  'RPI-01': {
-    bed: 'C-03',
-    name: 'María González',
-    patientId: 'PT-8821',
-    age: 67,
-    birthDate: '1959-05-14',
-    bloodType: 'A+ (Positivo)',
-    allergies: ['Penicilina'],
-    diagnosis: 'Insuficiencia Cardíaca Congestiva',
-    doctor: 'Dr. Carlos Méndez',
-    admittedAt: '2025-10-15',
-    emergencyContact: 'Juan González — +52 55 1234 5678',
-    insurance: 'IMSS — Póliza #4821903',
-    status: 'critico',
-  },
-}
-
-const notes: Record<string, SoapNote> = {
-  'RPI-01': {
-    author: 'Dr. Carlos Méndez',
-    at: '2025-10-24T08:15:00Z',
-    subjective: 'Disnea progresiva y dificultad para respirar en reposo.',
-    objective: 'FC 134, SpO2 89%, estertores bilaterales.',
-    assessment: 'Descompensación aguda ICC.',
-    plan: 'Ajustar diurético IV, O2 por mascarilla.',
-  },
+// El eje clínico de la central usa `atencion`; esta pantalla lo llama
+// `observacion`. Es el mismo estado con otro rótulo, así que se traduce aquí en
+// vez de duplicar la regla que lo deriva de la peor alerta abierta.
+const ESTADO: Record<string, BedPatient['status']> = {
+  critico: 'critico',
+  atencion: 'observacion',
+  estable: 'estable',
 }
 
 /** `null` cuando el dispositivo no tiene paciente asignado: la pantalla lo dice. */
 export async function getBedPatient(device: string): Promise<BedPatient | null> {
-  await new Promise((resolve) => setTimeout(resolve, 150))
-  return patients[device] ?? null
+  const camas = await listMonitoredBeds()
+  const cama = camas.find((item) => item.device === device)
+  if (!cama || cama.patientId === null) return null
+
+  // Las dos consultas restantes van en paralelo: ninguna depende de la otra y
+  // esta pantalla se abre desde una alerta, con prisa.
+  const [ficha, aCargo] = await Promise.all([
+    getPatient(cama.patientId),
+    listAssignments(cama.patientId).catch(() => []),
+  ])
+
+  return {
+    bed: cama.bed,
+    name: cama.patientName ?? ficha.name,
+    patientId: ficha.document,
+    age: ageFrom(ficha.birthDate),
+    birthDate: ficha.birthDate,
+    bloodType: ficha.bloodType,
+    allergies: [],
+    reason: ficha.reason,
+    diagnosis: null,
+    // Puede haber varios a cargo; se listan todos porque en una cama crítica
+    // "quién responde" no es una sola persona.
+    doctor: aCargo.length ? aCargo.map((a) => a.name).join(', ') : null,
+    admittedAt: ficha.arrivedAt,
+    emergencyContact: ficha.emergencyContact,
+    insurance: null,
+    status: ESTADO[clinicalState(cama.worstSeverity)] ?? 'estable',
+  }
 }
 
+/**
+ * La última nota SOAP del paciente de esa cama, o `null` si no tiene ninguna.
+ *
+ * Se muestra la más reciente por fecha, sea borrador o firmada: en la cabecera
+ * de una cama interesa lo último que se escribió, no lo último que se validó.
+ * El estado de la nota se ve en la pestaña de Notas SOAP, que es donde se
+ * firma.
+ *
+ * Los cuatro apartados llegan como `null` cuando no se rellenaron —el esquema
+ * los permite vacíos— y aquí se convierten en cadena vacía, que es lo que la
+ * tarjeta sabe pintar.
+ */
 export async function getLatestSoapNote(device: string): Promise<SoapNote | null> {
-  await new Promise((resolve) => setTimeout(resolve, 150))
-  return notes[device] ?? null
+  const camas = await listMonitoredBeds()
+  const cama = camas.find((item) => item.device === device)
+  if (!cama || cama.patientId === null) return null
+
+  const notas = await listSoapNotes(cama.patientId)
+  if (notas.length === 0) return null
+
+  const ultima = [...notas].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0]!
+
+  return {
+    author: ultima.authorName,
+    at: ultima.at,
+    subjective: ultima.subjective ?? '',
+    objective: ultima.objective ?? '',
+    assessment: ultima.assessment ?? '',
+    plan: ultima.plan ?? '',
+  }
 }

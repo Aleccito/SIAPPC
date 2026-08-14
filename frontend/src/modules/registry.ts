@@ -13,6 +13,8 @@ import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import SensorsOutlinedIcon from '@mui/icons-material/SensorsOutlined'
 import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined'
 import LocalHotelOutlinedIcon from '@mui/icons-material/LocalHotelOutlined'
+import AirlineSeatFlatOutlinedIcon from '@mui/icons-material/AirlineSeatFlatOutlined'
+import TabletMacOutlinedIcon from '@mui/icons-material/TabletMacOutlined'
 import type { Role } from './auth/types'
 import type { StringKey } from '../shared/i18n/dictionary'
 
@@ -105,6 +107,40 @@ export const modules: NavEntry[] = [
     icon: LocalHotelOutlinedIcon,
     lazy: async () => ({
       Component: (await import('./admissions/pages/AdmissionsPage')).AdmissionsPage,
+    }),
+  },
+  // Central de monitoreo: el mapa de camas de una unidad. Va antes de Sensores
+  // porque es la pantalla de turno —lo que se deja puesto—, mientras que
+  // Sensores es la bandeja a la que se baja a mirar una lectura concreta.
+  // Sin `requiredRole`: quién entra lo decide `rol_permiso` en el servidor
+  // (`monitoreo:ver`), y la pantalla muestra el error que devuelva.
+  {
+    path: '/monitoring',
+    label: 'nav.central',
+    // Un monitor, no un corazón: `MonitorHeartOutlined` ya es el icono de
+    // Pacientes, y dos entradas del menú con el mismo dibujo son
+    // indistinguibles con la barra plegada, que es cuando el icono es lo único
+    // que queda.
+    icon: AirlineSeatFlatOutlinedIcon,
+    lazy: async () => ({
+      Component: (await import('./monitoring/pages/CentralMonitorPage')).CentralMonitorPage,
+    }),
+  },
+  // Ronda: la misma telemetría que la central, una cama a la vez, para la
+  // tablet que se lleva por la sala. Va justo después de la central porque son
+  // la misma tarea a dos distancias: la central se mira de pie desde el
+  // pasillo, la ronda a 40 cm delante de la cama.
+  //
+  // La ruta es `/ronda` y NO `/monitoring/tablet`: `/monitoring/:device` ya
+  // existe, y aunque el router da prioridad al segmento literal, un equipo cuyo
+  // `dispositivo.codigo` fuera "tablet" quedaría inalcanzable sin que nada lo
+  // avisara. Un choque silencioso no compensa la simetría del nombre.
+  {
+    path: '/ronda',
+    label: 'nav.rounds',
+    icon: TabletMacOutlinedIcon,
+    lazy: async () => ({
+      Component: (await import('./monitoring/pages/RoundsPage')).RoundsPage,
     }),
   },
   {

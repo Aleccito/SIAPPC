@@ -91,7 +91,7 @@ function useUsers() {
 
 /** Conectividad de los equipos a pie de cama y de sus sensores. */
 export function DeviceConnectivityWidget() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   const devices = useQuery({
     queryKey: ['dashboard', 'devices'],
     queryFn: listDeviceStatus,
@@ -132,7 +132,7 @@ export function DeviceConnectivityWidget() {
         />
       </Box>
 
-      <Table size="small">
+      <Table aria-label={t('dash.widget.deviceConnectivity')} size="small">
         <TableHead>
           <TableRow>
             <TableCell>{t('dash.col.device')}</TableCell>
@@ -162,7 +162,7 @@ export function DeviceConnectivityWidget() {
               </TableCell>
               <TableCell sx={{ color: isStale(device.lastReadingAt) ? 'warning.main' : 'text.secondary' }}>
                 {device.lastReadingAt
-                  ? new Date(device.lastReadingAt).toLocaleString(language)
+                  ? new Date(device.lastReadingAt).toLocaleString(locale)
                   : t('dash.devices.never')}
               </TableCell>
             </TableRow>
@@ -271,7 +271,7 @@ export function ActiveUsersWidget() {
 
 /** Últimos movimientos de la bitácora, con los de seguridad destacados. */
 export function SecurityEventsWidget() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   const audit = useQuery({
     queryKey: ['dashboard', 'audit'],
     queryFn: () => listAudit({ page: 0, pageSize: SECURITY_WINDOW }),
@@ -308,7 +308,7 @@ export function SecurityEventsWidget() {
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {entry.author ?? t('dash.audit.system')} ·{' '}
-              {new Date(entry.at).toLocaleString(language)}
+              {new Date(entry.at).toLocaleString(locale)}
             </Typography>
           </Box>
         </Stack>

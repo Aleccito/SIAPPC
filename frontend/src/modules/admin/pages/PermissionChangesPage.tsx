@@ -2,9 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Alert,
-  Box,
   Button,
-  LinearProgress,
   Paper,
   Stack,
   Table,
@@ -15,6 +13,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { listRoleChanges } from '../api/rolesApi'
 import { usePageHeader } from '../../../app/pageHeader'
@@ -28,9 +27,8 @@ import { useLanguage } from '../../../shared/i18n/useLanguage'
 // bitácora completa —altas de usuarios, accesos, bloqueos— sigue en Auditoría,
 // y el botón de arriba lleva allí.
 export function PermissionChangesPage() {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   usePageHeader(t('permissionChanges.title'), t('permissionChanges.subtitle'))
-  const locale = 'es-MX'
 
   const changes = useQuery({ queryKey: ['roleChanges'], queryFn: listRoleChanges })
 
@@ -49,8 +47,8 @@ export function PermissionChangesPage() {
       {changes.isError && <Alert severity="error">{t('permissionChanges.error')}</Alert>}
 
       <TableContainer component={Paper}>
-        <Box sx={{ height: 4 }}>{changes.isFetching && <LinearProgress />}</Box>
-        <Table size="small">
+        <LoadingBar loading={changes.isFetching} />
+        <Table aria-label={t('permissionChanges.title')} size="small">
           <TableHead>
             <TableRow>
               <TableCell sx={{ width: 200 }}>{t('permissionChanges.col.when')}</TableCell>

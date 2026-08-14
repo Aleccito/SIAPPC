@@ -251,6 +251,8 @@ CREATE TABLE `notificacion` (
 
     INDEX `ix_notif_alerta`(`alerta_id`),
     INDEX `ix_notif_usuario_estado`(`usuario_id`, `estado_envio`),
+    INDEX `ix_notif_usuario_fecha`(`usuario_id`, `fecha_envio`),
+    UNIQUE INDEX `uq_notif_alerta_usuario_canal`(`alerta_id`, `usuario_id`, `canal`),
     PRIMARY KEY (`notificacion_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -896,6 +898,24 @@ CREATE OR REPLACE PROCEDURE `sp_purgar_lecturas`(IN `dias` INT UNSIGNED, IN `lot
     )
   LIMIT `lote`;
 
+-- Poda de notificaciones ya leídas.
+--
+-- Gemela de `sp_purgar_lecturas` y con el mismo `lote` por la misma razón: un
+-- DELETE masivo bloquea la tabla y deja esperando a la ingesta, que escribe aquí.
+--
+-- Solo borra las LEÍDAS. Una sin leer es trabajo pendiente de alguien y no la
+-- puede tirar un mantenimiento por antigüedad.
+--
+-- `notificacion` cuelga de `alerta` con ON DELETE CASCADE, y `alerta` de
+-- `lectura` igual, así que podar lecturas viejas ya se lleva estas filas por
+-- delante. Esto existe para el caso contrario: bandejas que crecen más rápido de
+-- lo que se poda la serie cruda, y para vaciarlas sin tocar el histórico.
+CREATE OR REPLACE PROCEDURE `sp_purgar_notificaciones`(IN `dias` INT UNSIGNED, IN `lote` INT UNSIGNED)
+  DELETE FROM `notificacion`
+  WHERE `estado_envio` = 'leido'
+    AND `fecha_envio` < NOW() - INTERVAL `dias` DAY
+  LIMIT `lote`;
+
 -- Migraciones ya incorporadas al DDL de arriba. Una base creada con este
 -- archivo nace al día y `prisma migrate deploy` no repite ninguna.
 CREATE TABLE `_prisma_migrations` (
@@ -926,4 +946,5 @@ VALUES
 ('905a3a8f2e37674e479c247e585c2a28590a', '27caa1d2ec4696b538f1675998bda5ecf38d31fe52650917b4f45ecc993b8134', NOW(3), '20260813144959_sp_actividad_clinica_having', NOW(3), 1),
 ('f4399f27c54c69933237a0130a66ae60324e', 'e08a99f08a4c145de213fa05b39ed865f7cb58f060fb661bff106d2c58113b21', NOW(3), '20260813145348_vista_actividad_clinica', NOW(3), 1),
 ('0faf8b9df763f51d88fd02ee14d409e4545c', '10b7d17b7e79a85329a708619addbb84b0d46ad70c49210d066d78be7876d77e', NOW(3), '20260813160554_sp_alertas_dia_y_purga', NOW(3), 1),
-('d31b51cca5f2cf8b71579ab2c8eeeb88c99a', '180508d1762e9c58f10ffa00499ee9216234b22e98c5345bfbd19453b1e6af25', NOW(3), '20260813162155_quitar_sp_sin_uso', NOW(3), 1);
+('d31b51cca5f2cf8b71579ab2c8eeeb88c99a', '180508d1762e9c58f10ffa00499ee9216234b22e98c5345bfbd19453b1e6af25', NOW(3), '20260813162155_quitar_sp_sin_uso', NOW(3), 1),
+('7465372b9d098bcf3d2735d036613a25925d', 'f4b310c780ec6cd98606cd91e6ea2d82b74aeec23864cb330deda5aa2177d2d9', NOW(3), '20260813170500_notificaciones_indices_y_purga', NOW(3), 1);

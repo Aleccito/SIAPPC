@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { getToken } from '../../shared/api/http'
+import { suscribirEventos } from '../../shared/api/alertStream'
 
 // Alertas empujadas por el servidor, sin esperar al siguiente sondeo.
 //
-// NO usa `EventSource`: esa API no deja poner cabeceras, así que el token
-// tendría que viajar en la URL —donde acaba en los registros del servidor y del
-// proxy—. Con `fetch` se manda el `Authorization` de siempre y se lee el cuerpo
-// como flujo.
-//
-// A cambio hay que reconectar a mano: `EventSource` lo hace solo, `fetch` no.
+// La conexión ya no la abre este hook: la sirve `shared/api/alertStream.ts`,
+// que la comparte con la campana del armazón. Aquí queda solo lo propio del
+// tablero —quedarse con la última alerta para el cartel— porque dos `fetch` al
+// mismo flujo por pestaña era el doble de conexiones para el mismo dato.
 
 export type AlertaEnVivo = {
   alertId: string
@@ -25,77 +23,24 @@ export type AlertaEnVivo = {
   at: string
 }
 
-/** Espera antes de reconectar. Ni tan corta que martillee, ni tanta que se pierda una alerta. */
-const REINTENTO_MS = 3000
-
 export function useAlertStream(): { ultima: AlertaEnVivo | null; descartar: () => void } {
   const [ultima, setUltima] = useState<AlertaEnVivo | null>(null)
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    const control = new AbortController()
-    let reintento: ReturnType<typeof setTimeout> | undefined
-    let vivo = true
-
-    async function escuchar() {
-      const token = getToken()
-      if (!token) return
-
-      try {
-        const respuesta = await fetch('/api/alerts/stream', {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: control.signal,
-        })
-        // Sin permiso de `alertas` el servidor responde 403: no hay nada que
-        // reintentar, y hacerlo sería martillear la API cada tres segundos.
-        if (respuesta.status === 401 || respuesta.status === 403) return
-        if (!respuesta.ok || !respuesta.body) throw new Error(String(respuesta.status))
-
-        const lector = respuesta.body.getReader()
-        const decodificador = new TextDecoder()
-        let resto = ''
-
-        while (vivo) {
-          const { done, value } = await lector.read()
-          if (done) break
-
-          resto += decodificador.decode(value, { stream: true })
-          // Los marcos van separados por una línea en blanco. Lo que quede a
-          // medias se guarda para la siguiente vuelta: un marco puede llegar
-          // partido en dos trozos de red.
-          const marcos = resto.split('\n\n')
-          resto = marcos.pop() ?? ''
-
-          for (const marco of marcos) {
-            // Los comentarios (`: latido`) mantienen viva la conexión y no traen datos.
-            if (!marco.startsWith('event: alerta')) continue
-            const datos = marco.split('\n').find((linea) => linea.startsWith('data: '))
-            if (!datos) continue
-
-            const alerta = JSON.parse(datos.slice(6)) as AlertaEnVivo
-            setUltima(alerta)
-            // El aviso trae lo justo para el cartel; las listas del tablero se
-            // refrescan desde su fuente en vez de que cada widget adivine cómo
-            // encajar este objeto en su propia forma.
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-          }
-        }
-      } catch {
-        // Corte de red, backend reiniciado, pestaña dormida. Se reintenta.
-      }
-
-      if (vivo && !control.signal.aborted) {
-        reintento = setTimeout(() => void escuchar(), REINTENTO_MS)
-      }
-    }
-
-    void escuchar()
-
-    return () => {
-      vivo = false
-      control.abort()
-      if (reintento) clearTimeout(reintento)
-    }
+    return suscribirEventos((evento, datos) => {
+      if (evento !== 'alerta') return
+      setUltima(datos as AlertaEnVivo)
+      // El aviso trae lo justo para el cartel; las listas del tablero se
+      // refrescan desde su fuente en vez de que cada widget adivine cómo
+      // encajar este objeto en su propia forma.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      // Y la central de monitoreo, que deriva el estado de cada cama de la peor
+      // alerta abierta: una alerta nueva cambia el color del borde, y esperar al
+      // siguiente sondeo sería enseñar en verde una cama por la que el servidor
+      // acaba de avisar.
+      queryClient.invalidateQueries({ queryKey: ['monitoring'] })
+    })
   }, [queryClient])
 
   return { ultima, descartar: () => setUltima(null) }

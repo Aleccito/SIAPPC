@@ -1,11 +1,6 @@
 import type { Theme } from '@mui/material/styles'
 import { alpha } from '@mui/material/styles'
-import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined'
-import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined'
-import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined'
 import type { SvgIconComponent } from '@mui/icons-material'
 import type { Notification, NotificationKind } from './types'
 import type { StringKey } from '../../shared/i18n/dictionary'
@@ -13,16 +8,14 @@ import type { StringKey } from '../../shared/i18n/dictionary'
 // Icono y color por tipo. Vive aparte de la página porque el menú de la
 // campana pinta las mismas filas: si estuviera dentro de la pantalla, el menú
 // tendría su propia tabla y las dos se separarían al primer tipo nuevo.
-type Palette = 'error' | 'warning' | 'success' | 'primary' | 'info'
+type Palette = 'error' | 'warning'
 
+// Los dos comparten icono a propósito: son el mismo suceso —una constante vital
+// fuera de rango— y lo que los separa es la gravedad, que es lo que dice el
+// color. Dos dibujos distintos harían pensar en dos cosas distintas.
 const KIND: Record<NotificationKind, { icon: SvgIconComponent; color: Palette }> = {
   alertaCritica: { icon: NotificationsActiveOutlinedIcon, color: 'error' },
   alertaTemprana: { icon: NotificationsActiveOutlinedIcon, color: 'warning' },
-  asignacion: { icon: PersonAddAltOutlinedIcon, color: 'primary' },
-  reporte: { icon: CheckCircleOutlinedIcon, color: 'success' },
-  sistema: { icon: MonitorHeartOutlinedIcon, color: 'info' },
-  nota: { icon: GroupsOutlinedIcon, color: 'info' },
-  mantenimiento: { icon: BuildOutlinedIcon, color: 'primary' },
 }
 
 export function kindIcon(kind: NotificationKind): SvgIconComponent {
@@ -57,10 +50,13 @@ function bucketOf(at: string, now = new Date()): Bucket {
  *
  * A mano y no con `toISOString()`, que pasa a UTC: una notificación de las
  * 23:30 en México caería en el día siguiente y aparecería bajo una fecha en la
- * que el usuario no estaba trabajando. Es también el formato que emite y espera
- * un `<input type="date">`, así que el filtro compara sin convertir nada.
+ * que el usuario no estaba trabajando.
+ *
+ * Sin `export`: solo la usa `groupByDay`, aquí al lado. Lo era cuando la bandeja
+ * filtraba por fecha en el navegador; ese filtro se quitó al paginar en el
+ * servidor.
  */
-export function dayKey(at: string | Date): string {
+function dayKey(at: string | Date): string {
   const date = typeof at === 'string' ? new Date(at) : at
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
@@ -137,4 +133,41 @@ export function relativeTime(
 
   const days = Math.round((now.getTime() - date.getTime()) / 86_400_000)
   return t('notifications.ago.days', { count: String(days) })
+}
+
+// --- Texto de una fila ----------------------------------------------------
+//
+// El servidor manda los datos del hecho, no la frase: así el idioma lo decide
+// el diccionario y no queda español incrustado en una respuesta JSON. Las dos
+// funciones viven aquí, junto al icono y el color, porque la campana y la
+// bandeja pintan la misma fila y no pueden redactarla cada una a su manera.
+
+type Traducir = (key: StringKey, vars?: Record<string, string>) => string
+
+/** "Elena Rodríguez · Equipo UCI-03", o el equipo solo si no hay paciente. */
+export function notificationTitle(notification: Notification, t: Traducir): string {
+  if (notification.patientName) {
+    return t('notifications.row.title', {
+      patient: notification.patientName,
+      device: notification.device,
+    })
+  }
+  // El equipo puede estar sin paciente asignado: se dice, no se rellena con un
+  // nombre inventado ni se esconde la notificación.
+  return t('notifications.row.titleNoPatient', { device: notification.device })
+}
+
+/**
+ * El mensaje que redactó la ingesta.
+ *
+ * Si la alerta no trae mensaje —la columna es nulable— se reconstruye con la
+ * lectura que la disparó, que es un dato real y no un texto de relleno.
+ */
+export function notificationBody(notification: Notification, t: Traducir): string {
+  if (notification.message) return notification.message
+  return t('notifications.row.reading', {
+    variable: notification.variable,
+    value: String(notification.value),
+    unit: notification.unit,
+  })
 }

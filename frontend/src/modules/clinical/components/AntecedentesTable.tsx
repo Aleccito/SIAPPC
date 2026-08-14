@@ -36,7 +36,7 @@ export function AntecedentesTable({ rows }: { rows: Antecedente[] }) {
 
   return (
     <TableContainer>
-      <Table size="small">
+      <Table aria-label={t('antecedentes.title')} size="small">
         <TableHead>
           <TableRow>
             <TableCell>{t('antecedentes.col.condition')}</TableCell>

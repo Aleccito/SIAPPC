@@ -1,8 +1,8 @@
-// The hospital attends patients at numbered service modules. A patient is
-// always assigned to exactly one of them.
-export const serviceModules = ['KY-001', 'KY-004', 'KY-012', 'KY-019'] as const
-
-export type ServiceModule = (typeof serviceModules)[number]
+// Los "módulos de atención" (KY-001, KY-004…) ya no existen en la aplicación.
+// Eran una lista fija de códigos que no describía dónde está el paciente, y lo
+// que hace falta saber es su CAMA. La columna `paciente.modulo` sigue en la
+// base con lo que se registró en su día, pero ninguna pantalla la pide ni la
+// enseña, y la API ya no la entrega.
 
 export type PatientStatus = 'waiting' | 'inService' | 'discharged'
 
@@ -22,7 +22,6 @@ export type Patient = {
   id: string
   name: string
   document: string
-  module: ServiceModule
   status: PatientStatus
   arrivedAt: string
   reason: string
@@ -34,10 +33,11 @@ export type Patient = {
   emergencyContact: string | null
 }
 
+// El módulo de atención NO va aquí: el alta dejó de pedirlo. Ver el comentario
+// de `patientSchema` en backend/src/routes/patients.ts.
 export type NewPatient = {
   name: string
   document: string
-  module: ServiceModule
   reason: string
   // Fecha ISO ("1990-05-14"), tal como la entrega un <input type="date">. El
   // servidor la devuelve con la hora y el desfase del hospital.
@@ -51,3 +51,13 @@ export type NewPatient = {
 // PATCH acepta cualquier subconjunto; con él la sala de espera mueve a un
 // paciente de `waiting` a `inService` sin reenviar la ficha completa.
 export type PatientChanges = Partial<NewPatient> & { status?: PatientStatus }
+
+// Quién está a cargo de un paciente. La tabla `medico_paciente` no es exclusiva
+// de médicos —su llave es el usuario—, así que enfermería también aparece aquí.
+export type CareAssignment = {
+  userId: number
+  name: string
+  role: string
+  assignedAt: string
+  reason: string | null
+}

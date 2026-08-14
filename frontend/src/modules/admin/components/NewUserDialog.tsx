@@ -133,26 +133,48 @@ export function NewUserDialog({ open, roles, units, onClose }: Props) {
                 <Alert severity="error">{(mutation.error as Error).message}</Alert>
               )}
 
+              {/* `name` y `autoComplete` en los tres: son datos de una persona
+                  y el navegador ya los tiene guardados. Sin ellos hay que
+                  teclear a mano el correo de cada alta.
+                  Ojo con el detalle: aquí se da de alta a OTRO usuario, no a
+                  quien está rellenando el formulario, así que el autocompletado
+                  ayuda pero no debe imponer el propio dato del administrador.
+                  Por eso se usan los tokens sin prefijo y no `shipping`/
+                  `billing`, que arrastrarían una identidad concreta. */}
               <TextField
                 label={t('users.new.name')}
                 placeholder={t('users.new.namePlaceholder')}
+                name="name"
+                autoComplete="name"
                 value={form.name}
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
                 required
                 fullWidth
               />
+              {/* `spellCheck={false}`: un correo subrayado en rojo por el
+                  corrector parece escrito mal cuando está bien. */}
               <TextField
                 label={t('users.new.email')}
                 placeholder={t('users.new.emailPlaceholder')}
                 type="email"
+                name="email"
+                autoComplete="email"
+                spellCheck={false}
                 value={form.email}
                 onChange={(event) => setForm({ ...form, email: event.target.value })}
                 required
                 fullWidth
               />
+              {/* `type="tel"` abre el teclado numérico en móvil y no valida el
+                  formato: los teléfonos de este hospital llevan extensión y
+                  guiones, y un `type` estricto los rechazaría. */}
               <TextField
                 label={`${t('users.new.phone')} ${t('users.new.phoneOptional')}`}
                 placeholder={t('users.new.phonePlaceholder')}
+                type="tel"
+                name="tel"
+                autoComplete="tel"
+                spellCheck={false}
                 value={form.phone}
                 onChange={(event) => setForm({ ...form, phone: event.target.value })}
                 fullWidth

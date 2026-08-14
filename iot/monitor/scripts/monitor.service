@@ -6,9 +6,10 @@
 #
 # Ajusta User, WorkingDirectory y la ruta del venv si no usas el usuario "pi".
 #
-# OJO: el monitor lee el broker y sus credenciales de `iot/.env`, el mismo
-# archivo que usa `iot/src/`. Por eso hay que copiar a la Pi la carpeta `iot/`
-# entera (con `iot/.env` y `iot/certs/ca.crt`), no solo `monitor/`.
+# OJO: dentro de SIAPPC el monitor lee el broker y sus credenciales de
+# `iot/.env`, el mismo archivo que usa `iot/src/`. Por eso hay que copiar a la
+# Pi la carpeta `iot/` entera (con `iot/.env` y `iot/certs/ca.crt`), no solo
+# `monitor/`.
 
 [Unit]
 Description=Monitor de signos vitales

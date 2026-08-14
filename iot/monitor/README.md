@@ -1,51 +1,26 @@
 # Monitor de signos vitales — Raspberry Pi
 
-> ## Estado dentro de SIAPPC — leer antes de usarlo
->
-> Este directorio es el proyecto `Rasp-main` incorporado como módulo aparte, con
-> **la capa de red reemplazada**: ya no habla HTTP contra `/api/v1/ingest` (un
-> endpoint que el backend de SIAPPC no tiene), sino que **publica por MQTT** en
-> `siappc/<dispositivo>/telemetry`, el mismo camino que [`../src/`](../src/) y
-> el mismo consumidor (`backend/src/services/mqttIngest.ts`). Las lecturas
-> terminan en las tablas `sensor` y `lectura`.
->
-> Consecuencias de esa decisión:
->
-> - Broker, credenciales y CA salen de **`iot/.env`**, el mismo archivo que usa
->   `../src/` (ver [`iot_env.py`](iot_env.py)). No hay una segunda copia de la
->   contraseña del broker.
-> - `device.device_id` tiene que existir como `dispositivo.codigo` en la base, o
->   el backend descarta las lecturas por no saber de quién son. Por defecto vale
->   el `DEVICE_CODE` del `.env`.
-> - **Las ondas (ECG, pleth, resp) no se publican.** El backend guarda una fila
->   por lectura y el ECG son ~250 muestras por segundo: no entra en ese modelo.
->   Se dibujan en pantalla y ahí se quedan. Graficar la onda necesita su propia
->   tabla y su propio tema MQTT.
-> - Tampoco viajan las alarmas, la calidad de señal ni el diagnóstico del
->   equipo: el payload es una lectura suelta y no tiene dónde meterlos. Las
->   alarmas las vuelve a evaluar el backend sobre las cinco variables, con los
->   mismos límites que usa esta pantalla; las que suenan acá se quedan acá.
-> - Lo que sí sabe el backend es si el equipo está vivo: el tema `status` va
->   retenido y como Last Will, y del otro lado mueve `dispositivo.estado`.
-> - El contrato viejo, documentado en [JSON.md](JSON.md), quedó como histórico,
->   y `tools/receptor_prueba.py` con él: no reciben nada de lo que el monitor
->   manda hoy.
->
-> `../src/` sigue existiendo y no se tocó: son dos programas sobre el mismo
-> hardware que ahora publican por el mismo sitio.
-
 Monitor de cabecera hecho con **MAX30102** (SpO2 y pulso), **AD8232** (ECG) y
 **ADS1115** (conversor A/D). Hace dos cosas:
 
 1. **Muestra** en la pantalla del Pi un monitor de paciente a pantalla completa:
    ECG con papel milimetrado, pletismografia, respiracion, numeros grandes y
    alarmas.
-2. **Publica** los signos vitales por MQTT (TLS) al backend de SIAPPC, una
-   lectura por mensaje.
+2. **Publica** los signos vitales en JSON por **MQTT sobre TLS** al backend de
+   SIAPPC. El contrato esta en [JSON.md](JSON.md).
 
 En pantalla **solo aparece lo que estos tres modulos pueden medir**. Cada caja
 del panel numerico lleva escrito de que sensor sale, y lo que es una estimacion
 esta rotulado como tal.
+
+Por defecto el monitor mide **en continuo**, como un monitor de cabecera: los
+sensores no se apagan y cada tanda de signos vitales sale al broker sola. Es lo
+que necesita SIAPPC — el backend abre las alertas a partir de esas lecturas, y
+un paciente desatendido tiene que generarlas sin que nadie toque el equipo.
+
+Existe ademas un modo **a demanda** (`--a-demanda`) para tomas puntuales: los
+sensores arrancan apagados, se aprieta `X` y se mide una ventana de 10 s. NO es
+el modo para una cama de UCI. Ver [Medicion a demanda](#medicion-a-demanda).
 
 ![Pantalla del monitor](docs/pantalla-normal.png)
 
@@ -70,23 +45,21 @@ signos vitales del paciente.
 |---|---|---|
 | **AD8232** | un canal de ECG analogico + LO+/LO- de electrodo suelto | traza de ECG, **FC**, intervalo R-R, RMSSD de corto plazo |
 | **ADS1115** | nada propio: es el conversor A/D del AD8232 | digitaliza el ECG y avisa si la senial satura |
-| **MAX30102** | luz roja e infrarroja reflejada, y la temperatura de su propio chip | pletismografia, **SpO2**, **PR**, **indice de perfusion** |
+| **MAX30102** | luz roja e infrarroja reflejada | pletismografia, **SpO2**, **PR**, **indice de perfusion** |
 
 **Lo que este equipo no mide**, y por eso no aparece como signo vital:
 temperatura corporal, presion arterial, capnografia, y respiracion por
 impedancia toracica o por flujo.
 
-Dos casos de frontera, marcados en la pantalla en vez de disimulados:
+Un caso de frontera, marcado en la pantalla en vez de disimulado:
 
 - **RESP** sale de como la respiracion mueve la linea de base del
-  pletismografo. Es una tecnica real, pero es una **estimacion**: el numero va
-  con un `~` adelante y la caja dice ESTIMADA. Si preferis no mostrarlo,
-  `resp.enabled: false` en la configuracion lo saca junto con su carril.
-- **La temperatura del MAX30102** es la de su propio chip, que el fabricante
-  expone para compensar la deriva de los LED. No tiene nada que ver con la
-  temperatura del paciente, asi que **no esta en el panel de signos vitales**:
-  vive en el panel de diagnostico (tecla `D`) junto al resto de la salud del
-  equipo.
+  pletismografo. **No hay ningun sensor de respiracion en este equipo**: es una
+  tecnica real, pero es una **estimacion**, y el numero va con un `~` adelante
+  y la caja dice ESTIMADA. Si preferis no mostrarlo, `resp.enabled: false` en la
+  configuracion lo saca junto con su carril.
+  Como funciona, que la ensucia y que habria que agregar para medirla de verdad:
+  **[docs/respiracion.md](docs/respiracion.md)**.
 
 Un par de aclaraciones sobre precision, para que nadie lea de mas:
 
@@ -107,11 +80,8 @@ Anda en Windows, Mac o Linux, con seniales simuladas:
 
 ```bash
 pip install pygame paho-mqtt
-python main.py --demo --windowed --no-backend
+python main.py --demo --windowed
 ```
-
-Con `--no-backend` no toca la red. Sin esa opción intenta publicar en el broker
-que diga `iot/.env`, y si no está, acumula las lecturas en su cola local.
 
 En modo demo, las teclas **F1..F6** mueven la senial (bajar SpO2, subir la
 frecuencia, sacar el dedo, despegar un electrodo) para ver las alarmas sin
@@ -124,22 +94,39 @@ tener que provocarlas de verdad.
 Todo por I2C, los dos sensores comparten el mismo bus. Las direcciones no
 chocan: ADS1115 en `0x48` y MAX30102 en `0x57`.
 
-| Desde | Hasta | Pin fisico del Pi |
-|---|---|---|
-| ADS1115 VDD | 3V3 | 1 |
-| ADS1115 GND | GND | 6 |
-| ADS1115 SDA | GPIO2 (SDA1) | 3 |
-| ADS1115 SCL | GPIO3 (SCL1) | 5 |
-| ADS1115 ADDR | GND (→ 0x48) | 6 |
-| **AD8232 OUTPUT** | **ADS1115 A0** | — |
-| AD8232 3.3V | 3V3 | 17 |
-| AD8232 GND | GND | 9 |
-| AD8232 LO+ | GPIO17 | 11 |
-| AD8232 LO- | GPIO27 | 13 |
-| MAX30102 VIN | 3V3 | 1 |
-| MAX30102 GND | GND | 6 |
-| MAX30102 SDA | GPIO2 | 3 |
-| MAX30102 SCL | GPIO3 | 5 |
+| Desde | Hasta | Pin fisico del Pi | GPIO |
+|---|---|---|---|
+| ADS1115 VDD | 3V3 | 1 | — |
+| ADS1115 GND | GND | 6 | — |
+| ADS1115 SDA | SDA1 | 3 | 2 |
+| ADS1115 SCL | SCL1 | 5 | 3 |
+| ADS1115 ADDR | GND (→ 0x48) | 6 | — |
+| **AD8232 OUTPUT** | **ADS1115 A0** | — | — |
+| AD8232 3.3V | 3V3 | 17 | — |
+| AD8232 GND | GND | 9 | — |
+| AD8232 LO+ | | 15 | 22 |
+| AD8232 LO- | | 13 | 27 |
+| MAX30102 VIN | 3V3 | 1 | — |
+| MAX30102 GND | GND | 6 | — |
+| MAX30102 SDA | SDA1 | 3 | 2 |
+| MAX30102 SCL | SCL1 | 5 | 3 |
+| MAX30102 INT | opcional | 11 | 17 |
+| Buzzer **pasivo** (+) | opcional | 32 | 12 |
+| Buzzer (−) | GND | 34 | — |
+
+**El pin de cada cosa se puede cambiar** en `config.py` o en un `config.json`.
+Si cambias uno, corre el diagnostico (mas abajo): avisa si quedaron dos cosas
+asignadas al mismo GPIO, que es el error mas dificil de ver a ojo.
+
+Dos aclaraciones sobre los opcionales:
+
+- **El INT del MAX30102 no hace falta.** El driver vacia la FIFO por sondeo. Se
+  lee solo como senial de vida y aparece en el diagnostico. Podes dejarlo
+  desconectado (`ppg.int_pin: null`).
+- **El buzzer tiene que ser PASIVO.** Se maneja por PWM para poder cambiarle el
+  tono, que es lo que hace el bip de latido cuando baja la saturacion. Uno
+  activo suena solo con darle tension y a una sola frecuencia: no sirve. Si no
+  pones buzzer, el sonido sale por la salida de audio del Pi.
 
 **Alimenta el AD8232 con 3.3 V, no con 5 V.** Su salida esta centrada en
 VCC/2, asi que con 5 V las puntas pueden superar lo que tolera la entrada del
@@ -198,10 +185,8 @@ pip install -r requirements.txt
 
 ```bash
 python main.py                                    # pantalla completa, con hardware
-python main.py --mqtt 192.168.0.50                # apuntando a otro broker
-python main.py --mqtt 192.168.0.50:8883           # con puerto explícito
-python main.py --device CAMA-3                    # código del dispositivo en la base
-python main.py --no-backend                       # solo pantalla, sin red
+python main.py --broker 192.168.0.50               # apuntando al broker
+python main.py --no-backend                       # solo pantalla
 python main.py --demo --windowed                  # sin sensores
 python main.py --notch 60                         # zona de 60 Hz
 python main.py --captura pantalla.png             # guarda una imagen y sale
@@ -211,6 +196,7 @@ python main.py --captura pantalla.png             # guarda una imagen y sale
 
 | Tecla | Que hace |
 |---|---|
+| `X` | **arranca una medicion** (o la cancela si esta corriendo) |
 | `ESC` / `Q` | salir |
 | `M` | silenciar alarmas 2 minutos |
 | `S` | sonido on/off |
@@ -220,6 +206,91 @@ python main.py --captura pantalla.png             # guarda una imagen y sale
 | `D` | panel de debug |
 | `F` | alternar pantalla completa |
 | `F1`..`F6` | controles del modo demo |
+
+---
+
+## Medicion a demanda
+
+**Modo opcional, no el default.** Se pide con `--a-demanda` o poniendo
+`session.manual` en `true` en el JSON de configuracion. Sirve para revisar a
+alguien que no esta monitorizado: una toma puntual, con su calentamiento y su
+resumen.
+
+En una cama de UCI **no se usa**: mientras nadie apriete la tecla, el equipo no
+publica, y sin lecturas el backend no abre alertas ni la central ni la ronda
+muestran nada.
+
+Con este modo los sensores arrancan apagados y se despiertan con una tecla:
+
+```
+ESPERA  --X-->  ESTABILIZANDO (3 s)  -->  MIDIENDO (10 s)  -->  RESULTADO
+   ^                                                               |
+   +------------------------------- X -----------------------------+
+```
+
+![Pantalla de espera](docs/pantalla-espera.png)
+
+![Resultado de la medicion](docs/pantalla-resultado.png)
+
+Que pasa en cada fase:
+
+| Fase | Modulos | Que se ve |
+|---|---|---|
+| **Espera** | MAX30102 en modo bajo consumo, ADS1115 en disparo unico | la tecla y el mensaje |
+| **Estabilizando** | encendidos, alimentando los filtros | cartel de estabilizacion, sin trazas |
+| **Midiendo** | encendidos y grabando | ondas, numeros y cuenta regresiva |
+| **Resultado** | apagados otra vez | promedio, minimo y maximo de cada signo |
+
+Con **`--sin-paneles`** las pantallas de espera y de resultado no aparecen: la
+vista es siempre la misma y el estado se resume en un cartelito arriba, sin
+tapar las ondas. Los numeros del panel quedan congelados en la ultima medicion.
+
+### Por que hay una fase de estabilizacion
+
+Los pasa-altos de 0.5 Hz del ECG y del pletismografo arrancan con un transitorio
+que tapa la senial durante los primeros segundos. Si la ventana empezara en el
+instante cero, esos segundos irian a la basura y los "10 segundos de medicion"
+serian mentira. Con la espera previa, **los 10 segundos son 10 segundos utiles**:
+lo que se dibuja en pantalla y lo que se manda al backend es exactamente la
+ventana medida, ni una muestra mas.
+
+### La respiracion no entra en 10 segundos
+
+`RESP` va a decir **"sin dato en esta ventana"**, y no es un error. El filtro de
+0.1 Hz necesita unos 12 segundos solo para asentarse, y despues hacen falta 3
+ciclos respiratorios para tener un periodo confiable: en total 25 a 30
+segundos. Con la ventana en 10 s no llega, y es preferible que lo diga a que
+invente un numero.
+
+Si queres el numero de respiracion, subi la ventana:
+
+```bash
+python main.py --duracion 40
+```
+
+La cuenta completa de por que hacen falta esos segundos esta en
+[docs/respiracion.md](docs/respiracion.md).
+
+### Ajustes
+
+| Opcion | Que hace |
+|---|---|
+| `--duracion 30` | segundos de cada medicion |
+| `--sin-paneles` | sin pantallas de espera ni de resultado: la vista queda siempre igual y la tecla solo controla cuando adquiere |
+| `--a-demanda` | los sensores arrancan apagados y cada medicion la dispara la tecla |
+| `--continuo` | mide siempre, sin tecla. **Ya es el default**; se mantiene por compatibilidad con los scripts que lo traen puesto |
+| `--medir-al-inicio` | solo con `--a-demanda`: dispara la primera medicion al arrancar (util para un kiosco) |
+| `session.key` | que tecla dispara (default `x`) |
+| `session.warmup_s` | segundos de estabilizacion (default 3) |
+| `session.result_hold_s` | segundos que queda el resultado; `0` = hasta que aprietes la tecla |
+| `session.power_down_idle` | `false` deja los modulos encendidos entre mediciones |
+
+Apagar los modulos entre mediciones no es solo consumo: el MAX30102 con los LED
+encendidos se entibia, y un sensor caliente deriva.
+
+Cada medicion terminada se manda al backend como un mensaje `measurement` con
+el resumen completo. Es el mensaje mas comodo para armar historial: una fila
+por medicion en vez de un caudal continuo.
 
 ---
 
@@ -237,22 +308,14 @@ python main.py --config config.json
 Tambien se puede por variables de entorno, util para el arranque automatico:
 
 ```bash
-MONITOR_MQTT_HOST=192.168.0.50 MONITOR_DEVICE_ID=CAMA-3 python main.py
+MONITOR_BROKER_HOST=192.168.0.50 MONITOR_DEVICE_ID=CAMA-3 python main.py
 ```
-
-Las **credenciales del broker no se configuran aca**: usuario, contrasena y CA
-salen de `iot/.env` con los nombres de siempre (`MQTT_HOST`, `MQTT_USER`,
-`MQTT_PASSWORD`, `MQTT_CA_FILE`...), que es de donde tambien las lee `../src/`.
-Ver [`../README.md`](../README.md) para como se arma ese archivo y como se copia
-el `ca.crt` a la Pi.
 
 Lo que mas se suele tocar:
 
 | Donde | Que |
 |---|---|
-| `backend.host` / `port` | broker MQTT, si no es el del `.env` |
-| `backend.vitals_interval_s` | cada cuanto se publica (1 s por defecto) |
-| `device.device_id` | codigo del dispositivo, como esta en la tabla `dispositivo` |
+| `backend.host` / `port` | broker MQTT (o `MQTT_HOST` en el `.env`) |
 | `ecg.notch_hz` | 50 en Argentina/Europa, 60 en Norteamerica |
 | `ecg.sample_rate_hz` | 250 por defecto. El ADS1115 llega a 860 |
 | `ecg.frontend_gain` | ganancia del modulo AD8232 (tipico 1100) |
@@ -266,60 +329,28 @@ Lo que mas se suele tocar:
 
 ## Que manda al backend
 
-Una vez por segundo (`backend.vitals_interval_s`), **un mensaje MQTT por
-variable**, QoS 1:
+Va por **MQTT sobre TLS**, no por HTTP. El contrato completo esta en
+**[JSON.md](JSON.md)**. Resumen:
 
-```
-siappc/<DEVICE_CODE>/telemetry   {device, variable, value, unit, ts, hash}
-siappc/<DEVICE_CODE>/status      retenido: {"status": "online" | "offline"}
-```
+- Tema `siappc/<device>/telemetry`, **una lectura suelta por mensaje**, QoS 1
+- Cinco variables: `hr`, `spo2`, `pr`, `perfusion`, `resp`
+- Cada lectura lleva un **hash SHA-256** que el backend usa para deduplicar
+- Tema `siappc/<device>/status` retenido, con Last Will si el Pi desaparece
+- Si se cae la red, encola en SQLite (hasta un dia) y reenvia al reconectar
+- **Las ondas no se publican**: el backend guarda una fila por lectura y el ECG
+  son 250 muestras por segundo. Se dibujan en pantalla y ahi se quedan
 
-Las cinco variables, con el mismo redondeo que muestra la pantalla:
+Configuracion del broker: copia `.env.example` a `.env` y ajusta. Dentro de
+SIAPPC (en `iot/monitor/`) no hace falta: se lee `iot/.env`.
 
-| `variable` | De donde sale | Unidad |
-|---|---|---|
-| `hr` | AD8232 -> ADS1115, intervalos R-R | bpm |
-| `spo2` | MAX30102, relacion rojo/infrarrojo | % |
-| `pr` | MAX30102, picos del pletismograma | bpm |
-| `perfusion` | MAX30102, AC pico a pico sobre DC | % |
-| `resp` | **estimada** del pleth, no medida | rpm |
-
-`resp` es una estimacion y no una medicion: en pantalla va rotulada como tal,
-pero el payload no tiene donde decirlo. Quien lea esa serie tiene que saberlo.
-
-Lo que **no** viaja: las ondas (ECG, pleth, resp), las alarmas, la calidad de
-senial y el diagnostico del equipo. La razon esta arriba, en el recuadro del
-principio.
-
-Una variable que todavia no se puede medir (el dedo fuera del sensor, el
-detector de QRS asentandose) no se publica. Un hueco en la serie es mas honesto
-que un cero que parece una medicion.
-
-El tema `status` es retenido y ademas esta declarado como Last Will: si el Pi se
-apaga o pierde la red sin avisar, el broker publica `offline` por el, y el
-backend marca el dispositivo como `inactivo`.
-
-### Cola local
-
-Las lecturas se escriben en `iot/monitor-buffer.db` (SQLite, git-ignorado) antes
-de publicarse, y solo se borran cuando el broker confirma la entrega. Es la
-misma cola que usa `../src/`, en otro archivo: si los dos corren en el mismo Pi
-no se pisan. El bucle de pantalla nunca toca la red — encola y sigue, y un hilo
-aparte vacia la cola — asi que una WiFi lenta no le baja los FPS.
-
-Cada lectura lleva un `hash` SHA-256 de `dispositivo|variable|ts|valor`,
-construido igual que en `../src/publisher.py`. El backend tiene un indice unico
-sobre esa columna, asi que un reenvio tras una caida, o un duplicado de QoS 1,
-se descarta en vez de contarse dos veces.
-
-### Verlo llegar
+Para ver que sale la telemetria sin levantar el backend:
 
 ```bash
-docker run --rm --network siappc_default   -v "$PWD/infra/mosquitto/certs/ca.crt:/ca.crt:ro"   eclipse-mosquitto:2 mosquitto_sub --cafile /ca.crt   -h mosquitto -p 8883 -t 'siappc/#' -v -u siappc -P '...'
+python tools/receptor_prueba.py --host 192.168.0.100
 ```
 
-(desde la raiz del repo, con el Compose levantado). `tools/receptor_prueba.py`
-era el equivalente cuando esto hablaba HTTP; ya no recibe nada.
+Se suscribe a los mismos temas que el backend y **valida cada payload con las
+mismas reglas**, asi que avisa si algo se iba a rechazar.
 
 ---
 
@@ -353,6 +384,29 @@ sudo usermod -aG video,render,i2c,gpio $USER
 
 ## Si algo no anda
 
+### Primero: el diagnostico
+
+Antes de tocar nada, corre esto. Prueba cada modulo por separado, no abre
+ninguna ventana (asi que anda por SSH) y te dice exactamente que falla:
+
+```bash
+.venv/bin/python tools/diagnostico.py
+```
+
+Que revisa:
+
+- escanea el bus I2C y confirma que esten el `0x48` y el `0x57`
+- enciende el MAX30102, lee unos segundos y te muestra el DC del infrarrojo y
+  del rojo, si hay dedo y si la senial pulsa
+- lee el ADS1115 y verifica que la continua del AD8232 este cerca de VCC/2, que
+  es la prueba de que el frente analogico esta bien alimentado
+- **avisa si dos cosas quedaron asignadas al mismo GPIO**
+- hace sonar el buzzer con cuatro tonos
+
+Al final imprime una lista de los problemas encontrados y como arreglarlos.
+
+### Despues: los sintomas sueltos
+
 **No aparece nada en `i2cdetect`**
 I2C deshabilitado, o SDA/SCL cruzados, o el modulo sin alimentacion. El
 MAX30102 de las placas moradas a veces necesita resistencias de pull-up de 4.7k
@@ -361,6 +415,19 @@ a 3.3 V en SDA y SCL.
 **`PART_ID inesperado: 0x11`**
 Es un MAX30100, no un MAX30102. Los registros son distintos y este driver no
 le sirve.
+
+**Arranca pero no mide nada, y los LED del MAX30102 no se encienden**
+En continuo —el default— esto NO es lo esperado y hay que revisar el sensor con
+`tools/diagnostico.py`. Si el equipo quedo en modo a demanda (`--a-demanda` en
+el `monitor.service`, o `session.manual: true` en el JSON), entonces si es lo
+normal: apreta `X` para medir 10 segundos, o quita esa opcion para que mida sin
+parar.
+
+**Dice ELECTRODO SUELTO todo el tiempo, con el ECG plano**
+Fijate que en `ecg.lo_plus_pin` y `ecg.lo_minus_pin` no haya un GPIO que tenga
+otra cosa conectada. El programa lee ese pin en alto como electrodo despegado
+y silencia el ECG, sin ninguna pista de por que. `tools/diagnostico.py` lo
+detecta. Para descartarlo rapido, poné los dos en `null`.
 
 **El ECG es una linea plana**
 Casi siempre son los electrodos. Si en pantalla dice ELECTRODO SUELTO, LO+/LO-
@@ -392,21 +459,11 @@ Baja `ui.fps` a 30, o `ecg.sample_rate_hz` a 128. Un Pi 4 con HDMI 1080p tiene
 que ir a 60 sin despeinarse.
 
 **`SIN SERVIDOR` en el pie**
-El Pi no llega al broker. Mira la consola: ahi sale el motivo real.
-
-- `no se encuentra la CA del broker` — falta `iot/certs/ca.crt`. Se copia desde
-  `infra/mosquitto/certs/ca.crt`, ver [`../README.md`](../README.md).
-- `conexion rechazada: 5` (o `Not authorized`) — usuario o contrasena del `.env`
-  que no coinciden con los del broker.
-- Error de certificado — el nombre del certificado del broker tiene que
-  coincidir con `MQTT_HOST`. Si llegas por IP, esa IP va como SAN al reemitirlo
-  (`MQTT_EXTRA_SANS`); no se desactiva la validacion.
-- Se conecta pero no aparece nada en la base — revisa que `device_id` exista
-  como `dispositivo.codigo`: el backend descarta lo que no puede atribuir a un
-  dispositivo, y lo deja escrito en su log.
-
-Mientras tanto no se pierde nada: las lecturas se acumulan en la cola local y
-salen al reconectar. El contador `cola N` del pie dice cuantas hay.
+El Pi no llega al broker. Las lecturas no se pierden: se acumulan en la cola
+local y salen al reconectar. Revisa que `MQTT_HOST` apunte a la maquina del
+Compose, que el puerto 8883 este abierto, y que el `ca.crt` sea el del broker.
+Si el broker se alcanza por IP, esa IP tiene que estar en el certificado como
+SAN o el Pi lo rechaza a proposito.
 
 ---
 
@@ -414,6 +471,7 @@ salen al reconectar. El contador `cola N` del pie dice cuantas hay.
 
 ```
 config.py           toda la configuracion, en un solo lugar
+iot_env.py          broker y credenciales (del entorno o de iot/.env)
 main.py             arma todo y corre el bucle principal
 state.py            la foto del estado que comparten UI, alarmas y red
 alarms.py           limites, antirrebote, prioridades y silencio
@@ -429,22 +487,22 @@ processing/
   ecg.py            deteccion de onda R y frecuencia cardiaca
   ppg.py            SpO2, pulso, perfusion y respiracion
 
-iot_env.py          puente a iot/src/config.py: broker, credenciales y CA
-
 net/
-  publisher.py      publicacion MQTT, cola local y reintentos
+  publisher.py      publicacion MQTT, con reintento y cola local
+  buffer.py         cola en SQLite de lecturas sin confirmar
 
 ui/
   monitor.py        pantalla: barrido de ondas, panel numerico, alarmas
   theme.py          colores, tipografias, grilla
   sound.py          bip de latido y tonos de alarma
 
+sensors/buzzer.py     buzzer pasivo por PWM (esta aca porque es hardware)
+
 tools/
-  receptor_prueba.py  receptor del contrato HTTP viejo; ya no se usa
+  diagnostico.py      prueba cada modulo por separado, sin abrir ventana
+  receptor_prueba.py  se suscribe al broker y valida lo que publica el Pi
 ```
 
 El bucle principal es de un solo hilo: los sensores producen en hilos aparte y
 la red consume en otro, pero **todo el procesamiento y el dibujado pasan por el
-mismo hilo**. Por eso no hay locks en los filtros ni en los detectores. Lo unico
-compartido entre el bucle y el hilo de red es la cola en SQLite, y esa si tiene
-su lock.
+mismo hilo**. Por eso no hay locks en los filtros ni en los detectores.

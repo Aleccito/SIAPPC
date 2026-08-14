@@ -52,8 +52,7 @@ function Meta({ label, value, color }: { label: string; value: string; color?: s
 }
 
 export function SoapNoteDialog({ open, note, noteId, onClose, onEdit, onAddendum }: Props) {
-  const { t } = useLanguage()
-  const locale = 'es-MX'
+  const { t, locale } = useLanguage()
   const { user } = useAuth()
 
   // Solo se consulta si no vino la nota entera y el diálogo está abierto.

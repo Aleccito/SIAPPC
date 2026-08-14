@@ -77,7 +77,15 @@ export async function countRows(sql: Prisma.Sql): Promise<number> {
 export async function flushRedis(): Promise<void> {
   const { redis } = await import("../../backend/src/lib/redis.ts");
   if (!redis) throw new Error("las pruebas necesitan REDIS_URL (ver .env.test)");
-  for (const prefix of ["siappc-rl:*", "siappc-cache:*", "siappc-jwt:*"]) {
+  // `siappc-lb:` es el candado que impide que un bloqueo de login escriba un
+  // renglón de bitácora por cada intento (ver firstBlockInWindow en
+  // routes/auth.ts). Dura lo que la ventana, 15 minutos, así que sin borrarlo
+  // aquí la corrida siguiente encuentra el candado ya puesto, no escribe el
+  // LOGIN_BLOCKED y "cada bloqueo queda en la bitácora" falla — no por el
+  // código, sino por lo que dejó la corrida anterior.
+  //
+  // Todo prefijo nuevo que use la aplicación tiene que entrar en esta lista.
+  for (const prefix of ["siappc-rl:*", "siappc-cache:*", "siappc-jwt:*", "siappc-lb:*"]) {
     const keys = await redis.keys(prefix);
     if (keys.length) await redis.del(...keys);
   }

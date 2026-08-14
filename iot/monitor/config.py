@@ -4,17 +4,18 @@ Todo lo que se toca sin abrir el resto del codigo vive aca. Se puede pisar con
 un archivo JSON (--config mi_config.json) o con variables de entorno MONITOR_*.
 
 Ejemplo de override por entorno:
-    MONITOR_MQTT_HOST=192.168.0.50 python main.py
+    MONITOR_BROKER_HOST=192.168.0.50 python main.py
 
-Lo unico que NO esta aca son las credenciales del broker: usuario, contrasena y
-CA salen de `iot/.env` a traves de `iot_env.py`, que es el mismo sitio del que
-las lee `iot/src/main.py`.
+Lo del broker (host, usuario, contrasena, CA) NO vive aca: sale del entorno o de
+un `.env` a traves de `iot_env.py`, para que la contrasena este en un solo sitio
+y `--save-config` no la escriba en un JSON.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import socket
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from typing import Any
 
@@ -51,8 +52,15 @@ class EcgConfig:
     # Si los ubicas en RA / pierna izquierda / RL, poné "ECG II".
     lead_label: str = "ECG"
     # Deteccion de electrodo suelto (LO+ / LO-). None = deshabilitado.
-    lo_plus_pin: int | None = 17
-    lo_minus_pin: int | None = 27
+    # OJO: si aca hay un pin que en realidad tiene otra cosa conectada, el
+    # programa lo lee como "electrodo despegado" y el ECG queda en linea plana
+    # sin ninguna explicacion visible. Ante la duda, poné null en los dos.
+    lo_plus_pin: int | None = 22   # pin fisico 15
+    lo_minus_pin: int | None = 27  # pin fisico 13
+    # Pin SDN del AD8232 (apagado por hardware). None = no cableado; en ese caso
+    # el frente analogico queda encendido y solo se apaga el ADS1115.
+    # En bajo apaga el modulo, en alto lo enciende.
+    sdn_pin: int | None = None
     # Filtrado
     highpass_hz: float = 0.5
     lowpass_hz: float = 40.0
@@ -74,6 +82,18 @@ class PpgConfig:
     adc_range_na: int = 4096  # 2048,4096,8192,16384
     led_red_current: int = 0x24  # 0x00..0xFF (~0.2 mA por paso)
     led_ir_current: int = 0x24
+    # Muchos modulos clones traen los LED al reves de lo que dice la hoja de
+    # datos: lo que sale primero en la FIFO es el infrarrojo y no el rojo. Con
+    # los canales cambiados la relacion R queda invertida y el SpO2 da
+    # cualquier cosa. Como saberlo: con el dedo puesto, el DC del infrarrojo
+    # tiene que ser MAYOR que el del rojo, porque el tejido absorbe mucho mas
+    # el rojo. Si da al reves, poné esto en true.
+    # tools/diagnostico.py lo detecta y avisa.
+    swap_leds: bool = False
+    # Pin INT del MAX30102. None = no cableado.
+    # El driver NO lo necesita: vacia la FIFO por sondeo. Se lee solo como
+    # senial de vida del sensor, y aparece en el diagnostico y en la tecla D.
+    int_pin: int | None = 17  # pin fisico 11
     # Umbral de "hay dedo": DC del infrarrojo por debajo de esto = sensor al aire
     finger_threshold: int = 50_000
     # Filtrado del pulso
@@ -103,40 +123,78 @@ class RespConfig:
 class BackendConfig:
     """Publicacion por MQTT hacia el backend de SIAPPC.
 
-    Es el mismo camino que usa `iot/src/`: broker con TLS, tema
-    `siappc/<dispositivo>/telemetry`, una lectura por mensaje. Lo consume
-    `backend/src/services/mqttIngest.ts` y termina en las tablas `sensor` y
-    `lectura`.
+    Antes esto armaba un sobre `monitor.v1` y lo mandaba por HTTP a
+    `POST /api/v1/ingest`. Ese endpoint no existe: la telemetria de SIAPPC entra
+    por MQTT, en `siappc/<dispositivo>/telemetry`, y la consume
+    `backend/src/services/mqttIngest.ts`. El contrato esta en JSON.md.
 
     Aca solo esta *que* se publica y *cada cuanto*. El host, el usuario, la
-    contrasena y la CA del broker salen de `iot/.env` (ver `iot_env.py`): asi
-    hay un solo sitio donde esta la contrasena y `--save-config` no la escribe
-    en un JSON.
+    contrasena y la CA del broker salen del entorno o de `iot/.env` (ver
+    `iot_env.py`): asi hay un solo sitio donde vive la contrasena y
+    `--save-config` no la escribe en un JSON.
     """
 
     enabled: bool = True
-    # Por defecto, el broker que dice `iot/.env`. Estan aca (y no solo en
-    # iot_env) para poder apuntar el monitor a otro broker sin tocar el .env
-    # que comparte con `iot/src/`.
+    # Por defecto lo que diga el entorno. Estan aca (y no solo en iot_env) para
+    # poder apuntar el monitor a otro broker sin tocar el .env compartido.
     host: str = field(default_factory=lambda: iot_env.MQTT_HOST)
     port: int = field(default_factory=lambda: iot_env.MQTT_PORT)
     # Cada cuanto se publica una tanda de signos vitales. Son hasta 5 filas en
     # `lectura` por tanda (hr, spo2, pr, perfusion, resp).
     vitals_interval_s: float = field(default_factory=lambda: iot_env.PUBLISH_INTERVAL)
-    # QoS 1: el broker confirma la entrega. Los duplicados que eso pueda
-    # generar los descarta el backend por el hash de la lectura.
+    # QoS 1: el broker confirma la entrega. Los duplicados que eso pueda generar
+    # los descarta el backend por el hash de la lectura.
     qos: int = 1
-    # Cola local en SQLite, propia: `iot/src/` tiene la suya y no conviene que
-    # compartan archivo si los dos corren en el mismo Pi.
+    # Cola local en SQLite. Si el broker no esta, las lecturas se acumulan aca y
+    # salen al reconectar.
     buffer_path: str = field(default_factory=iot_env.monitor_buffer_path)
     buffer_max_rows: int = field(default_factory=lambda: iot_env.BUFFER_MAX_ROWS)
 
 
 @dataclass
+class SessionConfig:
+    """Como se dispara la medicion: siempre (continuo) o con una tecla (a demanda)."""
+
+    # False = continuo: los sensores miden siempre, como un monitor de cabecera.
+    # True  = a demanda: arrancan apagados y una tecla dispara una ventana.
+    #
+    # El default es CONTINUO y no a demanda, que es como venia esta version.
+    #
+    # El motivo no es de preferencia, es de para que sirve el equipo. Esto se
+    # instala a pie de cama en una UCI: el backend abre alertas cuando una cifra
+    # se sale de rango, la central de monitoreo y la ronda las pintan, y las
+    # notificaciones salen de ahi. Con `manual = True` la Pi NO PUBLICA NADA
+    # mientras nadie apriete una tecla, asi que un paciente desatendido —que es
+    # justo el caso para el que existe el sistema— no genera ni una lectura ni
+    # una alerta. La pantalla se veria bien y no habria nada detras.
+    #
+    # El modo a demanda no se quita porque tiene su uso: una toma puntual con
+    # calentamiento, para revisar a alguien que no esta monitorizado. Se pide
+    # con `--a-demanda` o poniendo `session.manual` en el JSON de configuracion.
+    manual: bool = False
+    key: str = "x"  # tecla que dispara la medicion
+    # Segundos de lectura efectiva
+    duration_s: float = 10.0
+    # Los filtros pasa-altos necesitan asentarse antes de que las cuentas sirvan.
+    # Sin esto, los primeros segundos de la ventana se van en el transitorio.
+    warmup_s: float = 3.0
+    # Cuanto queda el resumen en pantalla antes de volver a la espera.
+    # 0 = para siempre, hasta que se apriete la tecla otra vez.
+    result_hold_s: float = 0.0
+    # True  = pantallas completas de espera y de resultado (tapan las ondas)
+    # False = la pantalla se ve siempre igual y solo aparece un cartelito
+    #         arriba con el estado. La tecla sigue mandando igual.
+    show_overlays: bool = True
+    # Apagar los sensores mientras no se mide (menos consumo y menos calor en
+    # el MAX30102, que si queda encendido con el dedo puesto se entibia).
+    power_down_idle: bool = True
+
+
+@dataclass
 class DeviceConfig:
-    # Tiene que coincidir con `dispositivo.codigo` en la base, o el backend
-    # descarta las lecturas por no saber de quien son. Por defecto, el mismo
-    # DEVICE_CODE que usa `iot/src/`.
+    # Tiene que coincidir con `dispositivo.codigo` en la base de SIAPPC. Si el
+    # backend no lo encuentra ahi descarta las lecturas, porque no sabe a que
+    # hospital colgarlas. Sale de DEVICE_CODE, el mismo que usa `iot/src/`.
     device_id: str = field(default_factory=lambda: iot_env.DEVICE_CODE)
     patient_id: str = "ANON-001"
     patient_name: str = "PACIENTE DE PRUEBA"
@@ -177,11 +235,22 @@ class UiConfig:
     sound_enabled: bool = True
     beat_beep: bool = True  # el "bip" clasico en cada latido
     show_debug: bool = False
+    # Buzzer PASIVO por PWM. None = sin buzzer, el sonido sale por el audio del Pi.
+    # Un buzzer activo NO sirve aca: suena solo con darle tension y no se le
+    # puede cambiar el tono, que es justo lo que hacemos con el bip de latido.
+    buzzer_pin: int | None = 12  # pin fisico 32
+    # Frecuencia central del buzzer. Los pasivos rinden mucho mas cerca de su
+    # resonancia (tipico 2 a 4 kHz); si suena flojo, proba mover esto.
+    buzzer_tone_hz: int = 2400
+    # "auto" usa el buzzer si hay pin configurado, si no el audio del Pi.
+    # Tambien: "audio", "buzzer", "ambos".
+    sound_output: str = "auto"
 
 
 @dataclass
 class Config:
     device: DeviceConfig = field(default_factory=DeviceConfig)
+    session: SessionConfig = field(default_factory=SessionConfig)
     ecg: EcgConfig = field(default_factory=EcgConfig)
     ppg: PpgConfig = field(default_factory=PpgConfig)
     resp: RespConfig = field(default_factory=RespConfig)
@@ -231,13 +300,11 @@ def _merge(target: Any, data: dict[str, Any]) -> None:
             setattr(target, key, value)
 
 
-# Solo se exponen por entorno las cosas que uno cambia al desplegar. Las
-# credenciales del broker no estan aca: van en `iot/.env` con los nombres de
-# siempre (MQTT_HOST, MQTT_USER, MQTT_PASSWORD, MQTT_CA_FILE...).
+# Solo se exponen por entorno las cosas que uno cambia al desplegar.
 _ENV_MAP = {
+    "MONITOR_BROKER_HOST": ("backend", "host", str),
+    "MONITOR_BROKER_PORT": ("backend", "port", int),
     "MONITOR_BACKEND_ENABLED": ("backend", "enabled", lambda v: v.lower() in ("1", "true", "si", "yes")),
-    "MONITOR_MQTT_HOST": ("backend", "host", str),
-    "MONITOR_MQTT_PORT": ("backend", "port", int),
     "MONITOR_DEVICE_ID": ("device", "device_id", str),
     "MONITOR_PATIENT": ("device", "patient_name", str),
     "MONITOR_FULLSCREEN": ("ui", "fullscreen", lambda v: v.lower() in ("1", "true", "si", "yes")),

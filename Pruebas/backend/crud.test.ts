@@ -17,7 +17,6 @@ import {
 const NUEVO_PACIENTE = {
   name: "Ana Ruiz",
   document: "C-900",
-  module: "KY-001",
   reason: "Fiebre",
   fechaNacimiento: "1990-05-14",
   sexo: "F",
@@ -73,7 +72,7 @@ describe("CRUD generado", () => {
 
     assert.equal((await call("PUT", `/patients/${id}`, { name: "Solo el nombre" })).statusCode, 400);
     assert.equal(
-      (await call("PUT", `/patients/${id}`, { ...NUEVO_PACIENTE, module: "KY-004" })).statusCode,
+      (await call("PUT", `/patients/${id}`, { ...NUEVO_PACIENTE, reason: "Otro motivo" })).statusCode,
       200,
     );
   });

@@ -21,7 +21,6 @@ import { authHeader, closeConnections, flushRedis, loginAsAdmin, resetDatabase }
 const PACIENTE = {
   name: "Rita Ledezma",
   document: "C-SOAP-1",
-  module: "KY-001",
   reason: "Disnea",
   fechaNacimiento: "1971-03-02",
   sexo: "F",

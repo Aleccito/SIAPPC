@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.ts";
 import { env } from "../env.ts";
 import { publicarAlerta } from "../lib/eventos.ts";
+import { notificarAlerta } from "../lib/notificaciones.ts";
 
 // Forma de siappc/<device>/telemetry, ver iot/src/publisher.py:build_payload.
 // `variable` no es un enum cerrado: sensor.variable_medida es VARCHAR(60) y
@@ -215,6 +216,22 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
       });
 
       if (contexto) {
+        // La bandeja se llena ANTES de empujar el aviso en vivo, y no después:
+        // el evento SSE le dice a la campana "vuelve a preguntar", así que si
+        // saliera primero, el navegador consultaría /notifications y no
+        // encontraría todavía la fila. Un aviso que al pulsarlo no lleva a nada
+        // es peor que uno que llega medio segundo más tarde.
+        const notificados = await notificarAlerta(
+          {
+            alertaId: creada.alerta_id,
+            dispositivoId: dispositivo.dispositivo_id,
+            pacienteId: contexto.paciente?.paciente_id ?? null,
+            tipo: alert.tipo,
+            severidad: alert.severidad,
+          },
+          logger,
+        );
+
         publicarAlerta({
           alertId: String(creada.alerta_id),
           hospitalId: contexto.hospital_id,
@@ -228,6 +245,7 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
           type: alert.tipo,
           message: alert.mensaje,
           at: creada.fecha_hora.toISOString(),
+          notificados,
         });
       }
     }

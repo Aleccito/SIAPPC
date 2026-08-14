@@ -20,13 +20,12 @@ import { listReports } from '../../reports/api/reportsApi'
 import {
   listAdmissions,
   listAppointments,
-  listBedOccupancy,
   listDischarges,
 } from '../../admissions/api/admissionsApi'
 import { KpiCard } from '../components/KpiCard'
 import { WidgetEmpty, WidgetError } from '../components/WidgetMessage'
 import { appointmentStateColor, appointmentStateKey } from '../presentation'
-import { REFRESH_INTERVAL_MS } from '../queries'
+import { REFRESH_INTERVAL_MS, useBedOccupancy } from '../queries'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 import type { ReportStatus } from '../../reports/types'
@@ -57,11 +56,8 @@ function occupancyColor(rate: number): 'success' | 'warning' | 'error' {
 /** Ocupación de camas por unidad. */
 export function BedOccupancyWidget() {
   const { t } = useLanguage()
-  const { data, isError } = useQuery({
-    queryKey: ['dashboard', 'bedOccupancy'],
-    queryFn: listBedOccupancy,
-    refetchInterval: REFRESH_INTERVAL_MS,
-  })
+  // La consulta vive en queries.ts porque la lista de pacientes usa la misma.
+  const { data, isError } = useBedOccupancy()
 
   if (isError) return <WidgetError message="dash.occupancy.error" />
   if (data && data.length === 0) return <WidgetEmpty message="dash.occupancy.empty" />
@@ -83,7 +79,13 @@ export function BedOccupancyWidget() {
               })}
             </Typography>
           </Stack>
+          {/* La barra no aporta ningún dato que no esté ya escrito arriba
+              —ocupadas sobre total— y abajo —libres y fuera de servicio—: es la
+              misma cifra dibujada. Se oculta al lector de pantalla en vez de
+              ponerle nombre, que solo haría repetir el porcentaje una tercera
+              vez. */}
           <LinearProgress
+            aria-hidden="true"
             variant="determinate"
             value={Math.round(unit.rate * 100)}
             color={occupancyColor(unit.rate)}
@@ -103,7 +105,7 @@ export function BedOccupancyWidget() {
 
 /** Ingresos y egresos del día. */
 export function AdmissionsTodayWidget() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
 
   const admissions = useQuery({
     queryKey: ['dashboard', 'admissions', 'today'],
@@ -149,7 +151,7 @@ export function AdmissionsTodayWidget() {
                 </Typography>
                 <Typography variant="caption" color="text.secondary" noWrap>
                   {admission.bedCode ?? t('dash.admissions.noBed')} ·{' '}
-                  {new Date(admission.admittedAt).toLocaleTimeString(language, {
+                  {new Date(admission.admittedAt).toLocaleTimeString(locale, {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}
@@ -169,7 +171,7 @@ export function AdmissionsTodayWidget() {
 
 /** Agenda de citas del día. */
 export function AppointmentsWidget() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   const { data, isError } = useQuery({
     queryKey: ['dashboard', 'appointments', 'today'],
     queryFn: () => listAppointments({ date: 'today' }),
@@ -190,7 +192,7 @@ export function AppointmentsWidget() {
             sx={{ alignItems: 'center' }}
           >
             <Typography variant="caption" sx={{ fontWeight: 700, minWidth: 44 }}>
-              {new Date(appointment.at).toLocaleTimeString(language, {
+              {new Date(appointment.at).toLocaleTimeString(locale, {
                 hour: '2-digit',
                 minute: '2-digit',
               })}
@@ -224,7 +226,7 @@ export function AppointmentsWidget() {
  * entrega (`etl_ejecucion`).
  */
 export function RecentReportsWidget() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   const reports = useQuery({
     queryKey: ['dashboard', 'reports'],
     queryFn: listReports,
@@ -236,7 +238,7 @@ export function RecentReportsWidget() {
 
   return (
     <Stack spacing={1}>
-      <Table size="small">
+      <Table aria-label={t('dash.widget.recentReports')} size="small">
         <TableHead>
           <TableRow>
             <TableCell>{t('reports.col.name')}</TableCell>
@@ -257,7 +259,7 @@ export function RecentReportsWidget() {
                 />
               </TableCell>
               <TableCell sx={{ color: 'text.secondary' }}>
-                {new Date(report.updatedAt).toLocaleString(language)}
+                {new Date(report.updatedAt).toLocaleString(locale)}
               </TableCell>
             </TableRow>
           ))}

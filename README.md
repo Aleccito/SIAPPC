@@ -336,9 +336,9 @@ nacer con tablas viejas sin que nadie se entere hasta el despliegue.
 Lo mismo se corre a mano antes de abrir un pull request, con el stack arriba:
 
 ```bash
-cd backend  && npm run typecheck && npm test    # 84 pruebas
+cd backend  && npm run typecheck && npm test    # 99 pruebas
 cd frontend && npm run build && npm run lint
-cd Pruebas  && npm run test:postman             # 50 peticiones, 143 aserciones
+cd Pruebas  && npm run test:postman             # 62 peticiones, 177 aserciones
 ```
 
 No hay job de JMeter, y es deliberado: los runners son máquinas compartidas, así

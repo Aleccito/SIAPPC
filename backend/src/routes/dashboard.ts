@@ -20,19 +20,28 @@ import { prisma } from "../lib/prisma.ts";
 import { cached, cacheKey } from "../lib/cache.ts";
 import { env } from "../env.ts";
 import { alertSeverities } from "../types.ts";
+import { civilDateIso } from "../lib/dates.ts";
 import type {
+  AdmissionType,
   AlertSeverity,
   AssignedPatient,
   DeviceState,
   DeviceStatus,
   PatientStatus,
-  ServiceModule,
+  PatientVitals,
 } from "../types.ts";
 
 // Techo de la lista de pacientes a cargo. Un médico no lleva cien camas; el
 // límite está para que un dato sucio no convierta el tablero en una descarga.
 const ASSIGNED_LIMIT = 100;
 const DEVICES_LIMIT = 200;
+
+/**
+ * Variables que el tablero enseña junto al paciente. Es un subconjunto de las
+ * que publica la Pi: el resto (`pr`, `resp`, `perfusion`, `ecg`) son de la
+ * pantalla de cama, no de una lista de doce pacientes.
+ */
+const VITAL_VARIABLES = ["hr", "spo2"] as const;
 
 /** Orden de gravedad, de menor a mayor: el índice compara severidades. */
 const severityRank = new Map<AlertSeverity, number>(alertSeverities.map((s, i) => [s, i]));
@@ -43,6 +52,14 @@ function worseOf(a: AlertSeverity | null, b: AlertSeverity): AlertSeverity {
 }
 
 type AlertaAbiertaRow = { codigo: string; severidad: AlertSeverity; total: bigint | number };
+
+type LecturaUltimaRow = {
+  codigo: string;
+  variable_medida: string;
+  /** `lectura.valor` es DECIMAL: el driver lo entrega como Decimal, no number. */
+  valor: Prisma.Decimal;
+  fecha_hora: Date;
+};
 
 type DispositivoEstadoRow = {
   codigo: string;
@@ -69,11 +86,25 @@ export default async function dashboardRoutes(app: FastifyInstance) {
     async (req) => {
       const usuarioId = Number(req.user.sub);
 
-      const asignaciones = await prisma.medicoPaciente.findMany({
-        where: { usuario_id: usuarioId, activo: true, paciente: { activo: true } },
+      // Quién ve TODOS los pacientes del hospital y quién solo los suyos.
+      //
+      // El personal clínico trabaja sobre su propia lista: es el contrato de
+      // este endpoint y por eso el identificador sale del token y nunca de la
+      // query. Pero admin y administrativo no tienen pacientes asignados —no
+      // atienden— y con la regla estricta su pantalla de Pacientes salía vacía
+      // aunque el hospital tuviera gente ingresada.
+      //
+      // Se decide por el ROL y no por un permiso: `pacientes.ver` lo tienen los
+      // cuatro roles, así que no distingue. Sigue sin poderse pedir "los de
+      // otro": o son los tuyos, o son todos los de tu hospital.
+      const quien = await prisma.usuario.findUnique({
+        where: { usuario_id: usuarioId },
+        select: { rol: { select: { nombre: true } } },
+      });
+      const veTodos = quien?.rol.nombre === "admin" || quien?.rol.nombre === "administrativo";
+
+      const PACIENTE_INCLUDE = {
         include: {
-          paciente: {
-            include: {
               // Un paciente puede arrastrar equipos dados de baja; solo
               // interesa el que está midiendo ahora.
               dispositivos: {
@@ -81,12 +112,39 @@ export default async function dashboardRoutes(app: FastifyInstance) {
                 orderBy: { dispositivo_id: "asc" },
                 take: 1,
               },
-            },
+              // Número de expediente y Glasgow. La exploración física es 1:1
+              // con el expediente, así que esto no multiplica renglones.
+              expediente: { include: { exploracion: { select: { glasgow: true } } } },
+              // Dónde está ingresado AHORA. Un paciente acumula ingresos a lo
+              // largo del tiempo; el abierto es como mucho uno.
+          ingresos: {
+            where: { estado: "activo" },
+            include: { cama: { include: { unidad: true } } },
+            orderBy: { fecha_ingreso: "desc" },
+            take: 1,
           },
         },
-        orderBy: { fecha_asignacion: "desc" },
-        take: ASSIGNED_LIMIT,
-      });
+      } as const;
+
+      // Las dos ramas terminan en la misma forma —paciente + fecha— para que
+      // todo lo de abajo (alertas, signos, DTO) siga siendo un solo camino.
+      // Para quien ve todos, la "fecha de asignación" es la de llegada: no hay
+      // asignación que fechar, y el campo es obligatorio en el DTO.
+      const asignaciones = veTodos
+        ? (
+            await prisma.paciente.findMany({
+              where: { activo: true, hospital_id: req.hospitalId },
+              ...PACIENTE_INCLUDE,
+              orderBy: { fecha_llegada: "desc" },
+              take: ASSIGNED_LIMIT,
+            })
+          ).map((paciente) => ({ paciente, fecha_asignacion: paciente.fecha_llegada }))
+        : await prisma.medicoPaciente.findMany({
+            where: { usuario_id: usuarioId, activo: true, paciente: { activo: true } },
+            include: { paciente: PACIENTE_INCLUDE },
+            orderBy: { fecha_asignacion: "desc" },
+            take: ASSIGNED_LIMIT,
+          });
 
       const devices = asignaciones
         .map((a) => a.paciente.dispositivos[0]?.codigo)
@@ -115,16 +173,56 @@ export default async function dashboardRoutes(app: FastifyInstance) {
         }
       }
 
+      // Último valor de cada signo vital por equipo.
+      //
+      // El `lectura_id` de la última lectura sale de una subconsulta
+      // correlacionada por sensor, igual que en /dashboard/devices y por el
+      // mismo motivo: `ix_lectura_sensor_fecha` la resuelve leyendo un extremo
+      // del índice, mientras que un GROUP BY sobre `lectura` recorrería una
+      // tabla que crece una fila por sensor y por segundo.
+      //
+      // El desempate por `lectura_id` importa: `fecha_hora` es DATETIME(3) y
+      // dos lecturas del mismo milisegundo dejarían el LIMIT 1 a suertes.
+      const porEquipoVitales = new Map<string, PatientVitals>();
+      if (devices.length > 0) {
+        const rows = await prisma.$queryRaw<LecturaUltimaRow[]>`
+          SELECT d.codigo, s.variable_medida, l.valor, l.fecha_hora
+          FROM dispositivo d
+          JOIN sensor s ON s.dispositivo_id = d.dispositivo_id
+          JOIN lectura l ON l.lectura_id = (
+            SELECT l2.lectura_id
+            FROM lectura l2
+            WHERE l2.sensor_id = s.sensor_id
+            ORDER BY l2.fecha_hora DESC, l2.lectura_id DESC
+            LIMIT 1
+          )
+          WHERE d.codigo IN (${Prisma.join(devices)})
+            AND s.variable_medida IN (${Prisma.join(VITAL_VARIABLES)})
+        `;
+        for (const row of rows) {
+          const acc = porEquipoVitales.get(row.codigo) ?? { hr: null, spo2: null, at: null };
+          const at = row.fecha_hora.toISOString();
+          if (row.variable_medida === "hr") acc.hr = Number(row.valor);
+          if (row.variable_medida === "spo2") acc.spo2 = Number(row.valor);
+          // La marca de tiempo es la de la lectura más reciente de las dos: es
+          // lo que responde "¿de cuándo son estas cifras?".
+          if (!acc.at || at > acc.at) acc.at = at;
+          porEquipoVitales.set(row.codigo, acc);
+        }
+      }
+
       return asignaciones.map((a): AssignedPatient => {
         const paciente = a.paciente;
         const dispositivo = paciente.dispositivos[0] ?? null;
         const alertas = dispositivo ? porEquipo.get(dispositivo.codigo) : undefined;
+        const expediente = paciente.expediente;
+        const ingreso = paciente.ingresos[0] ?? null;
+        const cama = ingreso?.cama ?? null;
 
         return {
           id: String(paciente.paciente_id),
           name: paciente.nombre,
           document: paciente.cedula,
-          module: (paciente.modulo as ServiceModule | null) ?? null,
           status: paciente.estado as PatientStatus,
           arrivedAt: paciente.fecha_llegada.toISOString(),
           reason: paciente.motivo_consulta ?? "",
@@ -133,6 +231,24 @@ export default async function dashboardRoutes(app: FastifyInstance) {
           deviceState: (dispositivo?.estado as DeviceState | undefined) ?? null,
           openAlerts: alertas?.total ?? 0,
           worstSeverity: alertas?.worst ?? null,
+          record: expediente ? String(expediente.expediente_id) : null,
+          unit: cama?.unidad.nombre ?? null,
+          bed: cama?.codigo ?? null,
+          admissionId: ingreso ? String(ingreso.ingreso_id) : null,
+          birthDate: civilDateIso(paciente.fecha_nacimiento),
+          // El tipo de ingreso es lo ÚNICO que la base sabe sobre por qué está
+          // aquí: `ingreso.tipo` ∈ {urgencia, programado, traslado}. No hay
+          // columna de "traslado a UCI" ni de destino, así que la pantalla
+          // rotula el tipo y no inventa un movimiento que nadie registró.
+          admissionType: (ingreso?.tipo as AdmissionType | undefined) ?? null,
+          admittedAt: ingreso?.fecha_ingreso.toISOString() ?? null,
+          glasgow: expediente?.exploracion?.glasgow ?? null,
+          examined: expediente?.exploracion != null,
+          vitals: (dispositivo ? porEquipoVitales.get(dispositivo.codigo) : undefined) ?? {
+            hr: null,
+            spo2: null,
+            at: null,
+          },
         };
       });
     },

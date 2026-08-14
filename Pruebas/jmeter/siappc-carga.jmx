@@ -223,6 +223,18 @@
             <intProp name="Assertion.test_type">8</intProp>
           </ResponseAssertion>
           <hashTree/>
+          <!-- El identificador del primer paciente, para pedir su equipo a
+               cargo en el siguiente muestreador. El valor por defecto evita
+               que la ruta quede como /patients/NO_ENCONTRADO/assignments si
+               la lista viniera vacía: con `1` responde 404, que se mide
+               igual, en vez de romper la corrida. -->
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extraer pacienteId" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">pacienteId</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$[0].id</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">1</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
         </hashTree>
 
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /dashboard/devices (subconsulta)" enabled="true">
@@ -239,6 +251,55 @@
             </collectionProp>
             <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
             <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- La lista de la pantalla de Pacientes. Es la consulta más pesada de
+             las que se miden: por cada paciente cruza ingreso activo, cama,
+             unidad, expediente, alertas abiertas y la última lectura de cada
+             signo vital con una subconsulta correlacionada por sensor.
+             La sesión de la prueba es `admin`, y admin ve TODOS los pacientes
+             del hospital, no una lista corta de asignados: es el peor caso, que
+             es justo lo que interesa medir. -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /dashboard/assigned-patients (lista completa)" enabled="true">
+          <stringProp name="HTTPSampler.path">/dashboard/assigned-patients</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- Equipo a cargo de un paciente. Es una lectura pequeña con dos JOIN
+             (usuario y rol), y está aquí porque el diálogo de la pantalla de
+             Pacientes la pide cada vez que se abre. -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /patients/{id}/assignments (personal a cargo)" enabled="true">
+          <stringProp name="HTTPSampler.path">/patients/${pacienteId}/assignments</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <!-- 200 o 404: si la base de la corrida no tiene pacientes, el id por
+               defecto no existe y responde 404. Las dos son respuestas medidas;
+               lo que la aserción descarta es el 5xx. -->
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="200 o 404" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="46730162">200|404</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">1</intProp>
           </ResponseAssertion>
           <hashTree/>
         </hashTree>

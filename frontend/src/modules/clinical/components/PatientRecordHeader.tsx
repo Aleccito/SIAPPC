@@ -2,6 +2,8 @@ import { Avatar, Box, Button, Chip, Paper, Stack, Typography } from '@mui/materi
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import NoteAddOutlinedIcon from '@mui/icons-material/NoteAddOutlined'
 import type { Patient } from '../../patients/types'
+// La edad se deriva al pintar; la comparte con la lista de pacientes.
+import { ageFrom } from '../../patients/presentation'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 
 // Cabecera del expediente: la ficha del paciente que encabeza todas las
@@ -29,27 +31,8 @@ const STATUS_COLOR = {
   discharged: 'success',
 } as const
 
-// La fecha de nacimiento llega como "1990-05-14". Se parte a mano en vez de
-// pasarla por `new Date`, que la leería como medianoche UTC y restaría un día en
-// husos negativos: aquí solo se comparan tres números.
-function ageFrom(birthDate: string): number | null {
-  // Solo la parte de la fecha: `birthDate` llega como
-  // "1990-05-14T00:00:00-05:00" y el resto sobra para calcular una edad.
-  const [year, month, day] = birthDate.slice(0, 10).split('-').map(Number)
-  if (!year || !month || !day) return null
-
-  const today = new Date()
-  let age = today.getFullYear() - year
-  // Aún no ha sido su cumpleaños este año.
-  if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) {
-    age -= 1
-  }
-  return age >= 0 ? age : null
-}
-
 export function PatientRecordHeader({ patient }: { patient: Patient }) {
-  const { t } = useLanguage()
-  const locale = 'es-MX'
+  const { t, locale } = useLanguage()
   const age = ageFrom(patient.birthDate)
 
   return (
@@ -78,7 +61,6 @@ export function PatientRecordHeader({ patient }: { patient: Patient }) {
               color={STATUS_COLOR[patient.status]}
               label={t(`patientStatus.${patient.status}`)}
             />
-            <Chip size="small" variant="outlined" color="primary" label={patient.module} />
           </Stack>
 
           <Typography

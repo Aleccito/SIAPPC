@@ -63,6 +63,7 @@ que nginx quita al hacer proxy.
 | `GET /audit` · `GET /audit/entities` | Bitácora, paginada y filtrable |
 | `GET /units` · `GET /units/:id` · `POST /units` · `PUT|PATCH /units/:id` · `DELETE /units/:id` | CRUD de unidades |
 | `GET /patients` · `GET /patients/:id` · `POST /patients` · `PUT|PATCH /patients/:id` · `DELETE /patients/:id` | CRUD de pacientes |
+| `GET /patients/:id/assignments` · `POST /patients/:id/assignments` · `DELETE /patients/:id/assignments/:userId` | Personal a cargo del paciente. Ver [Personal a cargo](#personal-a-cargo) |
 | `GET /sensors/readings` | Lecturas, filtrables por `device`, `variable`, `limit` |
 | `GET /sensors/alerts` | Alertas, además por `severity` y `status` |
 | `GET /alerts/stream` | Alertas en vivo por Server-Sent Events. Ver [Alertas en vivo](#alertas-en-vivo-sse) |
@@ -81,7 +82,7 @@ que nginx quita al hacer proxy.
 | `GET /historia/:pacienteId/cambios` | Historial de cambios del expediente |
 | `GET /historia/:pacienteId` | Expediente clínico consolidado |
 | `GET /historia/:pacienteId/exploracion-fisica` · `PUT /historia/:pacienteId/exploracion-fisica` | Exploración física (tablas `exploracion_fisica` y `hallazgo_exploracion`) |
-| `GET /dashboard/assigned-patients` | Pacientes asignados al usuario de la sesión |
+| `GET /dashboard/assigned-patients` | Pacientes del usuario de la sesión; **todos los del hospital** si es `admin` o `administrativo`. Ver [Personal a cargo](#personal-a-cargo) |
 | `GET /dashboard/devices` | Dispositivos y su última lectura |
 | `GET /reports` | Últimas corridas del ETL desde `etl_ejecucion` |
 | `GET /reports/actividad-clinica.csv` | Informe de actividad clínica por profesional, en CSV. Ver [Informes en CSV](#informes-en-csv) |
@@ -166,6 +167,53 @@ consume `frontend/src/modules/dashboard/useAlertStream.ts`). Es un canal
 aparte del ETL: el ETL (`backend/etl/`) agrega lecturas y alertas por lotes,
 una vez por hora, para alimentar reportes; el SSE no agrega nada ni toca la
 base de reportes, solo avisa en el instante en que ocurre la alerta.
+
+## Personal a cargo
+
+`medico_paciente` dice quién tiene a cada paciente bajo su cuidado. No es una
+tabla decorativa: decide qué lista `GET /dashboard/assigned-patients` —lo que
+el usuario ve en la pantalla de Pacientes— y a quién le llegan las
+notificaciones (`src/lib/notificaciones.ts`).
+
+Durante un tiempo solo se leía. Sin endpoints de escritura la tabla únicamente
+se llenaba con SQL a mano, así que en una instalación recién sembrada estaba
+vacía y la pantalla de Pacientes salía sin nada para todo el mundo, aunque el
+hospital tuviera gente ingresada. Los tres endpoints la cierran:
+
+| Ruta | Permiso | Qué hace |
+|---|---|---|
+| `GET /patients/:id/assignments` | `pacientes.ver` | Quién está a cargo ahora, con nombre y rol |
+| `POST /patients/:id/assignments` | `pacientes.editar` | Pone a alguien a cargo. `201`, o `409` si ya lo estaba |
+| `DELETE /patients/:id/assignments/:userId` | `pacientes.editar` | Lo quita. `204` |
+
+Tres detalles que no se deducen del esquema:
+
+- **La llave única es `(usuario, paciente, fecha)`**, no `(usuario, paciente)`:
+  el historial de quién llevó a quién se conserva. Por eso quitar a alguien es
+  `activo = false` y no un `DELETE`, y por eso volver a asignarlo el MISMO día
+  reactiva su renglón en vez de insertar otro — un `INSERT` chocaría contra
+  `uq_medico_paciente`.
+- **La fecha se compara a medianoche UTC.** `fecha_asignacion` es `@db.Date` y
+  Prisma la compara contra ese instante; pasarle la medianoche con el desfase
+  del hospital cae en el día anterior y nunca encuentra el renglón de hoy.
+- **La tabla no es exclusiva de médicos.** Su llave es `usuario_id`, así que
+  enfermería usa el mismo mecanismo y ve su propia lista.
+
+### Quién ve todos los pacientes
+
+`GET /dashboard/assigned-patients` devuelve, por contrato, "los míos": el
+identificador sale del token y nunca de la query, así que pedir los de otro no
+es expresable.
+
+La excepción son `admin` y `administrativo`: no atienden pacientes, nunca
+tendrán asignaciones, y con la regla estricta su pantalla salía vacía. Para
+esos dos roles el endpoint devuelve **todos los pacientes activos del
+hospital**, con la misma forma; para ellos `assignedAt` es la fecha de llegada,
+porque no hay asignación que fechar.
+
+Se decide por el **rol** y no por un permiso a propósito: `pacientes.ver` lo
+tienen los cuatro roles, así que no distingue. La invariante se mantiene: o son
+los tuyos, o son todos los de tu hospital, nunca los de otra persona.
 
 ## Informes en CSV
 

@@ -17,6 +17,11 @@ except ImportError:  # pragma: no cover - en la PC de desarrollo no esta
     SMBus = None
     i2c_msg = None
 
+try:
+    from gpiozero import DigitalInputDevice
+except ImportError:  # pragma: no cover
+    DigitalInputDevice = None
+
 
 # --- registros -------------------------------------------------------------
 REG_INTR_STATUS_1 = 0x00
@@ -32,9 +37,6 @@ REG_MODE_CONFIG = 0x09
 REG_SPO2_CONFIG = 0x0A
 REG_LED1_PA = 0x0C  # rojo
 REG_LED2_PA = 0x0D  # infrarrojo
-REG_TEMP_INT = 0x1F
-REG_TEMP_FRAC = 0x20
-REG_TEMP_CONFIG = 0x21
 REG_REV_ID = 0xFE
 REG_PART_ID = 0xFF
 
@@ -57,6 +59,44 @@ class Max30102Error(RuntimeError):
     pass
 
 
+class DataReadyPin:
+    """Pin INT del MAX30102, si esta cableado.
+
+    El driver NO lo necesita: vacia la FIFO por sondeo, que a 100 Hz sobra. Se
+    lee unicamente como senial de vida, para poder distinguir un sensor
+    apagado de uno que esta midiendo. El INT es de colector abierto y activo en
+    bajo: en reposo queda alto y baja cuando hay algo que contar.
+    """
+
+    def __init__(self, pin: int | None) -> None:
+        self._pin = None
+        self.available = False
+        self.pulses = 0
+        if pin is None or DigitalInputDevice is None:
+            return
+        try:
+            self._pin = DigitalInputDevice(pin, pull_up=True)
+            self._pin.when_deactivated = self._on_pulse
+            self.available = True
+        except Exception as exc:
+            print(f"[max30102] no se pudo abrir INT en {pin}: {exc}")
+
+    def _on_pulse(self) -> None:
+        self.pulses += 1
+
+    @property
+    def asserted(self) -> bool:
+        """True si el INT esta activo ahora mismo (en bajo)."""
+        return self.available and not bool(self._pin.value)
+
+    def close(self) -> None:
+        try:
+            if self._pin is not None:
+                self._pin.close()
+        except Exception:
+            pass
+
+
 class MAX30102:
     def __init__(
         self,
@@ -68,6 +108,7 @@ class MAX30102:
         adc_range_na: int = 4096,
         led_red_current: int = 0x24,
         led_ir_current: int = 0x24,
+        swap_leds: bool = False,
     ) -> None:
         if SMBus is None:
             raise Max30102Error(
@@ -87,6 +128,7 @@ class MAX30102:
         self.address = address
         self.averaging = averaging
         self.sample_rate_hz = sample_rate_hz
+        self.swap_leds = swap_leds
         # Frecuencia real a la que salen muestras de la FIFO
         self.output_rate_hz = sample_rate_hz / averaging
 
@@ -166,10 +208,23 @@ class MAX30102:
         self._write(REG_FIFO_RD_PTR, 0)
 
     def shutdown(self) -> None:
+        """Modo bajo consumo: apaga los LED y para el conversor.
+
+        Deja la configuracion intacta, asi despertar es solo volver a escribir
+        el modo. Con los LED apagados el chip no se entibia, que es lo que pasa
+        si se lo deja encendido con el dedo puesto un rato largo.
+        """
         try:
             self._write(REG_MODE_CONFIG, 0x80)
         except OSError:
             pass
+
+    def wake(self) -> None:
+        """Sale del modo bajo consumo y empieza a llenar la FIFO de cero."""
+        self._write(REG_MODE_CONFIG, MODE_SPO2)
+        self.clear_fifo()
+        # El primer par de muestras sale mientras los LED todavia estabilizan
+        time.sleep(0.02)
 
     def close(self) -> None:
         self.shutdown()
@@ -206,18 +261,16 @@ class MAX30102:
         for i in range(0, len(raw) - BYTES_PER_SAMPLE + 1, BYTES_PER_SAMPLE):
             red.append(((raw[i] << 16) | (raw[i + 1] << 8) | raw[i + 2]) & 0x03FFFF)
             ir.append(((raw[i + 3] << 16) | (raw[i + 4] << 8) | raw[i + 5]) & 0x03FFFF)
+        # Segun la hoja de datos el primer bloque es LED1 (rojo) y el segundo
+        # LED2 (infrarrojo). Varios modulos clones los traen al reves.
+        if self.swap_leds:
+            return ir, red
         return red, ir
 
-    def read_temperature(self) -> float:
-        """Temperatura del die, no del paciente. Sirve para compensar el LED."""
-        self._write(REG_TEMP_CONFIG, 0x01)
-        deadline = time.monotonic() + 0.2
-        while self._read(REG_TEMP_CONFIG) & 0x01:
-            if time.monotonic() > deadline:
-                break
-            time.sleep(0.005)
-        integer = self._read(REG_TEMP_INT)
-        if integer > 127:
-            integer -= 256
-        frac = self._read(REG_TEMP_FRAC) & 0x0F
-        return integer + frac * 0.0625
+    def read_interrupt_status(self) -> tuple[int, int]:
+        """Registros de interrupcion. Leerlos los limpia.
+
+        Util para diagnostico: si el bit A_FULL (0x80 del primero) se prende,
+        el sensor esta llenando la FIFO de verdad.
+        """
+        return self._read(REG_INTR_STATUS_1), self._read(REG_INTR_STATUS_2)

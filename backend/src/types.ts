@@ -38,8 +38,17 @@ export type RoleSummary = {
   userCount: number;
 };
 
-export const serviceModules = ["KY-001", "KY-004", "KY-012", "KY-019"] as const;
-export type ServiceModule = (typeof serviceModules)[number];
+// Los "módulos de atención" (KY-001, KY-004…) se retiraron de la aplicación.
+// Eran una lista fija de códigos que NO decía dónde está el paciente, y lo que
+// hace falta saber de él es su cama (`ingreso` → `cama` → `unidad`).
+//
+// La columna `paciente.modulo` sigue en la base con lo que se registró en su
+// día —borrarla es una migración que destruye ese histórico— pero no se pide al
+// registrar, no se escribe y ya no sale en ninguna respuesta.
+//
+// OJO al leer este archivo: los `modulo` de `PermisoRow`, `RolPermisoRow` y
+// `RolePermission` son otra cosa por completo (pacientes, alertas, reportes…),
+// son los módulos de la matriz de permisos y no tienen nada que ver.
 
 export type PatientStatus = "waiting" | "inService" | "discharged";
 
@@ -57,7 +66,6 @@ export type Patient = {
   id: string;
   name: string;
   document: string;
-  module: ServiceModule;
   status: PatientStatus;
   arrivedAt: string;
   reason: string;
@@ -176,7 +184,6 @@ export type PacienteRow = {
   paciente_id: number;
   nombre: string;
   cedula: string;
-  modulo: ServiceModule | null;
   estado: PatientStatus;
   motivo_consulta: string | null;
   fecha_llegada: string;
@@ -331,6 +338,86 @@ export type SensorAlert = {
 };
 
 // ---------------------------------------------------------------------------
+// Bandeja de notificaciones (routes/notifications.ts). Espejo de
+// frontend/src/modules/notifications/types.ts.
+// ---------------------------------------------------------------------------
+
+/**
+ * De qué habla el aviso. De ahí salen su icono y su color en la bandeja.
+ *
+ * Son DOS y no siete. La pantalla se diseñó con siete —asignación, reporte,
+ * sistema, nota clínica, mantenimiento— pero `notificacion.alerta_id` es NOT
+ * NULL: en este esquema una notificación no puede existir sin una alerta que la
+ * origine, y ninguno de esos otros cinco sucesos crea alertas. Sostenerlos
+ * exigiría hacer `alerta_id` nulable y agregar tipo/título/cuerpo propios, que
+ * es un cambio de modelo, no un ajuste de pantalla.
+ *
+ * No es la severidad: es el par de niveles que sí se notifican (ver
+ * lib/notificaciones.ts), separados porque en la bandeja tienen que
+ * distinguirse de un vistazo.
+ */
+export const notificationKinds = ["alertaCritica", "alertaTemprana"] as const;
+export type NotificationKind = (typeof notificationKinds)[number];
+
+/**
+ * Una fila de la bandeja.
+ *
+ * No trae título ni cuerpo redactados: trae los DATOS del hecho (paciente,
+ * equipo, variable, valor) y el frontend arma la frase con su diccionario. Si
+ * el servidor mandara el texto ya hecho, la pantalla tendría cadenas en español
+ * que `t()` no puede traducir y que ningún idioma nuevo alcanzaría.
+ */
+export type Notification = {
+  id: string;
+  kind: NotificationKind;
+  /** La alerta que lo originó, para poder ir a ella desde la bandeja. */
+  alertId: string;
+  patientId: string | null;
+  patientName: string | null;
+  device: string;
+  variable: string;
+  unit: string;
+  value: number;
+  /** `alerta.tipo`: `hr_fuera_de_rango`, `spo2_bajo`, … */
+  type: string;
+  severity: AlertSeverity;
+  /** `alerta.mensaje` tal como lo redactó la ingesta. Puede faltar. */
+  message: string | null;
+  at: string;
+  read: boolean;
+};
+
+export type NotificacionRow = {
+  notificacion_id: bigint;
+  alerta_id: bigint;
+  estado_envio: string;
+  fecha_envio: Date;
+  tipo: string;
+  severidad: AlertSeverity;
+  mensaje: string | null;
+  valor: Prisma.Decimal | string;
+  variable_medida: string;
+  unidad: string;
+  codigo: string;
+  paciente_id: number | null;
+  paciente_nombre: string | null;
+};
+
+/**
+ * Lo que devuelve `GET /notifications`.
+ *
+ * El total de no leídas viaja CON la página y no en un endpoint aparte: la
+ * campana necesita las dos cosas a la vez —el número y las últimas filas— y
+ * partirlo en dos llamadas son dos viajes que además pueden discrepar entre sí
+ * si algo se marca leído en medio.
+ */
+export type NotificationPage = {
+  total: number;
+  unread: number;
+  entries: Notification[];
+};
+
+// ---------------------------------------------------------------------------
 // Tableros por rol (routes/dashboard.ts). Espejo de
 // frontend/src/modules/dashboard/types.ts.
 // ---------------------------------------------------------------------------
@@ -347,7 +434,6 @@ export type AssignedPatient = {
   id: string;
   name: string;
   document: string;
-  module: ServiceModule | null;
   status: PatientStatus;
   arrivedAt: string;
   reason: string;
@@ -358,6 +444,60 @@ export type AssignedPatient = {
   /** Alertas sin resolver de ese equipo, y la peor severidad entre ellas. */
   openAlerts: number;
   worstSeverity: AlertSeverity | null;
+  /**
+   * `expediente_clinico.expediente_id`. Null mientras nadie haya escrito nada
+   * clínico: el expediente se crea al primer apunte, no al admitir.
+   */
+  record: string | null;
+  /** Unidad y cama del ingreso activo; null si no lo tiene o si no hay cama. */
+  unit: string | null;
+  bed: string | null;
+  /**
+   * Ingreso abierto del paciente, o null si no tiene ninguno. Va en el DTO
+   * porque es lo que permite cambiarle la cama desde la lista de pacientes sin
+   * volver a pedir sus ingresos: `PATCH /admissions/:id` necesita este id.
+   */
+  admissionId: string | null;
+  /**
+   * Fecha civil de nacimiento ("1990-05-14T00:00:00-05:00"). La EDAD no viaja:
+   * no se guarda en ninguna columna y calcularla en el servidor la congelaría
+   * en la respuesta cacheada; se deriva al pintarla.
+   */
+  birthDate: string;
+  /**
+   * Tipo y fecha del ingreso ACTIVO (`ingreso.tipo`, `ingreso.fecha_ingreso`),
+   * o null si el paciente no tiene ninguno abierto. El estado no viaja porque
+   * la consulta ya filtra `estado = 'activo'`: sería una constante.
+   */
+  admissionType: AdmissionType | null;
+  admittedAt: string | null;
+  /** Escala de Glasgow (3 a 15) de la exploración física, si está registrada. */
+  glasgow: number | null;
+  /**
+   * Si el paciente ya tiene exploración física. `false` es "evaluación
+   * primaria sin completar", que es lo que cuenta el KPI del tablero médico.
+   */
+  examined: boolean;
+  /** Última lectura de cada signo que el monitor publica. */
+  vitals: PatientVitals;
+};
+
+/**
+ * Los signos vitales de la cabecera del tablero, no la serie: solo el último
+ * valor de cada variable.
+ *
+ * Son únicamente las que la Raspberry publica de verdad (ver
+ * src/services/mqttIngest.ts). La presión arterial NO está: `lectura.valor` es
+ * un escalar y una PA es un par sistólica/diastólica, así que no cabe en el
+ * modelo — mostrarla exigiría dos variables nuevas y alguien que las publique.
+ */
+export type PatientVitals = {
+  /** Frecuencia cardíaca en lpm. */
+  hr: number | null;
+  /** Saturación de oxígeno en %. */
+  spo2: number | null;
+  /** Momento de la más reciente de las lecturas anteriores. */
+  at: string | null;
 };
 
 /** Conectividad de un equipo a pie de cama, para el tablero del administrador. */
@@ -371,6 +511,81 @@ export type DeviceStatus = {
   activeSensors: number;
   /** Última lectura recibida de cualquiera de sus sensores. */
   lastReadingAt: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Central de monitoreo (routes/monitoring.ts). Espejo de
+// frontend/src/modules/monitoring/types.ts.
+//
+// La unidad de la fila es la CAMA y no el paciente, que es lo que la distingue
+// de /dashboard/assigned-patients: la central enseña el mapa físico de la
+// unidad —incluidas las camas vacías, que son justamente lo que se busca cuando
+// llega un ingreso— y no la lista de "mis pacientes". Colgarla del endpoint del
+// tablero habría obligado a inventar filas para las camas sin nadie dentro.
+// ---------------------------------------------------------------------------
+
+/**
+ * Último valor de cada variable que la central pinta por cama.
+ *
+ * Las tres son las que un publicador emite de verdad (`hr`, `spo2` y `resp` en
+ * iot/monitor/net/publisher.py). NO hay presión arterial ni temperatura:
+ *
+ *  - `pa` está en el catálogo de `variable` que siembra db/seed.sql, pero ningún
+ *    publicador la manda, y aunque lo hiciera `lectura.valor` es un escalar
+ *    DECIMAL: una PA es un par sistólica/diastólica y no cabe en una fila. La
+ *    PAM, que se calcula a partir de ese par, tampoco existe por lo mismo.
+ *  - `temp` no la emite nadie. Lo único parecido en el equipo es `die_temp_c`,
+ *    la temperatura del encapsulado del MAX30102 (~30 °C), que es la del chip y
+ *    no la del paciente: enseñarla como fiebre sería una mentira clínica.
+ *
+ * `resp` sí viaja, pero es una ESTIMACIÓN sacada de cómo la respiración mueve
+ * la línea de base del pletismógrafo, no una respiración medida por flujo ni
+ * por impedancia. La pantalla la rotula como estimada por eso mismo.
+ */
+export type MonitoredVitals = {
+  /** Frecuencia cardíaca en lpm. */
+  hr: number | null;
+  /** Saturación de oxígeno en %. */
+  spo2: number | null;
+  /** Frecuencia respiratoria ESTIMADA del pletismógrafo, en rpm. */
+  resp: number | null;
+  /** Momento de la más reciente de las lecturas anteriores. */
+  at: string | null;
+};
+
+/** Una cama de la central de monitoreo, con o sin paciente dentro. */
+export type MonitoredBed = {
+  id: string;
+  /** `cama.codigo`: "C-01". */
+  bed: string;
+  unitId: string;
+  unit: string;
+  /** `cama.estado`. `disponible` es lo que la pantalla pinta como cama libre. */
+  bedState: BedState;
+  /** Datos del ocupante; todo null cuando la cama no tiene ingreso activo. */
+  patientId: string | null;
+  patientName: string | null;
+  /** Fecha civil de nacimiento; la edad se calcula al pintar, nunca se guarda. */
+  birthDate: string | null;
+  /** `dispositivo.codigo` con el que se abre el monitor de esa cama, o null. */
+  device: string | null;
+  deviceState: DeviceState | null;
+  openAlerts: number;
+  /**
+   * Peor alerta sin resolver del equipo. De aquí SALE el estado clínico
+   * (Crítico / Monitoreo / Estable) que pinta la pantalla: no existe ninguna
+   * columna que lo diga, se deriva — igual que en el tablero.
+   */
+  worstSeverity: AlertSeverity | null;
+  /**
+   * `exploracion_fisica.glasgow` (3–15), o null si no hay exploración.
+   *
+   * NO es telemetría: lo escribe un clínico al explorar y no cambia solo. Viaja
+   * junto a los signos vitales porque en la cabecera de la cama se lee junto a
+   * ellos, pero la pantalla tiene que dejar claro que no se actualiza en vivo.
+   */
+  glasgow: number | null;
+  vitals: MonitoredVitals;
 };
 
 // ---------------------------------------------------------------------------
@@ -407,6 +622,13 @@ export type BedOccupancy = {
   outOfService: number;
   /** Ocupadas sobre el total, 0–1. `total` en cero da 0 y no una división. */
   rate: number;
+};
+
+/** Lo que devuelve PUT /beds/capacity: cuántas camas tiene la unidad al final. */
+export type BedCapacity = {
+  unitId: string;
+  unit: string;
+  total: number;
 };
 
 export const admissionTypes = ["urgencia", "programado", "traslado"] as const;

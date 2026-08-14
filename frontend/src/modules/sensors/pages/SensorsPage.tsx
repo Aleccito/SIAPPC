@@ -3,10 +3,8 @@ import { useMemo, useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   Alert,
-  Box,
   Button,
   Chip,
-  LinearProgress,
   Link,
   MenuItem,
   Paper,
@@ -20,6 +18,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import { listAlerts, listReadings } from '../api/sensorsApi'
 import { alertSeverities, alertStatuses } from '../types'
 import type { AlertSeverity, AlertStatus } from '../types'
@@ -58,7 +57,7 @@ const statusKey: Record<AlertStatus, StringKey> = {
 }
 
 export function SensorsPage() {
-  const { t, language } = useLanguage()
+  const { t, locale } = useLanguage()
   usePageHeader(t('sensors.title'), t('sensors.subtitle'))
   const [device, setDevice] = useState(ALL)
   const [variable, setVariable] = useState(ALL)
@@ -197,8 +196,8 @@ export function SensorsPage() {
       {alerts.isError && <Alert severity="error">{t('sensors.alerts.error')}</Alert>}
 
       <TableContainer component={Paper}>
-        <Box sx={{ height: 4 }}>{alerts.isFetching && <LinearProgress />}</Box>
-        <Table size="small">
+        <LoadingBar loading={alerts.isFetching} />
+        <Table aria-label={t('sensors.section.alerts')} size="small">
           <TableHead>
             <TableRow>
               <TableCell>{t('sensors.col.severity')}</TableCell>
@@ -248,7 +247,7 @@ export function SensorsPage() {
                 <TableCell>{alert.message ?? alert.type}</TableCell>
                 <TableCell sx={{ color: 'text.secondary' }}>{t(statusKey[alert.status])}</TableCell>
                 <TableCell sx={{ color: 'text.secondary' }}>
-                  {new Date(alert.at).toLocaleString(language)}
+                  {new Date(alert.at).toLocaleString(locale)}
                 </TableCell>
               </TableRow>
             ))}
@@ -261,8 +260,8 @@ export function SensorsPage() {
       {readings.isError && <Alert severity="error">{t('sensors.error')}</Alert>}
 
       <TableContainer component={Paper}>
-        <Box sx={{ height: 4 }}>{readings.isFetching && <LinearProgress />}</Box>
-        <Table size="small">
+        <LoadingBar loading={readings.isFetching} />
+        <Table aria-label={t('sensors.section.readings')} size="small">
           <TableHead>
             <TableRow>
               <TableCell>{t('sensors.col.device')}</TableCell>
@@ -299,7 +298,7 @@ export function SensorsPage() {
                   {reading.value} {reading.unit}
                 </TableCell>
                 <TableCell sx={{ color: 'text.secondary' }}>
-                  {new Date(reading.at).toLocaleString(language)}
+                  {new Date(reading.at).toLocaleString(locale)}
                 </TableCell>
               </TableRow>
             ))}

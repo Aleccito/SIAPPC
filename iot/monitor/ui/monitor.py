@@ -13,11 +13,13 @@ from collections import deque
 
 import pygame
 
+import session as session_mod
 from config import Config
 from . import theme
 from .theme import (
     ALARM_HIGH, ALARM_MEDIUM, BG, ECG, HEADER_BG, LEVEL_COLORS, OK, PANEL_BG,
-    PANEL_BORDER, PLETH, RESP, TEXT, TEXT_DIM, TEXT_FAINT, Fonts, blit_text,
+    BOX_BORDER, PANEL_BORDER, PLETH, PULSE, RESP, TEXT, TEXT_DIM, TEXT_FAINT,
+    Fonts, blit_text,
     draw_heart, make_grid, make_plain_background,
 )
 
@@ -194,13 +196,20 @@ class MonitorUI:
         self.sweep_speed_key = 2  # 25 mm/s
         self.show_debug = cfg.ui.show_debug
         self.running = True
-        # Se completa desde main.py; solo se usa en modo demo
-        self.demo_source = None
+        # Se completan desde main.py
+        self.demo_source = None   # solo en modo demo
+        self.session = None       # MeasurementSession, solo en modo manual
 
         self._last_beat_flash = 0.0
         self._last_pulse_flash = 0.0
         self._blink_phase = 0.0
         self.fps = 0.0
+
+        # Codigo de tecla ademas del caracter: `event.unicode` puede venir
+        # vacio segun como este arrancado SDL (en consola con kmsdrm pasa), y
+        # ahi la tecla de medir dejaria de responder sin ninguna pista.
+        self._session_keycode = getattr(
+            pygame, f"K_{cfg.session.key.lower()}", None)
 
         self._layout()
 
@@ -288,6 +297,9 @@ class MonitorUI:
 
     def _on_key(self, event) -> None:
         key = event.key
+        if self.session is not None and self._is_session_key(event):
+            self.session.trigger()
+            return
         if key in (pygame.K_ESCAPE, pygame.K_q):
             self.running = False
         elif key == pygame.K_m:
@@ -309,6 +321,13 @@ class MonitorUI:
                 trace.clear()
         elif self.demo_source is not None and self.cfg.demo:
             self._on_demo_key(key)
+
+    def _is_session_key(self, event) -> bool:
+        """Mayuscula o minuscula, y por caracter o por codigo de tecla."""
+        buscada = self.cfg.session.key.lower()
+        if event.unicode and event.unicode.lower() == buscada:
+            return True
+        return self._session_keycode is not None and event.key == self._session_keycode
 
     def _on_demo_key(self, key: int) -> None:
         """Teclas F1..F6: mueven la senial simulada para probar las alarmas."""
@@ -356,6 +375,20 @@ class MonitorUI:
 
     # -- render ------------------------------------------------------------
 
+    def clear_traces(self) -> None:
+        for trace in self.traces:
+            trace.clear()
+
+    @property
+    def acquiring(self) -> bool:
+        """True si los sensores estan leyendo. Sin sesion manual, siempre."""
+        return self.session is None or self.session.acquiring
+
+    @property
+    def waves_rect(self) -> pygame.Rect:
+        return pygame.Rect(0, self.header_h, self.width - self.sidebar_w,
+                           self.height - self.header_h - self.footer_h)
+
     def render(self, snapshot) -> None:
         self._blink_phase = (time.monotonic() * 2.0) % 2.0
         self.screen.fill(BG)
@@ -364,6 +397,8 @@ class MonitorUI:
             trace.blit(self.screen)
             self._draw_trace_label(trace)
         self._draw_sidebar(snapshot)
+        if self.session is not None:
+            self._draw_session(snapshot)
         self._draw_footer(snapshot)
         if self.show_debug:
             self._draw_debug(snapshot)
@@ -439,11 +474,22 @@ class MonitorUI:
     def _box_frame(self, rect: pygame.Rect, label: str, unit: str, color,
                    limits: str | None = None, source: str | None = None) -> None:
         pygame.draw.rect(self.screen, PANEL_BG, rect, border_radius=5)
-        pygame.draw.rect(self.screen, PANEL_BORDER, rect, 1, border_radius=5)
+        pygame.draw.rect(self.screen, BOX_BORDER, rect, 1, border_radius=5)
+
+        # Barra del color del signo vital pegada al borde izquierdo, de punta a
+        # punta de la caja. Es lo que ata visualmente el rotulo con su numero:
+        # el rotulo va arriba y el numero al medio, y sin algo que los agrupe el
+        # ojo termina asociando cada numero con la caja de al lado.
+        pygame.draw.rect(self.screen, color,
+                         pygame.Rect(rect.left + 1, rect.top + 1, 6, rect.height - 2),
+                         border_top_left_radius=4, border_bottom_left_radius=4)
+
         blit_text(self.screen, self.fonts.sans(19, bold=True), label, color,
-                  (rect.left + 10, rect.top + 7))
-        blit_text(self.screen, self.fonts.sans(13), unit, TEXT_FAINT,
-                  (rect.left + 10, rect.top + 31))
+                  (rect.left + 16, rect.top + 7))
+        # La unidad es lo que distingue un 94 de saturacion de un 94 de pulso.
+        # Tiene que leerse, no ser una nota al pie.
+        blit_text(self.screen, self.fonts.sans(16, bold=True), unit, TEXT_DIM,
+                  (rect.left + 16, rect.top + 31))
         if limits:
             blit_text(self.screen, self.fonts.sans(13), limits, TEXT_FAINT,
                       (rect.right - 10, rect.top + 9), align="right")
@@ -478,7 +524,7 @@ class MonitorUI:
 
         # Corazon que late
         if time.monotonic() - self._last_beat_flash < 0.18:
-            draw_heart(self.screen, (rect.left + 26, rect.bottom - 30), 22, color)
+            draw_heart(self.screen, (rect.left + 32, rect.bottom - 30), 22, color)
 
         detail = []
         if snapshot.rr_last_ms is not None:
@@ -487,7 +533,7 @@ class MonitorUI:
             detail.append(f"RMSSD {snapshot.hrv_rmssd_ms:.0f}")
         if detail:
             blit_text(self.screen, self.fonts.sans(13), "   ".join(detail), TEXT_DIM,
-                      (rect.left + 48, rect.bottom - 34))
+                      (rect.left + 54, rect.bottom - 34))
 
     def _draw_spo2_box(self, rect: pygame.Rect, snapshot) -> None:
         limits = self.cfg.alarms
@@ -497,18 +543,35 @@ class MonitorUI:
                         source="MAX30102")
         self._big_number(rect, snapshot.spo2_pct, color)
 
-        if not snapshot.finger_detected:
+        if not self.acquiring:
+            # Con el sensor apagado no se puede decir que "no hay dedo": lo que
+            # se ve es el ultimo valor medido, congelado.
+            label = "ultima medicion" if snapshot.spo2_pct is not None \
+                else "sensor apagado"
+            blit_text(self.screen, self.fonts.sans(14), label, TEXT_FAINT,
+                      (rect.left + 16, rect.bottom - 30))
+        elif not snapshot.finger_detected:
             blit_text(self.screen, self.fonts.sans(14, bold=True), "SIN DEDO",
-                      ALARM_MEDIUM, (rect.left + 10, rect.bottom - 30))
+                      ALARM_MEDIUM, (rect.left + 16, rect.bottom - 30))
         elif snapshot.perfusion_index is not None:
             blit_text(self.screen, self.fonts.sans(14),
                       f"PI {snapshot.perfusion_index:.1f} %", TEXT_DIM,
-                      (rect.left + 10, rect.bottom - 30))
+                      (rect.left + 16, rect.bottom - 30))
 
     def _draw_pr_box(self, rect: pygame.Rect, snapshot) -> None:
         """Frecuencia de pulso: el latido que de verdad llega al dedo."""
-        self._box_frame(rect, "PR", "lpm", PLETH, source="MAX30102 · pleth")
-        self._big_number(rect, snapshot.pr_bpm, PLETH, size=64)
+        self._box_frame(rect, "PR", "lpm", PULSE, source="MAX30102 · pleth")
+        self._big_number(rect, snapshot.pr_bpm, PULSE, size=64)
+
+        # Punto que destella con cada pulso detectado. Sirve para comprobar a
+        # ojo que el numero se corresponde con la onda del pleth: si destella
+        # dos veces por cada pico de la onda, el detector esta contando de mas.
+        if time.monotonic() - self._last_pulse_flash < 0.18:
+            pygame.draw.circle(self.screen, PULSE,
+                               (rect.left + 32, rect.bottom - 30), 9)
+        else:
+            pygame.draw.circle(self.screen, PANEL_BORDER,
+                               (rect.left + 32, rect.bottom - 30), 9, 1)
 
         deficit = snapshot.pulse_deficit
         if deficit is not None:
@@ -517,7 +580,7 @@ class MonitorUI:
             color = ALARM_MEDIUM if abs(deficit) >= 8 else TEXT_DIM
             blit_text(self.screen, self.fonts.sans(13),
                       f"FC - PR = {deficit:+d}", color,
-                      (rect.left + 10, rect.bottom - 30))
+                      (rect.left + 16, rect.bottom - 30))
 
     def _draw_resp_box(self, rect: pygame.Rect, snapshot) -> None:
         limits = self.cfg.alarms
@@ -530,7 +593,7 @@ class MonitorUI:
         # medicion directa: no hay sensor de flujo ni de impedancia toracica.
         self._big_number(rect, snapshot.resp_rpm, color, size=60, prefix="~")
         blit_text(self.screen, self.fonts.sans(12, bold=True), "ESTIMADA", TEXT_FAINT,
-                  (rect.left + 10, rect.bottom - 30))
+                  (rect.left + 16, rect.bottom - 30))
 
     def _draw_footer(self, snapshot) -> None:
         top = self.height - self.footer_h
@@ -567,6 +630,8 @@ class MonitorUI:
                       (rect_text.right + 24, y), align="midleft")
 
         hints = "M silenciar   S sonido   1/2/3 velocidad   +/- ganancia   D debug   ESC salir"
+        if self.session is not None:
+            hints = f"{self._key_hint()} medir   " + hints
         if self.cfg.demo:
             hints = "F1/F2 SpO2   F3/F4 FC   F5 dedo   F6 electrodos   |   " + hints
         blit_text(self.screen, self.fonts.sans(13), hints, TEXT_FAINT,
@@ -576,7 +641,6 @@ class MonitorUI:
         """Diagnostico del equipo. Nada de esto es un signo vital del paciente."""
         lines = [
             "-- equipo (no es del paciente) --",
-            f"temp del die MAX30102  {_fmt(snapshot.sensor_die_temp_c, 1, 'C')}",
             f"base AD8232            {_fmt(snapshot.ecg_baseline_v, 3, 'V')}",
             f"  (deberia dar ~{self.cfg.ecg.supply_volts / 2:.2f} V)",
             f"saturacion ECG         {'SI' if snapshot.ecg_saturated else 'no'}",
@@ -600,8 +664,229 @@ class MonitorUI:
             blit_text(self.screen, font, line, TEXT_DIM, (x, y))
             y += 18
 
+    # -- medicion a demanda ------------------------------------------------
+
+    def _draw_session(self, snapshot) -> None:
+        state = self.session.state
+        # Sin paneles, la vista queda siempre igual y el estado se resume en un
+        # cartelito arriba, que no tapa las ondas.
+        compacto = not self.cfg.session.show_overlays
+
+        if state == session_mod.IDLE:
+            if compacto:
+                self._draw_status_badge(
+                    f"EN ESPERA  ·  {self._key_hint()} PARA MEDIR", TEXT_DIM)
+            else:
+                self._draw_idle_screen()
+        elif state == session_mod.WARMUP:
+            self._draw_progress_badge("ESTABILIZANDO SENSORES", TEXT_DIM)
+        elif state == session_mod.MEASURING:
+            self._draw_progress_badge("MIDIENDO", OK, countdown=True)
+        elif state == session_mod.RESULT:
+            if compacto:
+                self._draw_result_badge()
+            else:
+                self._draw_result_screen()
+
+    def _badge_rect(self, height: int, ancho: float = 0.34) -> pygame.Rect:
+        rect = self.waves_rect
+        badge = pygame.Rect(0, 0, int(rect.width * ancho), height)
+        badge.midtop = (rect.centerx, rect.top + 10)
+        return badge
+
+    def _badge_bg(self, badge: pygame.Rect, color) -> None:
+        overlay = pygame.Surface(badge.size, pygame.SRCALPHA)
+        overlay.fill((3, 6, 12, 215))
+        self.screen.blit(overlay, badge.topleft)
+        pygame.draw.rect(self.screen, color, badge, 1, border_radius=4)
+
+    def _draw_status_badge(self, texto: str, color) -> None:
+        badge = self._badge_rect(34)
+        self._badge_bg(badge, color)
+        blit_text(self.screen, self.fonts.sans(16, bold=True), texto, color,
+                  badge.center, align="middle")
+
+    def _draw_result_badge(self) -> None:
+        """Resumen de una linea, para el modo sin paneles."""
+        summary = self.session.last_summary
+        if summary is None:
+            self._draw_status_badge(
+                f"{self._key_hint()} PARA MEDIR", TEXT_DIM)
+            return
+
+        partes = [f"MEDICION #{self.session.measurements}"]
+        if summary.hr.mean is not None:
+            partes.append(f"FC {summary.hr.mean:.0f}")
+        if summary.spo2.mean is not None:
+            partes.append(f"SpO2 {summary.spo2.mean:.0f}")
+        if summary.pr.mean is not None:
+            partes.append(f"PR {summary.pr.mean:.0f}")
+
+        color = ALARM_MEDIUM if (summary.problems or summary.aborted) else OK
+        badge = self._badge_rect(46, ancho=0.42)
+        self._badge_bg(badge, color)
+        blit_text(self.screen, self.fonts.sans(16, bold=True),
+                  "   ·   ".join(partes), color,
+                  (badge.centerx, badge.top + 5), align="center")
+        detalle = summary.problems[0] if summary.problems \
+            else f"{self._key_hint()} para repetir"
+        blit_text(self.screen, self.fonts.sans(12), detalle, TEXT_FAINT,
+                  (badge.centerx, badge.bottom - 17), align="center")
+
+    def _dim_panel(self, rect: pygame.Rect, alpha: int = 225) -> None:
+        overlay = pygame.Surface(rect.size, pygame.SRCALPHA)
+        overlay.fill((3, 6, 12, alpha))
+        self.screen.blit(overlay, rect.topleft)
+        pygame.draw.rect(self.screen, PANEL_BORDER, rect, 1)
+
+    def _key_hint(self) -> str:
+        """La tecla tal como esta configurada, sin cambiarle la caja."""
+        return self.cfg.session.key
+
+    def _draw_idle_screen(self) -> None:
+        rect = self.waves_rect
+        self._dim_panel(rect)
+        cx = rect.centerx
+        y = rect.centery - int(rect.height * 0.16)
+
+        blit_text(self.screen, self.fonts.sans(30, bold=True),
+                  "SENSORES EN ESPERA", TEXT_DIM, (cx, y), align="center")
+
+        # La tecla, dibujada como una tecla
+        key_font = self.fonts.digits(64)
+        label = self._key_hint()
+        size = key_font.size(label)
+        box = pygame.Rect(0, 0, size[0] + 48, size[1] + 24)
+        box.center = (cx, y + int(rect.height * 0.22))
+        pygame.draw.rect(self.screen, PANEL_BG, box, border_radius=10)
+        pygame.draw.rect(self.screen, OK, box, 2, border_radius=10)
+        blit_text(self.screen, key_font, label, OK, box.center, align="middle")
+
+        blit_text(self.screen, self.fonts.sans(22),
+                  f"Apreta {label} para encender los modulos y medir "
+                  f"{self.cfg.session.duration_s:.0f} segundos",
+                  TEXT, (cx, box.bottom + 26), align="center")
+
+        detail = "MAX30102 y ADS1115 apagados" if self.cfg.session.power_down_idle \
+            else "modulos encendidos, lectura pausada"
+        blit_text(self.screen, self.fonts.sans(15), detail, TEXT_FAINT,
+                  (cx, box.bottom + 58), align="center")
+
+        if self.session.measurements:
+            blit_text(self.screen, self.fonts.sans(15),
+                      f"mediciones en esta sesion: {self.session.measurements}",
+                      TEXT_FAINT, (cx, box.bottom + 82), align="center")
+
+    def _draw_progress_badge(self, label: str, color, countdown: bool = False) -> None:
+        """Cartel compacto arriba: deja ver las ondas mientras mide."""
+        badge = self._badge_rect(54)
+        self._badge_bg(badge, color)
+
+        blit_text(self.screen, self.fonts.sans(17, bold=True), label, color,
+                  (badge.left + 14, badge.top + 8))
+        if countdown:
+            blit_text(self.screen, self.fonts.digits(34),
+                      f"{self.session.remaining_s:04.1f} s", color,
+                      (badge.right - 14, badge.centery), align="midright")
+        blit_text(self.screen, self.fonts.sans(12),
+                  f"{self._key_hint()} cancela", TEXT_FAINT,
+                  (badge.left + 14, badge.bottom - 18))
+
+        # Barra de avance pegada al borde inferior del cartel
+        bar = pygame.Rect(badge.left + 1, badge.bottom - 4, badge.width - 2, 3)
+        pygame.draw.rect(self.screen, PANEL_BORDER, bar)
+        done = pygame.Rect(bar.left, bar.top, int(bar.width * self.session.progress),
+                           bar.height)
+        pygame.draw.rect(self.screen, color, done)
+
+    def _draw_result_screen(self) -> None:
+        summary = self.session.last_summary
+        if summary is None:
+            self._draw_idle_screen()
+            return
+
+        rect = self.waves_rect
+        self._dim_panel(rect, alpha=248)
+        pad = int(rect.width * 0.05)
+        x = rect.left + pad
+        y = rect.top + int(rect.height * 0.06)
+
+        title = f"MEDICION #{self.session.measurements}"
+        if summary.aborted:
+            title += "  (CANCELADA)"
+        blit_text(self.screen, self.fonts.sans(26, bold=True), title,
+                  ALARM_MEDIUM if summary.aborted else TEXT, (x, y))
+        blit_text(self.screen, self.fonts.sans(15),
+                  f"{summary.duration_s:.1f} s  ·  {summary.beats} latidos detectados",
+                  TEXT_DIM, (rect.right - pad, y + 6), align="right")
+        y += 44
+
+        # Encabezados de la tabla
+        col = [x, x + int(rect.width * 0.30), x + int(rect.width * 0.46),
+               x + int(rect.width * 0.62), x + int(rect.width * 0.78)]
+        head = self.fonts.sans(14, bold=True)
+        for text, cx in zip(("", "PROMEDIO", "MINIMO", "MAXIMO", "MUESTRAS"), col):
+            if text:
+                blit_text(self.screen, head, text, TEXT_FAINT, (cx, y))
+        y += 26
+        pygame.draw.line(self.screen, PANEL_BORDER, (x, y), (rect.right - pad, y))
+        y += 12
+
+        rows = [
+            ("FC", summary.hr, ECG, 0),
+            ("SpO2", summary.spo2, PLETH, 1),
+            ("PR", summary.pr, PULSE, 0),
+            ("PI", summary.perfusion, PLETH, 2),
+            ("RESP", summary.resp, RESP, 0),
+        ]
+        name_font = self.fonts.sans(20, bold=True)
+        value_font = self.fonts.digits(26)
+        small = self.fonts.sans(14)
+
+        for name, stat, color, decimals in rows:
+            blit_text(self.screen, name_font, name, color, (col[0], y))
+            blit_text(self.screen, small, stat.unit, TEXT_FAINT,
+                      (col[0] + name_font.size(name)[0] + 8, y + 7))
+            if stat.n == 0:
+                blit_text(self.screen, small, "sin dato en esta ventana",
+                          TEXT_FAINT, (col[1], y + 6))
+            else:
+                for value, cx in ((stat.mean, col[1]), (stat.minimum, col[2]),
+                                  (stat.maximum, col[3])):
+                    blit_text(self.screen, value_font, _num(value, decimals),
+                              color, (cx, y))
+                blit_text(self.screen, small, str(stat.n), TEXT_FAINT, (col[4], y + 6))
+            y += 38
+
+        y += 6
+        pygame.draw.line(self.screen, PANEL_BORDER, (x, y), (rect.right - pad, y))
+        y += 14
+
+        problems = summary.problems
+        if problems:
+            blit_text(self.screen, self.fonts.sans(15, bold=True),
+                      "REVISAR:", ALARM_MEDIUM, (x, y))
+            for problem in problems[:3]:
+                blit_text(self.screen, self.fonts.sans(15), f"· {problem}",
+                          ALARM_MEDIUM, (x + 90, y))
+                y += 22
+        else:
+            blit_text(self.screen, self.fonts.sans(15, bold=True),
+                      "Medicion completa, sin problemas de senial", OK, (x, y))
+            y += 22
+
+        blit_text(self.screen, self.fonts.sans(17),
+                  f"Apreta {self._key_hint()} para medir de nuevo", TEXT,
+                  (rect.centerx, rect.bottom - 38), align="center")
+
     def close(self) -> None:
         pygame.mouse.set_visible(True)
+
+
+def _num(value: float | None, decimals: int) -> str:
+    if value is None:
+        return "---"
+    return f"{value:.{decimals}f}"
 
 
 def _fmt(value: float | None, decimals: int, unit: str = "") -> str:

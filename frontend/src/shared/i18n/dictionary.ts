@@ -5,12 +5,32 @@
 // componentes.
 export type Language = 'es'
 
+/**
+ * El BCP-47 con el que se formatean fechas y números de cada idioma.
+ *
+ * Va aparte del código de idioma porque no son lo mismo: `'es'` elige el
+ * diccionario, `'es-MX'` elige el formato. Estaban confundidos —la mitad de las
+ * pantallas pasaba `language` a `toLocaleString` y la otra mitad se escribía
+ * `'es-MX'` a mano en una constante local—, y con eso el mismo instante salía
+ * "15/10/2025" en una pantalla y "10/15/2025" en otra.
+ *
+ * Es un mapa y no una constante suelta porque es el único sitio que habría que
+ * tocar el día que vuelva a haber un segundo idioma.
+ */
+export const locales: Record<Language, string> = { es: 'es-MX' }
+
 const es = {
   'nav.dashboard': 'Inicio',
   'nav.powerbi': 'Power BI',
   'nav.flexsim': 'FlexSim',
   'nav.patients': 'Pacientes',
   'nav.sensors': 'Monitoreo',
+  // Entrada aparte de 'nav.sensors' aunque las dos hablen de monitoreo: aquella
+  // es la bandeja de lecturas y alertas por dispositivo, y esta es el mapa de
+  // camas de una unidad. Se deja el rótulo largo para que no se confundan en el
+  // menú; renombrar 'nav.sensors' tocaría también los enlaces que vuelven a él.
+  'nav.central': 'Central de Monitoreo',
+  'nav.rounds': 'Ronda',
   'nav.reports': 'Reportes',
   'nav.reportsList': 'Listado',
   'nav.notifications': 'Notificaciones',
@@ -34,6 +54,8 @@ const es = {
   'bed.newSoap': 'Nueva Nota SOAP',
   'bed.generateReport': 'Generar Reporte',
   'bed.tabPending': 'Esta pestaña todavía no tiene contenido: falta el endpoint que la alimenta.',
+  'bed.loadError': 'No se pudo cargar la cama de este dispositivo.',
+  'bed.soapError': 'No se pudieron cargar las notas SOAP.',
   'bed.info': 'Información del Paciente',
   'bed.lastSoap': 'Última Nota SOAP',
   'bed.status.critico': 'Crítico',
@@ -71,43 +93,129 @@ const es = {
   'monitor.temp': 'TEMP (TEMPERATURA)',
   'monitor.fr': 'FR (FRECUENCIA RESP.)',
 
+  // Central de monitoreo (modules/monitoring/pages/CentralMonitorPage.tsx).
+  //
+  // No hay claves de presión arterial, PAM ni temperatura, y no es un olvido:
+  // ningún publicador emite esas variables, así que la pantalla no tiene esas
+  // columnas. Ver el comentario de MonitoredVitals en modules/monitoring/types.ts.
+  'central.title': 'Central de Monitoreo',
+  'central.subtitle': 'Estado de todas las camas de la unidad, con su telemetría más reciente.',
+  'central.breadcrumb': 'Monitoreo',
+  'central.unit': 'Unidad',
+  'central.allUnits': 'Todas las unidades',
+  'central.view': 'Vista',
+  'central.view.grid': 'Grid',
+  'central.view.list': 'Lista',
+  'central.summary': 'Monitoreo activo para {count} pacientes en {unit}',
+  'central.error': 'No se pudieron cargar las camas',
+  'central.empty': 'No hay camas registradas en esta unidad.',
+  'central.free': '{count} libres',
+  'central.allFree':
+    'Ninguna cama de esta unidad tiene paciente. La central solo muestra camas ocupadas.',
+  'central.available': 'Disponible',
+  'central.noPatient': 'Sin paciente asignado',
+  'central.noDevice': 'Sin equipo a pie de cama',
+  'central.openMonitor': 'Abrir el monitor de esta cama',
+  'central.years': '{count} años',
+  'central.col.bed': 'CAMA',
+  'central.col.patient': 'PACIENTE',
+  'central.col.state': 'ESTADO',
+  'central.col.updated': 'ACTUALIZADO',
+  'central.vitalsGroup': 'SIGNOS VITALES / TELEMETRÍA EN TIEMPO REAL',
+  'central.hr': 'FC',
+  'central.spo2': 'SpO2',
+  'central.fr': 'FR',
+  'central.gcs': 'GCS',
+  'central.unit.hr': 'bpm',
+  'central.unit.spo2': '%',
+  'central.unit.fr': 'rpm',
+  'central.unit.gcs': 'pts',
+  // Las dos advertencias que impiden leer la pantalla como si todo fuera señal
+  // en vivo y medida. Van como tooltip en la cabecera de su columna.
+  'central.fr.estimated':
+    'Estimada a partir del pletismógrafo, no medida por flujo ni por impedancia.',
+  'central.gcs.notLive':
+    'Escala de Glasgow de la exploración física. La escribe un clínico: no se actualiza en tiempo real.',
+  // Ronda (modules/monitoring/pages/RoundsPage.tsx). La pantalla de la tablet:
+  // una cama a la vez, girando sola, saltando a la que acaba de dar alerta.
+  //
+  // Reutiliza las claves de la central para lo que es lo mismo —los estados
+  // clínicos, la antigüedad de la lectura, los rótulos de las cifras—: dos
+  // pantallas que nombran distinto el mismo dato acaban divergiendo.
+  'rounds.title': 'Ronda',
+  'rounds.subtitle': 'Una cama a la vez. Salta sola a la que abre una alerta.',
+  'rounds.position': 'Cama {current} de {total}',
+  'rounds.prev': 'Cama anterior',
+  'rounds.next': 'Cama siguiente',
+  'rounds.pause': 'Detener el giro',
+  'rounds.resume': 'Reanudar el giro',
+  'rounds.auto': 'Girando cada {seconds} s',
+  'rounds.paused': 'Giro detenido',
+  'rounds.jumped': 'Alerta nueva en la cama {bed}: se saltó aquí y se detuvo el giro.',
+  'rounds.goToBed': 'Ir a la cama {bed}',
+  'rounds.bedList': 'Camas de la ronda',
+  'rounds.error': 'No se pudieron cargar las camas',
+  'rounds.empty': 'Ninguna cama de esta unidad tiene paciente. La ronda solo recorre camas ocupadas.',
+  'rounds.openAlerts': '{count} alertas abiertas',
+  'rounds.noAlerts': 'Sin alertas abiertas',
+  'rounds.openMonitor': 'Abrir el monitor completo',
+  // Solo se enseña cuando el bloqueo está puesto de verdad. El navegador puede
+  // no soportarlo o retirarlo por batería baja, y prometer que la pantalla no se
+  // apagará cuando sí lo hará es peor que no decir nada.
+  'rounds.screenOn': 'Pantalla siempre encendida',
+
+  'central.ago.never': 'Sin lecturas',
+  'central.ago.now': 'hace un momento',
+  'central.ago.minutes': 'hace {n} min',
+  'central.ago.hours': 'hace {n} h',
+  'central.ago.days': 'hace {n} d',
+
+  // Bandeja de notificaciones (modules/notifications/).
+  //
+  // Solo hay dos tipos, y no es una poda de la traducción sino del modelo:
+  // `notificacion.alerta_id` es NOT NULL, así que aquí no cabe nada que no nazca
+  // de una alerta. Ver notificationKinds en modules/notifications/types.ts.
   'notifications.title': 'Bandeja de Notificaciones',
-  'notifications.subtitle': 'Avisos clínicos y del sistema, del más reciente al más antiguo.',
+  'notifications.subtitle': 'Alertas clínicas dirigidas a usted, sin leer primero.',
   'notifications.markAllRead': 'Marcar todas como leídas',
-  'notifications.filter.kind': 'Tipo',
-  'notifications.filter.all': 'Todas',
-  'notifications.filter.day': 'Día',
-  'notifications.filter.clearDay': 'Todos los días',
+  'notifications.markRead': 'Marcar como leída',
   'notifications.unread': 'Sin leer',
   'notifications.empty': 'No hay notificaciones.',
-  'notifications.noMatches': 'Ninguna notificación de ese tipo.',
   'notifications.viewAll': 'Ver todas',
+  'notifications.unreadCount': '{count} sin leer',
+  'notifications.total': '{count} en total',
+  'notifications.error': 'No se pudieron cargar las notificaciones.',
+  'notifications.prev': 'Anterior',
+  'notifications.next': 'Siguiente',
+  'notifications.page': 'Página {page} de {pages}',
+  'notifications.row.title': '{patient} · Equipo {device}',
+  'notifications.row.titleNoPatient': 'Equipo {device} · sin paciente asignado',
+  'notifications.row.reading': '{variable} {value} {unit}',
   'notifications.group.today': 'Hoy',
   'notifications.group.yesterday': 'Ayer',
   'notifications.ago.minutes': 'Hace {count} min',
   'notifications.ago.hours': 'Hace {count} h',
   'notifications.ago.yesterdayAt': 'Ayer, {time}',
   'notifications.ago.days': 'Hace {count} días',
-  'notifications.kind.alertaCritica': 'Alerta crítica',
-  'notifications.kind.alertaTemprana': 'Alerta temprana',
-  'notifications.kind.asignacion': 'Asignación',
-  'notifications.kind.reporte': 'Reporte',
-  'notifications.kind.sistema': 'Sistema',
-  'notifications.kind.nota': 'Nota clínica',
-  'notifications.kind.mantenimiento': 'Mantenimiento',
   'nav.users': 'Usuarios',
   'nav.roles': 'Roles y Permisos',
   'nav.audit': 'Auditoría',
 
   'layout.mainNav': 'Navegación principal',
   'layout.toggleNav': 'Plegar o desplegar la navegación',
-  'layout.toggleGroup': 'Mostrar u ocultar las subsecciones',
   'layout.notifications': 'Notificaciones',
+  'layout.skipToContent': 'Saltar al contenido',
+  'layout.mainContent': 'Contenido principal',
 
   'action.signIn': 'Iniciar sesión',
   'action.signOut': 'Cerrar sesión',
   'action.cancel': 'Cancelar',
+  'action.save': 'Guardar',
   'action.close': 'Cerrar',
+  'action.loading': 'Cargando…',
+  // Por qué un botón está apagado. Va en un tooltip: un control desactivado sin
+  // explicación se lee como una avería del sistema.
+  'action.noBackend': 'Todavía no disponible: falta el servicio en el servidor',
 
   'brand.name': 'SIAPPC',
   'brand.tagline': 'Sistema Inteligente para la Atención de Pacientes Politraumatizados Críticos',
@@ -136,30 +244,12 @@ const es = {
   'login.password': 'Contraseña',
   'login.showPassword': 'Mostrar contraseña',
   'login.hidePassword': 'Ocultar contraseña',
-  'login.forgotPassword': '¿Olvidó su contraseña?',
+  // Sustituye al enlace de "¿Olvidó su contraseña?". Dice a quién acudir en vez
+  // de prometer un restablecimiento que el servidor no sabe hacer.
+  'login.passwordHelp':
+    '¿Olvidó su contraseña? Solicite el restablecimiento al administrador del sistema.',
   'login.pending': 'Iniciando sesión…',
   'login.failed': 'No se pudo iniciar sesión',
-
-  'forgotPassword.title': 'Recuperar contraseña',
-  'forgotPassword.hint':
-    'Ingrese su correo institucional registrado para recibir las instrucciones de restablecimiento.',
-  'forgotPassword.warning':
-    'El enlace de recuperación expirará automáticamente en 15 minutos por motivos de seguridad.',
-  'forgotPassword.submit': 'Enviar enlace de recuperación',
-  'forgotPassword.backToLogin': 'Volver al inicio de sesión',
-  'forgotPassword.pending': 'Enviando…',
-  'forgotPassword.failed': 'No se pudo enviar el enlace',
-
-  'verify.title': 'Verificación de seguridad',
-  'verify.hint':
-    'Ingrese el código de seguridad de 6 dígitos enviado a su dispositivo móvil registrado.',
-  'verify.resendQuestion': '¿No recibió el código?',
-  'verify.resend': 'Reenviar',
-  'verify.resendIn': 'en',
-  'verify.submit': 'Verificar',
-  'verify.pending': 'Verificando…',
-  'verify.failed': 'Código incorrecto',
-  'verify.success': 'Código verificado. Ahora puede iniciar sesión.',
 
   'dashboard.welcome': 'Bienvenido, {name}',
 
@@ -171,15 +261,11 @@ const es = {
   'dash.subtitle.admin': 'Estado de la plataforma, uso, seguridad e integraciones.',
   'dash.subtitle.generic': 'Resumen de la plataforma.',
 
-  'dash.moveUp': 'Subir',
-  'dash.moveDown': 'Bajar',
-  'dash.resetOrder': 'Restablecer el orden',
   'dash.pendingEndpoint': 'Pendiente: {endpoint}',
-  'dash.pendingShort': 'Pendiente',
 
   'dash.widget.medicoKpis': 'Resumen del día',
-  'dash.widget.assignedPatients': 'Pacientes a mi cargo',
-  'dash.widget.activeAlerts': 'Alertas activas por severidad',
+  'dash.widget.assignedPatients': 'Monitoreo de pacientes politraumatizados (ATLS)',
+  'dash.widget.activeAlerts': 'Requiere tu atención ahora',
   'dash.widget.criticalTrends': 'Tendencia de los pacientes más críticos',
   'dash.widget.nurseAssignments': 'Pacientes del turno',
   'dash.widget.alertAck': 'Alertas y su reconocimiento',
@@ -197,7 +283,9 @@ const es = {
 
   'dash.kpi.assignedPatients': 'Pacientes a cargo',
   'dash.kpi.criticalAlerts': 'Alertas críticas abiertas',
-  'dash.kpi.withoutDevice': 'Sin equipo asignado',
+  'dash.kpi.freeBeds': 'Camas libres',
+  'dash.openCentral': 'Ver central de monitoreo',
+  'dash.kpi.pendingAssessment': 'Pendientes de evaluación',
   'dash.kpi.devices': 'Equipos registrados',
   'dash.kpi.devicesLive': 'Emitiendo',
   'dash.kpi.devicesSilent': 'Sin señal reciente',
@@ -207,25 +295,46 @@ const es = {
   'dash.col.patient': 'Paciente',
   'dash.col.state': 'Estado',
   'dash.col.device': 'Dispositivo',
-  'dash.col.openAlerts': 'Alertas',
-  'dash.col.module': 'Módulo',
+  'dash.col.location': 'Ubicación',
+  'dash.col.vitals': 'Signos vitales',
+  'dash.col.glasgowTriage': 'Glasgow / TR',
   'dash.col.bed': 'Cama',
   'dash.col.sensors': 'Sensores',
   'dash.col.lastReading': 'Última lectura',
 
   'dash.noAlerts': 'Sin alertas',
   'dash.noDevice': 'Sin equipo',
+  'dash.noBed': 'Sin cama',
+  'dash.noRecord': 'Sin expediente',
+  'dash.recordNumber': 'HC-{number}',
+  'dash.bedAt': '{unit} Cama {bed}',
+  'dash.openAlertsCount': '{count} alerta(s) abierta(s)',
+
+  // Estado clínico y triage. Los dos se derivan de la peor alerta abierta del
+  // paciente; ver modules/dashboard/presentation.ts.
+  'dash.state.critico': 'Crítico',
+  'dash.state.atencion': 'Atención',
+  'dash.state.estable': 'Estable',
+  'dash.triage': 'TRIAGE: {level}',
+  'dash.gcs': 'GCS: {value}/15',
+  'dash.gcs.pending': 'Sin exploración',
+
+  'dash.vital.hr': 'FC',
+  'dash.vital.spo2': 'SpO2',
+
+  'dash.filter.unit': 'Unidad:',
+  'dash.filter.state': 'Estado:',
+  'dash.filter.all': 'Todos',
+  'dash.showingOf': 'Mostrando {shown} de {total} pacientes',
+  'dash.seeAll': 'Ver todos',
 
   'dash.assignedPatients.error': 'No se pudo cargar la lista de pacientes a cargo',
   'dash.assignedPatients.empty': 'No hay pacientes asignados a su cuenta.',
-  'dash.assignedPatients.recordsPending':
-    'Los accesos a Historia Clínica y Notas SOAP se habilitarán cuando existan sus endpoints.',
+  'dash.assignedPatients.noMatch': 'Ningún paciente coincide con el filtro.',
   'dash.alerts.empty': 'No hay alertas activas.',
   'dash.alerts.ackPending':
     'Reconocer una alerta desde aquí queda pendiente del endpoint de actualización.',
   'dash.trends.empty': 'Ningún paciente a cargo tiene alertas abiertas.',
-  'dash.nurseAssignments.bedsPending':
-    'La cama y la unidad de cada paciente llegarán con el módulo de camas.',
   'dash.reminders.pending':
     'Los recordatorios de procedimiento y observación aún no tienen dónde guardarse.',
   'dash.nursingNotes.pending': 'Las notas de enfermería llegarán con el módulo de Notas SOAP.',
@@ -251,7 +360,6 @@ const es = {
   'dash.live.alert': 'Alerta en {patient}: {detail}',
   'dash.security.empty': 'Sin eventos de seguridad recientes.',
   'dash.audit.error': 'No se pudo cargar la bitácora',
-  'dash.audit.empty': 'No hay movimientos registrados.',
   'dash.audit.system': 'Sistema',
 
   'dash.integrations.api': 'API SIAPPC',
@@ -376,19 +484,13 @@ const es = {
   'roles.title': 'Gestión de Roles y Permisos',
   'roles.subtitle': 'Define qué puede ver y hacer cada tipo de usuario en el sistema.',
   'roles.new.button': 'Nuevo Rol',
-  'roles.assigned': 'Usuarios asignados',
   'roles.selector': 'Rol',
   'roles.usersCount': 'usuarios',
   'roles.usersCountOne': 'usuario',
-  'roles.systemRole': 'Rol base del sistema',
-  'roles.customRole': 'Rol personalizado',
-  'roles.predefined': 'Predefinido',
-  'roles.editPermissions': 'Ver/Editar Permisos',
   'roles.col.role': 'Rol',
   'roles.col.type': 'Tipo',
   'roles.col.users': 'Usuarios',
   'roles.col.actions': 'Acciones',
-  'roles.noDescription': 'Sin descripción',
   'roles.empty': 'Todavía no hay roles configurados.',
 
   'audit.title': 'Auditoría',
@@ -425,8 +527,6 @@ const es = {
 
   'matrix.title': 'Matriz de Permisos',
   'matrix.back': 'Volver a Roles',
-  'matrix.locked': 'Predefinido Bloqueado',
-  'matrix.lockedHint': 'Permisos preestablecidos y no editables para el rol base',
   'matrix.editableHint': 'Marca lo que este rol puede hacer en cada módulo.',
   'matrix.col.module': 'Módulos de Sistema',
   'matrix.col.ver': 'Ver',
@@ -438,19 +538,70 @@ const es = {
   'matrix.saved': 'Permisos actualizados',
   'matrix.loadError': 'No se pudo cargar la matriz',
 
-  'patients.title': 'Pacientes',
-  'patients.add': 'Registrar paciente',
-  'patients.empty': 'Aún no hay pacientes registrados.',
+  'patients.title': 'Gestión de Pacientes',
+  'patients.subtitle': 'Pacientes bajo su cuidado, con su estado actual y sus últimos signos vitales.',
+  'patients.add': 'Nuevo Paciente',
+  'patients.empty': 'Todavía no tiene pacientes asignados.',
+  'patients.noMatch': 'Ningún paciente coincide con el filtro.',
+  'patients.error': 'No se pudo cargar la lista de pacientes',
   'patients.addError': 'No se pudo registrar el paciente',
-  'patients.col.name': 'Nombre',
-  'patients.col.document': 'Documento',
-  'patients.col.module': 'Módulo',
+
+  // Barra de filtros. "Rango de admisión" filtra por `ingreso.fecha_ingreso`
+  // del ingreso activo; quien no tiene ingreso abierto no cae en ningún rango.
+  'patients.filter.unit': 'Unidad',
+  'patients.filter.state': 'Estado',
+  'patients.filter.admitted': 'Rango de admisión',
+  'patients.filter.allUnits': 'Todas',
+  'patients.filter.allStates': 'Todos',
+  'patients.filter.anyDate': 'Cualquier fecha',
+  'patients.filter.last24h': 'Últimas 24 horas',
+  'patients.filter.last7d': 'Últimos 7 días',
+  'patients.filter.last30d': 'Últimos 30 días',
+
+  'patients.kpi.active': 'Pacientes activos',
+  'patients.kpi.capacity': 'Cupo: {total} camas',
+  'patients.kpi.critical': 'Estado crítico',
+  'patients.kpi.criticalHint': 'Acción inmediata',
+  'patients.kpi.alerts': 'Alertas activas',
+  'patients.kpi.alertsHint': 'Sin resolver',
+  'patients.kpi.beds': 'Camas disponibles',
+  'patients.kpi.bedsValue': '{available} / {total}',
+  'patients.kpi.bedsHint': '{percent}% libre',
+
+  'patients.list.title': 'Lista de Pacientes Asignados',
+  'patients.list.subtitle': 'Resumen de estado de salud actual para su supervisión.',
+  'patients.search': 'Filtrar por nombre o expediente…',
+  'patients.searchGlobal': 'Buscar en todo el sistema',
+  'patients.age': '{count} años',
+  'patients.noAge': 'Edad no registrada',
+  'patients.bedCode': 'Cama {bed}',
+  'patients.noAdmission': 'Sin ingreso activo',
+  'patients.showingOf': 'Mostrando {shown} de {total} pacientes bajo su cuidado.',
+  'patients.prev': 'Anterior',
+  'patients.next': 'Siguiente',
+  'patients.rowMenu': 'Acciones del paciente',
+  'patients.action.monitor': 'Ver monitor de cama',
+  'patients.action.record': 'Abrir expediente',
+
+  'patients.alerts.title': 'Alertas Recientes',
+  'patients.alerts.today': 'Hoy',
+  'patients.alerts.empty': 'No hay alertas abiertas.',
+  'patients.alerts.error': 'No se pudieron cargar las alertas',
+  'patients.alerts.ago.now': 'Hace instantes',
+  'patients.alerts.ago.min': 'Hace {count} min',
+  'patients.alerts.ago.hours': 'Hace {count} h',
+  'patients.alerts.ago.days': 'Hace {count} d',
+
+  'patients.col.patient': 'Paciente',
   'patients.col.status': 'Estado',
-  'patients.col.arrived': 'Ingreso',
+  // El mockup rotula esta columna "TRASLADO UCI". Se rotula "INGRESO" porque
+  // es lo que la base sabe: `ingreso.tipo` (urgencia/programado/traslado). Un
+  // traslado a UCI concreto no está registrado en ninguna columna.
+  'patients.col.admission': 'Ingreso',
+  'patients.col.bed': 'Cama',
   'patients.form.title': 'Registrar paciente',
   'patients.form.name': 'Nombre completo',
   'patients.form.document': 'Documento de identidad',
-  'patients.form.module': 'Módulo de atención',
   'patients.form.reason': 'Motivo de consulta',
   'patients.form.birthDate': 'Fecha de nacimiento',
   'patients.form.sex': 'Sexo',
@@ -461,10 +612,19 @@ const es = {
   'patients.sex.F': 'Femenino',
   'patients.sex.O': 'Otro',
   'patients.form.submit': 'Registrar',
-  'patients.details.title': 'Ficha del paciente',
-  'patients.details.reason': 'Motivo de consulta',
-  'patients.details.none': 'Sin registrar',
-  'patients.filter.all': 'Todos los módulos',
+  'patients.form.submitting': 'Registrando…',
+  'patients.form.section.identity': 'Quién es',
+  'patients.form.section.admission': 'Por qué viene',
+  'patients.form.section.optional': 'Datos adicionales',
+  'patients.form.optionalHint':
+    'Se pueden completar después: de un paciente inconsciente pueden no conocerse al ingresar.',
+  'patients.form.documentHelp': 'Cédula o documento con el que se identifica al paciente.',
+  'patients.form.reasonHelp': 'Qué le ocurre, en una línea. Es lo que verá quien lo atienda.',
+  'patients.form.required': 'Hace falta este dato',
+  'patients.form.futureDate': 'La fecha de nacimiento no puede ser futura',
+  'patients.form.age': '{age} años',
+  'patients.form.incomplete': 'Faltan datos obligatorios, señalados abajo.',
+  'patients.form.duplicate': 'Ya hay un paciente registrado con ese documento',
   'patientStatus.waiting': 'en espera',
   'patientStatus.inService': 'en atención',
   'patientStatus.discharged': 'dado de alta',
@@ -506,6 +666,9 @@ const es = {
   'clinical.pickPatient': 'Elija un paciente para ver su expediente.',
   'clinical.tab.soap': 'Notas SOAP',
   'clinical.tab.history': 'Historia Clínica',
+  'clinical.tab.monitoring': 'Monitoreo',
+  'clinical.monitoring.noDevice':
+    'Este paciente no tiene equipo de monitoreo a pie de cama, así que no hay signos vitales en vivo que mostrar.',
   'clinical.error': 'No se pudo cargar el expediente',
 
   'soap.new': 'Nueva nota SOAP',
@@ -556,6 +719,8 @@ const es = {
   'admissions.reason': 'Motivo del ingreso',
   'admissions.noBed': 'Sin cama asignada',
   'admissions.bedOptional': 'Se puede admitir sin cama y asignarla después.',
+  'admissions.noFreeBeds':
+    'Ninguna de las {total} camas está disponible: el egreso las deja en limpieza. Cámbielas de estado en la pestaña Camas.',
   'admissions.empty': 'Todavía no hay ingresos registrados.',
   'admissions.col.patient': 'Paciente',
   'admissions.col.bed': 'Cama',
@@ -573,6 +738,50 @@ const es = {
   'admissionState.cancelado': 'Cancelado',
 
   'beds.new': 'Registrar cama',
+  'patients.action.assignBed': 'Asignar cama',
+  'patients.action.changeBed': 'Cambiar de cama',
+  'patients.bed.title': 'Cama del paciente',
+  'patients.bed.field': 'Cama libre',
+  'patients.bed.placing': 'Colocar a {patient} en una cama.',
+  'patients.bed.moving': '{patient} está en {bed}. Se le pasará a la que elija.',
+  'patients.bed.submit': 'Asignar',
+  'patients.bed.noneFree':
+    'No hay camas libres. Añada camas o libere alguna desde Admisión.',
+  'patients.bed.loadError': 'No se pudo cargar la lista de camas',
+  'patients.bed.error': 'No se pudo asignar la cama',
+  'patients.bed.defaultReason': 'Ingreso registrado desde la lista de pacientes',
+
+  'patients.action.assignCare': 'Asignar personal',
+  'patients.action.edit': 'Editar ficha',
+  'patients.edit.title': 'Ficha del paciente',
+  'patients.edit.subtitle': 'Actualizar los datos de {patient} que cambian con el tiempo.',
+  'patients.edit.contactHelp': 'Quién avisar y su teléfono. Déjelo vacío si no se conoce.',
+  'patients.edit.loadError': 'No se pudo cargar la ficha del paciente',
+  'patients.edit.error': 'No se pudieron guardar los cambios',
+  'patients.edit.deactivate': 'Dar de baja',
+  'patients.edit.deactivateConfirm': 'Confirmar la baja',
+  'patients.edit.deactivateWarning':
+    'El registro NO se borra: queda inactivo y deja de aparecer en las listas. Su historia clínica, sus ingresos y la bitácora se conservan, así que si el paciente vuelve su información sigue completa.',
+  'patients.care.title': 'Personal a cargo',
+  'patients.care.subtitle': 'Quién tiene a {patient} bajo su cuidado.',
+  'patients.care.field': 'Añadir del personal clínico',
+  'patients.care.submit': 'Asignar',
+  'patients.care.none': 'Nadie tiene asignado a este paciente todavía.',
+  'patients.care.noneFree':
+    'No queda personal clínico activo por asignar. Registre médicos o enfermería desde Usuarios.',
+  'patients.care.error': 'No se pudo cambiar el personal a cargo',
+  // Segundo paso de quitar a alguien: dice qué va a pasar y a quién, no
+  // "¿está seguro?".
+  'patients.care.confirmRemove': 'Pulsa otra vez para quitar a {name}',
+
+  'beds.capacity.title': 'Camas por unidad',
+  'beds.capacity.hint':
+    'Indique cuántas camas tiene cada unidad. Las que falten se crean numeradas; las que sobren se retiran, siempre que estén libres.',
+  'beds.capacity.field': 'Camas',
+  'beds.capacity.current': '{occupied} ocupadas de {total}',
+  'beds.capacity.belowOccupied': 'Hay {occupied} camas ocupadas',
+  'beds.capacity.error': 'No se pudo cambiar la cantidad de camas',
+  'beds.capacity.noUnits': 'No hay unidades registradas en este hospital.',
   'beds.save': 'Guardar',
   'beds.free': 'Libre',
   'beds.empty': 'Esta unidad todavía no tiene camas registradas.',
@@ -622,7 +831,6 @@ const es = {
   // ---------------------------------------------------------------------------
   // Búsqueda global (modules/search)
   // ---------------------------------------------------------------------------
-  'nav.search': 'Búsqueda',
   'busqueda.title': 'Búsqueda Global',
   'busqueda.subtitle': 'Pacientes, notas SOAP y documentos en un solo lugar',
   'busqueda.placeholder': 'Buscar paciente, nota o documento…',
@@ -659,6 +867,10 @@ const es = {
   'exploracion.pickPatient': 'Elige un paciente para abrir su exploración física.',
   'exploracion.patientError': 'No se pudo cargar el paciente.',
   'exploracion.admitted': 'Ingreso',
+  'exploracion.resumen.vacio':
+    'Todavía no se ha registrado ningún hallazgo. Captúrelos en la pestaña Historia Clínica.',
+  'exploracion.resumen.anormales': '{count} hallazgos anormales',
+  'exploracion.resumen.exploradas': '{count} de {total} regiones exploradas',
   'exploracion.tabPending': 'Esta pestaña todavía no está disponible.',
   'exploracion.tab.summary': 'Resumen',
   'exploracion.tab.history': 'Historia Clínica',

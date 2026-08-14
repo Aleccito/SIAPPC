@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import {
@@ -8,21 +7,27 @@ import {
   Button,
   Chip,
   Divider,
-  LinearProgress,
   Paper,
   Stack,
   Tab,
   Tabs,
+  Tooltip,
   Typography,
 } from '@mui/material'
+import { LoadingBar } from '../../../shared/LoadingBar'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import NoteAddOutlinedIcon from '@mui/icons-material/NoteAddOutlined'
 import { getBedPatient, getLatestSoapNote } from '../api/bedApi'
+import { listMonitoredBeds } from '../api/monitoringApi'
 import { VitalsMonitor } from '../components/VitalsMonitor'
+import { getExpediente, listSoapNotes } from '../../clinical/api/clinicalApi'
+import { ExpedienteResumen } from '../../clinical/components/ExpedienteResumen'
+import type { SoapNote as ClinicalSoapNote } from '../../clinical/types'
 import { listReadings } from '../../sensors/api/sensorsApi'
 import { usePageHeader } from '../../../app/pageHeader'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
+import { useQueryParam } from '../../../shared/useQueryParam'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 
 const TABS: { value: string; label: StringKey }[] = [
@@ -33,7 +38,15 @@ const TABS: { value: string; label: StringKey }[] = [
   { value: 'documents', label: 'bed.tab.documents' },
 ]
 
-const STATUS_COLOR = { critico: 'error', observacion: 'warning', estable: 'success' } as const
+// Las cuatro secciones de una nota, en el orden que les da nombre.
+const SOAP_SECTIONS = [
+  ['subjective', 'soap.subjective'],
+  ['objective', 'soap.objective'],
+  ['assessment', 'soap.assessment'],
+  ['plan', 'soap.plan'],
+] as const
+
+const STATUS_COLOR ={ critico: 'error', observacion: 'warning', estable: 'success' } as const
 
 /**
  * Fecha sin hora (`YYYY-MM-DD`) en la zona del usuario.
@@ -61,10 +74,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function BedMonitorPage() {
-  const { t } = useLanguage()
-  const locale = 'es-MX'
+  const { t, locale } = useLanguage()
   const { device = '' } = useParams()
-  const [tab, setTab] = useState('summary')
+  // La pestaña va en la URL: "mírale las notas SOAP a la 12" es un enlace y no
+  // una explicación. También hace que Atrás vuelva a la pestaña anterior en vez
+  // de salir de la cama, que es lo que el botón parece prometer.
+  //
+  // Se valida contra la lista: `?seccion=loquesea` tiene que caer en el resumen
+  // y no dejar la pantalla con las pestañas apagadas y nada debajo.
+  const [tabParam, setTab] = useQueryParam('seccion', 'summary')
+  const tab = TABS.some((entry) => entry.value === tabParam) ? tabParam : 'summary'
 
   const patient = useQuery({
     queryKey: ['bedPatient', device],
@@ -82,6 +101,30 @@ export function BedMonitorPage() {
     queryFn: () => listReadings({ device, limit: 60 }),
     refetchInterval: 5000,
   })
+
+  // El id numérico del paciente, que es lo que piden `/historia/:id` y `/soap`.
+  // NO sirve `patient.data.patientId`: ese es la cédula. La única fuente que va
+  // del código de equipo al id es la lista de camas monitoreadas.
+  const camas = useQuery({
+    queryKey: ['monitoredBeds'],
+    queryFn: () => listMonitoredBeds(),
+    enabled: tab === 'history' || tab === 'soap',
+  })
+  const patientId = camas.data?.find((cama) => cama.device === device)?.patientId ?? null
+
+  const expediente = useQuery({
+    queryKey: ['expediente', patientId],
+    queryFn: () => getExpediente(patientId!),
+    enabled: tab === 'history' && patientId !== null,
+  })
+
+  // Solo lectura: escribir y firmar notas es la pantalla de Expediente.
+  const notes = useQuery({
+    queryKey: ['soapNotes', patientId],
+    queryFn: () => listSoapNotes(patientId!),
+    enabled: tab === 'soap' && patientId !== null,
+  })
+  const notesSorted = [...(notes.data ?? [])].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
 
   const bed = patient.data?.bed ?? device
   usePageHeader(
@@ -106,15 +149,26 @@ export function BedMonitorPage() {
           {t('bed.back')}
         </Button>
         <Box sx={{ flexGrow: 1 }} />
-        <Button variant="outlined" startIcon={<DescriptionOutlinedIcon />} disabled>
-          {t('bed.generateReport')}
-        </Button>
-        <Button variant="contained" startIcon={<NoteAddOutlinedIcon />} disabled>
-          {t('bed.newSoap')}
-        </Button>
+        {/* Los `span` no sobran: un botón desactivado no emite eventos de ratón,
+            y sin ellos el tooltip que explica POR QUÉ está apagado no aparecería
+            nunca. */}
+        <Tooltip title={t('action.noBackend')}>
+          <span>
+            <Button variant="outlined" startIcon={<DescriptionOutlinedIcon />} disabled>
+              {t('bed.generateReport')}
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip title={t('action.noBackend')}>
+          <span>
+            <Button variant="contained" startIcon={<NoteAddOutlinedIcon />} disabled>
+              {t('bed.newSoap')}
+            </Button>
+          </span>
+        </Tooltip>
       </Stack>
 
-      <Box sx={{ height: 4 }}>{patient.isPending && <LinearProgress />}</Box>
+      <LoadingBar loading={patient.isPending} />
 
       {!patient.isPending && !patient.data && (
         <Alert severity="info">{t('bed.noPatient')}</Alert>
@@ -166,9 +220,13 @@ export function BedMonitorPage() {
               >
                 <span>ID {patient.data.patientId}</span>
                 <span>·</span>
-                <span>{t('bed.years', { count: String(patient.data.age) })}</span>
+                <span>
+                  {patient.data.age === null
+                    ? '—'
+                    : t('bed.years', { count: String(patient.data.age) })}
+                </span>
                 <span>·</span>
-                <span>{patient.data.diagnosis}</span>
+                <span>{patient.data.diagnosis ?? patient.data.reason}</span>
                 <span>·</span>
                 <span>
                   {t('bed.admitted')}: {formatDateOnly(patient.data.admittedAt, locale)}
@@ -187,12 +245,97 @@ export function BedMonitorPage() {
         sx={{ borderBottom: 1, borderColor: 'divider' }}
       >
         {TABS.map((entry) => (
-          <Tab key={entry.value} value={entry.value} label={t(entry.label)} />
+          <Tab
+            key={entry.value}
+            value={entry.value}
+            label={t(entry.label)}
+            // MUI pone role="tab" y aria-selected, pero no ata la pestaña a su
+            // contenido: sin este par, un lector de pantalla anuncia cinco
+            // pestañas y luego un texto suelto que no dice de cuál viene.
+            id={`bed-tab-${entry.value}`}
+            aria-controls={`bed-panel-${entry.value}`}
+          />
         ))}
       </Tabs>
 
-      {tab !== 'summary' && tab !== 'monitoring' && (
-        <Alert severity="info">{t('bed.tabPending')}</Alert>
+      {/* Un solo panel, el de la pestaña activa: las secciones de abajo son sus
+          contenidos, no cinco regiones que convivan. */}
+      <Box role="tabpanel" id={`bed-panel-${tab}`} aria-labelledby={`bed-tab-${tab}`}>
+      {/* Documentos sigue sin endpoint ni tabla en el esquema: se dice, no se
+          inventa. */}
+      {tab === 'documents' && <Alert severity="info">{t('bed.tabPending')}</Alert>}
+
+      {(tab === 'history' || tab === 'soap') && (
+        <Stack spacing={2}>
+          <LoadingBar loading={camas.isPending || expediente.isFetching || notes.isFetching} />
+
+          {camas.isError && <Alert severity="error">{t('bed.loadError')}</Alert>}
+
+          {!camas.isPending && !camas.isError && patientId === null && (
+            <Alert severity="info">{t('bed.noPatient')}</Alert>
+          )}
+
+          {tab === 'history' && expediente.isError && (
+            <Alert severity="error">{t('clinical.error')}</Alert>
+          )}
+          {tab === 'history' && expediente.data && (
+            <ExpedienteResumen expediente={expediente.data} locale={locale} />
+          )}
+
+          {tab === 'soap' && notes.isError && <Alert severity="error">{t('bed.soapError')}</Alert>}
+          {tab === 'soap' && notes.data?.length === 0 && (
+            <Alert severity="info">{t('soap.empty')}</Alert>
+          )}
+          {tab === 'soap' &&
+            notesSorted.map((nota: ClinicalSoapNote) => (
+              <Paper key={nota.id} sx={{ p: 2.5 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5, mb: 1 }}
+                >
+                  <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
+                    {nota.authorName} · {new Date(nota.at).toLocaleString(locale)}
+                  </Typography>
+                  {nota.parentId && (
+                    <Chip size="small" variant="outlined" label={t('soap.addendum')} />
+                  )}
+                  <Chip
+                    size="small"
+                    color={nota.status === 'firmada' ? 'success' : 'warning'}
+                    variant={nota.status === 'firmada' ? 'filled' : 'outlined'}
+                    label={t(`soap.${nota.status}` as StringKey)}
+                  />
+                </Stack>
+
+                <Divider sx={{ mb: 1.5 }} />
+
+                <Stack spacing={1}>
+                  {SOAP_SECTIONS.map(([key, label]) =>
+                    nota[key] ? (
+                      <Box key={key}>
+                        <Typography variant="subtitle2">{t(label)}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {nota[key]}
+                        </Typography>
+                      </Box>
+                    ) : null,
+                  )}
+                </Stack>
+
+                {nota.signedAt && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', mt: 1.5 }}
+                  >
+                    {t('soap.signedBy')} {nota.signedByName} ·{' '}
+                    {new Date(nota.signedAt).toLocaleString(locale)}
+                  </Typography>
+                )}
+              </Paper>
+            ))}
+        </Stack>
       )}
 
       {(tab === 'summary' || tab === 'monitoring') && (
@@ -219,7 +362,7 @@ export function BedMonitorPage() {
                   <Field label={t('bed.field.birth')}>
                     {formatDateOnly(patient.data.birthDate, locale)}
                   </Field>
-                  <Field label={t('bed.field.blood')}>{patient.data.bloodType}</Field>
+                  <Field label={t('bed.field.blood')}>{patient.data.bloodType ?? '—'}</Field>
                   <Field label={t('bed.field.allergies')}>
                     {patient.data.allergies.length ? (
                       <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end' }}>
@@ -231,10 +374,10 @@ export function BedMonitorPage() {
                       t('bed.field.noAllergies')
                     )}
                   </Field>
-                  <Field label={t('bed.field.doctor')}>{patient.data.doctor}</Field>
-                  <Field label={t('bed.field.diagnosis')}>{patient.data.diagnosis}</Field>
-                  <Field label={t('bed.field.contact')}>{patient.data.emergencyContact}</Field>
-                  <Field label={t('bed.field.insurance')}>{patient.data.insurance}</Field>
+                  <Field label={t('bed.field.doctor')}>{patient.data.doctor ?? '—'}</Field>
+                  <Field label={t('bed.field.diagnosis')}>{patient.data.diagnosis ?? '—'}</Field>
+                  <Field label={t('bed.field.contact')}>{patient.data.emergencyContact ?? '—'}</Field>
+                  <Field label={t('bed.field.insurance')}>{patient.data.insurance ?? '—'}</Field>
                 </Paper>
               )}
 
@@ -291,6 +434,7 @@ export function BedMonitorPage() {
           )}
         </Box>
       )}
+      </Box>
     </Stack>
   )
 }
