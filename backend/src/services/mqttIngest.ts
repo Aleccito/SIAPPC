@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma.ts";
 import { env } from "../env.ts";
 import { publicarAlerta } from "../lib/eventos.ts";
 import { notificarAlerta } from "../lib/notificaciones.ts";
+import { repartirOnda, waveformSchema } from "./waveform.ts";
 
 // Forma de siappc/<device>/telemetry, ver iot/src/publisher.py:build_payload.
 // `variable` no es un enum cerrado: sensor.variable_medida es VARCHAR(60) y
@@ -267,6 +268,19 @@ async function handleMessage(topic: string, payloadBuf: Buffer, logger: FastifyB
     return;
   }
 
+  // La onda va antes que nada porque es lo que más veces llega —una vez por
+  // segundo y por cama, frente a las cifras— y porque no toca la base: se
+  // valida, se reparte a quien esté mirando esa cama y se olvida.
+  if (topic.endsWith("/waveform")) {
+    const parsed = waveformSchema.safeParse(raw);
+    if (!parsed.success) {
+      logger.warn({ topic, issues: parsed.error.issues }, "mqtt: onda con forma inválida");
+      return;
+    }
+    repartirOnda(parsed.data);
+    return;
+  }
+
   if (topic.endsWith("/status")) {
     const parsed = statusSchema.safeParse(raw);
     if (!parsed.success) {
@@ -316,11 +330,18 @@ export function startMqttIngest(logger: FastifyBaseLogger): mqtt.MqttClient {
   client.on("connect", () => {
     const scheme = tls ? "mqtts" : "mqtt";
     logger.info(`mqtt: conectado a ${scheme}://${env.mqtt.host}:${env.mqtt.port}`);
-    // Los dos temas de una vez. Al suscribirse al de estado el broker entrega
-    // los retenidos, así que el backend se pone al día con los equipos que ya
-    // estaban conectados (o caídos) antes de que él arrancara.
+    // Al suscribirse al de estado el broker entrega los retenidos, así que el
+    // backend se pone al día con los equipos que ya estaban conectados (o
+    // caídos) antes de que él arrancara.
     client.subscribe([env.mqtt.telemetryTopic, env.mqtt.statusTopic], { qos: 1 }, (err) => {
       if (err) logger.error({ err }, "mqtt: fallo al suscribirse");
+    });
+    // La onda va en QoS 0 y aparte, a propósito. Es una señal en vivo: un lote
+    // que se pierde no se quiere reentregado tres segundos tarde, se quiere
+    // olvidado. Con QoS 1 el broker guardaría y reintentaría cientos de
+    // mensajes por minuto y por cama para dibujar un trozo de onda que ya pasó.
+    client.subscribe(env.mqtt.waveformTopic, { qos: 0 }, (err) => {
+      if (err) logger.error({ err }, "mqtt: fallo al suscribirse a la onda");
     });
   });
 

@@ -6,7 +6,10 @@ import AirOutlinedIcon from '@mui/icons-material/Air'
 import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined'
 import type { SvgIconComponent } from '@mui/icons-material'
 import { EcgTrace } from './EcgTrace'
-import { agoKey, figure, hexOf, metricsOf, stateHex } from '../presentation'
+import { LiveEcgTrace } from './LiveEcgTrace'
+import { NoTrace } from './NoTrace'
+import { useWaveform } from '../useWaveform'
+import { agoKey, figure, hasLiveSignal, hexOf, isStale, metricsOf, stateHex, traceReason } from '../presentation'
 import { clinicalState, clinicalStateKey } from '../../dashboard/presentation'
 import { ageFrom } from '../../patients/presentation'
 import { sidebar } from '../../../shared/theme'
@@ -65,6 +68,18 @@ function BigMetric({ metric }: { metric: Metric }) {
           {t(metric.unit)}
         </Typography>
       </Stack>
+      {/* El último valor real, cuando la cifra vigente ya no se da por buena. */}
+      {metric.lastKnown !== null && (
+        <Typography
+          sx={{
+            fontSize: 'clamp(0.75rem, 1.4vw, 0.95rem)',
+            color: sidebar.textMuted,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {t('central.lastKnown', { value: String(metric.lastKnown) })}
+        </Typography>
+      )}
     </Box>
   )
 }
@@ -88,6 +103,12 @@ export function BedFocus({ bed }: { bed: MonitoredBed }) {
   const accent = stateHex[state]
   const age = bed.birthDate ? ageFrom(bed.birthDate) : null
   const ago = agoKey(bed.vitals.at)
+  const sinSenal = isStale(bed.vitals.at)
+
+  // La onda real de ESTA cama. Se abre y se cierra sola al cambiar de cama —el
+  // giro de la ronda pasa por aquí—, así que nunca hay más de un flujo abierto.
+  const onda = useWaveform(bed.device)
+  const conSenal = hasLiveSignal(bed)
 
   return (
     <Paper
@@ -155,6 +176,21 @@ export function BedFocus({ bed }: { bed: MonitoredBed }) {
       </Stack>
 
       <Box sx={{ bgcolor: '#000000', borderRadius: 3, p: { xs: 1.5, sm: 2.5 } }}>
+        {/* Ocupa toda la pantalla de la tablet: si este panel dejó de valer, es
+            lo primero que hay que leer, antes que cualquier cifra. */}
+        {sinSenal && (
+          <Typography
+            sx={{
+              mb: 1.5,
+              fontWeight: 700,
+              letterSpacing: '0.14em',
+              fontSize: 'clamp(0.9rem, 2vw, 1.15rem)',
+              color: sidebar.textMuted,
+            }}
+          >
+            {t('central.noSignal')}
+          </Typography>
+        )}
         <Box
           sx={{
             display: 'grid',
@@ -174,7 +210,16 @@ export function BedFocus({ bed }: { bed: MonitoredBed }) {
             dice que el equipo dejó de mandar, que es lo que hay que ver antes de
             fiarse de las cifras de arriba. */}
         <Box sx={{ mt: 2, border: `1px solid ${sidebar.border}`, borderRadius: 2 }}>
-          <EcgTrace color={accent} height={90} animated={ago.key === 'central.ago.now'} />
+          {/* Tres casos, en orden de fidelidad: la onda del equipo, el trazo al
+              ritmo medido, o nada. "Nada" no es una línea plana —eso en un ECG
+              es asistolia— sino el motivo escrito. */}
+          {onda.live ? (
+            <LiveEcgTrace samples={onda.samples} color={accent} height={90} />
+          ) : conSenal ? (
+            <EcgTrace color={accent} height={90} animated bpm={bed.vitals.hr} />
+          ) : (
+            <NoTrace reason={traceReason(bed)} height={90} />
+          )}
         </Box>
       </Box>
 

@@ -2,6 +2,9 @@ import { Box, Button, Chip, Paper, Stack, Tooltip, Typography } from '@mui/mater
 import TuneOutlinedIcon from '@mui/icons-material/Tune'
 import { levelColor, levelOf, vitals } from '../vitals'
 import { EcgTrace } from './EcgTrace'
+import { LiveEcgTrace } from './LiveEcgTrace'
+import { NoTrace } from './NoTrace'
+import { useWaveform } from '../useWaveform'
 import { sidebar } from '../../../shared/theme'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { SensorReading } from '../../sensors/types'
@@ -25,6 +28,14 @@ export function VitalsMonitor({
   }
 
   const newest = readings[0]
+
+  // La onda real del equipo, si la está publicando. El flujo se abre solo
+  // mientras esta pantalla esté montada.
+  const onda = useWaveform(device)
+
+  // La FC más reciente, para el trazo de reserva. `hr` es el nombre de la
+  // variable en el catálogo, el mismo que valida la ingesta.
+  const hrActual = latest.get('hr')?.value ?? null
 
   return (
     <Paper
@@ -89,13 +100,24 @@ export function VitalsMonitor({
           <Typography variant="caption" sx={{ color: sidebar.textMuted }}>
             ECG II
           </Typography>
+          {/* El rótulo dice qué se está viendo, y cambia solo: con la onda del
+              equipo llegando es la señal; sin ella, el trazo sintético al ritmo
+              medido. Un rótulo fijo mentiría en uno de los dos casos. */}
           <Typography variant="caption" sx={{ color: '#4ade80' }}>
-            {t('monitor.ecgDecorative')}
+            {onda.live ? t('monitor.ecgLive') : t('monitor.ecgDecorative')}
           </Typography>
         </Stack>
-        {/* El barrido dice lo mismo que el distintivo de arriba, pero sin leer:
-            sin lecturas el trazo se queda parado. */}
-        <EcgTrace color="#22c55e" animated={Boolean(newest)} />
+        {onda.live ? (
+          <LiveEcgTrace samples={onda.samples} color="#22c55e" />
+        ) : newest ? (
+          // Reserva: mientras el equipo no publique la onda, el trazo sintético
+          // al ritmo medido.
+          <EcgTrace color="#22c55e" animated bpm={hrActual} />
+        ) : (
+          // Sin ninguna lectura no se dibuja nada. Una línea plana aquí sería
+          // asistolia, y un trazo repetido sería inventarse una señal.
+          <NoTrace reason="central.trace.never" />
+        )}
       </Box>
 
       <Box
