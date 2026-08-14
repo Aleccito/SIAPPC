@@ -164,6 +164,12 @@ const es = {
   // apagará cuando sí lo hará es peor que no decir nada.
   'rounds.screenOn': 'Pantalla siempre encendida',
 
+  // La cifra vigente pasa a raya cuando la lectura envejece, y el último valor
+  // real se conserva al lado, en pequeño. Se abrevia porque va dentro de una
+  // celda que ya lleva el número grande y su unidad.
+  'central.lastKnown': 'últ. {value}',
+  'central.noSignal': 'SIN SEÑAL',
+
   'central.ago.never': 'Sin lecturas',
   'central.ago.now': 'hace un momento',
   'central.ago.minutes': 'hace {n} min',

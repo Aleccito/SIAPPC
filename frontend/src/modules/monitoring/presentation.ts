@@ -82,13 +82,43 @@ export function figure(value: number | null): string {
   return value === null ? '—' : String(value)
 }
 
+/**
+ * Cuánto puede pasar sin lectura antes de que la cifra deje de darse por buena.
+ *
+ * Los equipos publican una tanda por segundo, así que dos minutos son ciento
+ * veinte tandas perdidas: no es una pausa, es que dejó de llegar.
+ */
+export const STALE_AFTER_MS = 2 * 60_000
+
+export function isStale(at: string | null): boolean {
+  if (!at) return false
+  const elapsed = Date.now() - new Date(at).getTime()
+  // El negativo es un reloj de la Pi adelantado. Eso no es una lectura vieja.
+  return elapsed > STALE_AFTER_MS
+}
+
 /** Un número de la cabecera de la cama, ya resuelto: qué es, cuánto y de qué color. */
 export type Metric = {
   id: 'hr' | 'spo2' | 'resp' | 'gcs'
   label: StringKey
   unit: StringKey
+  /**
+   * La cifra VIGENTE, o `null` si no la hay.
+   *
+   * `null` tanto cuando nunca hubo medición como cuando la última ya envejeció.
+   * Las dos cosas significan lo mismo de cara a quien mira: **ahora mismo no se
+   * sabe cuánto vale**. Enseñar la de hace veinte minutos con el mismo tamaño y
+   * el mismo color que una de hace un segundo es afirmar algo que no consta.
+   */
   value: number | null
   tone: VitalTone
+  /**
+   * La última medición conocida, cuando `value` es null porque envejeció.
+   *
+   * Se conserva porque sigue siendo información —el último dato real que hubo—
+   * pero se pinta aparte y en pequeño: es contexto, no el valor actual.
+   */
+  lastKnown: number | null
   /** Advertencia sobre la fiabilidad del dato, si la hay. */
   hint?: StringKey
 }
@@ -145,5 +175,22 @@ export function metricsOf(bed: MonitoredBed): Metric[] {
     resp: resp === null ? undefined : respTone(resp),
     gcs: undefined,
   }
-  return metricSpecs.map((spec) => ({ ...spec, value: value[spec.id], tone: tone[spec.id] }))
+
+  // El GCS NO envejece con la telemetría y por eso queda fuera: sale de la
+  // exploración física, lo escribe un clínico y no lo publica ningún equipo.
+  // Que la Pi deje de mandar no lo vuelve dudoso. Marcarlo como viejo diría que
+  // se perdió una medición que nunca dependió de esa conexión.
+  const vieja = isStale(bed.vitals.at)
+
+  return metricSpecs.map((spec) => {
+    const actual = value[spec.id]
+    const envejece = spec.id !== 'gcs'
+
+    if (vieja && envejece && actual !== null) {
+      // Sin tono: colorear una cifra es afirmar que el sistema la considera
+      // dentro o fuera de rango AHORA, y de eso es justo de lo que no hay dato.
+      return { ...spec, value: null, tone: undefined, lastKnown: actual }
+    }
+    return { ...spec, value: actual, tone: tone[spec.id], lastKnown: null }
+  })
 }
