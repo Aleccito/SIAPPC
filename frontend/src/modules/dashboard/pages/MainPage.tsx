@@ -1,12 +1,9 @@
-import { useMemo } from 'react'
-import { Alert, Box, Button, Stack } from '@mui/material'
-import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined'
+import { Alert, Box, Stack } from '@mui/material'
 import { useAuth } from '../../auth/useAuth'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import { usePageHeader } from '../../../app/pageHeader'
 import { useAlertStream } from '../useAlertStream'
 import { WidgetCard } from '../components/WidgetCard'
-import { useDashboardOrder } from '../useDashboardOrder'
 import { dashboardFor, widgets } from '../widgets/registry'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 
@@ -24,8 +21,14 @@ const subtitleKey: Record<string, StringKey> = {
  * la sesión.
  *
  * La composición no vive aquí sino en widgets/registry.ts, igual que las
- * pantallas viven en modules/registry.ts. Esta pantalla solo resuelve el rol,
- * aplica el orden que el usuario haya guardado y coloca las tarjetas.
+ * pantallas viven en modules/registry.ts. Esta pantalla solo resuelve el rol y
+ * coloca las tarjetas.
+ *
+ * El tablero NO es reordenable ni personalizable: el orden que sale del
+ * catálogo es el que se ve. Antes había botones de subir/bajar con el orden
+ * guardado en localStorage, y se quitaron a propósito — un tablero clínico que
+ * cambia de sitio según quién lo abrió no se puede describir por teléfono
+ * durante un turno.
  */
 export function MainPage() {
   const { user } = useAuth()
@@ -37,10 +40,7 @@ export function MainPage() {
     t((role !== undefined ? subtitleKey[role] : undefined) ?? 'dash.subtitle.generic'),
   )
 
-  // `defaults` tiene que ser estable entre renders o el orden se recalcularía
-  // en cada uno.
-  const defaults = useMemo(() => dashboardFor(role), [role])
-  const { order, move, reset, customized } = useDashboardOrder(role ?? 'default', defaults)
+  const order = dashboardFor(role)
 
   // Alertas en vivo. El tablero sigue repreguntando cada 15 s por su cuenta:
   // esto es lo que llega ANTES, no lo único que llega.
@@ -48,9 +48,8 @@ export function MainPage() {
 
   return (
     <Stack spacing={2}>
-      {/* Aviso empujado por el servidor. Va arriba del todo y por encima del
-          orden que el usuario haya elegido: una alerta crítica no se coloca
-          donde toque, se ve. */}
+      {/* Aviso empujado por el servidor. Va arriba del todo: una alerta crítica
+          no se coloca donde toque, se ve. */}
       {ultima && (
         <Alert
           severity={ultima.severity === 'critica' ? 'error' : 'warning'}
@@ -64,17 +63,6 @@ export function MainPage() {
         </Alert>
       )}
 
-      {customized && (
-        <Button
-          size="small"
-          startIcon={<RestartAltOutlinedIcon />}
-          onClick={reset}
-          sx={{ alignSelf: 'flex-end' }}
-        >
-          {t('dash.resetOrder')}
-        </Button>
-      )}
-
       <Box
         sx={{
           display: 'grid',
@@ -83,7 +71,7 @@ export function MainPage() {
           alignItems: 'start',
         }}
       >
-        {order.map((id, index) => {
+        {order.map((id) => {
           const widget = widgets[id]
           // Un identificador que ya no está en el catálogo se ignora en vez de
           // reventar el tablero entero.
@@ -93,12 +81,7 @@ export function MainPage() {
 
           return (
             <Box key={id} sx={{ gridColumn: { xs: 'auto', lg: `span ${span}` }, minWidth: 0 }}>
-              <WidgetCard
-                title={widget.title}
-                icon={widget.icon}
-                onMoveUp={index > 0 ? () => move(id, -1) : undefined}
-                onMoveDown={index < order.length - 1 ? () => move(id, 1) : undefined}
-              >
+              <WidgetCard title={widget.title} icon={widget.icon}>
                 <Component />
               </WidgetCard>
             </Box>

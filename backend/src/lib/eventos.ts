@@ -27,6 +27,17 @@ export type EventoAlerta = {
   type: string;
   message: string | null;
   at: string;
+  /**
+   * Usuarios a los que esta alerta SÍ les creó una notificación en la bandeja
+   * (ver lib/notificaciones.ts). Viaja por el bus y no lo recalcula el flujo
+   * porque la decisión —quién es responsable, y a quién le tocaba callar por la
+   * ventana de agrupación— ya se tomó en la ingesta: repetirla en cada conexión
+   * abierta daría respuestas distintas según cuándo se pregunte.
+   *
+   * NO se manda al navegador: es una lista de identificadores de otras personas.
+   * routes/alertsStream.ts la usa para decidir a quién avisar y la descarta.
+   */
+  notificados: number[];
 };
 
 const CANAL = "siappc:alertas";

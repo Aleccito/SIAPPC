@@ -1,125 +1,86 @@
-import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  Box,
-  Button,
-  LinearProgress,
-  MenuItem,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material'
+import { useState } from 'react'
+import { Box, Button, LinearProgress, Paper, Stack, Typography } from '@mui/material'
 import DoneAllIcon from '@mui/icons-material/DoneAll'
-import { listNotifications, markAllRead } from '../api/notificationsApi'
 import { NotificationRow } from '../components/NotificationRow'
-import { dayHeading, dayKey, groupByDay } from '../presentation'
-import { notificationKinds } from '../types'
+import { dayHeading, groupByDay } from '../presentation'
+import { PAGE_SIZE, useMarkAllRead, useMarkRead, useNotifications } from '../queries'
 import { usePageHeader } from '../../../app/pageHeader'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
-import type { StringKey } from '../../../shared/i18n/dictionary'
 
-const ALL = '__all__'
+// La bandeja completa.
+//
+// Se quitaron los filtros por tipo y por día que tenía la maqueta. No fue una
+// simplificación gratuita: la lista ahora la pagina el servidor, y un filtro
+// aplicado en el navegador sobre la página que hay cargada dice "ninguna
+// notificación de ese día" cuando lo cierto es "ninguna en estas veinte". Con
+// dos tipos posibles el filtro de tipo además no separa gran cosa. Filtrar de
+// verdad es filtrar en el WHERE; el día que haga falta, se agrega allí.
 
 export function NotificationsPage() {
   const { t } = useLanguage()
   const locale = 'es-MX'
   usePageHeader(t('notifications.title'), t('notifications.subtitle'))
-  const queryClient = useQueryClient()
-  const [kind, setKind] = useState(ALL)
-  // Vacío = todos los días. Formato `YYYY-MM-DD`, el mismo que emite el input y
-  // el que devuelve `dayKey`, así que el filtro es una comparación de cadenas.
-  const [day, setDay] = useState('')
 
-  const notifications = useQuery({
-    queryKey: ['notifications'],
-    queryFn: listNotifications,
-  })
+  const [page, setPage] = useState(0)
+  const notifications = useNotifications(page, PAGE_SIZE)
+  const markRead = useMarkRead()
+  const markAllRead = useMarkAllRead()
 
-  const mutation = useMutation({
-    mutationFn: markAllRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
-  })
+  const data = notifications.data
+  // El orden ya viene decidido por el servidor —sin leer primero, luego por
+  // fecha— y NO se reordena aquí: hacerlo rompería la paginación, porque cada
+  // página se ordenaría solo dentro de sí misma. Agrupar por día sí es seguro:
+  // no cambia el orden, solo intercala encabezados.
+  const groups = groupByDay(data?.entries ?? [])
 
-  const groups = useMemo(() => {
-    const all = notifications.data ?? []
-    const filtered = all.filter(
-      (entry) =>
-        (kind === ALL || entry.kind === kind) && (!day || dayKey(entry.at) === day),
-    )
-    // Más reciente primero dentro de cada día; `groupByDay` ordena los días.
-    const sorted = [...filtered].sort((a, b) => b.at.localeCompare(a.at))
-    return groupByDay(sorted)
-  }, [notifications.data, kind, day])
-
-  // Límite del selector de fecha: no hay notificaciones del futuro, y dejar
-  // elegirlas solo lleva a una pantalla vacía.
-  const todayKey = dayKey(new Date())
-
-  const unread = (notifications.data ?? []).filter((entry) => !entry.read).length
+  const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
+  const ocupado = markRead.isPending || markAllRead.isPending
 
   return (
     <Stack spacing={3}>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={2}
-        sx={{ alignItems: { sm: 'center' }, justifyContent: 'flex-end' }}
+        sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between' }}
       >
+        {/* Los dos contadores salen del servidor. Mientras no haya respuesta se
+            pinta la raya: un cero aquí sería un dato inventado. */}
+        <Typography variant="body2" color="text.secondary">
+          {data
+            ? `${t('notifications.unreadCount', { count: String(data.unread) })} · ${t(
+                'notifications.total',
+                { count: String(data.total) },
+              )}`
+            : '—'}
+        </Typography>
         <Button
           startIcon={<DoneAllIcon />}
           // Sin nada por leer no hay nada que marcar: el botón se desactiva en
           // vez de desaparecer, para que no baile la fila de acciones.
-          disabled={!unread || mutation.isPending}
-          onClick={() => mutation.mutate()}
+          disabled={!data?.unread || ocupado}
+          onClick={() => markAllRead.mutate()}
         >
           {t('notifications.markAllRead')}
         </Button>
-        <TextField
-          type="date"
-          size="small"
-          label={t('notifications.filter.day')}
-          value={day}
-          onChange={(event) => setDay(event.target.value)}
-          // El input de fecha nativo evita traer un selector de calendario
-          // entero como dependencia, y ya viene traducido y accesible.
-          slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: todayKey } }}
-          sx={{ minWidth: 170 }}
-        />
-        {/* Solo aparece cuando hay algo que limpiar: un botón permanentemente
-            deshabilitado al lado del campo es ruido. */}
-        {day && (
-          <Button size="small" onClick={() => setDay('')}>
-            {t('notifications.filter.clearDay')}
-          </Button>
-        )}
-        <TextField
-          select
-          size="small"
-          label={t('notifications.filter.kind')}
-          value={kind}
-          onChange={(event) => setKind(event.target.value)}
-          sx={{ minWidth: 200 }}
-        >
-          <MenuItem value={ALL}>{t('notifications.filter.all')}</MenuItem>
-          {notificationKinds.map((name) => (
-            <MenuItem key={name} value={name}>
-              {t(`notifications.kind.${name}` as StringKey)}
-            </MenuItem>
-          ))}
-        </TextField>
       </Stack>
 
       {/* Altura reservada: al marcar todas como leídas la lista no debe saltar. */}
       <Box sx={{ height: 4 }}>
-        {(notifications.isPending || mutation.isPending) && <LinearProgress />}
+        {(notifications.isPending || notifications.isFetching || ocupado) && <LinearProgress />}
       </Box>
 
-      {groups.length === 0 && (
+      {notifications.isError && (
+        <Paper sx={{ p: 4 }}>
+          <Typography variant="body2" color="error" align="center">
+            {t('notifications.error')}
+          </Typography>
+        </Paper>
+      )}
+
+      {notifications.isSuccess && groups.length === 0 && (
         <Paper sx={{ p: 4 }}>
           <Typography variant="body2" color="text.secondary" align="center">
-            {notifications.data?.length
-              ? t('notifications.noMatches')
-              : t('notifications.empty')}
+            {t('notifications.empty')}
           </Typography>
         </Paper>
       )}
@@ -134,10 +95,38 @@ export function NotificationsPage() {
             {dayHeading(key, t, locale)}
           </Typography>
           {items.map((notification) => (
-            <NotificationRow key={notification.id} notification={notification} />
+            <NotificationRow
+              key={notification.id}
+              notification={notification}
+              onMarkRead={(id) => markRead.mutate(id)}
+            />
           ))}
         </Stack>
       ))}
+
+      {/* La paginación solo aparece cuando hay más de una página: dos botones
+          permanentemente deshabilitados bajo una lista corta son ruido. */}
+      {data && pages > 1 && (
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Button size="small" disabled={page === 0} onClick={() => setPage(page - 1)}>
+            {t('notifications.prev')}
+          </Button>
+          <Typography variant="caption" color="text.secondary">
+            {t('notifications.page', { page: String(page + 1), pages: String(pages) })}
+          </Typography>
+          <Button
+            size="small"
+            disabled={page + 1 >= pages}
+            onClick={() => setPage(page + 1)}
+          >
+            {t('notifications.next')}
+          </Button>
+        </Stack>
+      )}
     </Stack>
   )
 }

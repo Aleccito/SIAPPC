@@ -185,3 +185,21 @@ CREATE OR REPLACE PROCEDURE `sp_purgar_lecturas`(IN `dias` INT UNSIGNED, IN `lot
         )
     )
   LIMIT `lote`;
+
+-- Poda de notificaciones ya leídas.
+--
+-- Gemela de `sp_purgar_lecturas` y con el mismo `lote` por la misma razón: un
+-- DELETE masivo bloquea la tabla y deja esperando a la ingesta, que escribe aquí.
+--
+-- Solo borra las LEÍDAS. Una sin leer es trabajo pendiente de alguien y no la
+-- puede tirar un mantenimiento por antigüedad.
+--
+-- `notificacion` cuelga de `alerta` con ON DELETE CASCADE, y `alerta` de
+-- `lectura` igual, así que podar lecturas viejas ya se lleva estas filas por
+-- delante. Esto existe para el caso contrario: bandejas que crecen más rápido de
+-- lo que se poda la serie cruda, y para vaciarlas sin tocar el histórico.
+CREATE OR REPLACE PROCEDURE `sp_purgar_notificaciones`(IN `dias` INT UNSIGNED, IN `lote` INT UNSIGNED)
+  DELETE FROM `notificacion`
+  WHERE `estado_envio` = 'leido'
+    AND `fecha_envio` < NOW() - INTERVAL `dias` DAY
+  LIMIT `lote`;

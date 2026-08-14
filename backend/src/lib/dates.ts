@@ -43,3 +43,25 @@ export function dayRange(date: string): DayRange {
   lt.setDate(lt.getDate() + 1);
   return { gte, lt };
 }
+
+/**
+ * Desfase horario del hospital. Panamá no aplica horario de verano, así que es
+ * fijo todo el año y no hace falta una tabla de zonas.
+ */
+const DESFASE_HOSPITAL = "-05:00";
+
+/**
+ * Serializa una columna DATE (fecha civil, sin hora) fijando la medianoche en
+ * el huso del hospital.
+ *
+ * La parte de la fecha se toma en UTC —Prisma entrega el DATE como medianoche
+ * UTC— y NO con getFullYear/getMonth, que la leerían en la zona del servidor y
+ * restarían un día en cualquier huso negativo.
+ *
+ * Vive aquí y no en routes/patients.ts porque `fecha_nacimiento` sale ya por
+ * dos rutas (/patients y /dashboard/assigned-patients) y dos copias de esta
+ * conversión son dos oportunidades de que una de ellas corra la fecha un día.
+ */
+export function civilDateIso(value: Date): string {
+  return `${value.toISOString().slice(0, 10)}T00:00:00${DESFASE_HOSPITAL}`;
+}

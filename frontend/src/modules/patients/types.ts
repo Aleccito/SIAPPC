@@ -22,7 +22,10 @@ export type Patient = {
   id: string
   name: string
   document: string
-  module: ServiceModule
+  // Nulable porque el alta dejó de preguntarlo: solo lo tienen los pacientes
+  // registrados cuando el formulario aún lo pedía. Quien lo pinte contempla el
+  // null en vez de rellenarlo.
+  module: ServiceModule | null
   status: PatientStatus
   arrivedAt: string
   reason: string
@@ -34,10 +37,11 @@ export type Patient = {
   emergencyContact: string | null
 }
 
+// El módulo de atención NO va aquí: el alta dejó de pedirlo. Ver el comentario
+// de `patientSchema` en backend/src/routes/patients.ts.
 export type NewPatient = {
   name: string
   document: string
-  module: ServiceModule
   reason: string
   // Fecha ISO ("1990-05-14"), tal como la entrega un <input type="date">. El
   // servidor la devuelve con la hora y el desfase del hospital.

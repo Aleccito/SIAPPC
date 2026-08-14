@@ -409,6 +409,14 @@ enum EstadoEnvio {
   leido
 }
 
+/// Un aviso dirigido a UNA persona sobre UNA alerta. No es la alerta: la alerta
+/// es el hecho clínico y vive aunque nadie la vea; esto es a quién se le puso
+/// delante y si ya la leyó.
+///
+/// No hay columna `leido`: `estado_envio = 'leido'` ya es ese estado, y agregar
+/// un booleano al lado dejaría dos fuentes para el mismo dato que se pueden
+/// contradecir. Tampoco hay título ni cuerpo guardados: se derivan de la alerta
+/// al leerla, así que corregir la redacción no exige reescribir el histórico.
 model Notificacion {
   notificacion_id BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
   alerta_id       BigInt            @db.UnsignedBigInt
@@ -420,8 +428,14 @@ model Notificacion {
   alerta  Alerta  @relation(fields: [alerta_id], references: [alerta_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_notif_alerta")
   usuario Usuario @relation(fields: [usuario_id], references: [usuario_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_notif_usuario")
 
+  @@unique([alerta_id, usuario_id, canal], map: "uq_notif_alerta_usuario_canal")
   @@index([alerta_id], map: "ix_notif_alerta")
   @@index([usuario_id, estado_envio], map: "ix_notif_usuario_estado")
+  /// La bandeja pagina por fecha descendente y la regla anti-inundación
+  /// pregunta "¿este usuario ya recibió algo en los últimos N minutos?". Las dos
+  /// barren por usuario y fecha; `ix_notif_usuario_estado` no sirve para
+  /// ninguna, porque el estado no acota nada (casi todo está en dos valores).
+  @@index([usuario_id, fecha_envio], map: "ix_notif_usuario_fecha")
   @@map("notificacion")
 }
 

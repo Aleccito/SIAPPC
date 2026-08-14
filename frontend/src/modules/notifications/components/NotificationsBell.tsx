@@ -1,31 +1,29 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink } from 'react-router-dom'
 import { Badge, Box, Button, Divider, IconButton, Popover, Stack, Typography } from '@mui/material'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined'
-import { listNotifications } from '../api/notificationsApi'
 import { NotificationRow } from './NotificationRow'
+import { PREVIEW_SIZE, useNotificationStream, useNotifications } from '../queries'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
-
-// Cuántas caben en el panel sin que haya que desplazarse. El resto está en la
-// bandeja completa, que es a donde lleva el pie.
-const PREVIEW = 4
 
 export function NotificationsBell() {
   const { t } = useLanguage()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
 
-  // Misma queryKey que la bandeja: marcar todas como leídas allí actualiza el
-  // contador de aquí sin que ninguna de las dos sepa de la otra.
-  const notifications = useQuery({
-    queryKey: ['notifications'],
-    queryFn: listNotifications,
-  })
+  // La primera página, que es a la vez el contenido del panel y —por el campo
+  // `unread` que viaja con ella— el número de la campana. Una sola petición
+  // para las dos cosas: partirlas dejaría al contador y a la lista pudiendo
+  // discrepar entre sí.
+  const notifications = useNotifications(0, PREVIEW_SIZE)
 
-  const all = notifications.data ?? []
-  const unread = all.filter((entry) => !entry.read).length
-  const recent = [...all].sort((a, b) => b.at.localeCompare(a.at)).slice(0, PREVIEW)
+  // La campana está en el armazón, así que esta suscripción vive mientras dure
+  // la sesión: es el único sitio de la aplicación desde el que el contador se
+  // entera de una notificación nueva sin que el usuario haga nada.
+  useNotificationStream()
+
+  const page = notifications.data
+  const recent = page?.entries ?? []
 
   return (
     <>
@@ -35,7 +33,10 @@ export function NotificationsBell() {
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchor)}
       >
-        <Badge badgeContent={unread} color="error">
+        {/* Mientras no se sepa el número no se pinta ninguno. Un 0 de relleno
+            durante la carga diría "no tienes nada", que es justo lo contrario
+            de lo que la campana existe para comunicar si resulta que sí hay. */}
+        <Badge badgeContent={page?.unread ?? 0} color="error" invisible={!page?.unread}>
           <NotificationsNoneOutlinedIcon />
         </Badge>
       </IconButton>
@@ -49,9 +50,33 @@ export function NotificationsBell() {
         slotProps={{ paper: { sx: { width: 420, maxWidth: '100vw' } } }}
       >
         <Stack spacing={1.5} sx={{ p: 2 }}>
-          <Typography variant="subtitle2">{t('notifications.title')}</Typography>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}
+          >
+            <Typography variant="subtitle2">{t('notifications.title')}</Typography>
+            {page && page.unread > 0 && (
+              <Typography variant="caption" color="text.secondary">
+                {t('notifications.unreadCount', { count: String(page.unread) })}
+              </Typography>
+            )}
+          </Stack>
 
-          {recent.length === 0 && (
+          {/* Tres estados distintos y ningún atajo entre ellos: cargando no es
+              lo mismo que vacío, y un fallo de red no puede parecer una bandeja
+              limpia. */}
+          {notifications.isPending && (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              —
+            </Typography>
+          )}
+          {notifications.isError && (
+            <Typography variant="body2" color="error" sx={{ py: 2 }}>
+              {t('notifications.error')}
+            </Typography>
+          )}
+          {notifications.isSuccess && recent.length === 0 && (
             <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
               {t('notifications.empty')}
             </Typography>

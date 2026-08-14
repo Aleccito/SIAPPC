@@ -47,13 +47,13 @@ import { listUnits, listUsers } from '../../admin/api/usersApi'
 import {
   admissionStateColor,
   admissionStateKey,
+  admissionTypeKey,
   appointmentStateColor,
   appointmentStateKey,
   bedStateColor,
   bedStateKey,
 } from '../../dashboard/presentation'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
-import type { StringKey } from '../../../shared/i18n/dictionary'
 import { usePageHeader } from '../../../app/pageHeader'
 
 // Admisión: camas, ingresos y citas en una sola pantalla con tres pestañas.
@@ -65,12 +65,6 @@ import { usePageHeader } from '../../../app/pageHeader'
 // Quién puede escribir lo decide `rol_permiso` en el servidor. Aquí no hay
 // comprobación de rol: los botones se ven, y el 403 que devuelva el backend se
 // muestra tal cual. Esconder el botón y no revalidar sería lo peligroso.
-
-const ADMISSION_TYPE_KEY: Record<AdmissionType, StringKey> = {
-  urgencia: 'admissionType.urgencia',
-  programado: 'admissionType.programado',
-  traslado: 'admissionType.traslado',
-}
 
 const emptyBed = { code: '', unitId: '', type: '' }
 const emptyAdmission = { patientId: '', bedId: '', type: 'urgencia' as AdmissionType, reason: '' }
@@ -280,7 +274,7 @@ export function AdmissionsPage() {
                         </Typography>
                       )}
                     </TableCell>
-                    <TableCell>{t(ADMISSION_TYPE_KEY[admission.type])}</TableCell>
+                    <TableCell>{t(admissionTypeKey[admission.type])}</TableCell>
                     <TableCell>{new Date(admission.admittedAt).toLocaleString(language)}</TableCell>
                     <TableCell>
                       <Chip
@@ -518,7 +512,7 @@ export function AdmissionsPage() {
               >
                 {admissionTypes.map((type) => (
                   <MenuItem key={type} value={type}>
-                    {t(ADMISSION_TYPE_KEY[type])}
+                    {t(admissionTypeKey[type])}
                   </MenuItem>
                 ))}
               </TextField>

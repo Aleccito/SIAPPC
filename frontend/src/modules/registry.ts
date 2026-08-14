@@ -13,6 +13,7 @@ import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import SensorsOutlinedIcon from '@mui/icons-material/SensorsOutlined'
 import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined'
 import LocalHotelOutlinedIcon from '@mui/icons-material/LocalHotelOutlined'
+import AirlineSeatFlatOutlinedIcon from '@mui/icons-material/AirlineSeatFlatOutlined'
 import type { Role } from './auth/types'
 import type { StringKey } from '../shared/i18n/dictionary'
 
@@ -105,6 +106,23 @@ export const modules: NavEntry[] = [
     icon: LocalHotelOutlinedIcon,
     lazy: async () => ({
       Component: (await import('./admissions/pages/AdmissionsPage')).AdmissionsPage,
+    }),
+  },
+  // Central de monitoreo: el mapa de camas de una unidad. Va antes de Sensores
+  // porque es la pantalla de turno —lo que se deja puesto—, mientras que
+  // Sensores es la bandeja a la que se baja a mirar una lectura concreta.
+  // Sin `requiredRole`: quién entra lo decide `rol_permiso` en el servidor
+  // (`monitoreo:ver`), y la pantalla muestra el error que devuelva.
+  {
+    path: '/monitoring',
+    label: 'nav.central',
+    // Un monitor, no un corazón: `MonitorHeartOutlined` ya es el icono de
+    // Pacientes, y dos entradas del menú con el mismo dibujo son
+    // indistinguibles con la barra plegada, que es cuando el icono es lo único
+    // que queda.
+    icon: AirlineSeatFlatOutlinedIcon,
+    lazy: async () => ({
+      Component: (await import('./monitoring/pages/CentralMonitorPage')).CentralMonitorPage,
     }),
   },
   {

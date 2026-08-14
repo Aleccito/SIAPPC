@@ -1,34 +1,30 @@
-import { Box, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material'
-import ArrowUpwardOutlinedIcon from '@mui/icons-material/ArrowUpwardOutlined'
-import ArrowDownwardOutlinedIcon from '@mui/icons-material/ArrowDownwardOutlined'
+import { Box, Paper, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 import type { SvgIconComponent } from '@mui/icons-material'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 
 /**
- * Marco de un widget: cabecera, barra de carga y los botones de reordenar.
+ * Marco de un widget: cabecera y cuerpo.
  *
  * El cuerpo del widget no lo pinta —eso es cosa del componente que registra el
- * catálogo—, así que un widget nuevo no tiene que repetir la cabecera ni saber
- * que el tablero se puede reordenar.
+ * catálogo—, así que un widget nuevo no tiene que repetir la cabecera.
+ *
+ * El tablero es fijo: su composición y su orden los decide el rol en
+ * widgets/registry.ts, y no hay forma de reordenarlo desde la pantalla. Todos
+ * los usuarios de un mismo rol ven lo mismo en el mismo sitio, que es lo que
+ * hace que un turno pueda señalar "la tarjeta de arriba" y se entienda.
  */
 export function WidgetCard({
   title,
   icon: Icon,
-  onMoveUp,
-  onMoveDown,
   children,
 }: {
   title: StringKey
   icon: SvgIconComponent
-  /** Ausente = ya está en el extremo; el botón se deshabilita, no desaparece. */
-  onMoveUp?: () => void
-  onMoveDown?: () => void
   children: ReactNode
 }) {
   const { t } = useLanguage()
-  const reorderable = onMoveUp !== undefined || onMoveDown !== undefined
 
   return (
     <Paper sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -37,34 +33,6 @@ export function WidgetCard({
         <Typography variant="subtitle2" sx={{ fontWeight: 700, flexGrow: 1 }}>
           {t(title)}
         </Typography>
-        {reorderable && (
-          <>
-            <Tooltip title={t('dash.moveUp')}>
-              <span>
-                <IconButton
-                  size="small"
-                  aria-label={t('dash.moveUp')}
-                  disabled={!onMoveUp}
-                  onClick={onMoveUp}
-                >
-                  <ArrowUpwardOutlinedIcon fontSize="inherit" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title={t('dash.moveDown')}>
-              <span>
-                <IconButton
-                  size="small"
-                  aria-label={t('dash.moveDown')}
-                  disabled={!onMoveDown}
-                  onClick={onMoveDown}
-                >
-                  <ArrowDownwardOutlinedIcon fontSize="inherit" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </>
-        )}
       </Stack>
 
       <Box sx={{ px: 2, pt: 1.5, pb: 2, flexGrow: 1 }}>{children}</Box>

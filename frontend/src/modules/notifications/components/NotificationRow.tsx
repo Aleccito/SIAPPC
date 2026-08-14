@@ -1,5 +1,12 @@
-import { Box, Paper, Stack, Typography } from '@mui/material'
-import { kindIcon, kindTile, relativeTime } from '../presentation'
+import { Box, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material'
+import DoneIcon from '@mui/icons-material/Done'
+import {
+  kindIcon,
+  kindTile,
+  notificationBody,
+  notificationTitle,
+  relativeTime,
+} from '../presentation'
 import type { Notification } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 
@@ -8,9 +15,16 @@ import { useLanguage } from '../../../shared/i18n/useLanguage'
 export function NotificationRow({
   notification,
   dense = false,
+  onMarkRead,
 }: {
   notification: Notification
   dense?: boolean
+  /**
+   * Sin esta función la fila no ofrece marcar como leída. El panel de la
+   * campana la omite a propósito: es una vista de un vistazo, y un botón que
+   * hace desaparecer lo que estás mirando no es lo que se espera al asomarse.
+   */
+  onMarkRead?: (id: string) => void
 }) {
   const { t } = useLanguage()
   const locale = 'es-MX'
@@ -68,20 +82,27 @@ export function NotificationRow({
           variant={dense ? 'body2' : 'subtitle2'}
           sx={{ fontWeight: notification.read ? 500 : 700 }}
         >
-          {notification.title}
+          {notificationTitle(notification, t)}
         </Typography>
         <Typography variant={dense ? 'caption' : 'body2'} color="text.secondary">
-          {notification.body}
+          {notificationBody(notification, t)}
         </Typography>
       </Stack>
 
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ flexShrink: 0, whiteSpace: 'nowrap', pt: 0.25 }}
-      >
-        {relativeTime(notification.at, t, locale)}
-      </Typography>
+      <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0, alignItems: 'center' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+          {relativeTime(notification.at, t, locale)}
+        </Typography>
+        {/* Solo en las que quedan por leer: sobre una ya leída el botón no
+            haría nada y sería una promesa vacía en cada renglón. */}
+        {onMarkRead && !notification.read && (
+          <Tooltip title={t('notifications.markRead')}>
+            <IconButton size="small" onClick={() => onMarkRead(notification.id)}>
+              <DoneIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Stack>
     </Paper>
   )
 }

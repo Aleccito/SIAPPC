@@ -47,11 +47,35 @@ export default async function alertsStreamRoutes(app: FastifyInstance) {
       // sin esperar a que haya una alerta, que puede tardar horas.
       reply.raw.write(marco("listo", { at: new Date().toISOString() }));
 
+      // Quién está mirando. La campana solo se refresca si el aviso es SUYO, y
+      // eso se decide aquí y no en el navegador: mandar la lista de
+      // destinatarios a cada pestaña sería repartir identificadores de otras
+      // personas a todo el que tenga el tablero abierto.
+      const usuarioId = Number(req.user.sub);
+
       const enviar = (evento: EventoAlerta) => {
         // Cada tablero ve solo su hospital, igual que el resto de la API.
         if (evento.hospitalId !== hospitalId) return;
+
+        // `notificados` no sale de aquí: se traduce a un evento sin carga útil.
+        const { notificados, ...publico } = evento;
+
+        // Dos eventos distintos por un mismo hecho, a propósito. `alerta` es
+        // "pasó algo en este hospital" y lo recibe cualquiera con el tablero
+        // abierto; `notificacion` es "hay algo para TI en la bandeja" y solo lo
+        // recibe el destinatario. Unirlos obligaría al navegador a decidir si el
+        // aviso es suyo, que es exactamente lo que no puede saber sin datos que
+        // no le tocan.
+        //
+        // El evento va vacío: es un "vuelve a preguntar". El contador y las
+        // filas los sirve /notifications, así que la campana nunca pinta un
+        // número que no venga del servidor y no hay dos formas del mismo dato.
+        if (notificados.includes(usuarioId)) {
+          reply.raw.write(marco("notificacion", { at: evento.at }));
+        }
+
         if (!SEVERIDADES_EN_VIVO.has(evento.severity)) return;
-        reply.raw.write(marco("alerta", evento));
+        reply.raw.write(marco("alerta", publico));
       };
 
       const cancelar = alSurgirAlerta(enviar);

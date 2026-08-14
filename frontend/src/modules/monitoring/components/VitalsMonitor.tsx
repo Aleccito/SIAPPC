@@ -1,16 +1,10 @@
 import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material'
 import TuneOutlinedIcon from '@mui/icons-material/Tune'
 import { levelColor, levelOf, vitals } from '../vitals'
+import { EcgTrace } from './EcgTrace'
 import { sidebar } from '../../../shared/theme'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { SensorReading } from '../../sensors/types'
-
-// Trazo de ECG decorativo: repite un complejo PQRST. No dibuja la señal real —
-// `GET /sensors/readings` entrega una muestra por segundo, no la onda completa,
-// que es también la razón por la que la ingesta no evalúa alertas sobre `ecg`.
-const ECG_PATH =
-  'M0 40 H60 l10 -6 l8 22 l10 -46 l9 34 l7 -4 H140 l10 -6 l8 22 l10 -46 l9 34 l7 -4 H240 ' +
-  'l10 -6 l8 22 l10 -46 l9 34 l7 -4 H340 l10 -6 l8 22 l10 -46 l9 34 l7 -4 H480'
 
 export function VitalsMonitor({
   bed,
@@ -88,15 +82,7 @@ export function VitalsMonitor({
             {t('monitor.ecgDecorative')}
           </Typography>
         </Stack>
-        <Box
-          component="svg"
-          viewBox="0 0 480 80"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          sx={{ width: '100%', height: 96, display: 'block' }}
-        >
-          <path d={ECG_PATH} fill="none" stroke="#22c55e" strokeWidth="1.5" />
-        </Box>
+        <EcgTrace color="#22c55e" />
       </Box>
 
       <Box

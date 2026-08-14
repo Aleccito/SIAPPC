@@ -20,13 +20,12 @@ import { listReports } from '../../reports/api/reportsApi'
 import {
   listAdmissions,
   listAppointments,
-  listBedOccupancy,
   listDischarges,
 } from '../../admissions/api/admissionsApi'
 import { KpiCard } from '../components/KpiCard'
 import { WidgetEmpty, WidgetError } from '../components/WidgetMessage'
 import { appointmentStateColor, appointmentStateKey } from '../presentation'
-import { REFRESH_INTERVAL_MS } from '../queries'
+import { REFRESH_INTERVAL_MS, useBedOccupancy } from '../queries'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 import type { ReportStatus } from '../../reports/types'
@@ -57,11 +56,8 @@ function occupancyColor(rate: number): 'success' | 'warning' | 'error' {
 /** Ocupación de camas por unidad. */
 export function BedOccupancyWidget() {
   const { t } = useLanguage()
-  const { data, isError } = useQuery({
-    queryKey: ['dashboard', 'bedOccupancy'],
-    queryFn: listBedOccupancy,
-    refetchInterval: REFRESH_INTERVAL_MS,
-  })
+  // La consulta vive en queries.ts porque la lista de pacientes usa la misma.
+  const { data, isError } = useBedOccupancy()
 
   if (isError) return <WidgetError message="dash.occupancy.error" />
   if (data && data.length === 0) return <WidgetEmpty message="dash.occupancy.empty" />

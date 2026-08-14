@@ -18,11 +18,13 @@ import historiaRoutes from "./routes/historia.ts";
 import reportsRoutes from "./routes/reports.ts";
 import dashboardRoutes from "./routes/dashboard.ts";
 import bedsRoutes from "./routes/beds.ts";
+import monitoringRoutes from "./routes/monitoring.ts";
 import admissionsRoutes from "./routes/admissions.ts";
 import appointmentsRoutes from "./routes/appointments.ts";
 import alertsStreamRoutes from "./routes/alertsStream.ts";
 import reportesCsvRoutes from "./routes/reportesCsv.ts";
 import searchRoutes from "./routes/search.ts";
+import notificationsRoutes from "./routes/notifications.ts";
 
 export async function buildApp() {
   const app = Fastify({
@@ -94,11 +96,13 @@ export async function buildApp() {
   await app.register(reportsRoutes);
   await app.register(dashboardRoutes);
   await app.register(bedsRoutes);
+  await app.register(monitoringRoutes);
   await app.register(admissionsRoutes);
   await app.register(appointmentsRoutes);
   await app.register(alertsStreamRoutes);
   await app.register(reportesCsvRoutes);
   await app.register(searchRoutes);
+  await app.register(notificationsRoutes);
 
   return app;
 }
