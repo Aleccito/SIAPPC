@@ -119,6 +119,19 @@ def telemetry_topic(device: str) -> str:
     return f"siappc/{device}/telemetry"
 
 
+def waveform_topic(device: str) -> str:
+    """Onda cruda. Tema APARTE de la telemetria y por una razon de fondo.
+
+    `telemetry` son cifras que el backend guarda en `lectura`; esto son cientos
+    de muestras por segundo que NO se guardan en ninguna tabla, solo se
+    retransmiten a quien tenga esa cama en pantalla. Mezclarlas obligaria al
+    backend a mirar dentro del mensaje para saber si tiene que escribir en la
+    base o no, y a los clientes que solo quieren cifras a recibir el caudal
+    entero. Ver backend/src/services/waveform.ts.
+    """
+    return f"siappc/{device}/waveform"
+
+
 def status_topic(device: str) -> str:
     return f"siappc/{device}/status"
 

@@ -9,7 +9,8 @@ import LocalHotelOutlinedIcon from '@mui/icons-material/LocalHotelOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import type { SvgIconComponent } from '@mui/icons-material'
 import { EcgTrace } from './EcgTrace'
-import { agoKey, figure, hexOf, isStale, metricsOf, stateHex } from '../presentation'
+import { NoTrace } from './NoTrace'
+import { agoKey, figure, hasLiveSignal, hexOf, isStale, metricsOf, stateHex, traceReason } from '../presentation'
 import { isOccupied } from '../queries'
 import { clinicalState, clinicalStateColor, clinicalStateKey } from '../../dashboard/presentation'
 import { ageFrom } from '../../patients/presentation'
@@ -105,6 +106,7 @@ export function BedCard({ bed }: { bed: MonitoredBed }) {
   const age = bed.birthDate ? ageFrom(bed.birthDate) : null
   const ago = agoKey(bed.vitals.at)
   const sinSenal = isStale(bed.vitals.at)
+  const conSenal = hasLiveSignal(bed)
 
   // Cama libre: tarjeta gris y nada más. No lleva panel de cifras porque no hay
   // nadie de quien medirlas, y un panel lleno de rayas invitaría a mirarlo.
@@ -231,14 +233,26 @@ export function BedCard({ bed }: { bed: MonitoredBed }) {
             <MetricCell key={metric.id} metric={metric} />
           ))}
         </Box>
-        {/* Trazo ilustrativo, no la señal: ver el comentario de EcgTrace. Se
-            colorea con el estado de la cama para que el barrido visual de la
-            rejilla funcione sin leer una sola cifra. */}
-        <Box sx={{ mt: 1.5, border: `1px solid ${sidebar.border}`, borderRadius: 1 }}>
-          {/* Solo barre si la última lectura es de este minuto: el trazo quieto
-              es lo que distingue una cama que sigue mandando de una cuyo equipo
-              se cayó hace media hora. */}
-          <EcgTrace color={accent} height={52} animated={ago.key === 'central.ago.now'} />
+        {/* El trazo solo existe si hay señal de este minuto. Antes se dibujaba
+            siempre y únicamente dejaba de moverse, así que una cama sin equipo y
+            sin una sola lectura enseñaba un ECG completo: quieto, pero un ECG.
+            El rótulo del ritmo solo tiene sentido si hay ritmo que enseñar. */}
+        <Box sx={{ mt: 1.5 }}>
+          {conSenal ? (
+            <>
+              <Typography
+                variant="caption"
+                sx={{ display: 'block', mb: 0.25, color: sidebar.textMuted }}
+              >
+                {t('monitor.ecgDecorative')}
+              </Typography>
+              <Box sx={{ border: `1px solid ${sidebar.border}`, borderRadius: 1 }}>
+                <EcgTrace color={accent} height={52} animated bpm={bed.vitals.hr} />
+              </Box>
+            </>
+          ) : (
+            <NoTrace reason={traceReason(bed)} height={52} />
+          )}
         </Box>
       </Box>
 

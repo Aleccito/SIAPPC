@@ -22,6 +22,7 @@ import monitoringRoutes from "./routes/monitoring.ts";
 import admissionsRoutes from "./routes/admissions.ts";
 import appointmentsRoutes from "./routes/appointments.ts";
 import alertsStreamRoutes from "./routes/alertsStream.ts";
+import waveformStreamRoutes from "./routes/waveformStream.ts";
 import reportesCsvRoutes from "./routes/reportesCsv.ts";
 import searchRoutes from "./routes/search.ts";
 import notificationsRoutes from "./routes/notifications.ts";
@@ -116,6 +117,7 @@ export async function buildApp() {
   await app.register(admissionsRoutes);
   await app.register(appointmentsRoutes);
   await app.register(alertsStreamRoutes);
+  await app.register(waveformStreamRoutes);
   await app.register(reportesCsvRoutes);
   await app.register(searchRoutes);
   await app.register(notificationsRoutes);
