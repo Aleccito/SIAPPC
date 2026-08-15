@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma.ts";
 import { env } from "../env.ts";
 import { publicarAlerta } from "../lib/eventos.ts";
 import { notificarAlerta } from "../lib/notificaciones.ts";
+import { evaluarAlerta } from "./umbrales.ts";
 
 // Forma de siappc/<device>/telemetry, ver iot/src/publisher.py:build_payload.
 // `variable` no es un enum cerrado: sensor.variable_medida es VARCHAR(60) y
@@ -28,72 +29,6 @@ const statusSchema = z.object({
   status: z.enum(["online", "offline"]),
 });
 
-type AlertInfo = {
-  tipo: string;
-  severidad: "baja" | "media" | "alta" | "critica";
-  mensaje: string;
-};
-
-// Umbrales fijos de arranque: no hay tabla de configuración por paciente/sensor
-// todavía, así que esto es un mínimo viable, no la lógica clínica final.
-function evaluateAlert(variable: string, value: number): AlertInfo | null {
-  if (variable === "hr") {
-    if (value < 40 || value > 140) {
-      return { tipo: "hr_fuera_de_rango", severidad: "critica", mensaje: `Frecuencia cardiaca ${value} bpm fuera de rango crítico` };
-    }
-    if (value < 50 || value > 120) {
-      return { tipo: "hr_fuera_de_rango", severidad: "alta", mensaje: `Frecuencia cardiaca ${value} bpm fuera de rango` };
-    }
-    return null;
-  }
-  if (variable === "spo2") {
-    if (value < 85) {
-      return { tipo: "spo2_bajo", severidad: "critica", mensaje: `SpO2 ${value}% crítico` };
-    }
-    if (value < 90) {
-      return { tipo: "spo2_bajo", severidad: "alta", mensaje: `SpO2 ${value}% bajo` };
-    }
-    return null;
-  }
-  // `pr` es la misma frecuencia que `hr` medida por otra vía (los picos del
-  // pletismógrafo en vez del ECG), así que van los mismos rangos. Que las dos
-  // se separen es un dato clínico en sí mismo, pero eso necesita comparar dos
-  // series y no una lectura suelta: no se puede resolver aquí.
-  if (variable === "pr") {
-    if (value < 40 || value > 140) {
-      return { tipo: "pr_fuera_de_rango", severidad: "critica", mensaje: `Frecuencia de pulso ${value} bpm fuera de rango crítico` };
-    }
-    if (value < 50 || value > 120) {
-      return { tipo: "pr_fuera_de_rango", severidad: "alta", mensaje: `Frecuencia de pulso ${value} bpm fuera de rango` };
-    }
-    return null;
-  }
-  // Los mismos límites que el monitor usa en pantalla (AlarmLimits.resp_low /
-  // resp_high en iot/monitor/config.py), para que no digan cosas distintas.
-  // OJO: `resp` es una estimación sacada del pletismógrafo, no una respiración
-  // medida por flujo ni por impedancia. Por eso no llega a "critica": no es un
-  // número sobre el que despertar a nadie.
-  if (variable === "resp") {
-    if (value < 8 || value > 30) {
-      return { tipo: "resp_fuera_de_rango", severidad: "alta", mensaje: `Respiración estimada ${value} rpm fuera de rango` };
-    }
-    return null;
-  }
-  // El índice de perfusión no es un signo vital: dice cuánta señal le llega al
-  // sensor. Por debajo de 0.2 el dedo está mal apoyado o frío, y lo que hay que
-  // desconfiar es del SpO2 que sale de ahí, no del paciente. Severidad baja a
-  // propósito: es calidad de señal, no una alarma clínica.
-  if (variable === "perfusion") {
-    if (value < 0.2) {
-      return { tipo: "perfusion_baja", severidad: "baja", mensaje: `Índice de perfusión ${value}%: señal débil, el SpO2 puede no ser fiable` };
-    }
-    return null;
-  }
-  // ecg: una muestra instantánea de voltaje no dice nada por sí sola, hace
-  // falta la forma de onda para detectar arritmias. Sin umbral por ahora.
-  return null;
-}
-
 // Un dispositivo en `mantenimiento` o `baja` está así porque alguien lo puso a
 // mano; que la Pi se conecte no es motivo para deshacer esa decisión. Solo se
 // mueve entre los dos estados que describen "está o no está transmitiendo".
@@ -113,9 +48,12 @@ async function updateDeviceStatus(device: string, online: boolean, logger: Fasti
 }
 
 async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogger): Promise<void> {
+  // `paciente_id` viaja en esta misma consulta, que ya se hacía: los umbrales se
+  // afinan por paciente (services/umbrales.ts) y sin él habría que preguntar de
+  // quién es el equipo una vez por lectura.
   const dispositivo = await prisma.dispositivo.findUnique({
     where: { codigo: payload.device },
-    select: { dispositivo_id: true },
+    select: { dispositivo_id: true, paciente_id: true },
   });
   if (!dispositivo) {
     // Sin dispositivo dado de alta no hay hospital_id al que colgar la
@@ -183,7 +121,12 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
     return;
   }
 
-  const alert = evaluateAlert(payload.variable, payload.value);
+  const alert = await evaluarAlerta(
+    payload.variable,
+    payload.value,
+    dispositivo.paciente_id,
+    logger,
+  );
   if (alert) {
     // El id de la lectura recién insertada se busca por su hash, que es único:
     // `$executeRaw` devuelve el número de renglones, no LAST_INSERT_ID().

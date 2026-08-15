@@ -25,6 +25,7 @@ import alertsStreamRoutes from "./routes/alertsStream.ts";
 import reportesCsvRoutes from "./routes/reportesCsv.ts";
 import searchRoutes from "./routes/search.ts";
 import notificationsRoutes from "./routes/notifications.ts";
+import thresholdsRoutes from "./routes/thresholds.ts";
 
 export async function buildApp() {
   const app = Fastify({
@@ -118,6 +119,7 @@ export async function buildApp() {
   await app.register(reportesCsvRoutes);
   await app.register(searchRoutes);
   await app.register(notificationsRoutes);
+  await app.register(thresholdsRoutes);
 
   return app;
 }

@@ -5,7 +5,7 @@ distintos:
 
 | Carpeta | Qué es | Responde a |
 |---|---|---|
-| `backend/` | Suite automatizada (`node:test`), 99 pruebas | ¿Las reglas del negocio se sostienen? |
+| `backend/` | Suite automatizada (`node:test`), 115 pruebas | ¿Las reglas del negocio se sostienen? |
 | `postman/` | Colección funcional, 62 peticiones / 177 aserciones | ¿La API cumple su contrato de extremo a extremo? |
 | `jmeter/` | Plan de carga | ¿Aguanta con muchos usuarios a la vez? |
 | `reportes/` | Salidas generadas. **No se editan a mano.** | |
@@ -26,12 +26,18 @@ Corre desde `backend/`, porque necesita su `.env.test` y su `node_modules`:
 cd backend && npm test
 ```
 
-**99 pruebas, 99 pasan.** Cubren autenticación y revocación de sesión, la matriz
+**115 pruebas, 115 pasan.** Cubren autenticación y revocación de sesión, la matriz
 de permisos contra `rol_permiso`, el CRUD genérico, la caché de Redis, el límite
 de intentos de login, el ETL contra la base, las notas SOAP con su firma, el
 expediente, admisión (camas/ingresos/citas), el personal a cargo de cada
-paciente (`medico_paciente`), el catálogo de variables y el aislamiento entre
-hospitales.
+paciente (`medico_paciente`), el catálogo de variables, los umbrales de alerta
+configurables y el aislamiento entre hospitales.
+
+`umbrales.test.ts` merece una nota: además de probar lo que la tabla
+`umbral_alerta` añade, guarda una copia literal de la función que decidía las
+alertas cuando los números estaban en el código y barre cada variable contra
+ella. Es lo que sostiene que sacar los umbrales del código no cambió ni una
+alerta, y por eso esa copia **no se toca** para que una prueba pase.
 
 Los archivos viven aquí pero importan el código con rutas relativas
 (`../../backend/src/...`). El `package.json` de esta carpeta existe por una sola

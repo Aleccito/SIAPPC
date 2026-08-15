@@ -30,11 +30,22 @@ describe("Catálogo de variables", () => {
     const { prisma } = await import("../../backend/src/lib/prisma.ts");
     const variables = await prisma.variable.findMany({ orderBy: { codigo: "asc" } });
 
+    // `pr`, `perfusion` y `resp` entraron al seed con los umbrales
+    // configurables: `umbral_alerta` cuelga de esta tabla por clave foránea, así
+    // que sin ellas no se pueden sembrar sus bandas. Antes solo aparecían
+    // cuando la ingesta recibía su primera lectura y las daba de alta sola.
+    //
+    // `pr` va en `lpm` como `hr` —es la misma frecuencia por otra vía— aunque el
+    // equipo la publique en `bpm`. `ecg` no está: no tiene umbral que sembrar y
+    // sigue entrando por el alta automática.
     assert.deepEqual(
       variables.map((v) => [v.codigo, v.unidad]),
       [
         ["hr", "lpm"],
         ["pa", "mmHg"],
+        ["perfusion", "%"],
+        ["pr", "lpm"],
+        ["resp", "rpm"],
         ["spo2", "%"],
         ["temp", "°C"],
       ],

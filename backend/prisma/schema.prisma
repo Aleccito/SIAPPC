@@ -223,6 +223,7 @@ model Paciente {
   medicos      MedicoPaciente[]
   historias    HistoriaClinica[]
   dispositivos Dispositivo[]
+  umbrales     UmbralAlerta[]
   // Expediente clínico general (1:1) y notas SOAP. Ver el bloque "Expediente
   // clínico" al final del archivo.
   expediente   ExpedienteClinico?
@@ -321,6 +322,7 @@ model Variable {
   unidad String @db.VarChar(20)
 
   sensores Sensor[]
+  umbrales UmbralAlerta[]
 
   @@map("variable")
 }
@@ -393,6 +395,74 @@ model Alerta {
   @@index([lectura_id], map: "ix_alerta_lectura")
   @@index([estado, severidad, fecha_hora], map: "ix_alerta_estado_sev")
   @@map("alerta")
+}
+
+/// Cuándo una lectura se convierte en alerta.
+///
+/// Antes esto vivía escrito en `src/services/mqttIngest.ts` —cuatro `if` con los
+/// números dentro— y no había forma de ajustarlo sin recompilar. El caso que lo
+/// hizo insostenible: un paciente con EPOC vive por debajo del 90 % de
+/// saturación, así que el umbral general le disparaba alertas todo el día y la
+/// única salida era enseñar al personal a ignorarlas.
+///
+/// UNA FILA ES UNA BANDA: la variable, la severidad que le corresponde y los
+/// límites fuera de los cuales salta. `valor_min`/`valor_max` son nulables
+/// porque hay bandas de un solo lado — un SpO2 no alerta por alto—, y una fila
+/// con las dos en NULL sencillamente no salta nunca.
+///
+/// `paciente_id` NULL es el valor por defecto general; con paciente es el ajuste
+/// para esa persona. La vuelta atrás es POR VARIABLE y no por banda: si un
+/// paciente tiene filas propias de `spo2`, esas SUSTITUYEN a todas las generales
+/// de `spo2`, no se mezclan con ellas. Mezclarlas es lo que rompería el ajuste
+/// del EPOC del ejemplo: bajarle solo la banda `alta` dejaría viva la `critica`
+/// general en 85, que se evalúa primero y volvería a taparlo todo. Un juego de
+/// bandas por variable es una decisión clínica completa, y se aplica completa.
+///
+/// NO hay ajuste por sensor, y es deliberado. El umbral es un dato del paciente,
+/// no del aparato: dos equipos midiendo la misma frecuencia en la misma persona
+/// no pueden alertar con números distintos según cuál publique. Lo que sí es del
+/// aparato —que mida mal— se arregla calibrándolo o marcándolo `fallo` en
+/// `sensor.estado`, no ensanchándole los límites para que deje de quejarse. Y
+/// hay un motivo práctico: las filas de `sensor` las crea sola la ingesta al
+/// llegar la primera lectura, así que un umbral colgado de un sensor
+/// desaparecería en silencio en cuanto al paciente le cambiaran de equipo.
+///
+/// OJO con `uq_umbral_variable_paciente_sev`: en MariaDB un índice único NO
+/// impide dos filas con `paciente_id` NULL, así que protege los ajustes por
+/// paciente pero no los valores por defecto generales. Esos los guarda la API
+/// (`src/routes/thresholds.ts`), que busca la banda antes de crearla; si aun así
+/// aparecieran dos, gana la de `umbral_id` mayor — determinista, pero es un
+/// error de datos y hay que borrar la sobrante.
+model UmbralAlerta {
+  umbral_id       Int             @id @default(autoincrement()) @db.UnsignedInt
+  /// FK a `variable.codigo`, la misma llave natural que usa `sensor`.
+  variable_codigo String          @db.VarChar(60)
+  /// NULL = valor por defecto general del sistema.
+  paciente_id     Int?            @db.UnsignedInt
+  severidad       SeveridadAlerta
+  /// Salta si el valor queda FUERA de [min, max]. NULL = ese lado no acota.
+  valor_min       Decimal?        @db.Decimal(12, 4)
+  valor_max       Decimal?        @db.Decimal(12, 4)
+  /// Lo que se escribe en `alerta.tipo`: `hr_fuera_de_rango`, `spo2_bajo`, …
+  tipo            String          @db.VarChar(60)
+  /// Plantilla de `alerta.mensaje` con `{valor}` donde va la cifra medida. El
+  /// texto vive aquí y no en el código porque una banda que se puede mover tiene
+  /// que poder decir a qué número se movió; dejarlo fuera obligaría a mantener
+  /// una tabla de frases por variable en TypeScript, que es justo lo que este
+  /// modelo viene a quitar.
+  plantilla_mensaje String        @db.VarChar(200)
+  /// Baja lógica: la bitácora referencia el `umbral_id` y una banda retirada
+  /// sigue explicando las alertas que disparó. Inactiva = como si no existiera,
+  /// así que quitar la última banda propia de un paciente lo devuelve al valor
+  /// por defecto general.
+  activo          Boolean         @default(true)
+
+  variable Variable  @relation(fields: [variable_codigo], references: [codigo], onDelete: Restrict, onUpdate: Cascade, map: "fk_umbral_variable")
+  paciente Paciente? @relation(fields: [paciente_id], references: [paciente_id], onDelete: Cascade, onUpdate: Cascade, map: "fk_umbral_paciente")
+
+  @@unique([variable_codigo, paciente_id, severidad], map: "uq_umbral_variable_paciente_sev")
+  @@index([paciente_id], map: "ix_umbral_paciente")
+  @@map("umbral_alerta")
 }
 
 enum CanalNotificacion {

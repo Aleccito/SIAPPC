@@ -316,7 +316,7 @@ el `.env` correcto.
 ## CI
 
 `.github/workflows/ci.yml` corre en cada push a `dev`/`main` y en cada pull
-request, con cinco jobs. Un push nuevo sobre la misma rama cancela la corrida
+request, con seis jobs. Un push nuevo sobre la misma rama cancela la corrida
 anterior, y cada job tiene tiempo máximo.
 
 | Job | Qué hace |
@@ -324,7 +324,8 @@ anterior, y cada job tiene tiempo máximo.
 | `backend` | Levanta MariaDB y Redis de servicio, genera el cliente de Prisma, comprueba que el esquema no se haya desviado, `npm run typecheck` y `npm test` (la suite de `Pruebas/backend`, que recrea la base desde `db/schema.sql` y `db/seed.sql`) |
 | `frontend` | `npm run lint` (oxlint) y `npm run build` (con `tsc -b` de por medio) |
 | `postman` | Levanta la API de verdad y corre la colección con Newman; el informe queda como artefacto descargable, también cuando falla |
-| `imagenes` | Construye las imágenes de backend y frontend. Sin publicarlas: no hay registro configurado |
+| `simulacion` | Las 54 pruebas del simulador (`simulation/tests`) y `siappc verificar`, las comprobaciones de coherencia del modelo. Sin base de datos: el esquema se monta en SQLite en memoria |
+| `imagenes` | Construye las imágenes de backend, frontend y simulador. Sin publicarlas: no hay registro configurado |
 | `seguridad` | Comprueba que no haya `.env` ni claves privadas versionadas, y audita las dependencias de producción |
 
 El job `backend` incluye dos validaciones de esquema que atrapan un error
@@ -336,9 +337,10 @@ nacer con tablas viejas sin que nadie se entere hasta el despliegue.
 Lo mismo se corre a mano antes de abrir un pull request, con el stack arriba:
 
 ```bash
-cd backend  && npm run typecheck && npm test    # 99 pruebas
-cd frontend && npm run build && npm run lint
-cd Pruebas  && npm run test:postman             # 62 peticiones, 177 aserciones
+cd backend    && npm run typecheck && npm test      # 115 pruebas
+cd frontend   && npm run build && npm run lint
+cd Pruebas    && npm run test:postman               # 62 peticiones, 177 aserciones
+cd simulation && PYTHONPATH=src python -m pytest -q # 54 pruebas
 ```
 
 No hay job de JMeter, y es deliberado: los runners son máquinas compartidas, así

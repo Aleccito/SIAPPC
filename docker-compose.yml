@@ -128,6 +128,12 @@ services:
       # cada segundo, así que 10 s recorta la mayoría de las consultas del
       # tablero sin que los datos se vean viejos.
       SENSORS_CACHE_TTL: 10
+      # Segundos que cada réplica conserva su copia de `umbral_alerta` antes de
+      # releerla. La que atiende un cambio por /alert-thresholds lo aplica en el
+      # acto; esto acota cuánto tardan las demás. Un minuto para algo que se
+      # ajusta a mano y de tarde en tarde, contra una consulta por lectura MQTT
+      # si se bajara a 0.
+      THRESHOLDS_CACHE_TTL: 60
       # Techo de peticiones por minuto y por IP. Sin definirla en el .env vale
       # 100, que es lo de siempre. Se sube solo para las pruebas de carga: todos
       # los usuarios virtuales de JMeter salen de una IP y comparten el cubo.

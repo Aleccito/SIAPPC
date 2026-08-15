@@ -337,6 +337,32 @@ export type SensorAlert = {
   resolvedAt: string | null;
 };
 
+/**
+ * Una banda de `umbral_alerta` (routes/thresholds.ts): la variable, la severidad
+ * que le corresponde y los límites fuera de los cuales una lectura abre alerta.
+ *
+ * `patientId` null es el valor por defecto general del sistema; con paciente es
+ * el ajuste de esa persona, que SUSTITUYE a las bandas generales de esa variable
+ * en lugar de mezclarse con ellas. Ver el modelo `UmbralAlerta` en
+ * prisma/schema.prisma.
+ *
+ * `min` y `max` son nulables porque hay bandas de un solo lado: un SpO2 no
+ * alerta por alto. Los dos nulos = una banda que nunca salta.
+ */
+export type AlertThreshold = {
+  id: string;
+  variable: string;
+  patientId: string | null;
+  severity: AlertSeverity;
+  min: number | null;
+  max: number | null;
+  /** Lo que se escribirá en `alerta.tipo`: `hr_fuera_de_rango`, `spo2_bajo`, … */
+  type: string;
+  /** Plantilla de `alerta.mensaje`, con `{valor}` donde va la cifra medida. */
+  messageTemplate: string;
+  active: boolean;
+};
+
 // ---------------------------------------------------------------------------
 // Bandeja de notificaciones (routes/notifications.ts). Espejo de
 // frontend/src/modules/notifications/types.ts.

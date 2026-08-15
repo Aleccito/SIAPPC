@@ -40,6 +40,7 @@ qué variables lee el backend, con valores de relleno.
 | `MQTT_TLS` | Escape para un broker heredado sin TLS. Déjalo en `true` |
 | `REDIS_URL` | Contadores del límite de peticiones y caché de `/sensors/*`. Sin ella el límite cae a un contador en memoria y arranca igual |
 | `SENSORS_CACHE_TTL` | Segundos que vive cada respuesta cacheada de `/sensors/*`. 10 por defecto; `0` desactiva la caché |
+| `THRESHOLDS_CACHE_TTL` | Segundos que el proceso conserva su copia de `umbral_alerta`. 60 por defecto. Ver [Umbrales de alerta](#umbrales-de-alerta) |
 | `RATE_LIMIT_MAX` | Techo de peticiones por minuto y por IP. 100 por defecto; solo se sube para medir con JMeter |
 | `ETL_RETENCION_DIAS` | Días de lecturas crudas que conserva el ETL. **`0` por defecto = no se borra nada.** Lo lee `etl/scheduler.ts`, no la API |
 
@@ -67,6 +68,8 @@ que nginx quita al hacer proxy.
 | `GET /sensors/readings` | Lecturas, filtrables por `device`, `variable`, `limit` |
 | `GET /sensors/alerts` | Alertas, además por `severity` y `status` |
 | `GET /alerts/stream` | Alertas en vivo por Server-Sent Events. Ver [Alertas en vivo](#alertas-en-vivo-sse) |
+| `GET /alert-thresholds` · `POST /alert-thresholds` · `PATCH /alert-thresholds/:id` · `DELETE /alert-thresholds/:id` | Umbrales que deciden si una lectura abre alerta, filtrables por `variable` y `patientId`. Ver [Umbrales de alerta](#umbrales-de-alerta) |
+| `GET /alert-thresholds/effective` | Las bandas que se aplicarían AHORA a un paciente (`?patientId`), ya resuelta la vuelta atrás al valor por defecto |
 | `GET /search` | Búsqueda global (pacientes, notas SOAP, dispositivos), acotada por hospital |
 | `GET /beds` · `GET /beds/:id` · `POST /beds` · `PUT|PATCH /beds/:id` · `DELETE /beds/:id` | CRUD de camas (fábrica `crud.ts`) |
 | `GET /beds/occupancy` | Ocupación agregada por unidad |
@@ -121,11 +124,12 @@ Cada alta, cambio y baja se escribe en `auditoria` **dentro de la misma
 transacción** que el cambio. Si no se puede dejar constancia, el cambio no se
 hace.
 
-No todo pasa por ahí, a propósito: `/users` y `/roles` siguen escritos a mano
-porque tienen reglas que no caben en una configuración —la contraseña temporal
-del alta, no poder suspender al último administrador, derivar el `nombre` del
-rol de su etiqueta, los roles del sistema en solo lectura—. Meterlas a la fuerza
-convertiría la fábrica en un caso especial por recurso.
+No todo pasa por ahí, a propósito: `/users`, `/roles` y `/alert-thresholds`
+siguen escritos a mano porque tienen reglas que no caben en una configuración
+—la contraseña temporal del alta, no poder suspender al último administrador,
+derivar el `nombre` del rol de su etiqueta, los roles del sistema en solo
+lectura, comprobar que el `patientId` de un umbral sea de este hospital—.
+Meterlas a la fuerza convertiría la fábrica en un caso especial por recurso.
 
 ### Consultas crudas
 
@@ -372,12 +376,8 @@ mensaje válido:
    referencia `variable.codigo`.
 3. Inserta la `lectura` con `INSERT IGNORE`: el índice único sobre
    `hash_sha256` descarta reenvíos del buffer de la Pi y duplicados de QoS 1.
-4. Evalúa umbrales y, si toca, inserta la `alerta`.
-
-Los umbrales viven en código (`hr` fuera de 50–120 / 40–140, `spo2` bajo 90 / 85).
-Son un mínimo viable, no la lógica clínica final: todavía no hay tabla de
-configuración por paciente o por sensor. El `ecg` no dispara alertas — una
-muestra instantánea de voltaje no dice nada sin la onda completa.
+4. Evalúa los umbrales de `umbral_alerta` y, si toca, inserta la `alerta`. Ver
+   [Umbrales de alerta](#umbrales-de-alerta).
 
 La conexión al broker no bloquea el arranque: si no hay broker, mqtt.js reintenta
 solo y el servidor HTTP sigue respondiendo.
@@ -401,11 +401,113 @@ broker exija certificado de cliente (`require_certificate true` en
 `infra/mosquitto/mosquitto.conf`). Hoy no lo exige: la autenticación es por
 usuario y contraseña.
 
+## Umbrales de alerta
+
+Qué convierte una lectura en alerta vive en la tabla `umbral_alerta`, no en el
+código. Antes eran cuatro `if` dentro de `mqttIngest.ts` y ajustarlos exigía
+recompilar: un paciente con EPOC, que vive por debajo del 90 % de saturación,
+disparaba alertas de SpO2 todo el día y la única salida era enseñar al personal a
+ignorarlas.
+
+**Una fila es una banda:** la variable, la severidad que le corresponde y los
+límites fuera de los cuales salta. `valor_min` y `valor_max` son nulables porque
+hay bandas de un solo lado — un SpO2 no alerta por alto. Las bandas de una
+variable se evalúan **de mayor a menor severidad** y gana la primera que salta,
+que es el orden en el que estaban los `if`.
+
+`db/seed.sql` siembra ocho bandas con exactamente los mismos números y los mismos
+textos que tenía el código, y la migración `20260814120000_umbrales_alerta_configurables`
+hace lo propio en una base que ya existía: desplegar esto **no cambia ni una
+alerta**. `Pruebas/backend/umbrales.test.ts` lo comprueba barriendo cada variable
+contra una copia literal de la función anterior.
+
+| Variable | `critica` | `alta` | `baja` |
+|---|---|---|---|
+| `hr` | fuera de 40–140 | fuera de 50–120 | |
+| `pr` | fuera de 40–140 | fuera de 50–120 | |
+| `spo2` | bajo 85 | bajo 90 | |
+| `resp` | — | fuera de 8–30 | |
+| `perfusion` | | | bajo 0.2 |
+
+`resp` no tiene banda crítica y no es un hueco: es una estimación sacada de cómo
+la respiración mueve la línea de base del pletismógrafo, no una respiración
+medida por flujo ni por impedancia, y no es un número sobre el que despertar a
+nadie. Ahora que esto es configuración, nada impide que un hospital se la añada
+—el modelo no puede saber cómo se midió el dato—, pero sembrarla sería tomar esa
+decisión por él. `perfusion` va en `baja` porque no es un signo vital: mide
+cuánta señal le llega al sensor, y de quien hay que desconfiar por debajo de 0.2
+es del SpO2 que sale de ahí. `ecg` no tiene banda ninguna — una muestra
+instantánea de voltaje no dice nada sin la onda completa.
+
+### Por paciente
+
+`umbral_alerta.paciente_id` nulo es el valor por defecto general; con paciente es
+el ajuste de esa persona. La vuelta atrás es **por variable y no por banda**: si
+un paciente tiene filas propias de `spo2`, esas sustituyen a todas las generales
+de `spo2`, no se mezclan con ellas.
+
+Es deliberado y es lo que hace que el ajuste sirva. Mezclarlas rompería
+exactamente el caso del EPOC: bajarle solo la banda `alta` dejaría viva la
+`critica` general en 85, que se evalúa primero y volvería a taparlo todo. Un
+juego de bandas por variable es una decisión clínica completa y se aplica
+completa. El coste es que afinar una variable obliga a declarar todas sus bandas;
+`GET /alert-thresholds/effective?patientId=` existe para que eso se vea de un
+vistazo, porque el listado de filas sueltas no lo enseña.
+
+**No hay ajuste por sensor**, y también es deliberado. El umbral es un dato del
+paciente, no del aparato: dos equipos midiendo la misma frecuencia en la misma
+persona no pueden alertar con números distintos según cuál publique. Lo que sí es
+del aparato —que mida mal— se arregla calibrándolo o marcándolo `fallo` en
+`sensor.estado`, no ensanchándole los límites para que deje de quejarse. Y hay un
+motivo práctico: las filas de `sensor` las crea sola la ingesta al llegar la
+primera lectura, así que un umbral colgado de un sensor desaparecería en silencio
+en cuanto al paciente le cambiaran de equipo.
+
+El mensaje de la alerta sale de `plantilla_mensaje`, con `{valor}` donde va la
+cifra medida. Vive en la fila y no en el código porque una banda que se puede
+mover tiene que poder decir a qué número se movió.
+
+### Caché
+
+Por la evaluación pasa **cada lectura que entra por MQTT**, una por segundo y por
+sensor, así que una consulta por mensaje está descartada.
+`src/services/umbrales.ts` guarda la tabla entera en memoria —son unas pocas
+decenas de filas— y la relee cada `THRESHOLDS_CACHE_TTL` segundos (60 por
+defecto). Escribir por la API invalida la copia en el acto.
+
+**Por qué no Redis**, teniéndolo ya: sería un viaje de red por mensaje, o sea el
+mismo problema con otro sistema en medio; el caché en proceso haría falta igual y
+Redis solo aportaría la invalidación entre réplicas. Con varias réplicas, un
+cambio de umbral tarda hasta el TTL en llegar a las que no atendieron la
+petición. Es el mismo trato que hace la caché de lecturas y por el mismo motivo:
+un desfase acotado y conocido sale más barato de razonar que una invalidación
+distribuida. Si algún día no bastara, el bus de `src/lib/eventos.ts` ya publica
+por Redis y este módulo podría suscribirse.
+
+**No hay valores por defecto escritos en el código**, a propósito: tenerlos sería
+volver a las dos verdades que la tabla viene a unificar. La contrapartida es que
+una tabla vacía significa que ninguna lectura alerta, así que ese caso se registra
+como `error` en el log en cuanto se intenta cargar.
+
+### Permisos y hospital
+
+Todas las rutas exigen el módulo `alertas` de `rol_permiso`, que en `db/seed.sql`
+se describe literalmente como "Umbrales y eventos críticos"; qué rol puede
+escribirlo lo decide la matriz y no el código.
+
+Los ajustes **por paciente** están acotados al hospital de la sesión: no se ven ni
+se modifican los de un paciente ajeno, y el intento responde 404 —existir en otro
+hospital es indistinguible de no existir—. Los valores por defecto **generales**
+no lo están, y es una limitación conocida: son configuración del sistema, como el
+catálogo `variable` del que cuelgan. Un despliegue con varios hospitales que
+necesite defectos distintos por cada uno necesita un nivel más en la tabla
+(`hospital_id`), y eso es un cambio de modelo.
+
 ## Base de datos
 
-36 modelos en `prisma/schema.prisma`: hospital, unidades, roles y permisos,
+37 modelos en `prisma/schema.prisma`: hospital, unidades, roles y permisos,
 usuarios y especializaciones, pacientes, dispositivos y variables, sensores,
-lecturas, alertas, notificaciones y auditoría, agregados por hora para
+lecturas, alertas con sus umbrales, notificaciones y auditoría, agregados por hora para
 reportes (`LecturaHora`, `AlertaDia`, `EtlEjecucion`), expediente clínico
 (antecedentes, alergias, medicamentos, diagnósticos, hospitalizaciones,
 procedimientos, documentos, notas SOAP con firma y adenda, exploración física
@@ -426,7 +528,7 @@ Los otros dos archivos de `db/` son consecuencia, no fuente:
 |---|---|
 | `db/schema.sql` | **Generado.** El DDL completo de una instalación nueva. Lo aplica MariaDB en el primer arranque (`docker-entrypoint-initdb.d`) y las pruebas para recrear la base. No se edita a mano |
 | `db/extra.sql` | Hand-written. Lo que Prisma no sabe expresar: el `CHECK` de `alerta`, las dos vistas y los tres procedimientos (ver [Vistas y procedimientos](#vistas-y-procedimientos-almacenados)). `schema:build` lo pega al final de `schema.sql`, y **cada sentencia tiene que ir además en alguna migración** o las bases ya creadas nunca la reciben |
-| `db/seed.sql` | Hand-written. Roles, hospital y el primer admin |
+| `db/seed.sql` | Hand-written. Roles, hospital, el primer admin, el catálogo `variable` y los umbrales de alerta por defecto |
 
 `schema.sql` incluye al final la tabla `_prisma_migrations` con todas las
 migraciones ya marcadas como aplicadas, así que una base recién creada nace al
@@ -497,6 +599,9 @@ Para verla con interfaz: `npm run studio`.
 - El único informe exportable es el de actividad clínica. Cada informe nuevo
   necesita su propia vista y su ruta, porque un `CALL` con resultados no se puede
   consumir desde aquí.
-- Los umbrales de alerta son fijos y globales.
+- Los umbrales de alerta se configuran por API (ver
+  [Umbrales de alerta](#umbrales-de-alerta)) pero **no tienen pantalla**: hoy solo
+  se tocan con peticiones a `/alert-thresholds`. Y los valores por defecto
+  generales son del sistema, no de cada hospital.
 - El `origin` de CORS todavía apunta solo a `http://localhost:5173`. En Docker no
   estorba, porque nginx sirve el frontend y el backend en el mismo origen.

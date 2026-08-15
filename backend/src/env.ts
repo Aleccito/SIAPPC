@@ -33,6 +33,12 @@ const {
   // Segundos que vive en caché una respuesta de /sensors/*. 0 desactiva la
   // caché sin tocar el límite de peticiones.
   SENSORS_CACHE_TTL = "10",
+  // Segundos que el proceso conserva su copia de `umbral_alerta` antes de
+  // releerla. La instancia que atiende un cambio por la API lo aplica en el
+  // acto; esto es lo que tardan en enterarse las DEMÁS réplicas. `0` recarga en
+  // cada lectura —una consulta por mensaje MQTT—: sirve para depurar, no para
+  // producción.
+  THRESHOLDS_CACHE_TTL = "60",
   // Techo general de peticiones por minuto y por IP. El valor por defecto es
   // el de siempre: sin esta variable, el comportamiento no cambia. Se hace
   // configurable para las pruebas de carga (Pruebas/jmeter/), donde todos los
@@ -92,6 +98,13 @@ if (!Number.isInteger(sensorsCacheTtl) || sensorsCacheTtl < 0) {
   process.exit(1);
 }
 
+const thresholdsCacheTtl = Number(THRESHOLDS_CACHE_TTL);
+
+if (!Number.isInteger(thresholdsCacheTtl) || thresholdsCacheTtl < 0) {
+  console.error("THRESHOLDS_CACHE_TTL debe ser un entero de segundos >= 0 (0 recarga en cada lectura)");
+  process.exit(1);
+}
+
 const rateLimitMax = Number(RATE_LIMIT_MAX);
 
 if (!Number.isInteger(rateLimitMax) || rateLimitMax < 1) {
@@ -105,6 +118,7 @@ export const env = {
   allowedOrigins,
   redisUrl: REDIS_URL || undefined,
   sensorsCacheTtl,
+  thresholdsCacheTtl,
   rateLimitMax,
   mqtt: {
     host: MQTT_HOST,

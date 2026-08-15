@@ -290,6 +290,62 @@ jobs:
         if: failure()
         run: cat backend.log
 
+  # El simulador de eventos discretos. Sus 54 pruebas existían desde el primer
+  # día pero no las corría nadie salvo a mano, y son el único guardián de un
+  # modelo cuyas cifras se presentan como evidencia: una regresión en el cálculo
+  # de un KPI no rompe ninguna pantalla, solo cambia el número del informe.
+  #
+  # NO lleva `services:`, y es deliberado. El esquema de SQLAlchemy declara sus
+  # claves con `BigInteger().with_variant(Integer, "sqlite")` justamente para
+  # que las mismas tablas se creen en SQLite en memoria (ver `PK_GRANDE` en
+  # src/siappc/bd.py), así que las pruebas montan la base dentro del proceso.
+  # Levantar MariaDB añadiría medio minuto de arranque sin probar nada nuevo: lo
+  # único exclusivo de MariaDB son las vistas de análisis, y `crear_vistas` se
+  # salta a propósito en cualquier dialecto que no sea mysql/mariadb.
+  simulacion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: simulation/requirements.txt
+
+      # `pytest` se instala aparte y no se añade a requirements.txt: esa lista es
+      # exactamente lo que instala simulation/Dockerfile, y la imagen que se
+      # despliega no tiene por qué llevar dentro el framework de pruebas.
+      - name: Instalar dependencias
+        working-directory: simulation
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+
+      # `PYTHONPATH=src` en vez de `pip install -e .`: el paquete usa layout src/
+      # y para correr las pruebas no hace falta instalarlo. Y desde `simulation/`
+      # y no desde la raíz porque las pruebas cargan `config/base.yaml` por ruta
+      # relativa; lanzadas desde otro sitio no encuentran la configuración.
+      - name: Pruebas del simulador
+        working-directory: simulation
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q
+
+      # Otra cosa que las pruebas unitarias: esto corre el modelo entero y
+      # comprueba invariantes que ningún caso aislado ve —que ninguna zona supere
+      # su capacidad, que ningún evento termine antes de empezar, que todo
+      # paciente estable pase por las cuatro paradas diagnósticas y que las colas
+      # cumplan la ley de Little—. Cuesta menos de un segundo y tampoco escribe
+      # nada, así que sale barato tenerlo en cada corrida.
+      - name: Coherencia del modelo
+        working-directory: simulation
+        env:
+          PYTHONPATH: src
+        run: python -m siappc verificar
+
   # Las imágenes se construyen en cada corrida. Sin esto, un Dockerfile roto
   # —una dependencia del sistema que ya no está, un COPY a una ruta que se
   # movió— no se descubre hasta el despliegue, que es el peor momento.
@@ -316,6 +372,14 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Imagen del simulador
+        uses: docker/build-push-action@v6
+        with:
+          context: ./simulation
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max

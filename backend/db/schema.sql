@@ -241,6 +241,23 @@ CREATE TABLE `alerta` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `umbral_alerta` (
+    `umbral_id` INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
+    `variable_codigo` VARCHAR(60) NOT NULL,
+    `paciente_id` INTEGER UNSIGNED NULL,
+    `severidad` ENUM('baja', 'media', 'alta', 'critica') NOT NULL,
+    `valor_min` DECIMAL(12, 4) NULL,
+    `valor_max` DECIMAL(12, 4) NULL,
+    `tipo` VARCHAR(60) NOT NULL,
+    `plantilla_mensaje` VARCHAR(200) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
+
+    INDEX `ix_umbral_paciente`(`paciente_id`),
+    UNIQUE INDEX `uq_umbral_variable_paciente_sev`(`variable_codigo`, `paciente_id`, `severidad`),
+    PRIMARY KEY (`umbral_id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `notificacion` (
     `notificacion_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `alerta_id` BIGINT UNSIGNED NOT NULL,
@@ -626,6 +643,12 @@ ALTER TABLE `lectura` ADD CONSTRAINT `fk_lectura_sensor` FOREIGN KEY (`sensor_id
 ALTER TABLE `alerta` ADD CONSTRAINT `fk_alerta_lectura` FOREIGN KEY (`lectura_id`) REFERENCES `lectura`(`lectura_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `umbral_alerta` ADD CONSTRAINT `fk_umbral_variable` FOREIGN KEY (`variable_codigo`) REFERENCES `variable`(`codigo`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `umbral_alerta` ADD CONSTRAINT `fk_umbral_paciente` FOREIGN KEY (`paciente_id`) REFERENCES `paciente`(`paciente_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `notificacion` ADD CONSTRAINT `fk_notif_alerta` FOREIGN KEY (`alerta_id`) REFERENCES `alerta`(`alerta_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -947,4 +970,5 @@ VALUES
 ('f4399f27c54c69933237a0130a66ae60324e', 'e08a99f08a4c145de213fa05b39ed865f7cb58f060fb661bff106d2c58113b21', NOW(3), '20260813145348_vista_actividad_clinica', NOW(3), 1),
 ('0faf8b9df763f51d88fd02ee14d409e4545c', '10b7d17b7e79a85329a708619addbb84b0d46ad70c49210d066d78be7876d77e', NOW(3), '20260813160554_sp_alertas_dia_y_purga', NOW(3), 1),
 ('d31b51cca5f2cf8b71579ab2c8eeeb88c99a', '180508d1762e9c58f10ffa00499ee9216234b22e98c5345bfbd19453b1e6af25', NOW(3), '20260813162155_quitar_sp_sin_uso', NOW(3), 1),
-('7465372b9d098bcf3d2735d036613a25925d', 'f4b310c780ec6cd98606cd91e6ea2d82b74aeec23864cb330deda5aa2177d2d9', NOW(3), '20260813170500_notificaciones_indices_y_purga', NOW(3), 1);
+('7465372b9d098bcf3d2735d036613a25925d', 'f4b310c780ec6cd98606cd91e6ea2d82b74aeec23864cb330deda5aa2177d2d9', NOW(3), '20260813170500_notificaciones_indices_y_purga', NOW(3), 1),
+('db110ddd207d3c846af9cb26acd7b6b37c35', '9d6c9c768f7e6b9feff0adc35306519c59d965af0289896617b93119b2ff27af', NOW(3), '20260814120000_umbrales_alerta_configurables', NOW(3), 1);

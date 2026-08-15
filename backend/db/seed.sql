@@ -31,11 +31,63 @@ INSERT INTO unidad (hospital_id, nombre) VALUES
 -- dato de la variable, no del equipo que la mide. Los códigos son los que
 -- publica la Raspberry en el tema MQTT; una variable nueva la da de alta la
 -- propia ingesta la primera vez que llega (ver src/services/mqttIngest.ts).
+--
+-- `pr`, `perfusion` y `resp` estaban antes solo en esa alta automática, o sea
+-- que no existían hasta que llegaba su primera lectura. Ahora hacen falta desde
+-- el principio: `umbral_alerta` cuelga de esta tabla por clave foránea y los
+-- umbrales de las tres se siembran más abajo. `pr` va en `lpm` como `hr` —es la
+-- misma frecuencia por otra vía, y dos etiquetas para la misma magnitud es justo
+-- lo que este catálogo existe para impedir— aunque el equipo la publique en
+-- `bpm`; la ingesta avisa de la discrepancia y manda el catálogo.
+--
+-- `ecg` no está: no tiene umbral que sembrar —una muestra suelta de voltaje no
+-- dice nada sin la onda completa— y sigue entrando por el alta automática.
 INSERT INTO variable (codigo, unidad) VALUES
   ('hr', 'lpm'),
   ('spo2', '%'),
   ('pa', 'mmHg'),
-  ('temp', '°C');
+  ('temp', '°C'),
+  ('pr', 'lpm'),
+  ('perfusion', '%'),
+  ('resp', 'rpm');
+
+-- Umbrales de alerta por defecto: cuándo una lectura se convierte en alerta.
+--
+-- Son EXACTAMENTE los números y los textos que hasta ahora estaban escritos en
+-- `evaluateAlert`, dentro de src/services/mqttIngest.ts. Una instalación recién
+-- sembrada alerta igual que antes de que esto fuera configurable; es la razón de
+-- que estas ocho filas estén aquí y no en un formulario que alguien tenga que
+-- rellenar el primer día.
+--
+-- `paciente_id` NULL = el valor por defecto de todo el sistema. Los ajustes de
+-- un paciente concreto se dan de alta por la API (`POST /alert-thresholds`) y
+-- SUSTITUYEN a estas filas para esa variable, no se mezclan con ellas: ver el
+-- comentario del modelo `UmbralAlerta` en prisma/schema.prisma.
+--
+-- Las bandas se evalúan de mayor a menor severidad y gana la primera que salta,
+-- que es el orden en el que estaban los `if`.
+--
+-- Dos decisiones clínicas que se conservan tal cual y no son un olvido:
+--
+--   · `resp` llega a `alta` y no tiene banda `critica`. Es una estimación sacada
+--     de cómo la respiración mueve la línea de base del pletismógrafo, no una
+--     respiración medida por flujo ni por impedancia: no es un número sobre el
+--     que despertar a nadie. Un hospital puede añadirle la banda —esto es
+--     configuración—, pero sembrarla sería decidir por él.
+--   · `perfusion` va en `baja` porque no es un signo vital: dice cuánta señal le
+--     llega al sensor. Por debajo de 0.2 el dedo está frío o mal apoyado, y de
+--     quien hay que desconfiar es del SpO2 que sale de ahí, no del paciente.
+INSERT INTO umbral_alerta
+  (variable_codigo, paciente_id, severidad, valor_min, valor_max, tipo, plantilla_mensaje)
+VALUES
+  ('hr',        NULL, 'critica', 40,   140,  'hr_fuera_de_rango',   'Frecuencia cardiaca {valor} bpm fuera de rango crítico'),
+  ('hr',        NULL, 'alta',    50,   120,  'hr_fuera_de_rango',   'Frecuencia cardiaca {valor} bpm fuera de rango'),
+  ('spo2',      NULL, 'critica', 85,   NULL, 'spo2_bajo',           'SpO2 {valor}% crítico'),
+  ('spo2',      NULL, 'alta',    90,   NULL, 'spo2_bajo',           'SpO2 {valor}% bajo'),
+  ('pr',        NULL, 'critica', 40,   140,  'pr_fuera_de_rango',   'Frecuencia de pulso {valor} bpm fuera de rango crítico'),
+  ('pr',        NULL, 'alta',    50,   120,  'pr_fuera_de_rango',   'Frecuencia de pulso {valor} bpm fuera de rango'),
+  ('resp',      NULL, 'alta',    8,    30,   'resp_fuera_de_rango', 'Respiración estimada {valor} rpm fuera de rango'),
+  ('perfusion', NULL, 'baja',    0.2,  NULL, 'perfusion_baja',      'Índice de perfusión {valor}%: señal débil, el SpO2 puede no ser fiable');
 
 -- Roles base. `es_sistema` los marca como no borrables: se pueden editar la
 -- etiqueta, la descripción y la matriz, pero no darlos de baja porque el resto
