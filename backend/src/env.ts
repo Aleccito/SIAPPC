@@ -44,6 +44,16 @@ const {
   // usuarios virtuales salen de una sola IP y comparten el cubo: con 100 el
   // limitador responde 429 antes de que se pueda medir nada de la base.
   RATE_LIMIT_MAX = "100",
+  // LLM local para /ai/assist (Docker Model Runner, API compatible con OpenAI). Ver src/routes/ai.ts.
+  LLM_URL = "http://localhost:40591/engines/v1",
+  LLM_MODEL = "huggingface.co/mungert/medgemma-4b-it-gguf:Q4_K_M",
+  // Tope por consulta al LLM. En CPU un análisis completo puede pasar de un minuto.
+  LLM_TIMEOUT_SECONDS = "180",
+  // Análisis automático de pacientes críticos (services/aiAuto.ts): segundos
+  // sin relanzar el análisis de un paciente (salvo que escale a crítica) y
+  // segundos que vive el resultado en Redis.
+  AI_AUTO_COOLDOWN_SECONDS = "300",
+  AI_AUTO_TTL_SECONDS = "900",
 } = process.env;
 
 if (!JWT_SECRET) {
@@ -104,6 +114,25 @@ if (!Number.isInteger(rateLimitMax) || rateLimitMax < 1) {
   process.exit(1);
 }
 
+const aiAutoCooldownSeconds = Number(AI_AUTO_COOLDOWN_SECONDS);
+const aiAutoTtlSeconds = Number(AI_AUTO_TTL_SECONDS);
+const llmTimeoutSeconds = Number(LLM_TIMEOUT_SECONDS);
+
+if (!Number.isInteger(llmTimeoutSeconds) || llmTimeoutSeconds < 1) {
+  console.error("LLM_TIMEOUT_SECONDS debe ser un entero de segundos >= 1");
+  process.exit(1);
+}
+
+if (!Number.isInteger(aiAutoCooldownSeconds) || aiAutoCooldownSeconds < 0) {
+  console.error("AI_AUTO_COOLDOWN_SECONDS debe ser un entero de segundos >= 0");
+  process.exit(1);
+}
+
+if (!Number.isInteger(aiAutoTtlSeconds) || aiAutoTtlSeconds < 1) {
+  console.error("AI_AUTO_TTL_SECONDS debe ser un entero de segundos >= 1");
+  process.exit(1);
+}
+
 export const env = {
   port: Number(PORT),
   jwtSecret: JWT_SECRET,
@@ -111,6 +140,8 @@ export const env = {
   redisUrl: REDIS_URL || undefined,
   sensorsCacheTtl,
   rateLimitMax,
+  llm: { url: LLM_URL, model: LLM_MODEL, timeoutMs: llmTimeoutSeconds * 1000 },
+  aiAuto: { cooldownSeconds: aiAutoCooldownSeconds, ttlSeconds: aiAutoTtlSeconds },
   mqtt: {
     host: MQTT_HOST,
     port: Number(MQTT_PORT),

@@ -38,6 +38,11 @@ conviene saber que existen:
 |---|---|---|
 | `RATE_LIMIT_MAX` | `100` | Techo de peticiones por minuto y por IP. Solo se sube para medir con JMeter (ver [Pruebas/README.md](Pruebas/README.md)) |
 | `ETL_RETENCION_DIAS` | `0` | Días de lecturas crudas que conserva el ETL. **`0` = no se borra nada**, que es el valor por defecto a propósito: la poda destruye datos y se enciende a mano en cada institución. Solo afecta a `lectura`; los agregados de `lectura_hora` y `alerta_dia` no se tocan nunca |
+| `LLM_URL` | `http://model-runner.docker.internal/engines/v1` (Compose) | API del modelo local (Docker Model Runner, compatible con OpenAI) |
+| `LLM_MODEL` | `huggingface.co/mungert/medgemma-4b-it-gguf:Q4_K_M` | Id del modelo, como lo lista `docker model list` |
+| `LLM_TIMEOUT_SECONDS` | `180` | Tope por consulta al modelo |
+| `AI_AUTO_COOLDOWN_SECONDS` | `300` | Espera entre dos análisis automáticos del mismo paciente |
+| `AI_AUTO_TTL_SECONDS` | `900` | Cuánto vive el último análisis en Redis |
 
 ### 3. Generar los certificados del broker
 
@@ -385,9 +390,96 @@ Con `docker compose up` quedan operativos, contra la base real:
   Excepción real, no pendiente de documentar: `/sensors/*` y
   `/dashboard/devices` todavía no filtran por hospital, porque la clave de
   caché de Redis tampoco lo incluye
+- **Asistente clínico (IA)** — análisis automático de pacientes críticos y
+  consulta manual con un modelo local. Ver [Asistente clínico (IA)](#asistente-clínico-ia)
 
 Sigue siendo maqueta sin servidor detrás la **recuperación de contraseña**. El
 detalle está en [frontend/README.md](frontend/README.md).
+
+## Asistente clínico (IA)
+
+Sugiere al médico qué podría tener un paciente según sus datos. Es apoyo: no
+decide, no firma y no escribe nada en el expediente ni en la base de datos.
+
+### Estructura
+
+```
+backend/
+  src/routes/ai.ts              POST /ai/assist (consulta manual) y GET /ai/assist/:patientId (último análisis)
+  src/services/aiAuto.ts        cola y análisis automático
+  src/services/aiCooldown.ts    regla de enfriamiento por paciente
+  src/services/mqttIngest.ts    al crear una alerta alta/crítica, encola el análisis
+  src/lib/clinicalAi.ts         cliente del modelo y armado del contexto del paciente
+  src/env.ts                    variables LLM_* y AI_AUTO_*
+  db/seed-demo.sql              datos de prueba (ver más abajo)
+Pruebas/backend/aiAuto.test.ts  pruebas de la regla de enfriamiento
+frontend/src/modules/
+  clinical/api/aiApi.ts                 llamada a GET /ai/assist/:patientId
+  clinical/components/AiIdeasCard.tsx   tarjeta "Ideas de la IA"
+  clinical/pages/ExpedientePage.tsx     muestra la tarjeta
+  monitoring/pages/BedMonitorPage.tsx   la muestra si la cama está en alerta alta o crítica
+```
+
+### Cómo funciona
+
+1. Un dato llega por MQTT y `mqttIngest.ts` crea una alerta.
+2. Si la alerta es `alta` o `critica` y el dispositivo tiene paciente, se encola un
+   análisis (`aiAuto.ts`). No bloquea la ingesta.
+3. Se respeta un enfriamiento por paciente (`AI_AUTO_COOLDOWN_SECONDS`), salvo que la
+   severidad suba de `alta` a `critica`. Solo se hace una consulta al modelo a la vez
+   y un pendiente por paciente.
+4. El modelo recibe el contexto del paciente (edad, sexo, alergias, medicamentos
+   activos, diagnósticos, antecedentes, últimos signos vitales y 3 últimas notas
+   SOAP; sin nombre ni cédula) y devuelve al menos dos hipótesis, validadas con zod.
+5. El resultado se guarda solo en Redis (`siappc-ai:auto:<patientId>`) con caducidad.
+6. El frontend lo lee con `GET /ai/assist/:patientId` y lo muestra en la tarjeta.
+
+El modelo corre con Docker Model Runner, fuera de Compose: MedGemma 4B cuantizado
+(`Q4_K_M`). El prompt del análisis automático está en `aiAuto.ts` (`AUTO_SYSTEM`,
+marcado con `// AJUSTAR`). Ambas rutas exigen el permiso `notas_soap` / `crear`
+(en el seed, solo médicos).
+
+### Estado
+
+**Funcional (comprobado):**
+- Backend: `npm run typecheck` sin errores. Frontend: lint y build sin errores.
+- Todo el proyecto levanta con `docker compose up -d --build`.
+- Una lectura crítica publicada por MQTT crea la alerta y dispara el análisis.
+- `GET /ai/assist/:patientId` responde 401 sin token y 200 con token de médico.
+- El backend alcanza al modelo; el modelo responde por su API.
+- Pruebas de `aiAuto.test.ts` (enfriamiento y escalada): 5 pasan.
+
+**Por revisar:**
+- **El análisis automático no ha terminado nunca de punta a punta.** En esta máquina
+  (sin GPU) el modelo genera cerca de 1 token por segundo y la consulta agota
+  `LLM_TIMEOUT_SECONDS` (`TimeoutError` en el log).
+- Formato JSON real que devuelve MedGemma y si acepta bien el rol `system`.
+- La tarjeta en el navegador, con un análisis real.
+- Prompt del análisis (`AUTO_SYSTEM`): pendiente de afinar qué debe y qué no debe generar.
+- El enfriamiento y la cola son de memoria del proceso: con varias instancias del
+  backend, cada una analizaría por su cuenta.
+- La consulta manual (`POST /ai/assist`) no tiene pantalla en el frontend.
+- El contexto del paciente se envía a donde apunte `LLM_URL`.
+- `npm test` completo no se ha ejecutado (falta `backend/.env.test`).
+
+## Datos de prueba
+
+`backend/db/seed-demo.sql` carga 18 pacientes ficticios (cédulas `DEMO-0001` a
+`DEMO-0018`): 15 ingresados con cama, médico asignado, monitor y sensores `hr`,
+`spo2` y `resp` (6 críticos, 5 intermedios, 4 estables), 2 en espera y 1 dado de alta.
+Cada uno trae expediente con antecedentes, alergias, medicamentos y diagnósticos.
+Incluye unas 1800 lecturas de los últimos 40 minutos, sus alertas y 19 camas.
+
+Se aplica una sola vez, sobre la base ya creada por el seed base:
+
+```bash
+set -a && . ./.env && set +a
+docker compose exec -T mariadb mariadb -uroot -p"$DB_ROOT_PASSWORD" \
+  --default-character-set=utf8mb4 "$DB_NAME" < backend/db/seed-demo.sql
+```
+
+Por revisar: las lecturas son relativas al momento de aplicarlo y se desactualizan;
+las alertas sembradas no disparan el análisis de IA (solo las que entran por MQTT).
 
 ## Simulación
 

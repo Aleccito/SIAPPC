@@ -23,6 +23,7 @@ import { listMonitoredBeds } from '../api/monitoringApi'
 import { VitalsMonitor } from '../components/VitalsMonitor'
 import { getExpediente, listSoapNotes } from '../../clinical/api/clinicalApi'
 import { ExpedienteResumen } from '../../clinical/components/ExpedienteResumen'
+import { AiIdeasCard } from '../../clinical/components/AiIdeasCard'
 import type { SoapNote as ClinicalSoapNote } from '../../clinical/types'
 import { listReadings } from '../../sensors/api/sensorsApi'
 import { usePageHeader } from '../../../app/pageHeader'
@@ -117,9 +118,13 @@ export function BedMonitorPage() {
   const camas = useQuery({
     queryKey: ['monitoredBeds'],
     queryFn: () => listMonitoredBeds(),
-    enabled: tab === 'history' || tab === 'soap',
+    // Siempre activa (y no solo en historia/SOAP): de aquí sale también si el
+    // paciente está crítico para enseñar las ideas de la IA.
+    refetchInterval: 30_000,
   })
-  const patientId = camas.data?.find((cama) => cama.device === device)?.patientId ?? null
+  const cama = camas.data?.find((entry) => entry.device === device)
+  const patientId = cama?.patientId ?? null
+  const critico = cama?.worstSeverity === 'alta' || cama?.worstSeverity === 'critica'
 
   const expediente = useQuery({
     queryKey: ['expediente', patientId],
@@ -245,6 +250,8 @@ export function BedMonitorPage() {
           </Stack>
         </Paper>
       )}
+
+      {patientId !== null && critico && <AiIdeasCard patientId={patientId} />}
 
       <Tabs
         value={tab}

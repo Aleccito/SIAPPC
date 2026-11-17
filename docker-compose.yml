@@ -142,6 +142,13 @@ services:
       # 100, que es lo de siempre. Se sube solo para las pruebas de carga: todos
       # los usuarios virtuales de JMeter salen de una IP y comparten el cubo.
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      # LLM local del asistente clínico (/ai/assist): Docker Model Runner del host.
+      # Requiere: docker model pull <LLM_MODEL>.
+      LLM_URL: http://model-runner.docker.internal/engines/v1
+      LLM_MODEL: ${LLM_MODEL:-huggingface.co/mungert/medgemma-4b-it-gguf:Q4_K_M}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-180}
+      AI_AUTO_COOLDOWN_SECONDS: ${AI_AUTO_COOLDOWN_SECONDS:-300}
+      AI_AUTO_TTL_SECONDS: ${AI_AUTO_TTL_SECONDS:-900}
     volumes:
       - ./infra/mosquitto/certs/ca.crt:/certs/ca.crt:ro
     ports:
