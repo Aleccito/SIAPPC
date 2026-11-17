@@ -209,7 +209,7 @@ export default async function soapRoutes(app: FastifyInstance) {
   // PUT y PATCH comparten handler: los dos escriben las mismas cuatro
   // secciones y la diferencia es qué esquema valida la entrada.
   const editHandler =
-    <T extends Record<string, unknown>>(schema: z.ZodType<T, z.ZodTypeDef, unknown>) =>
+    <T extends Record<string, unknown>>(schema: z.ZodType<T, unknown>) =>
     async (req: FastifyRequest) => {
       const { id } = parseOr400(idSchema, req.params);
       const input = parseOr400(schema, req.body);

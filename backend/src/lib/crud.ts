@@ -70,8 +70,8 @@ export type CrudConfig<TRow, TDto, TCreate, TUpdate> = {
   permissions: Record<PermissionAction, string | null>;
   // El tercer parámetro queda abierto: un esquema con `.default()` acepta a la
   // entrada menos de lo que produce a la salida, y fijarlo a TCreate lo rechaza.
-  createSchema: z.ZodType<TCreate, z.ZodTypeDef, unknown>;
-  updateSchema: z.ZodType<TUpdate, z.ZodTypeDef, unknown>;
+  createSchema: z.ZodType<TCreate, unknown>;
+  updateSchema: z.ZodType<TUpdate, unknown>;
   /** Del renglón de la base a lo que ve el navegador. */
   toDto: (row: TRow) => TDto;
   /** Del cuerpo validado a `data` de Prisma. */
@@ -202,7 +202,7 @@ export function registerCrud<TRow, TDto, TCreate, TUpdate>(
   // base, así que comparten el resto.
   const upsertHandler =
     <T>(
-      schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+      schema: z.ZodType<T, unknown>,
       toData: (input: T, req: FastifyRequest) => Record<string, unknown>,
     ) =>
     async (req: FastifyRequest) => {
