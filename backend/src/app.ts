@@ -26,6 +26,7 @@ import waveformStreamRoutes from "./routes/waveformStream.ts";
 import reportesCsvRoutes from "./routes/reportesCsv.ts";
 import searchRoutes from "./routes/search.ts";
 import notificationsRoutes from "./routes/notifications.ts";
+import aiRoutes from "./routes/ai.ts";
 
 export async function buildApp() {
   const app = Fastify({
@@ -120,6 +121,7 @@ export async function buildApp() {
   await app.register(reportesCsvRoutes);
   await app.register(searchRoutes);
   await app.register(notificationsRoutes);
+  await app.register(aiRoutes);
 
   return app;
 }

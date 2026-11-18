@@ -6,6 +6,7 @@ import { env } from "../env.ts";
 import { publicarAlerta } from "../lib/eventos.ts";
 import { notificarAlerta } from "../lib/notificaciones.ts";
 import { repartirOnda, waveformSchema } from "./waveform.ts";
+import { encolarAnalisisIA } from "./aiAuto.ts";
 
 // Forma de siappc/<device>/telemetry, ver iot/src/publisher.py:build_payload.
 // `variable` no es un enum cerrado: sensor.variable_medida es VARCHAR(60) y
@@ -248,6 +249,12 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
           at: creada.fecha_hora.toISOString(),
           notificados,
         });
+
+        // Paciente crítico: encola el análisis IA. Fire-and-forget, nunca
+        // bloquea ni hace fallar la ingesta (ver services/aiAuto.ts).
+        if (contexto.paciente && (alert.severidad === "alta" || alert.severidad === "critica")) {
+          encolarAnalisisIA(contexto.paciente.paciente_id, contexto.hospital_id, alert.severidad, logger);
+        }
       }
     }
   }

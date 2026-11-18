@@ -68,6 +68,8 @@ que nginx quita al hacer proxy.
 | `GET /sensors/alerts` | Alertas, además por `severity` y `status` |
 | `GET /alerts/stream` | Alertas en vivo por Server-Sent Events. Ver [Alertas en vivo](#alertas-en-vivo-sse) |
 | `GET /search` | Búsqueda global (pacientes, notas SOAP, dispositivos), acotada por hospital |
+| `POST /ai/assist` | Consulta manual al asistente de IA. Permiso `notas_soap`/`crear`, 10 por minuto |
+| `GET /ai/assist/:patientId` | Último análisis automático del paciente, o `{"analysis": null}`. Mismo permiso, acotado por hospital |
 | `GET /beds` · `GET /beds/:id` · `POST /beds` · `PUT|PATCH /beds/:id` · `DELETE /beds/:id` | CRUD de camas (fábrica `crud.ts`) |
 | `GET /beds/occupancy` | Ocupación agregada por unidad |
 | `GET /admissions` · `GET /admissions/:id` · `POST /admissions` · `PATCH /admissions/:id` | Ingresos: alta ocupa la cama, egreso la manda a `limpieza` |
@@ -360,6 +362,16 @@ entrar en la clave, o un usuario leería la respuesta cacheada de otro hospital.
 Cualquier fallo de Redis se degrada a consultar MariaDB: la caché nunca
 convierte una API que funciona en una que responde 500.
 
+## Asistente clínico (IA)
+
+Archivos: `src/routes/ai.ts` (rutas), `src/services/aiAuto.ts` (cola y análisis),
+`src/services/aiCooldown.ts` (regla de enfriamiento), `src/lib/clinicalAi.ts`
+(cliente del modelo y contexto del paciente). Variables `LLM_*` y `AI_AUTO_*` en
+`src/env.ts` y `.env.example`. El resultado vive solo en Redis. Las rutas registran
+`authenticate` antes de `requirePermission`.
+
+Flujo, estado y puntos por revisar: [README de la raíz](../README.md#asistente-clínico-ia).
+
 ## Ingesta MQTT
 
 `src/services/mqttIngest.ts` se suscribe a `siappc/+/telemetry` y por cada
@@ -373,6 +385,8 @@ mensaje válido:
 3. Inserta la `lectura` con `INSERT IGNORE`: el índice único sobre
    `hash_sha256` descarta reenvíos del buffer de la Pi y duplicados de QoS 1.
 4. Evalúa umbrales y, si toca, inserta la `alerta`.
+5. Si la alerta es `alta` o `critica` y el dispositivo tiene paciente, encola el
+   análisis de IA (`services/aiAuto.ts`) sin bloquear la ingesta.
 
 Los umbrales viven en código (`hr` fuera de 50–120 / 40–140, `spo2` bajo 90 / 85).
 Son un mínimo viable, no la lógica clínica final: todavía no hay tabla de

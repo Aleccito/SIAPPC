@@ -28,3 +28,6 @@ dist/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# graphify: salida generada del grafo de conocimiento
+graphify-out/

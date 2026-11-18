@@ -38,6 +38,7 @@ import { VitalsMonitor } from '../../monitoring/components/VitalsMonitor'
 import { listReadings } from '../../sensors/api/sensorsApi'
 import { SoapNoteDialog } from '../components/SoapNoteDialog'
 import { ExpedienteResumen } from '../components/ExpedienteResumen'
+import { AiIdeasCard } from '../components/AiIdeasCard'
 import type { SoapNote } from '../types'
 import { useAuth } from '../../auth/useAuth'
 import { usePageHeader } from '../../../app/pageHeader'
@@ -216,6 +217,8 @@ export function ExpedientePage() {
 
       {patientId !== '' && (
         <>
+          <AiIdeasCard patientId={patientId} />
+
           <Tabs
             value={tab}
             onChange={(_, next: 'soap' | 'history' | 'monitoring') => setTab(next)}

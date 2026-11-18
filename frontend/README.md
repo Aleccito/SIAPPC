@@ -55,6 +55,18 @@ que reemplazar. Las reales pasan todas por
 [`src/shared/api/http.ts`](src/shared/api/http.ts), que agrega el token y
 normaliza los errores del backend.
 
+### Asistente de IA
+
+`modules/clinical/components/AiIdeasCard.tsx` muestra las ideas del último análisis
+(al menos dos, con hora, severidad y aviso legal). La usan `ExpedientePage` y
+`BedMonitorPage` (esta, solo con la cama en alerta alta o crítica). Lee
+`GET /ai/assist/:patientId` (`clinical/api/aiApi.ts`) con refresco cada 30 s y al
+llegar una alerta por SSE. Textos en `shared/i18n/dictionary.ts` (`aiIdeas.*`, solo
+`es`). Si el servidor responde 403, la tarjeta no se pinta.
+
+Por revisar: la consulta manual (`POST /ai/assist`) no tiene pantalla, y la tarjeta
+no se ha visto en el navegador con un análisis real.
+
 ### Descargas autenticadas
 
 La exportación de informes

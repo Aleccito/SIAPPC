@@ -988,6 +988,15 @@ const es = {
   'roles.field.description': 'Descripción',
   'roles.save': 'Guardar cambios',
   'roles.saved': 'Rol actualizado',
+
+  'aiIdeas.title': 'Ideas de la IA',
+  'aiIdeas.generatedAt': 'Análisis',
+  'aiIdeas.severity.alta': 'Disparado por alerta alta',
+  'aiIdeas.severity.critica': 'Disparado por alerta crítica',
+  'aiIdeas.empty': 'Sin análisis todavía.',
+  'aiIdeas.error': 'No se pudo cargar el análisis de la IA.',
+  'aiIdeas.disclaimer':
+    'Sugerencia generada por IA. No sustituye el juicio clínico.',
 } as const
 
 export type StringKey = keyof typeof es
