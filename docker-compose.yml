@@ -275,6 +275,25 @@ services:
       backend:
         condition: service_healthy
 
+  # Prototipo visual del módulo médico: las 35 pantallas de Figma en React +
+  # Tailwind, con datos de ejemplo escritos en las pantallas. NO es el tablero
+  # real (ese es `frontend`) y no habla con el backend, así que no depende de
+  # ningún otro servicio. Ver prototipo/LEEME.md.
+  #
+  # Va en un perfil propio para que `docker compose up` no lo levante junto con
+  # el sistema. Se levanta nombrándolo:
+  #
+  #   docker compose up -d --build prototipo
+  #
+  # En 8082: 8080 es el tablero y 8081 el adminer.
+  prototipo:
+    build: ./prototipo
+    container_name: siappc-prototipo
+    profiles: ['prototipo']
+    restart: unless-stopped
+    ports:
+      - '${PROTOTIPO_PORT:-8082}:80'
+
 volumes:
   mariadb_data:
   mosquitto_data:
