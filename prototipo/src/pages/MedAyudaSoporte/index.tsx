@@ -9,7 +9,8 @@ import imgIconAssetBe1a93ac from '../../assets/icon-asset-be1a93ac.svg';
 import imgLiveIndicatorEllipse from '../../assets/live-indicator-ellipse.svg';
 import imgPhone from '../../assets/phone.svg';
 import imgWrench from '../../assets/wrench.svg';
-import { AppLayout, Badge, Button, Card, EmptyState, Modal, ModalHeader, Select, TextArea, useToast } from '../../components';
+import { AppLayout, Badge, Button, Card, EmptyState, focusFirst, Modal, ModalHeader, Select, TextArea, useToast, useValidation } from '../../components';
+import { checkText } from '../../lib/validate';
 import { cn } from '../../lib/cn';
 
 const CATEGORIES = [
@@ -76,8 +77,21 @@ export default function MedAyudaSoporte() {
       return next;
     });
 
-  const sendTicket = () => {
+  const [message, setMessage] = useState('');
+  // El mensaje es obligatorio: de 10 a 1000 caracteres (REVISION.md, paso 3, punto 8).
+  const form = useValidation({ 'contacto-descripcion': () => checkText(message, { required: true, min: 10, max: 1000, requiredMessage: 'Describa el problema' }) });
+  const closeContact = () => {
     setContactOpen(false);
+    setMessage('');
+    form.reset();
+  };
+  const sendTicket = () => {
+    form.markAll();
+    if (form.errors['contacto-descripcion']) {
+      focusFirst(['contacto-descripcion']);
+      return;
+    }
+    closeContact();
     toast('Solicitud enviada · Folio #4821');
   };
 
@@ -192,15 +206,26 @@ export default function MedAyudaSoporte() {
         </div>
       </div>
 
-      <Modal labelledBy="contacto-titulo" open={contactOpen} onClose={() => setContactOpen(false)} width={480} className="gap-4 p-5 shadow-xl sm:p-6">
-        <ModalHeader id="contacto-titulo" title="Contactar Soporte Técnico" onClose={() => setContactOpen(false)} />
+      <Modal labelledBy="contacto-titulo" open={contactOpen} onClose={closeContact} width={480} className="gap-4 p-5 shadow-xl sm:p-6">
+        <ModalHeader id="contacto-titulo" title="Contactar Soporte Técnico" onClose={closeContact} />
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
           <Select variant="input" fieldLabel="Motivo" options={REASONS} value={reason} onChange={setReason} />
           <Select variant="input" fieldLabel="Prioridad" options={PRIORITIES} value={priority} onChange={setPriority} />
         </div>
-        <TextArea id="contacto-descripcion" label="Descripción" rows={4} placeholder="Describe el problema (opcional)" />
+        <TextArea
+          id="contacto-descripcion"
+          label="Descripción"
+          value={message}
+          onChange={setMessage}
+          onBlur={() => form.touch('contacto-descripcion')}
+          placeholder="Describe el problema: qué pantalla, qué hiciste y qué pasó"
+          minHeight={96}
+          maxLength={1000}
+          aria-required
+          error={form.show('contacto-descripcion')}
+        />
         <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
-          <Button variant="secondary" onClick={() => setContactOpen(false)}>
+          <Button variant="secondary" onClick={closeContact}>
             Cancelar
           </Button>
           <Button onClick={sendTicket}>Enviar solicitud</Button>

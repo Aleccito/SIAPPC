@@ -2,7 +2,14 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import imgFileText6 from '../../assets/file-text-6.svg';
-import { BackButton, Badge, Button, Card, PatientLayout, Table, useToast } from '../../components';
+import { BackButton, Badge, Button, Card, focusFirst, PatientLayout, Table, TextArea, useToast, useValidation } from '../../components';
+import { checkText } from '../../lib/validate';
+
+/** Nota correlativa de Figma; lo actualizado se conserva mientras no se recargue la página. */
+let savedNote = [
+  'Paciente ingresa con cuadro severo de descompensación de ICC secundario a crisis hipertensiva. Se identifica edema pulmonar agudo clínico y radiológico.',
+  'El manejo hemodinámico requiere estrecha vigilancia metabólica debido a su antecedente de Diabetes Tipo 2. Se prioriza el uso de diuréticos de asa y soporte de ventilación no invasiva.',
+].join('\n\n');
 
 const SELF = '/MedPacienteDiagnosticosActivos';
 const REGISTER_PATH = '/MedPacienteRegistroDiagnostico';
@@ -25,6 +32,18 @@ const SectionTitle = ({ children }: { children: string }) => (
 
 export default function MedPacienteDiagnosticosActivos() {
   const toast = useToast();
+  const [note, setNote] = useState(savedNote);
+  const form = useValidation({ 'nota-correlativa': () => checkText(note, { required: true, min: 20, max: 2000, requiredMessage: 'Escriba la nota correlativa' }) });
+  const updateNote = () => {
+    form.markAll();
+    if (form.errors['nota-correlativa']) {
+      toast('Revise los campos marcados', 'info');
+      focusFirst(['nota-correlativa']);
+      return;
+    }
+    savedNote = note;
+    toast('Nota actualizada');
+  };
   const navigate = useNavigate();
   const { state } = useLocation() as { state: RegisteredState | null };
   const [rows] = useState<Diagnosis[]>(() =>
@@ -98,12 +117,22 @@ export default function MedPacienteDiagnosticosActivos() {
             <img className="size-[18px]" alt="" src={imgFileText6} />
             <h2 className="font-jakarta text-[15px] font-bold leading-[normal] text-ink">Notas Clínicas Correlativas</h2>
           </div>
-          <p className="font-jakarta text-[12px] font-normal leading-[normal] text-muted">Nota general sobre evolución e interrelación fisiopatológica de los diagnósticos:</p>
-          <div className="flex w-full flex-col gap-[1.5em] rounded-lg border border-line bg-surface p-3 font-jakarta text-[13px] font-normal leading-[1.5] text-ink">
-            <p>Paciente ingresa con cuadro severo de descompensación de ICC secundario a crisis hipertensiva. Se identifica edema pulmonar agudo clínico y radiológico.</p>
-            <p>El manejo hemodinámico requiere estrecha vigilancia metabólica debido a su antecedente de Diabetes Tipo 2. Se prioriza el uso de diuréticos de asa y soporte de ventilación no invasiva.</p>
-          </div>
-          <Button fullWidth onClick={() => toast('Nota actualizada')}>
+          <label htmlFor="nota-correlativa" className="font-jakarta text-[12px] font-normal leading-[normal] text-muted">
+            Nota general sobre evolución e interrelación fisiopatológica de los diagnósticos:
+          </label>
+          {/* Los dos párrafos de Figma van separados por una línea en blanco (el mismo espacio). */}
+          <TextArea
+            id="nota-correlativa"
+            value={note}
+            onChange={setNote}
+            onBlur={() => form.touch('nota-correlativa')}
+            tone="surface"
+            leading="relaxed"
+            maxLength={2000}
+            aria-required
+            error={form.show('nota-correlativa')}
+          />
+          <Button fullWidth onClick={updateNote}>
             Actualizar Nota
           </Button>
         </Card>

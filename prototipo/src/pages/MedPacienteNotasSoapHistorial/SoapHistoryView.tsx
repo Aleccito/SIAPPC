@@ -7,7 +7,7 @@ import imgChevronRight2 from '../../assets/chevron-right-2.svg';
 import imgIconwrapper15 from '../../assets/iconwrapper-15.svg';
 import imgSliders from '../../assets/sliders.svg';
 import { Badge, Card, Divider, EmptyState, rowButton, Select, SoapSections } from '../../components';
-import { soapDetailPath, SOAP_NOTES } from '../../data/soap';
+import { soapDetailPath, soapNotes } from '../../data/soap';
 import { cn } from '../../lib/cn';
 import { matches } from '../../lib/text';
 
@@ -22,9 +22,11 @@ export function SoapHistoryView() {
   const [selected, setSelected] = useState(0);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(FILTERS[0]);
-  const current = SOAP_NOTES[selected];
+  // Las notas escritas en el prototipo (borradores y firmadas) aparecen primero.
+  const notes = soapNotes();
+  const current = notes[selected] ?? notes[0];
 
-  const visible = SOAP_NOTES.map((n, i) => ({ n, i })).filter(
+  const visible = notes.map((n, i) => ({ n, i })).filter(
     ({ n }) =>
       (filter === 'Todas' || (filter === 'Completadas') === n.done) &&
       matches(query, n.date, n.doctor, n.note.s, n.note.o, n.note.a, n.note.p),
@@ -64,7 +66,7 @@ export function SoapHistoryView() {
           {visible.map(({ n, i }) => {
             const isSelected = i === selected;
             return (
-              <li key={n.date}>
+              <li key={n.id}>
                 <div
                   {...rowButton(() => setSelected(i))}
                   aria-pressed={isSelected}

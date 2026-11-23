@@ -2,7 +2,8 @@
 import { useState, type FormEvent } from 'react';
 import imgSwitchTrack from '../../assets/switch-track.svg';
 import imgSwitchTrack2 from '../../assets/switch-track-2.svg';
-import { AppLayout, Badge, Button, Card, CardTitle, Divider, Input, Modal, ModalHeader, TopBarDate, useToast } from '../../components';
+import { AppLayout, Badge, Button, Card, CardTitle, Divider, focusFirst, Input, Modal, ModalHeader, TopBarDate, useToast, useValidation } from '../../components';
+import { checkNewPassword } from '../../lib/validate';
 
 const PRO_INFO = [
   ['Especialidad principal', 'Medicina Crítica y Terapia Intensiva'],
@@ -64,6 +65,25 @@ export default function MedPerfilMiPerfil() {
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [mfaOpen, setMfaOpen] = useState(false);
   const [mfaActive, setMfaActive] = useState(false);
+  const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' });
+  const [mfaCode, setMfaCode] = useState('');
+  // Contraseña nueva: 12 o más caracteres, mayúscula, número y símbolo, distinta de la actual (REVISION.md, paso 3, punto 8).
+  const pwdForm = useValidation({
+    'password-actual': () => (pwd.current ? null : 'Escriba su contraseña actual'),
+    'password-nueva': () => checkNewPassword(pwd.next, pwd.current),
+    'password-confirmar': () => (!pwd.confirm ? 'Confirme la nueva contraseña' : pwd.confirm !== pwd.next ? 'No coincide con la nueva contraseña' : null),
+  });
+  const mfaForm = useValidation({ 'mfa-codigo': () => (/^\d{6}$/.test(mfaCode) ? null : 'Escriba los 6 dígitos del código') });
+  const closePassword = () => {
+    setPasswordOpen(false);
+    setPwd({ current: '', next: '', confirm: '' });
+    pwdForm.reset();
+  };
+  const closeMfa = () => {
+    setMfaOpen(false);
+    setMfaCode('');
+    mfaForm.reset();
+  };
 
   const flip = (i: number) => {
     setToggles((t) => t.map((on, j) => (j === i ? !on : on)));
@@ -72,14 +92,25 @@ export default function MedPerfilMiPerfil() {
 
   const savePassword = (e: FormEvent) => {
     e.preventDefault();
-    setPasswordOpen(false);
+    pwdForm.markAll();
+    const bad = (Object.keys(pwdForm.errors) as Array<keyof typeof pwdForm.errors>).find((k) => pwdForm.errors[k]);
+    if (bad) {
+      focusFirst([bad]);
+      return;
+    }
+    closePassword();
     setPasswordChanged(true);
     toast('Contraseña actualizada');
   };
 
   const activateMfa = (e: FormEvent) => {
     e.preventDefault();
-    setMfaOpen(false);
+    mfaForm.markAll();
+    if (mfaForm.errors['mfa-codigo']) {
+      focusFirst(['mfa-codigo']);
+      return;
+    }
+    closeMfa();
     setMfaActive(true);
     toast('MFA activado');
   };
@@ -197,15 +228,42 @@ export default function MedPerfilMiPerfil() {
         </div>
       </div>
 
-      <Modal labelledBy="password-titulo" open={passwordOpen} onClose={() => setPasswordOpen(false)} width={440} className="p-5 shadow-xl sm:p-6">
+      <Modal labelledBy="password-titulo" open={passwordOpen} onClose={closePassword} width={440} className="p-5 shadow-xl sm:p-6">
         <form onSubmit={savePassword} className="flex flex-col gap-4">
-          <ModalHeader id="password-titulo" title="Cambiar contraseña" onClose={() => setPasswordOpen(false)} />
-          <Input id="password-actual" label="Contraseña actual" type="password" autoComplete="current-password" />
-          <Input id="password-nueva" label="Nueva contraseña" type="password" autoComplete="new-password" />
-          <Input id="password-confirmar" label="Confirmar nueva contraseña" type="password" autoComplete="new-password" />
+          <ModalHeader id="password-titulo" title="Cambiar contraseña" onClose={closePassword} />
+          <Input
+            id="password-actual"
+            label="Contraseña actual"
+            type="password"
+            autoComplete="current-password"
+            value={pwd.current}
+            onChange={(e) => setPwd((x) => ({ ...x, current: e.target.value }))}
+            onBlur={() => pwdForm.touch('password-actual')}
+            error={pwdForm.show('password-actual')}
+          />
+          <Input
+            id="password-nueva"
+            label="Nueva contraseña"
+            type="password"
+            autoComplete="new-password"
+            value={pwd.next}
+            onChange={(e) => setPwd((x) => ({ ...x, next: e.target.value }))}
+            onBlur={() => pwdForm.touch('password-nueva')}
+            error={pwdForm.show('password-nueva')}
+          />
+          <Input
+            id="password-confirmar"
+            label="Confirmar nueva contraseña"
+            type="password"
+            autoComplete="new-password"
+            value={pwd.confirm}
+            onChange={(e) => setPwd((x) => ({ ...x, confirm: e.target.value }))}
+            onBlur={() => pwdForm.touch('password-confirmar')}
+            error={pwdForm.show('password-confirmar')}
+          />
           <p className="font-jakarta text-[12px] font-normal leading-[1.5] text-muted">Mínimo 12 caracteres, con mayúsculas, números y un símbolo.</p>
           <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
-            <Button variant="secondary" onClick={() => setPasswordOpen(false)}>
+            <Button variant="secondary" onClick={closePassword}>
               Cancelar
             </Button>
             <Button type="submit">Guardar</Button>
@@ -213,9 +271,9 @@ export default function MedPerfilMiPerfil() {
         </form>
       </Modal>
 
-      <Modal labelledBy="mfa-titulo" open={mfaOpen} onClose={() => setMfaOpen(false)} width={520} className="p-5 shadow-xl sm:p-6">
+      <Modal labelledBy="mfa-titulo" open={mfaOpen} onClose={closeMfa} width={520} className="p-5 shadow-xl sm:p-6">
         <form onSubmit={activateMfa} className="flex flex-col gap-4">
-          <ModalHeader id="mfa-titulo" title="Configurar MFA" onClose={() => setMfaOpen(false)} />
+          <ModalHeader id="mfa-titulo" title="Configurar MFA" onClose={closeMfa} />
           <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
             <SampleQr />
             <ol className="flex list-decimal flex-col gap-2 pl-5 font-jakarta text-[13px] font-normal leading-[1.5] text-ink">
@@ -224,9 +282,20 @@ export default function MedPerfilMiPerfil() {
               <li>Escribe el código de 6 dígitos que muestra la aplicación.</li>
             </ol>
           </div>
-          <Input id="mfa-codigo" label="Código de verificación" inputMode="numeric" maxLength={6} placeholder="000000" autoComplete="one-time-code" />
+          <Input
+            id="mfa-codigo"
+            label="Código de verificación"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="000000"
+            autoComplete="one-time-code"
+            value={mfaCode}
+            onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+            onBlur={() => mfaForm.touch('mfa-codigo')}
+            error={mfaForm.show('mfa-codigo')}
+          />
           <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
-            <Button variant="secondary" onClick={() => setMfaOpen(false)}>
+            <Button variant="secondary" onClick={closeMfa}>
               Cancelar
             </Button>
             <Button type="submit">Activar</Button>

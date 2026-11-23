@@ -1,6 +1,7 @@
 // Pantalla "med/paciente/config-umbrales" (Figma node 140:259) — generada desde el diseño original de Figma.
-// Los campos Mín/Máx son dibujos (paso 3 del plan los vuelve editables).
-import { useState } from 'react';
+// Paso 3: Mín/Máx son campos numéricos. Cada signo activo necesita al menos un límite, dentro de su rango
+// posible y con el mínimo menor que el máximo (REVISION.md, paso 3, punto 4).
+import { Fragment, useState } from 'react';
 import imgActivity7 from '../../assets/activity-7.svg';
 import imgBulletItemEllipse from '../../assets/bullet-item-ellipse.svg';
 import imgChevronDown from '../../assets/chevron-down.svg';
@@ -12,8 +13,9 @@ import imgToggleSwitch from '../../assets/toggle-switch.svg';
 import imgToggleSwitch2 from '../../assets/toggle-switch-2.svg';
 import imgTrendingUp from '../../assets/trending-up.svg';
 import imgWind from '../../assets/wind.svg';
-import { BackButton, Button, Card, PatientLayout, Select, Table, useToast } from '../../components';
+import { BackButton, Button, Card, FieldError, focusFirst, NumberField, PatientLayout, Select, Table, useToast, useValidation } from '../../components';
 import { cn } from '../../lib/cn';
+import { checkNumber, parseNumber, VITAL_RANGES, type NumberRule } from '../../lib/validate';
 
 const SEVERITY_DOT: Record<string, string> = { Crítica: imgDropdownBadgeEllipse, Alta: imgDropdownBadgeEllipse2, Media: imgBulletItemEllipse };
 const SEVERITIES = ['Crítica', 'Alta', 'Media', 'Baja'];
@@ -26,33 +28,88 @@ const SeverityLabel = ({ value }: { value: string }) => (
   </span>
 );
 
-const ROWS: Array<{ icon: string; name: string; min?: string; max?: string; severity: string; enabled: boolean }> = [
-  { icon: imgActivity7, name: 'FC (Frecuencia Cardíaca)', min: '50', max: '120', severity: 'Crítica', enabled: true },
-  { icon: imgWind, name: 'SpO2 (Saturación)', min: '92', severity: 'Crítica', enabled: true },
-  { icon: imgHeart5, name: 'PA Sistólica', max: '160', severity: 'Alta', enabled: true },
-  { icon: imgHeart5, name: 'PA Diastólica', max: '100', severity: 'Alta', enabled: true },
-  { icon: imgThermometer, name: 'Temp (Temperatura)', max: '38.5', severity: 'Media', enabled: true },
-  { icon: imgTrendingUp, name: 'FR (Frecuencia Resp.)', min: '10', max: '30', severity: 'Media', enabled: false },
+const ROWS: Array<{ icon: string; name: string; min?: string; max?: string; severity: string; enabled: boolean; range: NumberRule }> = [
+  { icon: imgActivity7, name: 'FC (Frecuencia Cardíaca)', min: '50', max: '120', severity: 'Crítica', enabled: true, range: VITAL_RANGES.fc },
+  { icon: imgWind, name: 'SpO2 (Saturación)', min: '92', severity: 'Crítica', enabled: true, range: VITAL_RANGES.spo2 },
+  { icon: imgHeart5, name: 'PA Sistólica', max: '160', severity: 'Alta', enabled: true, range: VITAL_RANGES.paSys },
+  { icon: imgHeart5, name: 'PA Diastólica', max: '100', severity: 'Alta', enabled: true, range: VITAL_RANGES.paDia },
+  { icon: imgThermometer, name: 'Temp (Temperatura)', max: '38.5', severity: 'Media', enabled: true, range: VITAL_RANGES.temp },
+  { icon: imgTrendingUp, name: 'FR (Frecuencia Resp.)', min: '10', max: '30', severity: 'Media', enabled: false, range: VITAL_RANGES.fr },
 ];
 
-function LimitBox({ label, value }: { label: string; value?: string }) {
+type Limits = { min: string; max: string };
+
+type LimitBoxProps = {
+  id: string;
+  label: string;
+  signal: string;
+  value: string;
+  onChange: (v: string) => void;
+  onBlur: () => void;
+  decimals?: number;
+  error: string | null;
+};
+
+function LimitBox({ id, label, signal, value, onChange, onBlur, decimals, error }: LimitBoxProps) {
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <span className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">{label}</span>
-      <span className="flex w-20 justify-center rounded-md border border-line bg-white px-3 py-2 font-jakarta text-[13px] font-semibold leading-[normal] text-ink">
-        {value ?? <span className="text-subtle">-</span>}
-      </span>
+      <label htmlFor={id} className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">
+        {label}
+      </label>
+      <NumberField id={id} value={value} onChange={onChange} onBlur={onBlur} decimals={decimals} placeholder="-" aria-label={`${label} de ${signal}`} error={error} />
     </div>
   );
 }
 
 const initialSeverity = () => ROWS.map((r) => r.severity);
 const initialEnabled = () => ROWS.map((r) => r.enabled);
+const initialLimits = (): Limits[] => ROWS.map((r) => ({ min: r.min ?? '', max: r.max ?? '' }));
+
+// Lo guardado se conserva mientras no se recargue la página (sin backend).
+let saved: { severity: string[]; enabled: boolean[]; limits: Limits[] } | null = null;
+
+/** Errores de una fila activa: cada límite en su rango y, si hay dos, el mínimo menor que el máximo. */
+function rowErrors(l: Limits, r: (typeof ROWS)[number], on: boolean) {
+  if (!on) return { min: null, max: null };
+  const rule = { ...r.range, required: false };
+  const min = checkNumber(l.min, rule);
+  const max = checkNumber(l.max, rule);
+  if (min || max) return { min, max };
+  if (!l.min.trim() && !l.max.trim()) return { min: 'Defina al menos un límite (mínimo o máximo)', max: null };
+  const a = parseNumber(l.min);
+  const b = parseNumber(l.max);
+  if (a !== null && b !== null && a >= b) return { min: 'El mínimo debe ser menor que el máximo', max: null };
+  return { min: null, max: null };
+}
 
 export default function MedPacienteConfigUmbrales() {
   const toast = useToast();
-  const [severity, setSeverity] = useState(initialSeverity);
-  const [enabled, setEnabled] = useState(initialEnabled);
+  const [severity, setSeverity] = useState(() => saved?.severity ?? initialSeverity());
+  const [enabled, setEnabled] = useState(() => saved?.enabled ?? initialEnabled());
+  const [limits, setLimits] = useState(() => saved?.limits ?? initialLimits());
+  const form = useValidation(
+    Object.fromEntries(
+      ROWS.flatMap((r, i) => {
+        const e = rowErrors(limits[i], r, enabled[i]);
+        return [
+          [`umbral-min-${i}`, () => e.min],
+          [`umbral-max-${i}`, () => e.max],
+        ];
+      }),
+    ) as Record<string, () => string | null>,
+  );
+  const setLimit = (i: number, key: keyof Limits, v: string) => setLimits((all) => all.map((l, j) => (j === i ? { ...l, [key]: v } : l)));
+  const save = () => {
+    form.markAll();
+    const bad = Object.keys(form.errors).find((k) => form.errors[k]);
+    if (bad) {
+      toast('Revise los umbrales marcados', 'info');
+      focusFirst([bad]);
+      return;
+    }
+    saved = { severity, enabled, limits };
+    toast('Umbrales guardados');
+  };
   const update = <T,>(set: (fn: (prev: T[]) => T[]) => void, i: number, value: T) => set((prev) => prev.map((x, j) => (j === i ? value : x)));
 
   return (
@@ -73,9 +130,12 @@ export default function MedPacienteConfigUmbrales() {
             <p className="min-w-0 flex-1 whitespace-nowrap text-right">ESTADO</p>
           </div>
           <div className="flex w-full flex-col gap-[10px]">
-            {ROWS.map((r, i) => (
+            {ROWS.map((r, i) => {
+              const minError = form.show(`umbral-min-${i}`);
+              const maxError = form.show(`umbral-max-${i}`);
+              return (
+              <Fragment key={r.name}>
               <div
-                key={r.name}
                 className={cn(
                   'flex w-full flex-col gap-3 rounded-lg border border-line px-4 py-3 transition-opacity md:flex-row md:items-center md:gap-4',
                   enabled[i] ? 'bg-white' : 'bg-[#f1f5f9] opacity-65',
@@ -88,8 +148,26 @@ export default function MedPacienteConfigUmbrales() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-4 md:w-[248px] md:shrink-0 xl:w-[300px]">
-                  <LimitBox label="Min" value={r.min} />
-                  <LimitBox label="Max" value={r.max} />
+                  <LimitBox
+                    id={`umbral-min-${i}`}
+                    label="Min"
+                    signal={r.name}
+                    value={limits[i].min}
+                    onChange={(v) => setLimit(i, 'min', v)}
+                    onBlur={() => form.touch(`umbral-min-${i}`)}
+                    decimals={r.range.decimals}
+                    error={minError}
+                  />
+                  <LimitBox
+                    id={`umbral-max-${i}`}
+                    label="Max"
+                    signal={r.name}
+                    value={limits[i].max}
+                    onChange={(v) => setLimit(i, 'max', v)}
+                    onBlur={() => form.touch(`umbral-max-${i}`)}
+                    decimals={r.range.decimals}
+                    error={maxError}
+                  />
                 </div>
                 <div className="flex items-center gap-3 md:contents">
                 <div className="min-w-0 flex-1 md:w-[130px] md:flex-none md:shrink-0 xl:w-[180px]">
@@ -117,7 +195,11 @@ export default function MedPacienteConfigUmbrales() {
                 </div>
                 </div>
               </div>
-            ))}
+              {/* El mensaje va bajo la fila; su id lo enlaza con el campo que tiene el error. */}
+              <FieldError forId={minError ? `umbral-min-${i}` : `umbral-max-${i}`} error={minError ?? maxError} className="-mt-1 px-4" />
+              </Fragment>
+              );
+            })}
           </div>
         </Table>
 
@@ -128,12 +210,14 @@ export default function MedPacienteConfigUmbrales() {
             onClick={() => {
               setSeverity(initialSeverity());
               setEnabled(initialEnabled());
+              setLimits(initialLimits());
+              form.reset();
               toast('Valores sugeridos restablecidos', 'info');
             }}
           >
             Restablecer valores sugeridos
           </Button>
-          <Button size="lg" onClick={() => toast('Umbrales guardados')}>
+          <Button size="lg" onClick={save}>
             Guardar Configuración
           </Button>
         </div>

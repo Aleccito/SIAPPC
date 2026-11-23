@@ -104,8 +104,21 @@ escritos en las pantallas**; no se conecta al backend.
      ventanas y la paginación iguales en todas; la confirmación de atención se abre sobre la pantalla de origen.
    - Verificado: `npm run build`; capturas a 1440 comparadas con las del paso 2 (solo cambia lo aprobado); revisión
      automática a 1440, 1024, 768 y 390; pruebas de interacción del acceso y de los roles.
-3. **Formularios.** Campos de texto reales donde hoy hay dibujos (lista en `BOTONES.md`, "Queda para el paso 3"):
-   notas y textareas, Mín/Máx de umbrales, fechas, búsqueda escribiendo en CIE-10 y validación. Sin backend.
+3. ~~**Formularios.**~~ **Hecho (rama `feature/prototipo-formularios`).** Detalle y reglas en `REVISION.md`, "Paso 3":
+   - Todos los campos que eran dibujos se pueden escribir y se validan, sin backend: Nueva nota SOAP (con "Guardar
+     borrador" y "Guardar y firmar"), Confirmación de atención, Entrega de turno, Umbrales Mín/Máx, Registro de
+     diagnóstico (CIE-10 buscando por código o texto), Nota de ingreso, Exploración física, nota correlativa de
+     Diagnósticos, observaciones del Interrogatorio, medicamento libre en Indicaciones, contraseña y código MFA en
+     Mi Perfil y el mensaje de Ayuda. Datos Personales y los datos de admisión siguen de solo lectura (rol).
+   - Componentes nuevos en `src/components/form/`: `TextArea` (reproduce cada dibujo de Figma), `NumberField`,
+     `DateField`, `Combobox`, `FieldError` y `useValidation`; reglas en `src/lib/validate.ts` (largos, rangos de
+     signos vitales, presión "120/80", fechas, contraseña).
+   - Errores al salir del campo o al guardar; con errores no se guarda y el cursor va al primero. Lo guardado vive
+     en memoria hasta recargar (notas SOAP nuevas, umbrales, borrador de entrega, nota de ingreso, exploración).
+   - A 1440 px solo cambian los tres puntos aprobados (botones de la nota SOAP, "Nota firmada" en el detalle,
+     "+ Agregar indicación"); el CIE-10 elegido ya no se corta a 390 px.
+   - Verificado: `npm run build`; capturas a 1440 comparadas con las de antes del paso; pruebas automáticas de cada
+     formulario (errores, rangos, Mín < Máx, búsqueda CIE-10, borrador y firma de la nota SOAP).
 4. **Backend.** No se hace en el prototipo: se hace en `frontend/`, según lo que se decida en el paso 0.
 
 ## Componentes (`src/components/`)
@@ -122,7 +135,9 @@ escritos en las pantallas**; no se conecta al backend.
 | `Tabs`, `SegmentedControl` | Pestañas (subrayado o `pills`) y grupos tipo Grid/Lista. |
 | `Table`, `Pagination` | Tablas con desplazamiento lateral propio (con sombra en el borde cuando hay más columnas) y paginación con números. |
 | `ScrollShadows`, `useScrollEdges` | Sombras de borde para cualquier contenedor que se desplaza de lado (las usan `Table` y `Tabs`). |
-| `Input`, `TextArea`, `SearchBox`, `InfoField`, `TextBlock` | Campos de texto y datos de solo lectura. |
+| `Input`, `SearchBox`, `InfoField` | Campo de una línea (con `error`), buscador y dato de solo lectura. |
+| `TextArea`, `NumberField`, `DateField`, `Combobox` | Campos de formulario (`src/components/form/`): texto largo que crece y reproduce el dibujo de Figma, número con rango (caja o en línea), fecha "02 Ago 2026" con el calendario del navegador y lista en la que se escribe para buscar. |
+| `useValidation`, `FieldError`, `focusFirst`, `errorProps` | Errores de formulario: cuándo mostrarlos, mensaje bajo el campo, foco en el primero y atributos de accesibilidad. |
 | `Select` | Lista desplegable con `options`/`value`/`onChange`. Variantes con el dibujo de cada filtro de Figma: `field`, `stacked`, `chip`, `soft`, `button`, `input`, `input-plain`, `compact`. |
 | `Popover`, `Menu` | Panel flotante (no lo cortan las tablas con desplazamiento) y menú de acciones "•••". |
 | `Modal`, `ModalHeader`, `CloseButton`, `ConfirmDialog`, `DocumentPreview` | Ventanas emergentes (se cierran con X, Escape o el fondo; la X es `CloseButton` en todas), confirmación corta y vista previa de documentos. |

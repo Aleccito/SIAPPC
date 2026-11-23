@@ -3,6 +3,7 @@
 import type { SoapNote } from '../components';
 
 export type SoapEntry = {
+  id: string;
   date: string;
   doctor: string;
   done: boolean;
@@ -18,12 +19,16 @@ export const SOAP_NEW_PATH = '/MedPacienteNotasSoapNueva';
 /** Ruta del detalle de una nota (la primera usa la ruta sin parámetros, como en Figma). */
 export const soapDetailPath = (index: number) => (index === 0 ? '/MedPacienteNotasSoapDetalle' : `/MedPacienteNotasSoapDetalle?nota=${index}`);
 
+/** La nota de Figma (su detalle conserva el texto original). */
+export const FIGMA_NOTE_ID = 'n1';
+
 export const SOAP_NOTES: SoapEntry[] = [
   {
     date: '24 Oct 2025, 09:15',
     doctor: 'Dr. Carlos Méndez',
     done: true,
     ref: 'RP-UCI-003',
+    id: 'n1',
     summary: 'Disnea progresiva y dificultad para respirar en reposo. Refiere empeoramiento desde anoche.',
     note: {
       s: 'Disnea progresiva y dificultad para respirar en reposo. Paciente refiere empeoramiento de la fatiga al realizar movimientos mínimos y ortopnea marcada durante la noche anterior.',
@@ -37,6 +42,7 @@ export const SOAP_NOTES: SoapEntry[] = [
     doctor: 'Dra. Ana Rodríguez',
     done: true,
     ref: 'RP-UCI-002',
+    id: 'n2',
     summary: 'Paciente refiere mejoría parcial, menos fatiga al sentarse, pero persiste tos seca esporádica.',
     note: {
       s: 'Paciente refiere mejoría parcial, menos fatiga al sentarse, pero persiste tos seca esporádica.',
@@ -50,6 +56,7 @@ export const SOAP_NOTES: SoapEntry[] = [
     doctor: 'Dr. Carlos Méndez',
     done: true,
     ref: 'RP-UCI-001',
+    id: 'n3',
     summary: 'Dolor torácico intermitente al esfuerzo moderado. No refiere mareos ni síncope reciente.',
     note: {
       s: 'Dolor torácico intermitente al esfuerzo moderado. No refiere mareos ni síncope reciente.',
@@ -63,6 +70,7 @@ export const SOAP_NOTES: SoapEntry[] = [
     doctor: 'Dra. Ana Rodríguez',
     done: true,
     ref: 'RP-ING-001',
+    id: 'n4',
     summary: 'Disnea severa durante ingreso inicial, ortopnea marcada, sibilancias inspiratorias.',
     note: {
       s: 'Disnea severa durante ingreso inicial, ortopnea marcada, sibilancias inspiratorias.',
@@ -76,6 +84,7 @@ export const SOAP_NOTES: SoapEntry[] = [
     doctor: 'Dr. Luis Peralta',
     done: false,
     ref: 'RP-CE-014',
+    id: 'n5',
     summary: 'Seguimiento de rutina pre-admisión. Reporta hinchazón en extremidades inferiores.',
     note: {
       s: 'Seguimiento de rutina pre-admisión. Reporta hinchazón en extremidades inferiores.',
@@ -85,3 +94,23 @@ export const SOAP_NOTES: SoapEntry[] = [
     },
   },
 ];
+
+// Notas escritas en el prototipo (paso 3): viven en memoria mientras no se recargue la página.
+let added: SoapEntry[] = [];
+
+/** Todas las notas, las escritas en el prototipo primero. */
+export const soapNotes = (): SoapEntry[] => [...added, ...SOAP_NOTES];
+
+/** Guarda una nota nueva o reemplaza un borrador con el mismo id; queda primera. */
+export function saveSoapNote(entry: SoapEntry) {
+  added = [entry, ...added.filter((e) => e.id !== entry.id)];
+}
+
+const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+/** Fecha y hora de ahora con el formato de las notas ("23 Nov 2026, 14:05"). */
+export function nowLabel() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

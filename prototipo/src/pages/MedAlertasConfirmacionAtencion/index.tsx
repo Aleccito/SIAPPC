@@ -1,13 +1,15 @@
 // Pantalla "med/alertas/confirmacion-atencion" (Figma node 245:631) — generada desde el diseño original de Figma.
 // Muestra la alerta desde la que se llegó (Centro de Alertas, Dashboard o Resumen del
-// paciente); si se entra directo, la de Figma. Los campos de texto son del paso 3.
+// paciente); si se entra directo, la de Figma. "Acción tomada" es obligatoria (10 a 500 caracteres) y las
+// notas, opcionales (hasta 500) (REVISION.md, paso 3, punto 2).
 // La ventana se dibuja sobre la pantalla de origen, no sobre el fondo de ejemplo de Figma
 // ("Centro de Control de Alertas"), para que se vea de dónde se vino (REVISION.md, C8).
 import { useState, type ComponentType } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import imgBell4 from '../../assets/bell-4.svg';
-import { Button, CloseButton, Modal, Select, useToast } from '../../components';
+import { Button, CloseButton, focusFirst, Modal, Select, TextArea, useToast, useValidation } from '../../components';
 import { DEFAULT_ALERT, type AttendedState, type ConfirmState } from '../../data/alerts';
+import { checkText } from '../../lib/validate';
 import MedAlertasCentro from '../MedAlertasCentro';
 import MedDashboardPrincipal from '../MedDashboardPrincipal';
 import MedPacienteResumen from '../MedPacienteResumen';
@@ -29,9 +31,22 @@ export default function MedAlertasConfirmacionAtencion() {
   const alert = incoming?.alert ?? DEFAULT_ALERT;
   const from = incoming?.from ?? '/MedAlertasCentro';
   const [classification, setClassification] = useState(CLASSIFICATIONS[0]);
+  const [action, setAction] = useState('');
+  const [notes, setNotes] = useState('');
+  const form = useValidation({
+    'atencion-accion': () => checkText(action, { required: true, min: 10, max: 500, requiredMessage: 'Describa la acción tomada' }),
+    'atencion-notas': () => checkText(notes, { max: 500 }),
+  });
 
   const cancel = () => navigate(from);
   const confirm = () => {
+    form.markAll();
+    const bad = (Object.keys(form.errors) as Array<keyof typeof form.errors>).find((k) => form.errors[k]);
+    if (bad) {
+      toast('Revise los campos marcados', 'info');
+      focusFirst([bad]);
+      return;
+    }
     toast(`Atención registrada · ${alert.patient}`);
     const state: AttendedState = { attendedId: alert.id };
     navigate(from, { state });
@@ -74,22 +89,41 @@ export default function MedAlertasConfirmacionAtencion() {
 
         <div className="flex w-full flex-col items-start gap-[16px]" data-name="attention-form">
           <div className="flex w-full flex-col items-start gap-[6px]" data-name="form-group-action">
-            <p className="font-jakarta text-[13px] font-bold leading-[normal] text-ink">Acción tomada *</p>
-            <div className="flex h-[80px] w-full flex-col items-start rounded-[8px] border border-line bg-surface p-[12px]" data-name="textarea-action">
-              <p className="w-full font-jakarta text-[13px] font-normal leading-[normal] text-subtle">Describa la acción clínica realizada...</p>
-            </div>
+            <label htmlFor="atencion-accion" className="font-jakarta text-[13px] font-bold leading-[normal] text-ink">
+              Acción tomada *
+            </label>
+            <TextArea
+              id="atencion-accion"
+              value={action}
+              onChange={setAction}
+              onBlur={() => form.touch('atencion-accion')}
+              placeholder="Describa la acción clínica realizada..."
+              tone="surface"
+              maxLength={500}
+              aria-required
+              error={form.show('atencion-accion')}
+            />
           </div>
           <div className="flex w-full flex-col items-start gap-[6px]" data-name="form-group-classification">
             <p className="font-jakarta text-[13px] font-bold leading-[normal] text-ink">Clasificación de Alerta</p>
             <Select variant="input-plain" ariaLabel="Clasificación de alerta" options={CLASSIFICATIONS} value={classification} onChange={setClassification} />
           </div>
           <div className="flex w-full flex-col items-start gap-[6px]" data-name="form-group-notes">
-            <p className="font-jakarta text-[13px] font-bold leading-[normal] text-ink">
+            <label htmlFor="atencion-notas" className="font-jakarta text-[13px] font-bold leading-[normal] text-ink">
               Notas adicionales <span className="font-medium text-muted">(Opcional)</span>
-            </p>
-            <div className="flex h-[50px] w-full flex-col items-start rounded-[8px] border border-line bg-surface p-[12px]" data-name="textarea-notes">
-              <p className="w-full font-jakarta text-[12px] font-normal leading-[normal] text-subtle">Observaciones secundarias...</p>
-            </div>
+            </label>
+            <TextArea
+              id="atencion-notas"
+              value={notes}
+              onChange={setNotes}
+              onBlur={() => form.touch('atencion-notas')}
+              placeholder="Observaciones secundarias..."
+              tone="surface"
+              textSize={12}
+              minHeight={50}
+              maxLength={500}
+              error={form.show('atencion-notas')}
+            />
           </div>
         </div>
 

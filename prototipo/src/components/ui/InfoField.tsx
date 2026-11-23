@@ -19,13 +19,3 @@ export function InfoField({ label, children, variant = 'box', className }: InfoF
     </div>
   );
 }
-
-/** Recuadro de texto largo de solo lectura (motivo, padecimiento, notas). */
-export function TextBlock({ label, children, className }: { label?: ReactNode; children: ReactNode; className?: string }) {
-  return (
-    <div className={cn('flex w-full flex-col gap-2', className)}>
-      {label && <p className="font-jakarta text-[12px] font-bold uppercase leading-[normal] text-muted">{label}</p>}
-      <div className="min-h-14 w-full rounded-lg border border-line bg-surface p-[14px] font-jakarta text-[13px] font-normal leading-[1.5] text-ink">{children}</div>
-    </div>
-  );
-}
