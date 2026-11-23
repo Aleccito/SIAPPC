@@ -41,5 +41,8 @@
     "mysql2": "^3.11.5",
     "prisma": "^7.9.1",
     "typescript": "~6.0.2"
+  },
+  "overrides": {
+    "effect": "3.22.5"
   }
 }
