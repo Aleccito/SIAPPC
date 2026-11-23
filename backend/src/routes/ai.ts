@@ -69,8 +69,10 @@ export default async function aiRoutes(app: FastifyInstance) {
   // Sin esto `req.user` queda vacío y requirePermission revienta con un 500.
   app.addHook("preHandler", app.authenticate);
 
-  // Mismo permiso que escribir notas SOAP: en el seed, solo médicos.
-  const medico = [app.requirePermission("notas_soap", "crear")];
+  // Permiso propio del asistente: en el seed, médico y administrador. Es
+  // aparte de `notas_soap` para no tener que darle al admin escritura de notas
+  // (podría firmar contenido clínico) solo para que consulte a la IA.
+  const medico = [app.requirePermission("asistente_ia", "ver")];
 
   app.post(
     "/ai/assist",

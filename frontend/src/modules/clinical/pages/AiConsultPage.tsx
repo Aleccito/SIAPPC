@@ -41,7 +41,7 @@ type Estado = 'idle' | 'streaming' | 'done' | 'error'
  *
  * La respuesta no se guarda en ningún lado: si el médico la adopta, la pasa él
  * a una nota SOAP firmada. Quién entra lo decide el servidor
- * (`notas_soap:crear`); con 403 se muestra el aviso y nada más.
+ * (`asistente_ia:ver`); con 403 se muestra el aviso y nada más.
  */
 export function AiConsultPage() {
   const { t } = useLanguage()

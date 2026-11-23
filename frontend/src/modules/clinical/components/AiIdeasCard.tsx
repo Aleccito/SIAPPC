@@ -10,7 +10,7 @@ import { LoadingBar } from '../../../shared/LoadingBar'
 /**
  * Ideas que el análisis automático de IA generó para un paciente crítico.
  *
- * Quién la ve lo decide el servidor (`notas_soap:crear`), igual que el resto
+ * Quién la ve lo decide el servidor (`asistente_ia:ver`), igual que el resto
  * del módulo clínico: con 403 la tarjeta simplemente no se pinta.
  */
 export function AiIdeasCard({ patientId }: { patientId: string }) {
