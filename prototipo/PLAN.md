@@ -9,7 +9,9 @@ React a partir del código que genera Figma (codegen). Es un **prototipo visual 
 escritos en las pantallas**; no se conecta al backend.
 
 - Stack: React 19, Vite 7, Tailwind CSS 3.4, react-router-dom 6, TypeScript.
-- Una carpeta por pantalla: `src/pages/<Nombre>/index.tsx`. Rutas en `src/App.tsx` (`/` abre `MedAlertasCentro`).
+- Una carpeta por pantalla: `src/pages/<Nombre>/index.tsx`. Rutas en `src/App.tsx` (`/` abre `MedDashboardPrincipal`).
+  Además de las 35 de Figma hay 2 pantallas nuevas del paso 2 (`MedPacienteNuevo`, `MedDispositivoDetalle`).
+- Datos de ejemplo que comparten varias pantallas en `src/data/`; utilidades en `src/lib/`.
 - Componentes compartidos en `src/components/` (se importan desde `src/components/index.ts`). Ver "Componentes" abajo.
 - Íconos e imágenes exportados de Figma en `src/assets/`.
 - Fuentes (Google Fonts en `index.html`): Plus Jakarta Sans (`font-jakarta`), Inter (`font-inter`), Geist (`font-geist`), definidas en `tailwind.config.js`.
@@ -33,10 +35,9 @@ escritos en las pantallas**; no se conecta al backend.
 
 - ~~El código salió de Figma pantalla por pantalla: menú lateral, barra superior, botones, tarjetas y tablas
   copiados en las 35 páginas~~ y ~~medidas fijas (1440×900, `h-[900px]`, columnas fijas)~~ → **resuelto en el paso 1.**
-- ~129 botones sin acción (p. ej. "Nueva Nota SOAP" ×18, "Generar reporte" ×18, Guardar, Atender, Silenciar, Cerrar).
-- ~85 pestañas; casi ninguna cambia de vista.
-- Campos, buscadores, textareas, selects, toggles y casillas son `div` dibujados: no se puede escribir ni activar nada.
-- Funcionan: menú lateral, campana, ayuda, perfil, "Ver paciente", botones de volver y los enlaces de prototipo de Figma.
+- ~~~129 botones sin acción y ~85 pestañas que no cambiaban de vista~~ → **resuelto en el paso 2** (ver `BOTONES.md`).
+- Los campos de texto de los formularios (notas, textareas, Mín/Máx, fechas) siguen siendo dibujos: quedan para el
+  paso 3. Buscadores, listas desplegables, filtros, interruptores, casillas y opciones ya funcionan.
 
 ## Plan (en este orden)
 
@@ -62,9 +63,26 @@ escritos en las pantallas**; no se conecta al backend.
    - Las gráficas de líneas se redibujan con `LineChart` (SVG) a partir de los puntos de Figma para que se estiren.
    - Ya funcionan como enlace: "Nueva Nota SOAP" (cabecera del paciente), pestañas del paciente, pestañas
      Nueva entrega/Historial de turno y Grid/Lista de monitoreo, porque son parte de componentes compartidos.
-2. **Clicable.** Conectar cada botón a su pantalla: "Nueva Nota SOAP" → `MedPacienteNotasSoapNueva`, pestañas del
-   paciente → sus páginas, Cancelar/Cerrar → volver, `/` → `MedDashboardPrincipal`, etc.
-3. **Formularios.** Campos reales donde se pueda escribir, toggles, selects y pestañas con estado local. Sin backend.
+2. ~~**Clicable.**~~ **Hecho (rama `feature/prototipo-clicable`).** Nada que se pueda tocar se queda sin hacer
+   algo. El inventario completo (antes / ahora, elemento por elemento) está en `BOTONES.md`. Resumen:
+   - Cada elemento lleva a una pantalla, abre un modal o menú, abre sus opciones y filtra los datos de ejemplo,
+     cambia algo en la misma pantalla (marcar, silenciar, ordenar, plegar, paginar) o muestra un aviso corto.
+   - Componentes nuevos: `Select` (lista desplegable real, varias variantes con el dibujo de Figma), `Popover`,
+     `Menu`, `ToastProvider`/`useToast`, `ConfirmDialog`, `ModalHeader`, `DocumentPreview`, `EmptyState`,
+     `useRowLink`/`rowButton` (filas tocables), `AssignBedModal` y `UploadDocumentModal`. `Modal` se cierra con X,
+     Escape o el fondo; `BackButton` acepta `to`.
+   - Un solo paciente de ejemplo: todo expediente abre las pantallas de María González. Se agregaron datos de ejemplo
+     solo donde la paginación o los filtros los necesitan (12 monitores, 12 pacientes, 18 reportes, 24 entregas…).
+   - El estado es local y se pierde al recargar; lo que cruza de pantalla viaja en la navegación (alerta atendida,
+     entrega de turno confirmada, diagnóstico registrado, nota SOAP elegida con `?nota=`, monitor con `?cama=`).
+   - Pantallas nuevas (no vienen de Figma, lo dice un comentario al inicio): **Registro de Paciente**
+     (`MedPacienteNuevo`) y **Detalle de Monitor** (`MedDispositivoDetalle`), adaptables a celular.
+   - `/` abre el Dashboard; el logo del menú lleva al Dashboard; cerrar sesión pide confirmación.
+   - Verificado: `npm run build` pasa; las 35 pantallas de Figma se ven igual a 1440 px (comparadas píxel a píxel
+     con las del paso 1); las nuevas no se salen de lado a 390, 768 y 1024 px; pruebas automáticas de filtros,
+     menús, modales, avisos y navegación con estado.
+3. **Formularios.** Campos de texto reales donde hoy hay dibujos (lista en `BOTONES.md`, "Queda para el paso 3"):
+   notas y textareas, Mín/Máx de umbrales, fechas, búsqueda escribiendo en CIE-10 y validación. Sin backend.
 4. **Backend.** No se hace en el prototipo: se hace en `frontend/`, según lo que se decida en el paso 0.
 
 ## Componentes (`src/components/`)
@@ -79,8 +97,14 @@ escritos en las pantallas**; no se conecta al backend.
 | `Badge`, `KpiCard` | Etiquetas de estado (`tone`) e indicadores. |
 | `Tabs`, `SegmentedControl` | Pestañas (subrayado o `pills`) y grupos tipo Grid/Lista. |
 | `Table`, `Pagination` | Tablas con desplazamiento lateral propio y paginación. |
-| `Input`, `TextArea`, `SearchBox`, `Select`, `InfoField`, `TextBlock` | Campos (los de formulario se usarán en el paso 3) y datos de solo lectura. |
-| `Modal` | Ventanas emergentes que se desplazan si no caben. |
+| `Input`, `TextArea`, `SearchBox`, `InfoField`, `TextBlock` | Campos de texto y datos de solo lectura. |
+| `Select` | Lista desplegable con `options`/`value`/`onChange`. Variantes con el dibujo de cada filtro de Figma: `field`, `stacked`, `chip`, `soft`, `button`, `input`, `input-plain`, `compact`. |
+| `Popover`, `Menu` | Panel flotante (no lo cortan las tablas con desplazamiento) y menú de acciones "•••". |
+| `Modal`, `ModalHeader`, `ConfirmDialog`, `DocumentPreview` | Ventanas emergentes (se cierran con X, Escape o el fondo), confirmación corta y vista previa de documentos. |
+| `ToastProvider`, `useToast` | Avisos cortos que sobreviven al cambio de pantalla. |
+| `EmptyState` | "Sin resultados con estos filtros" + Quitar filtros. |
+| `useRowLink`, `rowButton`, `rowLinkClass` | Filas de tabla que llevan a otra pantalla o abren algo (mouse y Enter). |
+| `AssignBedModal`, `UploadDocumentModal` | Asignar paciente a cama libre; subir documento (archivo de ejemplo). |
 | `LineChart` | Gráficas de líneas con los puntos de Figma que se estiran al ancho. |
 | `icons.tsx` | Íconos de Lucide (los mismos trazos que exportó Figma) que toman el color del texto. |
 
@@ -137,3 +161,5 @@ original, usa el nodo de la tabla (con el conector de Figma, si está disponible
 | `MedTurnoHistorial` | `med-turno-historial` | `259:15` |
 | `MedTurnoResumenRecibido` | `med/turno/resumen-recibido` | `245:729` |
 | `Notificaciones` | `notificaciones` | `48:447` |
+| `MedPacienteNuevo` | — (pantalla nueva del paso 2) | — |
+| `MedDispositivoDetalle` | — (pantalla nueva del paso 2) | — |

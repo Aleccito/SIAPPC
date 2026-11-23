@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '../../lib/cn';
-import { IconChevronDown, IconSearch } from '../icons';
+import { IconSearch } from '../icons';
 
 const field =
   'flex min-w-0 items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 font-jakarta text-[13px] leading-[normal] text-ink';
@@ -12,10 +12,10 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   containerClassName?: string;
 };
 
-/** Campo de texto con etiqueta opcional. */
+/** Campo de texto con etiqueta opcional. Mide 38 px de alto, igual que las listas de formulario (`Select variant="input"`). */
 export function Input({ label, icon, className, containerClassName, id, ...rest }: InputProps) {
   const input = (
-    <span className={cn(field, 'focus-within:border-primary', containerClassName)}>
+    <span className={cn('flex h-[38px] min-w-0 items-center gap-2 rounded-lg border border-line bg-white px-3 font-jakarta text-[13px] leading-[normal] text-ink focus-within:border-primary', containerClassName)}>
       {icon}
       <input id={id} className={cn('w-full min-w-0 bg-transparent outline-none placeholder:text-subtle', className)} {...rest} />
     </span>
@@ -80,32 +80,5 @@ export function SearchBox({ width = 260, tone = 'surface', className, containerC
         {...rest}
       />
     </span>
-  );
-}
-
-type SelectProps = {
-  /** Texto del filtro, ej. "Severidad: Todas". */
-  children: ReactNode;
-  /** Etiqueta gris antes del valor, ej. "Fecha:". */
-  label?: ReactNode;
-  icon?: ReactNode;
-  /** Muestra la flecha hacia abajo (por defecto sí). */
-  chevron?: boolean;
-  className?: string;
-  onClick?: () => void;
-};
-
-/**
- * Filtro desplegable (por ahora solo visual: muestra el valor elegido).
- * En el paso 3 del plan se le agregan opciones.
- */
-export function Select({ children, label, icon, chevron = true, className, onClick }: SelectProps) {
-  return (
-    <button type="button" onClick={onClick} className={cn(field, 'shrink-0 whitespace-nowrap font-semibold hover:bg-surface', className)}>
-      {icon}
-      {label && <span className="text-muted">{label}</span>}
-      <span className={label ? 'font-bold' : undefined}>{children}</span>
-      {chevron && <IconChevronDown size={12} className="text-muted" />}
-    </button>
   );
 }

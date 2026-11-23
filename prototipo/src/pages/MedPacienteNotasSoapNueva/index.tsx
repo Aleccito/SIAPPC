@@ -8,7 +8,9 @@ import imgWave from '../../assets/wave.svg';
 import imgWave2 from '../../assets/wave-2.svg';
 import imgWave3 from '../../assets/wave-3.svg';
 import imgXCircle from '../../assets/x-circle.svg';
-import { BackButton, Badge, Button, Card, Divider, Modal, PatientLayout } from '../../components';
+import { useNavigate } from 'react-router-dom';
+import { BackButton, Badge, Button, Card, Divider, Modal, PatientLayout, useToast } from '../../components';
+import { SOAP_HISTORY_PATH } from '../../data/soap';
 import { cn } from '../../lib/cn';
 
 const SIGNALS = [
@@ -27,6 +29,15 @@ const FIELDS = [
 const CardHeading = ({ children }: { children: string }) => <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">{children}</h2>;
 
 export default function MedPacienteNotasSoapNueva() {
+  const navigate = useNavigate();
+  const toast = useToast();
+  // Cerrar o cancelar vuelve al historial; guardar también, con aviso (los campos son del paso 3).
+  const close = () => navigate(SOAP_HISTORY_PATH);
+  const save = () => {
+    toast('Nota guardada');
+    navigate(SOAP_HISTORY_PATH);
+  };
+
   return (
     <PatientLayout
       breadcrumb="SIAPPC > Pacientes > María González > Notas SOAP > Nueva"
@@ -96,7 +107,7 @@ export default function MedPacienteNotasSoapNueva() {
         </div>
       </div>
 
-      <Modal labelledBy="nueva-nota-soap-titulo" width={680} backdrop="bg-[rgba(15,23,42,0.5)]" className="gap-6 p-5 drop-shadow-[0px_20px_20px_rgba(15,23,42,0.15)] sm:p-8">
+      <Modal labelledBy="nueva-nota-soap-titulo" onClose={close} width={680} backdrop="bg-[rgba(15,23,42,0.5)]" className="gap-6 p-5 drop-shadow-[0px_20px_20px_rgba(15,23,42,0.15)] sm:p-8">
         <div className="flex w-full items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <img className="size-9 shrink-0" alt="" src={imgModalHeaderFrame} />
@@ -104,7 +115,12 @@ export default function MedPacienteNotasSoapNueva() {
               Nueva Nota SOAP
             </h2>
           </div>
-          <button type="button" aria-label="Cerrar" className="flex h-8 w-[42px] shrink-0 items-center justify-center rounded-full bg-[#f1f5f9]">
+          <button
+            type="button"
+            aria-label="Cerrar"
+            onClick={close}
+            className="flex h-8 w-[42px] shrink-0 items-center justify-center rounded-full bg-[#f1f5f9] transition-colors hover:bg-line"
+          >
             <img className="size-8" alt="" src={imgXCircle} />
           </button>
         </div>
@@ -127,8 +143,12 @@ export default function MedPacienteNotasSoapNueva() {
         </div>
         <Divider />
         <div className="flex w-full flex-wrap justify-end gap-3">
-          <Button variant="secondary" size="lg">Cancelar</Button>
-          <Button size="lg">Guardar Nota</Button>
+          <Button variant="secondary" size="lg" onClick={close}>
+            Cancelar
+          </Button>
+          <Button size="lg" onClick={save}>
+            Guardar Nota
+          </Button>
         </div>
       </Modal>
     </PatientLayout>

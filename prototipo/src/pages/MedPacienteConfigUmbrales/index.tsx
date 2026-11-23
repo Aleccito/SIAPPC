@@ -1,5 +1,6 @@
 // Pantalla "med/paciente/config-umbrales" (Figma node 140:259) — generada desde el diseño original de Figma.
-// Los campos son dibujos (paso 3 del plan los vuelve editables).
+// Los campos Mín/Máx son dibujos (paso 3 del plan los vuelve editables).
+import { useState } from 'react';
 import imgActivity7 from '../../assets/activity-7.svg';
 import imgBulletItemEllipse from '../../assets/bullet-item-ellipse.svg';
 import imgChevronDown from '../../assets/chevron-down.svg';
@@ -11,10 +12,19 @@ import imgToggleSwitch from '../../assets/toggle-switch.svg';
 import imgToggleSwitch2 from '../../assets/toggle-switch-2.svg';
 import imgTrendingUp from '../../assets/trending-up.svg';
 import imgWind from '../../assets/wind.svg';
-import { BackButton, Button, Card, PatientLayout, Table } from '../../components';
+import { BackButton, Button, Card, PatientLayout, Select, Table, useToast } from '../../components';
 import { cn } from '../../lib/cn';
 
 const SEVERITY_DOT: Record<string, string> = { Crítica: imgDropdownBadgeEllipse, Alta: imgDropdownBadgeEllipse2, Media: imgBulletItemEllipse };
+const SEVERITIES = ['Crítica', 'Alta', 'Media', 'Baja'];
+
+/** Punto de color de la severidad ("Baja" no viene de Figma: punto verde). */
+const SeverityLabel = ({ value }: { value: string }) => (
+  <span className="flex items-center gap-1.5">
+    {SEVERITY_DOT[value] ? <img className="size-1.5" alt="" src={SEVERITY_DOT[value]} /> : <span className="size-1.5 rounded-full bg-success" />}
+    {value}
+  </span>
+);
 
 const ROWS: Array<{ icon: string; name: string; min?: string; max?: string; severity: string; enabled: boolean }> = [
   { icon: imgActivity7, name: 'FC (Frecuencia Cardíaca)', min: '50', max: '120', severity: 'Crítica', enabled: true },
@@ -36,7 +46,15 @@ function LimitBox({ label, value }: { label: string; value?: string }) {
   );
 }
 
+const initialSeverity = () => ROWS.map((r) => r.severity);
+const initialEnabled = () => ROWS.map((r) => r.enabled);
+
 export default function MedPacienteConfigUmbrales() {
+  const toast = useToast();
+  const [severity, setSeverity] = useState(initialSeverity);
+  const [enabled, setEnabled] = useState(initialEnabled);
+  const update = <T,>(set: (fn: (prev: T[]) => T[]) => void, i: number, value: T) => set((prev) => prev.map((x, j) => (j === i ? value : x)));
+
   return (
     <PatientLayout breadcrumb="SIAPPC > Pacientes > María González > Umbrales" title="Configuración de Umbrales de Alarma" tab="monitoreo" actions={<BackButton />}>
       <Card padding="lg" className="flex w-full flex-col gap-5 drop-shadow-[0px_4px_6px_rgba(0,0,0,0.01)]">
@@ -53,27 +71,40 @@ export default function MedPacienteConfigUmbrales() {
             <p className="min-w-0 flex-1 text-right">ESTADO</p>
           </div>
           <div className="flex w-full flex-col gap-[10px]">
-            {ROWS.map((r) => (
-              <div key={r.name} className={cn('flex w-full items-center gap-4 rounded-lg border border-line px-4 py-3', r.enabled ? 'bg-white' : 'bg-[#f1f5f9] opacity-65')}>
+            {ROWS.map((r, i) => (
+              <div key={r.name} className={cn('flex w-full items-center gap-4 rounded-lg border border-line px-4 py-3 transition-opacity', enabled[i] ? 'bg-white' : 'bg-[#f1f5f9] opacity-65')}>
                 <div className="flex w-[220px] shrink-0 items-center gap-3">
                   <img className="size-9 shrink-0" alt="" src={r.icon} />
-                  <p className={cn('font-jakarta text-[14px] font-bold leading-[normal]', r.enabled ? 'text-ink' : 'text-subtle')}>{r.name}</p>
+                  <p id={`umbral-${i}`} className={cn('font-jakarta text-[14px] font-bold leading-[normal]', enabled[i] ? 'text-ink' : 'text-subtle')}>
+                    {r.name}
+                  </p>
                 </div>
                 <div className="flex w-[300px] shrink-0 items-center gap-4">
                   <LimitBox label="Min" value={r.min} />
                   <LimitBox label="Max" value={r.max} />
                 </div>
                 <div className="w-[180px] shrink-0">
-                  <div className="flex w-full items-center justify-between rounded-md border border-line bg-white px-3 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <img className="size-1.5" alt="" src={SEVERITY_DOT[r.severity]} />
-                      <span className="font-jakarta text-[13px] font-semibold leading-[normal] text-ink">{r.severity}</span>
-                    </div>
-                    <img className="size-3.5" alt="" src={imgChevronDown} />
-                  </div>
+                  <Select
+                    variant="compact"
+                    options={SEVERITIES}
+                    value={severity[i]}
+                    onChange={(v) => update(setSeverity, i, v)}
+                    format={(l) => <SeverityLabel value={l} />}
+                    trailingIcon={<img className="size-3.5" alt="" src={imgChevronDown} />}
+                    ariaLabel={`Severidad por defecto de ${r.name}`}
+                  />
                 </div>
                 <div className="flex min-w-0 flex-1 justify-end">
-                  <img className="h-6 w-11" alt={r.enabled ? 'Activado' : 'Desactivado'} src={r.enabled ? imgToggleSwitch : imgToggleSwitch2} />
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enabled[i]}
+                    aria-labelledby={`umbral-${i}`}
+                    onClick={() => update(setEnabled, i, !enabled[i])}
+                    className="flex rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <img className="h-6 w-11" alt="" src={enabled[i] ? imgToggleSwitch : imgToggleSwitch2} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -81,8 +112,20 @@ export default function MedPacienteConfigUmbrales() {
         </Table>
 
         <div className="flex w-full flex-wrap items-center justify-end gap-4 pt-3">
-          <Button variant="ghost" size="lg">Restablecer valores sugeridos</Button>
-          <Button size="lg">Guardar Configuración</Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            onClick={() => {
+              setSeverity(initialSeverity());
+              setEnabled(initialEnabled());
+              toast('Valores sugeridos restablecidos', 'info');
+            }}
+          >
+            Restablecer valores sugeridos
+          </Button>
+          <Button size="lg" onClick={() => toast('Umbrales guardados')}>
+            Guardar Configuración
+          </Button>
         </div>
       </Card>
     </PatientLayout>

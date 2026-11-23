@@ -1,5 +1,5 @@
 // Pantalla "med/paciente/historia-clinica-general" (Figma node 45:505) — generada desde el diseño original de Figma.
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import imgActivity2 from '../../assets/activity-2.svg';
 import imgChevronDown2 from '../../assets/chevron-down-2.svg';
@@ -12,6 +12,7 @@ import imgShieldAlert from '../../assets/shield-alert.svg';
 import imgStethoscope from '../../assets/stethoscope.svg';
 import imgUser from '../../assets/user.svg';
 import { BackButton, Button, Divider, PatientLayout, Table } from '../../components';
+import { cn } from '../../lib/cn';
 
 /** Botón redondeado que lleva a la sección completa. */
 const NavPill = ({ to, children }: { to: string; children: string }) => (
@@ -26,7 +27,9 @@ const CollapseIcon = () => (
   </span>
 );
 
+/** Sección plegable: la flecha de la derecha oculta o muestra su contenido (gira al plegar). */
 function Section({ icon, title, expanded, children }: { icon: string; title: string; expanded?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(true);
   return (
     <section className="flex w-full flex-col items-start gap-3 rounded-xl border border-line bg-white p-4">
       <div className="flex w-full items-center justify-between gap-3">
@@ -34,10 +37,22 @@ function Section({ icon, title, expanded, children }: { icon: string; title: str
           <img className="size-7 shrink-0" alt="" src={icon} />
           <h2 className="font-jakarta text-[14px] font-semibold leading-[normal] text-ink">{title}</h2>
         </div>
-        {expanded ? <img className="size-7 shrink-0" alt="" src={imgChevronDown2} /> : <CollapseIcon />}
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={`${open ? 'Plegar' : 'Desplegar'} ${title}`}
+          className={cn('flex shrink-0 rounded-full transition-transform hover:opacity-80', !open && 'rotate-180')}
+        >
+          {expanded ? <img className="size-7 shrink-0" alt="" src={imgChevronDown2} /> : <CollapseIcon />}
+        </button>
       </div>
-      <Divider />
-      {children}
+      {open && (
+        <>
+          <Divider />
+          {children}
+        </>
+      )}
     </section>
   );
 }

@@ -1,0 +1,198 @@
+// Pantalla nueva del paso 2: no viene de Figma. Detalle de un monitor de UCI; se llega
+// desde "Ver Detalle" o la fila de un monitor en Dispositivos (?cama=C-06).
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import {
+  AppLayout,
+  BackButton,
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  ConfirmDialog,
+  InfoField,
+  Modal,
+  ModalHeader,
+  PageBody,
+  Select,
+  Table,
+  TableHead,
+  TableRow,
+  useToast,
+} from '../../components';
+import { calibrationsOf, deviceByBed, eventsOf, firmwareOf, lastSeenOf, STATUS_TONE } from '../../data/devices';
+import { cn } from '../../lib/cn';
+
+const SLOTS = ['Mañana, 08:00', 'Pasado mañana, 10:00', 'En 3 días, 14:00', 'En 7 días, 09:00'];
+
+const DOT = { danger: 'bg-danger', warning: 'bg-warning', success: 'bg-success', neutral: 'bg-subtle' } as const;
+
+export default function MedDispositivoDetalle() {
+  const [params] = useSearchParams();
+  const device = deviceByBed(params.get('cama'));
+  const toast = useToast();
+  const free = !device.age;
+  const low = device.battery < 20;
+
+  const [calOpen, setCalOpen] = useState(false);
+  const [slot, setSlot] = useState(SLOTS[0]);
+  const [scheduled, setScheduled] = useState<string | null>(null);
+  const [faultOpen, setFaultOpen] = useState(false);
+  const [reported, setReported] = useState(false);
+
+  const calibrations = [...(scheduled ? [{ date: scheduled, tech: 'Ing. Mario Vargas', result: 'Programada' }] : []), ...calibrationsOf(device)];
+  const events = [
+    ...(reported ? [{ time: 'Ahora', text: 'Falla reportada a Ingeniería Biomédica (ticket #BIO-2214)', tone: 'warning' as const }] : []),
+    ...eventsOf(device),
+  ];
+
+  return (
+    <AppLayout
+      breadcrumb={`SIAPPC > Dispositivos > ${device.bed}`}
+      title={`Monitor ${device.model}`}
+      actions={<BackButton to="/MedDispositivosMonitores">Volver a Dispositivos</BackButton>}
+    >
+      <PageBody>
+        <Card className="flex w-full flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={STATUS_TONE[device.status]} dot>
+                {device.status}
+              </Badge>
+              <Badge tone="info">Cama {device.bed}</Badge>
+              {device.calibrationDue && <Badge tone="warning">Calibración vencida</Badge>}
+            </div>
+            <p className="font-jakarta text-[14px] font-semibold leading-[normal] text-muted">
+              {free ? 'Cama disponible · sin paciente asignado' : `${device.patient} · ${device.age}`}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={() => setCalOpen(true)}>
+              Programar calibración
+            </Button>
+            <Button variant="secondary" onClick={() => setFaultOpen(true)} disabled={reported}>
+              {reported ? 'Falla reportada' : 'Reportar falla'}
+            </Button>
+            {!free && <Button to="/MedPacienteResumen">Ver paciente</Button>}
+          </div>
+        </Card>
+
+        <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-3">
+          <Card className="flex flex-col gap-5 lg:col-span-2">
+            <CardHeader title="Equipo" subtitle="Datos del monitor registrado en la central" />
+            <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
+              <InfoField label="Modelo">{device.model}</InfoField>
+              <InfoField label="Número de serie">{device.serial}</InfoField>
+              <InfoField label="Cama">{device.bed} · UCI Adultos</InfoField>
+              <InfoField label="Paciente">{free ? '—' : device.patient}</InfoField>
+              <InfoField label="Firmware">{firmwareOf(device)}</InfoField>
+              <InfoField label="Última conexión">{lastSeenOf(device)}</InfoField>
+            </div>
+          </Card>
+
+          <Card className="flex flex-col gap-5">
+            <CardHeader title="Batería y señales" />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-baseline justify-between gap-3 font-jakarta leading-[normal]">
+                <p className="text-[12px] font-semibold uppercase text-muted">Batería</p>
+                <p className={cn('text-[24px] font-extrabold', low ? 'text-danger' : 'text-ink')}>{device.battery}%</p>
+              </div>
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#f1f5f9]" role="meter" aria-valuenow={device.battery} aria-valuemin={0} aria-valuemax={100} aria-label="Nivel de batería">
+                <div className={cn('h-full rounded-full', low ? 'bg-danger' : 'bg-success')} style={{ width: `${device.battery}%` }} />
+              </div>
+              <p className="font-jakarta text-[12px] font-medium leading-[normal] text-muted">
+                {low ? 'Conectar a la red eléctrica: autonomía menor a 30 min.' : 'Autonomía estimada: más de 4 h.'}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="font-jakarta text-[12px] font-semibold uppercase leading-[normal] text-muted">Señales activas</p>
+              <div className="flex flex-wrap gap-1.5">
+                {device.signals.map((s) => (
+                  <span key={s} className="rounded border border-line bg-surface px-2 py-1 font-jakarta text-[12px] font-semibold leading-[normal] text-muted">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card padding="none" className="overflow-hidden">
+            <CardHeader title="Calibraciones" className="p-5" />
+            <Table minWidth={420}>
+              <TableHead>
+                <p className="flex-1">Fecha</p>
+                <p className="flex-1">Técnico</p>
+                <p className="w-[100px] shrink-0 text-right">Resultado</p>
+              </TableHead>
+              {calibrations.map((c) => (
+                <TableRow key={c.date} className="font-jakarta text-[13px] font-semibold leading-[normal] text-ink">
+                  <p className="flex-1">{c.date}</p>
+                  <p className="flex-1 font-medium text-muted">{c.tech}</p>
+                  <div className="flex w-[100px] shrink-0 justify-end">
+                    <Badge tone={c.result === 'Aprobada' ? 'success' : c.result === 'Vencida' ? 'warning' : 'info'} size="sm">
+                      {c.result}
+                    </Badge>
+                  </div>
+                </TableRow>
+              ))}
+            </Table>
+          </Card>
+
+          <Card className="flex flex-col gap-4">
+            <CardHeader title="Eventos recientes" />
+            <ul className="flex flex-col">
+              {events.map((e, i) => (
+                <li key={`${e.time}-${i}`} className="flex gap-3 border-b border-line py-3 last:border-b-0">
+                  <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', DOT[e.tone])} aria-hidden="true" />
+                  <div className="flex min-w-0 flex-col gap-1 font-jakarta leading-[normal]">
+                    <p className="text-[13px] font-semibold text-ink">{e.text}</p>
+                    <p className="text-[12px] font-medium text-muted">{e.time}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
+      </PageBody>
+
+      <Modal labelledBy="calibracion-titulo" open={calOpen} onClose={() => setCalOpen(false)} width={440} className="gap-4 p-5 shadow-xl sm:p-6">
+        <ModalHeader id="calibracion-titulo" title="Programar calibración" onClose={() => setCalOpen(false)} />
+        <p className="font-jakarta text-[14px] font-normal leading-[1.5] text-muted">
+          Monitor {device.serial} · cama {device.bed}. Ingeniería Biomédica recibirá la solicitud.
+        </p>
+        <Select variant="input" fieldLabel="Fecha y hora" options={SLOTS} value={slot} onChange={setSlot} />
+        <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
+          <Button variant="secondary" onClick={() => setCalOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => {
+              setCalOpen(false);
+              setScheduled(slot);
+              toast(`Calibración programada · ${slot}`);
+            }}
+          >
+            Programar
+          </Button>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        open={faultOpen}
+        title="¿Reportar falla?"
+        confirmLabel="Reportar falla"
+        confirmVariant="danger"
+        onCancel={() => setFaultOpen(false)}
+        onConfirm={() => {
+          setFaultOpen(false);
+          setReported(true);
+          toast('Falla reportada a Ingeniería Biomédica');
+        }}
+      >
+        Se abrirá un ticket para el monitor {device.serial} de la cama {device.bed}. El equipo sigue transmitiendo mientras se revisa.
+      </ConfirmDialog>
+    </AppLayout>
+  );
+}

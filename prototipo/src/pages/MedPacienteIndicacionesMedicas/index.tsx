@@ -1,8 +1,8 @@
 // Pantalla "med/paciente/indicaciones-medicas" (Figma node 183:782) — generada desde el diseño original de Figma.
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import imgBulletItemEllipse from '../../assets/bullet-item-ellipse.svg';
 import imgHeart4 from '../../assets/heart-4.svg';
-import { BackButton, Badge, Button, Card, IconPlus, PatientLayout, Table } from '../../components';
+import { BackButton, Badge, Button, Card, IconPlus, Modal, ModalHeader, PatientLayout, Select, Table, useToast } from '../../components';
 
 const SOLUTIONS = [
   ['Solución Hartmann 1000ml', '125 ml/hr', 'Vía Central'],
@@ -29,6 +29,55 @@ const STUDIES: Array<[string, string, string, 'warning' | 'info' | 'success']> =
   ['Rx Tórax', 'Imagen', 'Realizado 15 Oct', 'success'],
   ['Gasometría arterial', 'Laboratorio', 'Realizado 15 Oct', 'success'],
 ];
+
+type Kind = 'Solución intravenosa' | 'Medicamento';
+const KINDS: Kind[] = ['Solución intravenosa', 'Medicamento'];
+
+/** Opciones de ejemplo de "Nueva indicación" (escribir libremente queda para el paso 3). */
+const OPTIONS: Record<Kind, { labels: [string, string, string]; values: [string[], string[], string[]] }> = {
+  'Solución intravenosa': {
+    labels: ['Solución / composición', 'Infusión', 'Vía'],
+    values: [
+      ['Solución salina 0.9% 1000ml', 'Solución Hartmann 1000ml', 'Solución Glucosada 5% 500ml', 'Solución mixta 1000ml'],
+      ['42 ml/hr', '80 ml/hr', '125 ml/hr'],
+      ['Vía Central', 'Periférica'],
+    ],
+  },
+  Medicamento: {
+    labels: ['Medicamento / dosis', 'Vía', 'Frecuencia'],
+    values: [
+      ['Furosemida 20mg', 'Paracetamol 1g', 'Ceftriaxona 1g', 'Metoclopramida 10mg', 'Insulina rápida (esquema)'],
+      ['IV', 'VO', 'SC', 'IM'],
+      ['c/6h', 'c/8h', 'c/12h', 'c/24h', 'PRN'],
+    ],
+  },
+};
+
+function NewOrderModal({ kind, onClose, onAdd }: { kind: Kind | null; onClose: () => void; onAdd: (kind: Kind, row: string[]) => void }) {
+  const [type, setType] = useState<Kind>(kind ?? KINDS[0]);
+  const [picked, setPicked] = useState<Record<Kind, string[]>>({
+    'Solución intravenosa': OPTIONS['Solución intravenosa'].values.map((v) => v[0]),
+    Medicamento: OPTIONS.Medicamento.values.map((v) => v[0]),
+  });
+  const { labels, values } = OPTIONS[type];
+  const set = (i: number) => (v: string) => setPicked((p) => ({ ...p, [type]: p[type].map((x, j) => (j === i ? v : x)) }));
+
+  return (
+    <Modal labelledBy="nueva-indicacion-titulo" open={kind !== null} onClose={onClose} width={480} className="gap-4 p-5 shadow-xl sm:p-6">
+      <ModalHeader id="nueva-indicacion-titulo" title="Nueva indicación" onClose={onClose} />
+      <Select variant="input" fieldLabel="Tipo" options={KINDS} value={type} onChange={(v) => setType(v as Kind)} />
+      {labels.map((label, i) => (
+        <Select key={`${type}-${label}`} variant="input" fieldLabel={label} options={values[i]} value={picked[type][i]} onChange={set(i)} />
+      ))}
+      <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
+        <Button variant="secondary" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Button onClick={() => onAdd(type, picked[type])}>Agregar indicación</Button>
+      </div>
+    </Modal>
+  );
+}
 
 const CardHeading = ({ children }: { children: ReactNode }) => <h2 className="font-jakarta text-[15px] font-bold leading-[normal] text-ink">{children}</h2>;
 
@@ -58,6 +107,19 @@ function OrdersTable({ head, rows, firstWidth }: { head: string[]; rows: string[
 }
 
 export default function MedPacienteIndicacionesMedicas() {
+  const toast = useToast();
+  const [solutions, setSolutions] = useState(SOLUTIONS);
+  const [meds, setMeds] = useState(MEDS);
+  // null = ventana cerrada; si no, el tipo con el que se abre.
+  const [modal, setModal] = useState<Kind | null>(null);
+
+  const add = (kind: Kind, row: string[]) => {
+    if (kind === 'Medicamento') setMeds((m) => [...m.filter((x) => x[0] !== row[0]), row]);
+    else setSolutions((s) => [...s.filter((x) => x[0] !== row[0]), row]);
+    setModal(null);
+    toast(`Indicación agregada · ${row[0]}`);
+  };
+
   return (
     <PatientLayout
       breadcrumb="SIAPPC > Pacientes > María González > Indicaciones Médicas"
@@ -66,7 +128,9 @@ export default function MedPacienteIndicacionesMedicas() {
       actions={
         <>
           <BackButton />
-          <Button icon={<IconPlus size={14} />}>Nueva Indicación</Button>
+          <Button icon={<IconPlus size={14} />} onClick={() => setModal('Solución intravenosa')}>
+            Nueva Indicación
+          </Button>
         </>
       }
     >
@@ -74,17 +138,21 @@ export default function MedPacienteIndicacionesMedicas() {
         <Card className="flex w-full flex-col gap-[14px]">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <CardHeading>Soluciones Intravenosas</CardHeading>
-            <Button variant="soft" size="sm">+ Agregar Solución</Button>
+            <Button variant="soft" size="sm" onClick={() => setModal('Solución intravenosa')}>
+              + Agregar Solución
+            </Button>
           </div>
-          <OrdersTable head={['SOLUCIÓN / COMPOSICIÓN', 'INFUSIÓN', 'VÍA']} rows={SOLUTIONS} firstWidth="flex-1" />
+          <OrdersTable head={['SOLUCIÓN / COMPOSICIÓN', 'INFUSIÓN', 'VÍA']} rows={solutions} firstWidth="flex-1" />
         </Card>
 
         <Card className="flex w-full flex-col gap-[14px]">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <CardHeading>Medicamentos Farmacológicos</CardHeading>
-            <Button variant="soft" size="sm">+ Agregar Medicamento</Button>
+            <Button variant="soft" size="sm" onClick={() => setModal('Medicamento')}>
+              + Agregar Medicamento
+            </Button>
           </div>
-          <OrdersTable head={['MEDICAMENTO / DOSIS', 'VÍA', 'FRECUENCIA']} rows={MEDS} firstWidth="flex-1" />
+          <OrdersTable head={['MEDICAMENTO / DOSIS', 'VÍA', 'FRECUENCIA']} rows={meds} firstWidth="flex-1" />
         </Card>
 
         <div className="grid w-full grid-cols-1 items-start gap-4 lg:grid-cols-2">
@@ -143,6 +211,8 @@ export default function MedPacienteIndicacionesMedicas() {
           </div>
         </div>
       </div>
+      {/* La key reinicia la ventana con el tipo elegido cada vez que se abre. */}
+      <NewOrderModal key={modal ?? 'cerrada'} kind={modal} onClose={() => setModal(null)} onAdd={add} />
     </PatientLayout>
   );
 }

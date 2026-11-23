@@ -1,5 +1,6 @@
 // Pantalla "med/paciente/tendencias-vitales" (Figma node 140:6) — generada desde el diseño original de Figma.
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
 import imgArrowLeft4 from '../../assets/arrow-left-4.svg';
@@ -11,8 +12,15 @@ import { cn } from '../../lib/cn';
 import { TrendChart, type TrendSeries } from './TrendChart';
 
 const RANGES = ['6h', '12h', '24h', '48h', '7d'];
-const ACTIVE_RANGE = '24h';
-const HOURS = ['08:00', '12:00', '16:00', '20:00', '00:00', '04:00'];
+/** Marcas del eje X de cada rango (los puntos de las gráficas siguen siendo los de Figma). */
+const AXIS: Record<string, string[]> = {
+  '6h': ['02:00', '03:00', '04:00', '05:00', '06:00', '07:00'],
+  '12h': ['20:00', '22:00', '00:00', '02:00', '04:00', '06:00'],
+  '24h': ['08:00', '12:00', '16:00', '20:00', '00:00', '04:00'],
+  '48h': ['Lun 08:00', 'Lun 16:00', 'Mar 00:00', 'Mar 08:00', 'Mar 16:00', 'Mié 00:00'],
+  '7d': ['18 Oct', '19 Oct', '20 Oct', '21 Oct', '22 Oct', '23 Oct'],
+};
+const RANGE_TEXT: Record<string, string> = { '6h': '6 horas', '12h': '12 horas', '24h': '24 horas', '48h': '48 horas', '7d': '7 días' };
 const X = [20, 114, 209, 303, 398, 492];
 const line = (ys: number[]): Array<[number, number]> => ys.map((y, i) => [X[i], y]);
 
@@ -74,24 +82,29 @@ const CHARTS: Array<{
 ];
 
 export default function MedPacienteTendenciasVitales() {
-  const navigate = useNavigate();
+  const [range, setRange] = useState('24h');
 
   return (
     <PatientLayout breadcrumb="SIAPPC > Pacientes > María González > Tendencias" title="Tendencias de Signos Vitales" tab="monitoreo">
       <div className="flex w-full flex-wrap items-center justify-between gap-3">
-        <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-2 font-jakarta text-[14px] font-bold leading-[normal] text-primary hover:underline">
+        <Link to="/MedPacienteMonitoreoDetallado" className="flex items-center gap-2 font-jakarta text-[14px] font-bold leading-[normal] text-primary hover:underline">
           <img className="size-4" alt="" src={imgArrowLeft4} />
           Volver a Monitoreo en Vivo
-        </button>
+        </Link>
         <div className="flex gap-1 rounded-lg border border-line bg-white p-1" role="group" aria-label="Rango de tiempo">
           {RANGES.map((r) => (
-            <span
+            <button
               key={r}
-              aria-current={r === ACTIVE_RANGE ? 'true' : undefined}
-              className={cn('rounded-md px-[14px] py-1.5 font-jakarta text-[13px] font-semibold leading-[normal]', r === ACTIVE_RANGE ? 'bg-primary text-white' : 'text-muted')}
+              type="button"
+              aria-pressed={r === range}
+              onClick={() => setRange(r)}
+              className={cn(
+                'rounded-md px-[14px] py-1.5 font-jakarta text-[13px] font-semibold leading-[normal] transition-colors',
+                r === range ? 'bg-primary text-white' : 'text-muted hover:bg-surface hover:text-ink',
+              )}
             >
               {r}
-            </span>
+            </button>
           ))}
         </div>
       </div>
@@ -112,9 +125,9 @@ export default function MedPacienteTendenciasVitales() {
                 <span className="font-jakarta text-[14px] font-semibold text-muted">{c.unit}</span>
               </p>
             </div>
-            <TrendChart label={`Tendencia de ${c.title} en 24 horas`} series={c.series} limits={c.limits} limitLabel={c.limitLabel} tooltip={c.tooltip} />
+            <TrendChart label={`Tendencia de ${c.title} en ${RANGE_TEXT[range]}`} series={c.series} limits={c.limits} limitLabel={c.limitLabel} tooltip={c.tooltip} />
             <div className="flex w-full justify-between font-jakarta text-[10px] font-normal leading-[normal] text-subtle">
-              {HOURS.map((h) => (
+              {AXIS[range].map((h) => (
                 <span key={h}>{h}</span>
               ))}
             </div>

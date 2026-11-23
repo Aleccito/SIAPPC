@@ -1,8 +1,11 @@
 // Pantalla "med/turno/entrega-handoff" (Figma node 137:356) — generada desde el diseño original de Figma.
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import imgInfo from '../../assets/info.svg';
 import imgRecAvatarPng from '../../assets/rec-avatar.png';
-import { AppLayout, Badge, Button, Card, Divider, IconFileText, Table, Tabs } from '../../components';
+import { AppLayout, Badge, Button, Card, ConfirmDialog, Divider, IconFileText, rowLinkClass, Table, Tabs, useRowLink, useToast } from '../../components';
+import { cn } from '../../lib/cn';
+import type { HandoffState } from '../MedTurnoHistorial';
 
 const TURNO_TABS = [
   { id: 'nueva', label: 'Nueva Entrega', to: '/MedTurnoEntregaHandoff' },
@@ -34,6 +37,18 @@ const SUMMARY = [
 ];
 
 export default function MedTurnoEntregaHandoff() {
+  const rowLink = useRowLink();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const confirm = () => {
+    setConfirmOpen(false);
+    toast('Entrega de turno confirmada · se notificó a la Dra. Ana Gómez');
+    const state: HandoffState = { handedOff: true };
+    navigate('/MedTurnoHistorial', { state });
+  };
+
   return (
     <AppLayout
       breadcrumb="SIAPPC > Resumen de Turno"
@@ -41,7 +56,9 @@ export default function MedTurnoEntregaHandoff() {
       actions={
         <>
           <Badge tone="neutral">Turno: 07:00 - 15:00</Badge>
-          <Button icon={<IconFileText size={14} />}>Generar Reporte</Button>
+          <Button icon={<IconFileText size={14} />} onClick={() => toast('Reporte de turno generado')}>
+            Generar Reporte
+          </Button>
         </>
       }
     >
@@ -70,7 +87,12 @@ export default function MedTurnoEntregaHandoff() {
                 <p className="min-w-0 flex-1">PENDIENTES</p>
               </div>
               {PATIENTS.map((p) => (
-                <div key={p.bed} className="flex w-full items-center gap-2 border-b border-line p-[10px] leading-[normal]">
+                <div
+                  key={p.bed}
+                  {...rowLink('/MedPacienteResumen')}
+                  aria-label={`Ver a ${p.name}, cama ${p.bed}`}
+                  className={cn('flex w-full items-center gap-2 border-b border-line p-[10px] leading-[normal]', rowLinkClass)}
+                >
                   <p className="w-[60px] shrink-0 font-jakarta text-[13px] font-bold text-ink">{p.bed}</p>
                   <p className="w-[130px] shrink-0 truncate font-jakarta text-[13px] font-semibold text-ink">{p.name}</p>
                   <Badge tone={p.tone} size="sm" className="w-[90px] justify-center">
@@ -91,8 +113,12 @@ export default function MedTurnoEntregaHandoff() {
               </p>
             </div>
             <div className="flex w-full flex-wrap justify-end gap-3">
-              <Button variant="secondary">Guardar Borrador</Button>
-              <Button variant="success">Confirmar Entrega de Turno</Button>
+              <Button variant="secondary" onClick={() => toast('Borrador guardado')}>
+                Guardar Borrador
+              </Button>
+              <Button variant="success" onClick={() => setConfirmOpen(true)}>
+                Confirmar Entrega de Turno
+              </Button>
             </div>
           </Card>
         </div>
@@ -117,6 +143,16 @@ export default function MedTurnoEntregaHandoff() {
           </Card>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="¿Confirmar entrega de turno?"
+        confirmLabel="Confirmar entrega"
+        confirmVariant="success"
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={confirm}
+      >
+        Se entregarán 7 pacientes a la Dra. Ana Gómez (Turno Vespertino, 15:00 - 23:00). Recibirá una notificación para revisar y firmar la entrega.
+      </ConfirmDialog>
     </AppLayout>
   );
 }

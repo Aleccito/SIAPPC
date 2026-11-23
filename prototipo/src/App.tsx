@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ToastProvider } from './components';
 import MedAlertasCentro from './pages/MedAlertasCentro';
 import MedAlertasConfirmacionAtencion from './pages/MedAlertasConfirmacionAtencion';
 import MedAyudaSoporte from './pages/MedAyudaSoporte';
 import MedBusquedaGlobal from './pages/MedBusquedaGlobal';
 import MedDashboardPrincipal from './pages/MedDashboardPrincipal';
+import MedDispositivoDetalle from './pages/MedDispositivoDetalle';
 import MedDispositivosMonitores from './pages/MedDispositivosMonitores';
 import MedMonitoreoComparativa from './pages/MedMonitoreoComparativa';
 import MedMonitoreoGridUci from './pages/MedMonitoreoGridUci';
@@ -21,6 +23,7 @@ import MedPacienteIndicacionesMedicas from './pages/MedPacienteIndicacionesMedic
 import MedPacienteInterrogatorioAparatos from './pages/MedPacienteInterrogatorioAparatos';
 import MedPacienteMonitoreoDetallado from './pages/MedPacienteMonitoreoDetallado';
 import MedPacienteNotaIngreso from './pages/MedPacienteNotaIngreso';
+import MedPacienteNuevo from './pages/MedPacienteNuevo';
 import MedPacienteNotasSoapDetalle from './pages/MedPacienteNotasSoapDetalle';
 import MedPacienteNotasSoapHistorial from './pages/MedPacienteNotasSoapHistorial';
 import MedPacienteNotasSoapNueva from './pages/MedPacienteNotasSoapNueva';
@@ -38,14 +41,17 @@ import Notificaciones from './pages/Notificaciones';
 function App() {
   return (
     <BrowserRouter>
+      <ToastProvider>
       <Routes>
-        <Route path="/" element={<MedAlertasCentro />} />
+        <Route path="/" element={<MedDashboardPrincipal />} />
         <Route path="/MedAlertasCentro" element={<MedAlertasCentro />} />
         <Route path="/MedAlertasConfirmacionAtencion" element={<MedAlertasConfirmacionAtencion />} />
         <Route path="/MedAyudaSoporte" element={<MedAyudaSoporte />} />
         <Route path="/MedBusquedaGlobal" element={<MedBusquedaGlobal />} />
         <Route path="/MedDashboardPrincipal" element={<MedDashboardPrincipal />} />
         <Route path="/MedDispositivosMonitores" element={<MedDispositivosMonitores />} />
+        {/* Pantalla nueva del paso 2 (no viene de Figma) */}
+        <Route path="/MedDispositivoDetalle" element={<MedDispositivoDetalle />} />
         <Route path="/MedMonitoreoComparativa" element={<MedMonitoreoComparativa />} />
         <Route path="/MedMonitoreoGridUci" element={<MedMonitoreoGridUci />} />
         <Route path="/MedMonitoreoListaUci" element={<MedMonitoreoListaUci />} />
@@ -62,6 +68,8 @@ function App() {
         <Route path="/MedPacienteInterrogatorioAparatos" element={<MedPacienteInterrogatorioAparatos />} />
         <Route path="/MedPacienteMonitoreoDetallado" element={<MedPacienteMonitoreoDetallado />} />
         <Route path="/MedPacienteNotaIngreso" element={<MedPacienteNotaIngreso />} />
+        {/* Pantalla nueva del paso 2 (no viene de Figma) */}
+        <Route path="/MedPacienteNuevo" element={<MedPacienteNuevo />} />
         <Route path="/MedPacienteNotasSoapDetalle" element={<MedPacienteNotasSoapDetalle />} />
         <Route path="/MedPacienteNotasSoapHistorial" element={<MedPacienteNotasSoapHistorial />} />
         <Route path="/MedPacienteNotasSoapNueva" element={<MedPacienteNotasSoapNueva />} />
@@ -76,6 +84,7 @@ function App() {
         <Route path="/MedTurnoResumenRecibido" element={<MedTurnoResumenRecibido />} />
         <Route path="/Notificaciones" element={<Notificaciones />} />
       </Routes>
+      </ToastProvider>
     </BrowserRouter>
   );
 }

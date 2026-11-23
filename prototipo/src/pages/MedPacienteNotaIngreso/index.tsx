@@ -2,7 +2,8 @@
 import imgBulletItemEllipse from '../../assets/bullet-item-ellipse.svg';
 import imgOptBuenoEllipse from '../../assets/opt-bueno-ellipse.svg';
 import imgOptReservadoEllipse from '../../assets/opt-reservado-ellipse.svg';
-import { BackButton, Badge, Button, Card, InfoField, PatientLayout, Table, TextBlock } from '../../components';
+import { useState } from 'react';
+import { BackButton, Badge, Button, Card, InfoField, PatientLayout, Table, TextBlock, useToast } from '../../components';
 import { cn } from '../../lib/cn';
 
 const ADMISSION = [
@@ -26,15 +27,19 @@ const PLAN = [
   'Ecocardiograma urgente en cama',
 ];
 
+// Cada pronóstico se marca con su color (Reservado es el que muestra Figma).
 const PROGNOSIS = [
-  { label: 'Bueno', text: 'Evolución favorable esperada' },
-  { label: 'Reservado', text: 'Evolución incierta sujeta a monitoreo', selected: true },
-  { label: 'Grave', text: 'Alto riesgo de complicaciones inminentes' },
+  { label: 'Bueno', text: 'Evolución favorable esperada', box: 'border-success bg-[rgba(16,185,129,0.06)]', ring: 'border-success' },
+  { label: 'Reservado', text: 'Evolución incierta sujeta a monitoreo', box: 'border-warning bg-[rgba(245,158,11,0.06)]', ring: '' },
+  { label: 'Grave', text: 'Alto riesgo de complicaciones inminentes', box: 'border-danger bg-[rgba(239,68,68,0.06)]', ring: 'border-danger' },
 ];
 
 const CardHeading = ({ children }: { children: string }) => <h2 className="font-jakarta text-[15px] font-bold leading-[normal] text-ink">{children}</h2>;
 
 export default function MedPacienteNotaIngreso() {
+  const toast = useToast();
+  const [prognosis, setPrognosis] = useState('Reservado');
+
   return (
     <PatientLayout
       breadcrumb="SIAPPC > Pacientes > María González > Historia Clínica > Nota de Ingreso"
@@ -64,7 +69,9 @@ export default function MedPacienteNotaIngreso() {
         <Card className="flex w-full flex-col gap-4">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <CardHeading>Diagnósticos de Ingreso</CardHeading>
-            <Button variant="soft" size="sm">+ Agregar Diagnóstico</Button>
+            <Button variant="soft" size="sm" to="/MedPacienteRegistroDiagnostico">
+              + Agregar Diagnóstico
+            </Button>
           </div>
           <div className="w-full overflow-hidden rounded-lg border border-line bg-white">
             <Table minWidth={420}>
@@ -101,26 +108,37 @@ export default function MedPacienteNotaIngreso() {
           <Card className="flex w-full min-w-0 flex-col gap-4 lg:w-[400px] lg:shrink-0">
             <CardHeading>Pronóstico de Ingreso</CardHeading>
             <div className="flex w-full flex-col gap-[10px]" role="radiogroup" aria-label="Pronóstico de ingreso">
-              {PROGNOSIS.map((p) => (
-                <div
+              {PROGNOSIS.map((p) => {
+                const selected = p.label === prognosis;
+                return (
+                <button
                   key={p.label}
+                  type="button"
                   role="radio"
-                  aria-checked={!!p.selected}
-                  className={cn('flex w-full items-center gap-3 rounded-lg border p-3', p.selected ? 'border-warning bg-[rgba(245,158,11,0.06)]' : 'border-line bg-surface')}
+                  aria-checked={selected}
+                  onClick={() => setPrognosis(p.label)}
+                  className={cn('flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors', selected ? p.box : 'border-line bg-surface hover:bg-white')}
                 >
-                  <img className="size-4 shrink-0" alt="" src={p.selected ? imgOptReservadoEllipse : imgOptBuenoEllipse} />
+                  {selected && p.ring ? (
+                    <span className={cn('size-4 shrink-0 rounded-full border-2 bg-white', p.ring)} />
+                  ) : (
+                    <img className="size-4 shrink-0" alt="" src={selected ? imgOptReservadoEllipse : imgOptBuenoEllipse} />
+                  )}
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[normal]">
                     <p className="font-jakarta text-[14px] font-bold text-ink">{p.label}</p>
                     <p className="font-jakarta text-[11px] font-medium text-muted">{p.text}</p>
                   </div>
-                </div>
-              ))}
+                </button>
+                );
+              })}
             </div>
           </Card>
         </div>
 
         <div className="flex w-full justify-end">
-          <Button size="lg">Guardar Nota de Ingreso</Button>
+          <Button size="lg" onClick={() => toast('Nota de ingreso guardada')}>
+            Guardar Nota de Ingreso
+          </Button>
         </div>
       </div>
     </PatientLayout>

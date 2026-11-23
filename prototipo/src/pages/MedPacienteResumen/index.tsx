@@ -1,6 +1,6 @@
 // Pantalla "med/paciente/resumen" (Figma node 100:256) — generada desde el diseño original de Figma.
-import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
 import imgAvatar2Png from '../../assets/avatar-2.png';
@@ -8,6 +8,7 @@ import imgCpuIcon from '../../assets/cpu-icon.svg';
 import imgLiveIndicatorEllipse from '../../assets/live-indicator-ellipse.svg';
 import imgWaveLine from '../../assets/wave-line.svg';
 import { BackButton, Badge, Button, Card, Divider, PatientLayout, SoapSections } from '../../components';
+import { CONFIRM_PATH, type AlertInfo, type AttendedState, type ConfirmState } from '../../data/alerts';
 
 const VITALS: Array<[string, string, string, string]> = [
   ['FC (Frecuencia Cardíaca)', '112', 'lpm', 'text-danger'],
@@ -35,9 +36,21 @@ const LAST_SOAP = {
   p: 'Ajustar diurético IV, O2 por mascarilla.',
 };
 
-const ALERTS: Array<[string, string, string]> = [
-  [imgAlertTextEllipse, 'SpO2 < 95% — Advertencia de Saturación', 'Saturación actual 93%. Detectada hace 8 min'],
-  [imgAlertTextEllipse2, 'FC > 110 bpm — Alerta Taquicardia', 'Ritmo actual 112 lpm. Detectada hace 12 min'],
+const SELF = '/MedPacienteResumen';
+
+const ALERTS: Array<[string, string, string, AlertInfo]> = [
+  [
+    imgAlertTextEllipse,
+    'SpO2 < 95% — Advertencia de Saturación',
+    'Saturación actual 93%. Detectada hace 8 min',
+    { id: 'C-03-spo2', patient: 'María González', bed: 'UCI Cama C-03', title: 'Advertencia — SpO2 por debajo de 95% (93%)', detail: 'Detectada hace 8 minutos' },
+  ],
+  [
+    imgAlertTextEllipse2,
+    'FC > 110 bpm — Alerta Taquicardia',
+    'Ritmo actual 112 lpm. Detectada hace 12 min',
+    { id: 'C-03-fc', patient: 'María González', bed: 'UCI Cama C-03', title: 'Alerta — Taquicardia, FC por encima de 110 bpm (112 lpm)', detail: 'Detectada hace 12 minutos' },
+  ],
 ];
 
 const SideTitle = ({ children }: { children: ReactNode }) => (
@@ -52,8 +65,27 @@ const Row = ({ label, children }: { label: string; children: ReactNode }) => (
 );
 
 export default function MedPacienteResumen() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Al volver de "Confirmar atención", la alerta atendida sale de la lista.
+  const attendedId = (location.state as AttendedState | null)?.attendedId;
+  const [attended] = useState(() => attendedId);
+  useEffect(() => {
+    if (attendedId) navigate(SELF, { replace: true, state: null });
+  }, [attendedId, navigate]);
+  const alerts = ALERTS.filter(([, , , info]) => info.id !== attended);
+  const attend = (alert: AlertInfo) => {
+    const state: ConfirmState = { alert, from: SELF };
+    navigate(CONFIRM_PATH, { state });
+  };
+
   return (
-    <PatientLayout breadcrumb="SIAPPC > Monitoreo > Mapa de Camas > C-03" title="Cama C-03 — María González" tab="resumen" actions={<BackButton>Volver al Mapa</BackButton>}>
+    <PatientLayout
+      breadcrumb="SIAPPC > Monitoreo > Mapa de Camas > C-03"
+      title="Cama C-03 — María González"
+      tab="resumen"
+      actions={<BackButton to="/MedMonitoreoGridUci">Volver al Mapa</BackButton>}
+    >
       <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
         <div className="flex w-full min-w-0 flex-col xl:max-w-[630px] xl:flex-1">
           <div className="flex w-full flex-col gap-4 rounded-xl bg-[#0b1220] p-4 drop-shadow-[0px_8px_10px_rgba(0,0,0,0.25)] sm:p-5 xl:min-h-[571px]">
@@ -130,11 +162,12 @@ export default function MedPacienteResumen() {
           <Card raised padding="none" className="flex w-full flex-col gap-3 p-[18px]">
             <div className="flex w-full items-center justify-between gap-3">
               <SideTitle>Alertas Activas</SideTitle>
-              <Badge tone="danger" size="sm">2</Badge>
+              <Badge tone="danger" size="sm">{alerts.length}</Badge>
             </div>
             <Divider />
             <div className="flex w-full flex-col gap-3">
-              {ALERTS.map(([dot, title, text]) => (
+              {alerts.length === 0 && <p className="font-jakarta text-[13px] font-medium leading-[normal] text-muted">Sin alertas activas.</p>}
+              {alerts.map(([dot, title, text, info]) => (
                 <div key={title} className="flex w-full items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-[10px]">
                     <img className="size-2 shrink-0" alt="" src={dot} />
@@ -143,7 +176,7 @@ export default function MedPacienteResumen() {
                       <p className="font-jakarta text-[11px] font-normal text-muted">{text}</p>
                     </div>
                   </div>
-                  <Button variant="secondary" size="sm">
+                  <Button variant="secondary" size="sm" onClick={() => attend(info)}>
                     Atender
                   </Button>
                 </div>

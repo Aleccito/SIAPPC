@@ -4,6 +4,7 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Tabs, type TabItem } from '../ui/Tabs';
+import { useToast } from '../ui/Toast';
 
 /** Paciente de ejemplo que se muestra en todas las pantallas del expediente. */
 export const DEMO_PATIENT = {
@@ -19,6 +20,7 @@ export const DEMO_PATIENT = {
 
 /** Tarjeta superior del expediente: foto, nombre, estado y acciones rápidas. */
 export function PatientHeader({ patient = DEMO_PATIENT }: { patient?: typeof DEMO_PATIENT }) {
+  const toast = useToast();
   return (
     <Card raised className="w-full">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -45,7 +47,7 @@ export function PatientHeader({ patient = DEMO_PATIENT }: { patient?: typeof DEM
           <Button to="/MedPacienteNotasSoapNueva" icon={<IconClipboard size={14} />}>
             Nueva Nota SOAP
           </Button>
-          <Button variant="secondary" icon={<IconFileText size={14} />}>
+          <Button variant="secondary" icon={<IconFileText size={14} />} onClick={() => toast(`Reporte de ${patient.name} generado`)}>
             Generar Reporte
           </Button>
         </div>
