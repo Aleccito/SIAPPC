@@ -29,10 +29,13 @@ Abre http://localhost:5173 y navega con el menú lateral, o entra directo a cual
 ## Notas
 
 - Íconos e imágenes viven en `src/assets/`, exportados de Figma.
-- El menú lateral, la campana, la ayuda, el perfil y los enlaces de prototipo de Figma navegan entre pantallas.
+- Todas las pantallas comparten el mismo menú lateral, barra superior y componentes (`src/components/`).
+  A 1440 px se ven como en Figma; en pantallas más angostas se reacomodan y el menú se abre con el botón ☰.
+- El menú lateral, la campana, la ayuda, el perfil, las pestañas del paciente y los enlaces de prototipo de Figma
+  navegan entre pantallas.
 - Fuentes: Plus Jakarta Sans, Inter y Geist (Google Fonts, en `index.html`; requieren internet).
-- Cada pantalla tiene el tamaño fijo del diseño (1440 px de ancho), igual que en Figma.
 - La ruta `/` abre `MedAlertasCentro`.
+- Estado del trabajo y siguientes pasos: [PLAN.md](PLAN.md).
 
 ## Rutas
 
