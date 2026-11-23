@@ -35,6 +35,7 @@ import { prisma } from "../lib/prisma.ts";
 import { recordAudit } from "../lib/audit.ts";
 import type { Queryable } from "../lib/audit.ts";
 import { badRequest, notFound, parseOr400 } from "../lib/http.ts";
+import { assertPacienteDelHospital } from "../lib/pertenencia.ts";
 import type { EvolucionEntry, HistoriaCategoria, HistoriaChange } from "../types.ts";
 
 // ---------------------------------------------------------------------------
@@ -555,6 +556,14 @@ function exploracionVacia() {
 
 export default async function historiaRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
+
+  // Todas las rutas de este archivo cuelgan de `:pacienteId`: el paciente tiene
+  // que ser del hospital de la sesión, o el expediente de otro hospital quedaría
+  // a un cambio de URL. Va como hook para que ninguna ruta nueva se lo salte.
+  app.addHook("preHandler", async (req) => {
+    const { pacienteId } = parseOr400(pacienteParam, req.params);
+    await assertPacienteDelHospital(pacienteId, req.hospitalId);
+  });
 
   const ver = [app.requirePermission("historia_clinica", "ver")];
   const crear = [app.requirePermission("historia_clinica", "crear")];

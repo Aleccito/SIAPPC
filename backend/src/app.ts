@@ -101,6 +101,18 @@ export async function buildApp() {
 
   app.get("/health", async () => ({ status: "ok" }));
 
+  // Aparte de /health a propósito: el healthcheck de Docker no debe tumbar el
+  // backend porque el LLM esté apagado. Solo lista modelos, no genera texto.
+  app.get("/health/ai", async (_req, reply) => {
+    try {
+      const res = await fetch(`${env.llm.url}/models`, { signal: AbortSignal.timeout(3000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return { status: "ok", model: env.llm.model };
+    } catch {
+      return reply.code(503).send({ status: "unavailable", model: env.llm.model });
+    }
+  });
+
   await app.register(authRoutes);
   await app.register(usersRoutes);
   await app.register(rolesRoutes);

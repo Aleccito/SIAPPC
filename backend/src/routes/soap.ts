@@ -22,6 +22,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.ts";
 import { recordAudit } from "../lib/audit.ts";
 import { conflict, forbidden, notFound, parseOr400 } from "../lib/http.ts";
+import { assertPacienteDelHospital } from "../lib/pertenencia.ts";
 import type { SoapNote } from "../types.ts";
 
 const NOTA_INCLUDE = {
@@ -125,9 +126,11 @@ function toSecciones(input: {
   };
 }
 
-async function findNota(id: number): Promise<NotaRow> {
-  const row = await prisma.notaSoap.findUnique({
-    where: { nota_id: BigInt(id) },
+// Acotada al hospital de la sesión: firmar, editar o ver una nota de otro
+// hospital por su id da 404, igual que si no existiera.
+async function findNota(id: number, hospitalId: number): Promise<NotaRow> {
+  const row = await prisma.notaSoap.findFirst({
+    where: { nota_id: BigInt(id), paciente: { hospital_id: hospitalId } },
     include: NOTA_INCLUDE,
   });
   if (!row) throw notFound(`No existe la nota SOAP ${id}`);
@@ -146,6 +149,7 @@ export default async function soapRoutes(app: FastifyInstance) {
   // primer día.
   app.get("/soap/notes", { preHandler: ver }, async (req, reply) => {
     const { patientId, includeAddenda } = parseOr400(listQuerySchema, req.query);
+    await assertPacienteDelHospital(patientId, req.hospitalId);
 
     const where = {
       paciente_id: patientId,
@@ -166,11 +170,12 @@ export default async function soapRoutes(app: FastifyInstance) {
 
   app.get("/soap/notes/:id", { preHandler: ver }, async (req) => {
     const { id } = parseOr400(idSchema, req.params);
-    return toNote(await findNota(id));
+    return toNote(await findNota(id, req.hospitalId));
   });
 
   app.post("/soap/notes", { preHandler: crear }, async (req, reply) => {
     const input = parseOr400(createSchema, req.body);
+    await assertPacienteDelHospital(input.patientId, req.hospitalId);
     const autorId = Number(req.user.sub);
     const ahora = new Date();
 
@@ -213,7 +218,7 @@ export default async function soapRoutes(app: FastifyInstance) {
     async (req: FastifyRequest) => {
       const { id } = parseOr400(idSchema, req.params);
       const input = parseOr400(schema, req.body);
-      const nota = await findNota(id);
+      const nota = await findNota(id, req.hospitalId);
 
       // La regla que da sentido a la firma. Sin este corte, "firmada" sería una
       // etiqueta y no un compromiso: cualquiera podría cambiar el texto después
@@ -255,7 +260,7 @@ export default async function soapRoutes(app: FastifyInstance) {
   // porque es el último cambio que admite el registro.
   app.post("/soap/notes/:id/sign", { preHandler: editar }, async (req) => {
     const { id } = parseOr400(idSchema, req.params);
-    const nota = await findNota(id);
+    const nota = await findNota(id, req.hospitalId);
 
     if (nota.usuario_id !== Number(req.user.sub)) {
       throw forbidden("Solo el autor puede firmar la nota");
@@ -296,7 +301,7 @@ export default async function soapRoutes(app: FastifyInstance) {
   app.post("/soap/notes/:id/addendum", { preHandler: crear }, async (req, reply) => {
     const { id } = parseOr400(idSchema, req.params);
     const input = parseOr400(seccionesSchema, req.body);
-    const padre = await findNota(id);
+    const padre = await findNota(id, req.hospitalId);
 
     // Sobre un borrador no hay nada que corregir: se edita y ya. Permitirlo
     // dejaría dos textos vivos a la vez sin decir cuál vale.

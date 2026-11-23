@@ -48,6 +48,23 @@ const bodySchema = z.object({
   message: "Hace falta patientId, symptoms o question",
 });
 
+function marco(evento: string, datos: unknown): string {
+  return `event: ${evento}\ndata: ${JSON.stringify(datos)}\n\n`;
+}
+
+/** Valida el cuerpo y arma contexto + pregunta. Lanza 400/404 antes de tocar el LLM. */
+async function prepararConsulta(body: unknown, hospitalId: number) {
+  const input = parseOr400(bodySchema, body);
+  const context = input.patientId
+    ? await patientContext(input.patientId, hospitalId)
+    : "Sin paciente asociado (consulta general).";
+  const question = [
+    input.symptoms && `Síntomas/hallazgos: ${input.symptoms}`,
+    input.question ?? "Sugiere diferenciales y manejo para este paciente de alto riesgo.",
+  ].filter(Boolean).join("\n");
+  return { input, context, question };
+}
+
 export default async function aiRoutes(app: FastifyInstance) {
   // Sin esto `req.user` queda vacío y requirePermission revienta con un 500.
   app.addHook("preHandler", app.authenticate);
@@ -59,15 +76,7 @@ export default async function aiRoutes(app: FastifyInstance) {
     "/ai/assist",
     { preHandler: medico, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
     async (req) => {
-      const input = parseOr400(bodySchema, req.body);
-
-      const context = input.patientId
-        ? await patientContext(input.patientId, req.hospitalId)
-        : "Sin paciente asociado (consulta general).";
-      const question = [
-        input.symptoms && `Síntomas/hallazgos: ${input.symptoms}`,
-        input.question ?? "Sugiere diferenciales y manejo para este paciente de alto riesgo.",
-      ].filter(Boolean).join("\n");
+      const { input, context, question } = await prepararConsulta(req.body, req.hospitalId);
 
       let answer: string;
       try {
@@ -85,6 +94,57 @@ export default async function aiRoutes(app: FastifyInstance) {
         answer,
         disclaimer: DISCLAIMER,
       };
+    },
+  );
+
+  // Misma consulta que POST /ai/assist, pero la respuesta llega por SSE a
+  // medida que el modelo la genera: en CPU tarda más de un minuto y así el
+  // médico empieza a leer en segundos. Es POST (lleva cuerpo), así que el
+  // navegador lo lee con fetch y no con EventSource.
+  //
+  // Marcos:
+  //   event: inicio  data: {model, disclaimer}
+  //   event: trozo   data: {text}            (n veces)
+  //   event: fin     data: {}
+  //   event: error   data: {error}           (en lugar de `fin`)
+  // Los errores de validación, permiso y paciente inexistente salen ANTES de
+  // abrir el flujo, como JSON normal con su código HTTP.
+  app.post(
+    "/ai/assist/stream",
+    { preHandler: medico, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const { input, context, question } = await prepararConsulta(req.body, req.hospitalId);
+
+      // Si el médico cierra la pestaña se corta también la generación: el LLM
+      // es de un solo hilo y no debe seguir ocupado para nadie.
+      const control = new AbortController();
+      reply.raw.on("close", () => control.abort());
+
+      reply.raw.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        // Sin esto nginx guarda los trozos y el médico no ve nada hasta el final.
+        "X-Accel-Buffering": "no",
+      });
+      reply.raw.write(marco("inicio", { model: env.llm.model, disclaimer: DISCLAIMER }));
+
+      try {
+        const flujo = await chain.stream({ context, question }, { signal: control.signal });
+        for await (const text of flujo) {
+          if (text) reply.raw.write(marco("trozo", { text }));
+        }
+        reply.raw.write(marco("fin", {}));
+        req.log.info({ userId: req.user.sub, patientId: input.patientId }, "ai_assist_stream");
+      } catch (err: unknown) {
+        if (!control.signal.aborted) {
+          req.log.error({ reason: err instanceof Error ? err.name : "desconocido" }, "ai_assist_stream: LLM no disponible");
+          reply.raw.write(marco("error", { error: llmNoDisponible().message }));
+        }
+      } finally {
+        reply.raw.end();
+      }
+      return reply;
     },
   );
 

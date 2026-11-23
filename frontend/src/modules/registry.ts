@@ -13,6 +13,7 @@ import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined'
 import LocalHotelOutlinedIcon from '@mui/icons-material/LocalHotelOutlined'
 import AirlineSeatFlatOutlinedIcon from '@mui/icons-material/AirlineSeatFlatOutlined'
 import TabletMacOutlinedIcon from '@mui/icons-material/TabletMacOutlined'
+import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined'
 import type { Role } from './auth/types'
 import type { StringKey } from '../shared/i18n/dictionary'
 
@@ -84,6 +85,16 @@ export const modules: NavEntry[] = [
     icon: FolderSharedOutlinedIcon,
     lazy: async () => ({
       Component: (await import('./clinical/pages/ExpedientePage')).ExpedientePage,
+    }),
+  },
+  // Consulta libre al asistente IA. Sin `requiredRole`: el servidor exige
+  // `notas_soap:crear` y la pantalla muestra el 403 que devuelva.
+  {
+    path: '/ai',
+    label: 'nav.aiConsult',
+    icon: PsychologyOutlinedIcon,
+    lazy: async () => ({
+      Component: (await import('./clinical/pages/AiConsultPage')).AiConsultPage,
     }),
   },
   // Admisión: camas, ingresos, egresos y citas. Sin `requiredRole`, igual que

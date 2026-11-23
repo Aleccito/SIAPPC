@@ -84,11 +84,12 @@ describe("caché de /sensors", () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.json().length, 1);
 
-    const key = "siappc-cache:readings:limit=5";
     // La escritura de caché no bloquea la respuesta, así que puede llegar un
-    // instante después.
+    // instante después. La clave lleva el hospital de la sesión además del
+    // límite (`hospitalId=…&limit=5`).
     await sleep(50);
-    assert.ok(await redis!.get(key), "no se guardó la respuesta en Redis");
+    const [key] = await redis!.keys("siappc-cache:readings:hospitalId=*&limit=5");
+    assert.ok(key && (await redis!.get(key)), "no se guardó la respuesta en Redis");
 
     const ttl = await redis!.ttl(key);
     assert.ok(ttl > 0 && ttl <= TTL_SECONDS, `TTL fuera de rango: ${ttl}`);
@@ -148,7 +149,7 @@ describe("caché de /sensors", () => {
     });
     await sleep(50);
 
-    assert.equal((await redis!.keys("siappc-cache:readings:limit=9")).length, 1);
-    assert.equal((await redis!.keys("siappc-cache:alerts:limit=9")).length, 1);
+    assert.equal((await redis!.keys("siappc-cache:readings:hospitalId=*&limit=9")).length, 1);
+    assert.equal((await redis!.keys("siappc-cache:alerts:hospitalId=*&limit=9")).length, 1);
   });
 });

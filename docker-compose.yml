@@ -120,6 +120,11 @@ services:
       # CA que firma el certificado del broker. Es la misma que usa mosquitto,
       # pero aquí solo se monta el certificado público: la clave no entra.
       MQTT_CA_FILE: /certs/ca.crt
+      # Sesión MQTT persistente del backend (ver backend/src/env.ts).
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID:-siappc-backend}
+      MQTT_SHARED_GROUP: ${MQTT_SHARED_GROUP:-}
+      MQTT_MAX_ATRASO_SECONDS: ${MQTT_MAX_ATRASO_SECONDS:-60}
+      MQTT_MAX_ADELANTO_SECONDS: ${MQTT_MAX_ADELANTO_SECONDS:-5}
       # Store compartido del límite de peticiones y caché de /sensors/*. Es lo
       # que permite correr más de una réplica del backend: con el contador en
       # memoria, cada réplica dejaba pasar el límite completo por su cuenta.
@@ -144,7 +149,9 @@ services:
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
       # LLM local del asistente clínico (/ai/assist): Docker Model Runner del host.
       # Requiere: docker model pull <LLM_MODEL>.
-      LLM_URL: http://model-runner.docker.internal/engines/v1
+      # Por defecto el Model Runner de Docker Desktop; en un servidor con el
+      # modelo en otra máquina se fija LLM_URL en el .env de la raíz.
+      LLM_URL: ${LLM_URL:-http://model-runner.docker.internal/engines/v1}
       LLM_MODEL: ${LLM_MODEL:-huggingface.co/mungert/medgemma-4b-it-gguf:Q4_K_M}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-180}
       AI_AUTO_COOLDOWN_SECONDS: ${AI_AUTO_COOLDOWN_SECONDS:-300}
