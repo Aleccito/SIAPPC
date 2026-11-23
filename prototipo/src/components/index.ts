@@ -1,0 +1,23 @@
+// Componentes compartidos del prototipo. Importa desde aquí:
+// import { AppLayout, Button, Card } from '../../components';
+export * from './icons';
+export { AppLayout, PageBody } from './layout/AppLayout';
+export { Sidebar } from './layout/Sidebar';
+export { TopBar, TopBarDate, NotificationBell } from './layout/TopBar';
+export { NAV_ITEMS, sectionForPath, CURRENT_USER } from './layout/nav';
+export { Button } from './ui/Button';
+export { BackButton } from './ui/BackButton';
+export { Card, CardHeader, CardTitle, Divider } from './ui/Card';
+export { Badge } from './ui/Badge';
+export { KpiCard } from './ui/KpiCard';
+export { Tabs } from './ui/Tabs';
+export { Table, TableHead, TableRow } from './ui/Table';
+export { Pagination } from './ui/Pagination';
+export { InfoField, TextBlock } from './ui/InfoField';
+export { Modal } from './ui/Modal';
+export { SegmentedControl } from './ui/SegmentedControl';
+export { LineChart, chartX, type LineSeries } from './ui/LineChart';
+export { Input, TextArea, SearchBox, Select } from './ui/Input';
+export { PatientHeader, PatientTabs, PATIENT_TABS, DEMO_PATIENT } from './patient/PatientHeader';
+export { PatientLayout } from './patient/PatientLayout';
+export { SoapSections, type SoapNote } from './patient/SoapSections';
