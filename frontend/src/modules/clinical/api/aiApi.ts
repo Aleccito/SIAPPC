@@ -13,7 +13,7 @@ export type AiAnalysisResponse = {
   disclaimer: string
 }
 
-/** Último análisis automático de IA del paciente. Requiere `notas_soap:crear`. */
+/** Último análisis automático de IA del paciente. Requiere `asistente_ia:ver`. */
 export async function getAiAnalysis(patientId: string): Promise<AiAnalysisResponse> {
   return request<AiAnalysisResponse>(`/ai/assist/${encodeURIComponent(patientId)}`)
 }

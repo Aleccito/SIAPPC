@@ -88,7 +88,7 @@ export const modules: NavEntry[] = [
     }),
   },
   // Consulta libre al asistente IA. Sin `requiredRole`: el servidor exige
-  // `notas_soap:crear` y la pantalla muestra el 403 que devuelva.
+  // `asistente_ia:ver` y la pantalla muestra el 403 que devuelva.
   {
     path: '/ai',
     label: 'nav.aiConsult',
