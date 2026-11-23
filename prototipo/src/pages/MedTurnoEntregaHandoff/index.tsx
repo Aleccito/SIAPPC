@@ -3,9 +3,15 @@ import { Fragment, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import imgInfo from '../../assets/info.svg';
 import imgRecAvatarPng from '../../assets/rec-avatar.png';
-import { AppLayout, Badge, Button, Card, ConfirmDialog, Divider, IconFileText, rowLinkClass, Table, Tabs, useRowLink, useToast } from '../../components';
+import { AppLayout, Badge, Button, Card, ConfirmDialog, Divider, focusFirst, IconFileText, rowLinkClass, Table, Tabs, TextArea, useRowLink, useToast, useValidation } from '../../components';
 import { cn } from '../../lib/cn';
+import { checkText } from '../../lib/validate';
 import type { HandoffState } from '../MedTurnoHistorial';
+
+/** Notas de Figma. El borrador guardado se conserva mientras no se recargue la página. */
+const FIGMA_NOTES =
+  'Se entrega guardia con 7 pacientes. Cama 3 (María González) se mantiene con soporte vasopresor ajustado. Se sugiere evaluar diuresis acumulada en turno vespertino y valorar retiro de sedación progresivo si PAM se mantiene estable.';
+let savedDraft: string | null = null;
 
 const TURNO_TABS = [
   { id: 'nueva', label: 'Nueva Entrega', to: '/MedTurnoEntregaHandoff' },
@@ -41,6 +47,24 @@ export default function MedTurnoEntregaHandoff() {
   const toast = useToast();
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [notes, setNotes] = useState(() => savedDraft ?? FIGMA_NOTES);
+  // Las notas son obligatorias para confirmar (20 a 2000 caracteres); el borrador guarda lo que haya.
+  const form = useValidation({
+    'entrega-notas': () => checkText(notes, { required: true, min: 20, max: 2000, requiredMessage: 'Escriba las notas de entrega' }),
+  });
+  const saveDraft = () => {
+    savedDraft = notes;
+    toast('Borrador guardado');
+  };
+  const askConfirm = () => {
+    form.markAll();
+    if (form.errors['entrega-notas']) {
+      toast('Revise los campos marcados', 'info');
+      focusFirst(['entrega-notas']);
+      return;
+    }
+    setConfirmOpen(true);
+  };
 
   const confirm = () => {
     setConfirmOpen(false);
@@ -107,17 +131,28 @@ export default function MedTurnoEntregaHandoff() {
           </Card>
 
           <Card className="flex w-full flex-col gap-3">
-            <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">Notas Generales de Entrega</h2>
-            <div className="flex min-h-[100px] w-full rounded-lg border border-line bg-[#f1f5f9] p-3">
-              <p className="font-jakarta text-[13px] font-normal leading-[1.5] text-ink">
-                Se entrega guardia con 7 pacientes. Cama 3 (María González) se mantiene con soporte vasopresor ajustado. Se sugiere evaluar diuresis acumulada en turno vespertino y valorar retiro de sedación progresivo si PAM se mantiene estable.
-              </p>
-            </div>
+            <h2 id="entrega-notas-titulo" className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">
+              Notas Generales de Entrega
+            </h2>
+            <TextArea
+              id="entrega-notas"
+              aria-labelledby="entrega-notas-titulo"
+              value={notes}
+              onChange={setNotes}
+              onBlur={() => form.touch('entrega-notas')}
+              placeholder="Resumen general del turno para quien recibe..."
+              tone="gray"
+              leading="relaxed"
+              minHeight={100}
+              maxLength={2000}
+              aria-required
+              error={form.show('entrega-notas')}
+            />
             <div className="flex w-full flex-wrap justify-end gap-3">
-              <Button variant="secondary" onClick={() => toast('Borrador guardado')}>
+              <Button variant="secondary" onClick={saveDraft}>
                 Guardar Borrador
               </Button>
-              <Button variant="success" onClick={() => setConfirmOpen(true)}>
+              <Button variant="success" onClick={askConfirm}>
                 Confirmar Entrega de Turno
               </Button>
             </div>

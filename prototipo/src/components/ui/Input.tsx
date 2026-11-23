@@ -1,6 +1,8 @@
-import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '../../lib/cn';
+import type { ErrorText } from '../../lib/validate';
+import { errorProps, FieldError } from '../form/validation';
 import { IconSearch } from '../icons';
 
 const field =
@@ -10,44 +12,35 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label?: ReactNode;
   icon?: ReactNode;
   containerClassName?: string;
+  /** Mensaje de error bajo el campo (borde rojo). Requiere `id`. */
+  error?: ErrorText;
 };
 
 /** Campo de texto con etiqueta opcional. Mide 38 px de alto, igual que las listas de formulario (`Select variant="input"`). */
-export function Input({ label, icon, className, containerClassName, id, ...rest }: InputProps) {
+export function Input({ label, icon, className, containerClassName, id, error, ...rest }: InputProps) {
   const input = (
-    <span className={cn('flex h-[38px] min-w-0 items-center gap-2 rounded-lg border border-line bg-white px-3 font-jakarta text-[13px] leading-[normal] text-ink focus-within:border-primary', containerClassName)}>
+    <span
+      className={cn(
+        'flex h-[38px] min-w-0 items-center gap-2 rounded-lg border bg-white px-3 font-jakarta text-[13px] leading-[normal] text-ink focus-within:border-primary',
+        error ? 'border-danger' : 'border-line',
+        containerClassName,
+      )}
+    >
       {icon}
-      <input id={id} className={cn('w-full min-w-0 bg-transparent outline-none placeholder:text-subtle', className)} {...rest} />
+      <input id={id} className={cn('w-full min-w-0 bg-transparent outline-none placeholder:text-subtle', className)} {...(id ? errorProps(id, error ?? null) : {})} {...rest} />
     </span>
   );
-  if (!label) return input;
+  if (!label && error === undefined) return input;
   return (
-    <label htmlFor={id} className="flex min-w-0 flex-col gap-1.5">
-      <span className="font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{label}</span>
-      {input}
-    </label>
-  );
-}
-
-type TextAreaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: ReactNode };
-
-export function TextArea({ label, className, id, ...rest }: TextAreaProps) {
-  const area = (
-    <textarea
-      id={id}
-      className={cn(
-        'w-full min-w-0 resize-y rounded-lg border border-line bg-white p-3 font-jakarta text-[13px] leading-[normal] text-ink outline-none placeholder:text-subtle focus:border-primary',
-        className,
+    <div className="flex min-w-0 flex-col gap-1.5">
+      {label && (
+        <label htmlFor={id} className="font-jakarta text-[12px] font-semibold leading-[normal] text-muted">
+          {label}
+        </label>
       )}
-      {...rest}
-    />
-  );
-  if (!label) return area;
-  return (
-    <label htmlFor={id} className="flex min-w-0 flex-col gap-1.5">
-      <span className="font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{label}</span>
-      {area}
-    </label>
+      {input}
+      {id && <FieldError forId={id} error={error ?? null} />}
+    </div>
   );
 }
 

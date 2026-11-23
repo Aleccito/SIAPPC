@@ -189,3 +189,184 @@ pero la tarjeta las recorta, así que no se ven.
 
 Aprobado todo: propuesta completa del login (1–10), traducción ES/EN/DE de las pantallas de acceso, roles R1–R7,
 problemas visuales A y B completos, y C1–C5 y C8 (C6 y C7 sin cambio).
+
+---
+
+# Paso 3 — Formularios
+
+> **Estado: hecho.** Aprobado completo ("Approve all") e implementado en la rama `feature/prototipo-formularios`.
+> Ajustes al implementar, respecto de lo escrito abajo:
+> - Los textos largos (`TextArea`) se vuelven a medir al cargar la fuente y al cambiar de ancho, para que su alto
+>   sea siempre el del texto, como el recuadro de Figma.
+> - El IMC se muestra con un decimal **truncado** (68 kg y 165 cm dan 24.9, como en Figma; redondeado daría 25.0).
+> - "Editar Nota" de un borrador abre la ventana con el título "Editar borrador SOAP" y, al guardar, reemplaza ese borrador.
+> - `Input` también muestra errores (lo usan Cambiar contraseña y Configurar MFA). `TextBlock` se borró: ya no lo usaba ninguna pantalla.
+> - A 1440 px solo cambian los tres puntos aprobados; las demás pantallas quedan idénticas (comparadas píxel a píxel).
+
+Objetivo: que todos los campos que hoy son dibujos sean reales, con validación y sin backend.
+
+## Reglas para todos los formularios
+
+- **Componentes compartidos nuevos** (en `src/components/form/`):
+  - `TextArea` (reemplaza al actual): crece con el texto, tiene límite de caracteres y estilos que reproducen cada
+    dibujo de Figma (fondo blanco, gris claro o gris; letra de 13 o 14 px). Así, a 1440 px, cada campo se ve igual que hoy.
+  - `DateField`: muestra la fecha como en Figma ("02 Ago 2026") y abre el calendario del navegador al tocarlo.
+  - `NumberField`: solo números (con un decimal donde haga falta, ej. temperatura), con unidad y rango. Dos aspectos:
+    "caja" (Mín/Máx de umbrales) y "en línea" (los valores grandes de Exploración física, que siguen viéndose como texto).
+  - `Combobox`: lista desplegable en la que se escribe para buscar (CIE-10; soluciones y medicamentos).
+  - `FormField` y `FieldError`: etiqueta, mensaje de error en rojo bajo el campo y borde rojo; el campo queda
+    marcado para lectores de pantalla (`aria-invalid`, `aria-describedby`).
+  - Funciones de validación en `src/lib/validate.ts` (obligatorio, largo mínimo y máximo, rango, formato de presión).
+- **Cuándo aparecen los errores:** al salir de un campo que se tocó, o al intentar guardar. Si hay errores al
+  guardar, no se guarda nada, el cursor va al primer campo con error y aparece el aviso "Revise los campos marcados".
+  Mientras se corrige, el error desaparece en cuanto el valor es válido.
+- **Obligatorios:** no se agregan asteriscos (solo "Acción tomada *", que ya viene de Figma); lo dice el mensaje de
+  error. Los campos obligatorios llevan `aria-required`.
+- **Textos libres:** se ignoran los espacios al inicio y al final. El contador "420 / 500" aparece solo al pasar
+  el 80 % del límite.
+- **Sin backend:** guardar actualiza la pantalla y muestra un aviso. Lo guardado se conserva mientras no se recargue
+  la página (memoria del prototipo), así que al volver a la pantalla se ve lo último guardado.
+- **Roles:** Datos Personales sigue de solo lectura. En Nota de ingreso, los "Datos de Admisión" (fecha, servicio,
+  cama, médico) también quedan de solo lectura: los registra Admisión.
+
+### Rangos de signos vitales (valores posibles, no umbrales de alarma)
+
+Sirven para rechazar errores de tecleo en Exploración física y en Umbrales.
+
+| Signo | Rango aceptado | Formato |
+|---|---|---|
+| FC (frecuencia cardíaca) | 20 – 250 lpm | entero |
+| FR (frecuencia respiratoria) | 4 – 60 rpm | entero |
+| PA sistólica | 50 – 260 mmHg | entero |
+| PA diastólica | 30 – 160 mmHg | entero, menor que la sistólica |
+| Temperatura | 30.0 – 43.0 °C | un decimal |
+| SpO2 / saturación | 50 – 100 % | entero |
+| Glasgow | 3 – 15 | entero |
+| Peso | 1 – 300 kg | un decimal |
+| Talla | 40 – 230 cm | entero |
+| Perímetro abdominal | 40 – 200 cm | entero |
+
+---
+
+## 1. Nueva Nota SOAP (`MedPacienteNotasSoapNueva`)
+
+| Campo | Obligatorio | Valida |
+|---|---|---|
+| Subjetivo (S) | para firmar | 10 – 2000 caracteres |
+| Objetivo (O) | para firmar | 10 – 2000 caracteres |
+| Evaluación / Análisis (A) | para firmar | 10 – 2000 caracteres |
+| Plan (P) | para firmar | 10 – 2000 caracteres |
+
+- **Botones** (cambia a 1440: hoy hay dos): "Cancelar", **"Guardar borrador"** (secundario) y **"Guardar y firmar"** (principal).
+- **Guardar borrador:** basta con una sección escrita (si las cuatro están vacías: "Escriba al menos una sección").
+  La nota aparece primera en el Historial como **"En progreso"**, con la fecha y hora de ahora. Aviso "Borrador guardado".
+- **Guardar y firmar:** las cuatro secciones son obligatorias. Pide confirmación: "¿Firmar la nota? Una vez firmada
+  no se puede editar." Al confirmar, la nota aparece primera en el Historial como **"Completada"**, firmada por
+  Dr. Carlos Méndez. Aviso "Nota firmada".
+- **Cancelar, X o Escape con texto escrito:** pregunta "¿Descartar la nota?" antes de salir.
+- **Editar Nota** (en el Detalle): en una nota "En progreso" abre Nueva Nota con su texto para seguir escribiéndola;
+  en una nota firmada el botón dice **"Nota firmada"** y queda deshabilitado (cambia a 1440 en el Detalle, porque la
+  nota de Figma está completada).
+
+## 2. Confirmación de Atención (`MedAlertasConfirmacionAtencion`)
+
+| Campo | Obligatorio | Valida |
+|---|---|---|
+| Acción tomada * | sí | 10 – 500 caracteres |
+| Clasificación de alerta | sí (ya viene elegida) | una de las 4 opciones |
+| Notas adicionales | no | hasta 500 caracteres |
+
+- **Confirmar Atención:** con errores no confirma. Si todo está bien, hace lo de hoy: la alerta pasa a atendida en la
+  pantalla de origen y aparece el aviso.
+
+## 3. Entrega de Turno (`MedTurnoEntregaHandoff`)
+
+| Campo | Obligatorio | Valida |
+|---|---|---|
+| Notas generales de entrega | para confirmar | 20 – 2000 caracteres (empieza con el texto de Figma, editable) |
+
+- **Guardar borrador:** guarda lo escrito aunque esté corto o vacío. Aviso "Borrador guardado".
+- **Confirmar entrega de turno:** valida las notas; si están bien, la confirmación de hoy (receptora Dra. Ana Gómez)
+  y el Historial de entregas.
+
+## 4. Configuración de Umbrales (`MedPacienteConfigUmbrales`)
+
+| Campo | Obligatorio | Valida |
+|---|---|---|
+| Mín y Máx de cada signo | al menos uno de los dos si el signo está activo | número dentro del rango del signo (tabla de arriba); temperatura con un decimal |
+| Mín y Máx juntos | — | **Mín menor que Máx** |
+| Signo apagado | — | no se valida (puede quedar sin límites) |
+
+- Los "-" de hoy pasan a campos vacíos con "-" como texto de ayuda.
+- **Guardar configuración:** con errores marca el campo y explica debajo de la fila; si todo está bien, aviso
+  "Umbrales guardados".
+- **Restablecer valores sugeridos:** también vuelve los Mín/Máx a los valores de Figma.
+
+## 5. Registro de Diagnóstico (`MedPacienteRegistroDiagnostico`)
+
+| Campo | Obligatorio | Valida |
+|---|---|---|
+| Tipo de diagnóstico | sí (ya viene elegido) | Principal / Secundario / Complicación |
+| Código CIE-10 | sí | **se escribe para buscar** por código o por texto, sin importar tildes ni mayúsculas ("insuf", "I50", "neumonia"); hay que elegir un código de la lista (unos 30 códigos frecuentes de ejemplo). Si se escribe algo y no se elige: "Elija un código de la lista". |
+| Descripción / hallazgos clínicos | sí | 20 – 1000 caracteres (empieza con el texto de Figma) |
+| Severidad | sí (ya viene elegida) | Leve / Moderada / Severa / Crítica |
+| Fecha de registro | sí | fecha válida, **no futura** y no anterior al ingreso del paciente (15 Oct 2025) |
+| Notas adicionales / plan inicial | no | hasta 1000 caracteres |
+
+- **CIE-10 a 390 px:** cerrado, el campo muestra el código y la descripción en dos líneas si no caben (a 1440 sigue en
+  una línea, como hoy). Al tocarlo se puede escribir y aparece la lista filtrada; flechas y Enter para elegir.
+- **Registrar diagnóstico:** con errores no registra; si todo está bien, hace lo de hoy (Diagnósticos activos con el
+  código primero y aviso).
+
+## 6. Nota de Ingreso (`MedPacienteNotaIngreso`)
+
+| Campo | Obligatorio | Valida |
+|---|---|---|
+| Datos de admisión (fecha, servicio, cama, médico) | — | **solo lectura** (los registra Admisión) |
+| Motivo de ingreso | sí | 10 – 300 caracteres (empieza con el texto de Figma) |
+| Padecimiento actual | sí | 30 – 2000 caracteres (empieza con el texto de Figma) |
+| Plan terapéutico inicial | al menos una indicación | cada indicación de 3 a 120 caracteres; una indicación vacía se quita al salir de ella |
+| Pronóstico | sí (ya viene elegido) | Bueno / Reservado / Grave |
+| Diagnósticos de ingreso | al menos uno | se agregan con "+ Agregar Diagnóstico" (sin cambio) |
+
+- Las indicaciones del plan se editan en su lugar (se ven como hoy) y se agrega **"+ Agregar indicación"** bajo la
+  lista (cambia a 1440).
+- **Guardar nota de ingreso:** con errores no guarda; si todo está bien, aviso "Nota de ingreso guardada".
+
+## 7. Exploración Física (`MedPacienteExploracionFisica`)
+
+| Campo | Obligatorio | Valida |
+|---|---|---|
+| Peso, talla, perímetro abdominal | peso y talla | rangos de la tabla de arriba |
+| IMC | — | **se calcula solo** con peso y talla, con su categoría (Bajo peso / Normal / Sobrepeso / Obesidad) y su color |
+| FC, FR, temperatura, saturación, Glasgow | sí | rangos de la tabla de arriba |
+| Tensión arterial | sí | formato "120/80"; sistólica y diastólica en su rango y la sistólica mayor |
+| Hallazgos por región (4 por región, 6 regiones) | si se marca **Anormal** | 10 – 500 caracteres |
+| Normal / Anormal de cada hallazgo | — | la etiqueta se toca para cambiarla (se ve igual que hoy) |
+
+- Los valores grandes (68 kg, 165 cm, 78 lpm…) se editan en su lugar: se ven como texto y al tocarlos muestran borde.
+- **Guardar:** con errores no guarda y, si el error está en otra región, la marca en la lista de regiones; si todo
+  está bien, aviso "Exploración guardada".
+
+## 8. Otros campos que hoy no se pueden escribir o no validan
+
+| Pantalla | Campo | Obligatorio | Valida | Al guardar |
+|---|---|---|---|---|
+| Diagnósticos activos | Nota clínica correlativa (hoy texto fijo) | sí | 20 – 2000 caracteres | "Actualizar Nota" → aviso "Nota actualizada" |
+| Interrogatorio por aparatos | Observaciones de cada aparato (hoy texto fijo) | si el aparato tiene síntomas marcados | 10 – 1000 caracteres | "Guardar Interrogatorio" → aviso; con errores abre el aparato que tiene el error |
+| Indicaciones médicas → Nueva indicación | Solución o medicamento (hoy solo lista) | sí | `Combobox`: se elige de la lista o se escribe uno nuevo (3 – 80 caracteres) | agrega la fila como hoy |
+| Mi Perfil → Cambiar contraseña | Contraseña actual | sí | no vacía | aviso "Contraseña actualizada" |
+| | Nueva contraseña | sí | 12 o más caracteres, con mayúscula, número y símbolo; distinta de la actual | |
+| | Confirmar | sí | igual a la nueva | |
+| Mi Perfil → Configurar MFA | Código de verificación | sí | 6 dígitos | aviso "MFA activado" |
+| Ayuda → Contactar soporte | Mensaje | sí | 10 – 1000 caracteres | aviso con folio |
+
+**Sin cambio:** Datos Personales (solo lectura, por rol). Las pantallas de acceso siguen aceptando cualquier dato
+(decisión del paso 2b); solo el código de 6 dígitos se valida, como ya hace.
+
+## Qué cambia a 1440 px (necesita tu visto bueno)
+
+1. Nueva Nota SOAP: tres botones en lugar de dos ("Guardar borrador" es nuevo).
+2. Detalle de nota SOAP: "Editar Nota" pasa a "Nota firmada" deshabilitado en notas firmadas (la de Figma lo está).
+3. Nota de ingreso: enlace "+ Agregar indicación" bajo el plan terapéutico.
+4. Todo lo demás se ve igual que hoy hasta que se escribe algo o aparece un error.

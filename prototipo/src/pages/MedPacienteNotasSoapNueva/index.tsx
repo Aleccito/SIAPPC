@@ -1,5 +1,6 @@
 // Pantalla "med/paciente/notas-soap-nueva" (Figma node 29:1881) — generada desde el diseño original de Figma.
-// Los campos de la ventana son dibujos (paso 3 del plan los vuelve editables).
+// Paso 3: S/O/A/P son campos reales. "Guardar borrador" pide al menos una sección; "Guardar y firmar"
+// pide las cuatro (10 a 2000 caracteres) y confirma antes de firmar (REVISION.md, paso 3, punto 1).
 import imgAvatar2Png from '../../assets/avatar-2.png';
 import imgHeaderRowFrame from '../../assets/header-row-frame.svg';
 import imgHeaderRowFrame2 from '../../assets/header-row-frame-2.svg';
@@ -7,10 +8,27 @@ import imgModalHeaderFrame from '../../assets/modal-header-frame.svg';
 import imgWave from '../../assets/wave.svg';
 import imgWave2 from '../../assets/wave-2.svg';
 import imgWave3 from '../../assets/wave-3.svg';
-import { useNavigate } from 'react-router-dom';
-import { BackButton, Badge, Button, Card, CloseButton, Divider, Modal, PatientLayout, useToast } from '../../components';
-import { SOAP_HISTORY_PATH } from '../../data/soap';
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  BackButton,
+  Badge,
+  Button,
+  Card,
+  CloseButton,
+  ConfirmDialog,
+  Divider,
+  FieldError,
+  focusFirst,
+  Modal,
+  PatientLayout,
+  TextArea,
+  useToast,
+  useValidation,
+} from '../../components';
+import { nowLabel, saveSoapNote, SOAP_HISTORY_PATH, soapNotes } from '../../data/soap';
 import { cn } from '../../lib/cn';
+import { checkText } from '../../lib/validate';
 
 const SIGNALS = [
   { label: 'ECG II', value: '134', unit: 'bpm', color: 'text-[#22c55e]', wave: imgWave, icon: imgHeaderRowFrame, iconNextToLabel: true, border: 'border border-white' },
@@ -18,11 +36,13 @@ const SIGNALS = [
   { label: 'PA', value: '140/90', unit: 'mmHg', color: 'text-[#eab308]', wave: imgWave3, icon: imgHeaderRowFrame2, border: 'border-l-[3px] border-white' },
 ];
 
-const FIELDS = [
-  { letter: 'S', label: 'Subjetivo (S)', badge: 'bg-primary-soft text-primary', placeholder: 'Ej. Paciente refiere disnea leve en reposo, refiere mejoría del dolor torácico...' },
-  { letter: 'O', label: 'Objetivo (O)', badge: 'bg-warning-soft text-[#eab308]', placeholder: 'Ej. FC 120 lpm, SpO2 91% con puntas nasales a 2L, ruidos respiratorios con estertores basales...' },
-  { letter: 'A', label: 'Evaluación / Análisis (A)', badge: 'bg-danger-soft text-danger', placeholder: 'Ej. Insuficiencia cardíaca congestiva en fase de descompensación moderada estable...' },
-  { letter: 'P', label: 'Plan (P)', badge: 'bg-success-soft text-success', placeholder: 'Ej. Continuar con furosemida 20mg IV cada 12 horas, mantener monitoreo continuo...' },
+type Key = 's' | 'o' | 'a' | 'p';
+
+const FIELDS: Array<{ key: Key; letter: string; label: string; badge: string; placeholder: string }> = [
+  { key: 's', letter: 'S', label: 'Subjetivo (S)', badge: 'bg-primary-soft text-primary', placeholder: 'Ej. Paciente refiere disnea leve en reposo, refiere mejoría del dolor torácico...' },
+  { key: 'o', letter: 'O', label: 'Objetivo (O)', badge: 'bg-warning-soft text-[#eab308]', placeholder: 'Ej. FC 120 lpm, SpO2 91% con puntas nasales a 2L, ruidos respiratorios con estertores basales...' },
+  { key: 'a', letter: 'A', label: 'Evaluación / Análisis (A)', badge: 'bg-danger-soft text-danger', placeholder: 'Ej. Insuficiencia cardíaca congestiva en fase de descompensación moderada estable...' },
+  { key: 'p', letter: 'P', label: 'Plan (P)', badge: 'bg-success-soft text-success', placeholder: 'Ej. Continuar con furosemida 20mg IV cada 12 horas, mantener monitoreo continuo...' },
 ];
 
 const CardHeading = ({ children }: { children: string }) => <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">{children}</h2>;
@@ -30,11 +50,63 @@ const CardHeading = ({ children }: { children: string }) => <h2 className="font-
 export default function MedPacienteNotasSoapNueva() {
   const navigate = useNavigate();
   const toast = useToast();
-  // Cerrar o cancelar vuelve al historial; guardar también, con aviso (los campos son del paso 3).
-  const close = () => navigate(SOAP_HISTORY_PATH);
-  const save = () => {
-    toast('Nota guardada');
+  const [params] = useSearchParams();
+  // "Editar Nota" de un borrador llega con ?nota=índice y sigue escribiendo esa nota.
+  const draft = (() => {
+    const n = soapNotes()[Number(params.get('nota'))];
+    return params.has('nota') && n && !n.done ? n : null;
+  })();
+  const initial = { s: draft?.note.s ?? '', o: draft?.note.o ?? '', a: draft?.note.a ?? '', p: draft?.note.p ?? '' };
+  const [text, setText] = useState<Record<Key, string>>(initial);
+  const [mode, setMode] = useState<'draft' | 'sign'>('draft');
+  const [confirmSign, setConfirmSign] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+
+  const empty = FIELDS.every((f) => !text[f.key].trim());
+  const dirty = FIELDS.some((f) => text[f.key] !== initial[f.key]);
+  const fieldRule = (k: Key, m: 'draft' | 'sign') => () => checkText(text[k], m === 'sign' ? { required: true, min: 10, max: 2000 } : { max: 2000 });
+  const rulesFor = (m: 'draft' | 'sign') => ({
+    s: fieldRule('s', m),
+    o: fieldRule('o', m),
+    a: fieldRule('a', m),
+    p: fieldRule('p', m),
+    any: () => (m === 'draft' && empty ? 'Escriba al menos una sección' : null),
+  });
+  const form = useValidation(rulesFor(mode));
+
+  /** Valida con las reglas del botón tocado; si hay errores los muestra y lleva el cursor al primero. */
+  const check = (m: 'draft' | 'sign') => {
+    setMode(m);
+    form.markAll();
+    const rules = rulesFor(m);
+    const bad = FIELDS.find((f) => rules[f.key]());
+    if (bad || rules.any()) {
+      toast('Revise los campos marcados', 'info');
+      focusFirst([bad ? `soap-${bad.key}` : 'soap-s']);
+      return false;
+    }
+    return true;
+  };
+
+  const store = (done: boolean) => {
+    const note = { s: text.s.trim(), o: text.o.trim(), a: text.a.trim(), p: text.p.trim() };
+    saveSoapNote({
+      id: draft?.id ?? `nueva-${Date.now()}`,
+      date: nowLabel(),
+      doctor: 'Dr. Carlos Méndez',
+      done,
+      ref: draft?.ref ?? `RP-UCI-${String(Math.floor(Date.now() / 1000) % 1000).padStart(3, '0')}`,
+      summary: note.s || note.o || note.a || note.p,
+      note,
+    });
+    toast(done ? 'Nota firmada' : 'Borrador guardado');
     navigate(SOAP_HISTORY_PATH);
+  };
+
+  // Salir con texto escrito pregunta antes de descartarlo.
+  const close = () => (dirty ? setConfirmDiscard(true) : navigate(SOAP_HISTORY_PATH));
+  const onModalClose = () => {
+    if (!confirmSign && !confirmDiscard) close();
   };
 
   return (
@@ -106,12 +178,12 @@ export default function MedPacienteNotasSoapNueva() {
         </div>
       </div>
 
-      <Modal labelledBy="nueva-nota-soap-titulo" onClose={close} width={680} backdrop="bg-[rgba(15,23,42,0.5)]" className="gap-6 p-5 drop-shadow-[0px_20px_20px_rgba(15,23,42,0.15)] sm:p-8">
+      <Modal labelledBy="nueva-nota-soap-titulo" onClose={onModalClose} width={680} backdrop="bg-[rgba(15,23,42,0.5)]" className="gap-6 p-5 drop-shadow-[0px_20px_20px_rgba(15,23,42,0.15)] sm:p-8">
         <div className="flex w-full items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <img className="size-9 shrink-0" alt="" src={imgModalHeaderFrame} />
             <h2 id="nueva-nota-soap-titulo" className="font-jakarta text-[22px] font-extrabold leading-[normal] text-ink">
-              Nueva Nota SOAP
+              {draft ? 'Editar borrador SOAP' : 'Nueva Nota SOAP'}
             </h2>
           </div>
           <CloseButton onClick={close} />
@@ -124,13 +196,25 @@ export default function MedPacienteNotasSoapNueva() {
               <div key={f.letter} className="flex w-full flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <span className={cn('rounded px-1.5 py-0.5 font-jakarta text-[11px] font-extrabold leading-[normal]', f.badge)}>{f.letter}</span>
-                  <p className="font-jakarta text-[13px] font-semibold leading-[normal] text-muted">{f.label}</p>
+                  <label htmlFor={`soap-${f.key}`} className="font-jakarta text-[13px] font-semibold leading-[normal] text-muted">
+                    {f.label}
+                  </label>
                 </div>
-                <div className="min-h-20 w-full rounded-lg border border-line bg-white p-3">
-                  <p className="font-jakarta text-[13px] font-normal leading-[1.4] text-muted">{f.placeholder}</p>
-                </div>
+                <TextArea
+                  id={`soap-${f.key}`}
+                  value={text[f.key]}
+                  onChange={(v) => setText((t) => ({ ...t, [f.key]: v }))}
+                  onBlur={() => form.touch(f.key)}
+                  placeholder={f.placeholder}
+                  placeholderTone="muted"
+                  leading="snug"
+                  maxLength={2000}
+                  aria-required={mode === 'sign'}
+                  error={form.show(f.key)}
+                />
               </div>
             ))}
+            <FieldError forId="soap-any" error={form.show('any')} />
           </div>
         </div>
         <Divider />
@@ -138,11 +222,36 @@ export default function MedPacienteNotasSoapNueva() {
           <Button variant="secondary" onClick={close}>
             Cancelar
           </Button>
-          <Button onClick={save}>
-            Guardar Nota
+          <Button variant="secondary" onClick={() => check('draft') && store(false)}>
+            Guardar borrador
           </Button>
+          <Button onClick={() => check('sign') && setConfirmSign(true)}>Guardar y firmar</Button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmSign}
+        title="¿Firmar la nota?"
+        confirmLabel="Firmar"
+        onCancel={() => setConfirmSign(false)}
+        onConfirm={() => {
+          setConfirmSign(false);
+          store(true);
+        }}
+      >
+        Se firmará como Dr. Carlos Méndez. Una vez firmada, la nota no se puede editar.
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={confirmDiscard}
+        title="¿Descartar la nota?"
+        confirmLabel="Descartar"
+        confirmVariant="danger"
+        cancelLabel="Seguir escribiendo"
+        onCancel={() => setConfirmDiscard(false)}
+        onConfirm={() => navigate(SOAP_HISTORY_PATH)}
+      >
+        Se perderá lo que escribió en esta nota.
+      </ConfirmDialog>
     </PatientLayout>
   );
 }

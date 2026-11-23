@@ -1,28 +1,72 @@
 // Pantalla "med/paciente/registro-diagnostico" (Figma node 140:499) — generada desde el diseño original de Figma.
-// Descripción, fecha y notas son dibujos (el paso 3 del plan los vuelve editables).
+// Paso 3: el CIE-10 se busca escribiendo; descripción (20 a 1000 caracteres), fecha (no futura ni anterior al
+// ingreso) y notas (hasta 1000) son campos reales (REVISION.md, paso 3, punto 5).
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import imgCalendar from '../../assets/calendar.svg';
 import imgChevronDown from '../../assets/chevron-down.svg';
 import imgRadioOptionEllipse from '../../assets/radio-option-ellipse.svg';
 import imgRadioOptionEllipse2 from '../../assets/radio-option-ellipse-2.svg';
 import imgSearch3 from '../../assets/search-3.svg';
 import imgUploadCloud from '../../assets/upload-cloud.svg';
-import { BackButton, Badge, Button, Card, Divider, PatientLayout, rowButton, Select, UploadDocumentModal, useToast } from '../../components';
+import {
+  BackButton,
+  Badge,
+  Button,
+  Card,
+  Combobox,
+  DateField,
+  Divider,
+  FieldError,
+  focusFirst,
+  PatientLayout,
+  rowButton,
+  Select,
+  TextArea,
+  UploadDocumentModal,
+  useToast,
+  useValidation,
+} from '../../components';
+import { checkDate, checkText, todayIso } from '../../lib/validate';
 import type { RegisteredState } from '../MedPacienteDiagnosticosActivos';
 import { cn } from '../../lib/cn';
 
 const SEVERITY = ['Leve', 'Moderada', 'Severa', 'Crítica'];
 const TYPES = ['Diagnóstico Principal', 'Diagnóstico Secundario', 'Complicación'];
-/** Códigos CIE-10 frecuentes de ejemplo; buscar escribiendo queda para el paso 3. */
+/** Códigos CIE-10 frecuentes en UCI (datos de ejemplo); el campo los busca por código o por texto. */
 const CIE10: Array<[string, string]> = [
   ['I50.9', 'Insuficiencia cardíaca, no especificada'],
+  ['I50.1', 'Insuficiencia ventricular izquierda'],
   ['J81', 'Edema pulmonar'],
   ['I10', 'Hipertensión esencial (primaria)'],
+  ['I11.0', 'Enfermedad cardíaca hipertensiva con insuficiencia cardíaca'],
+  ['I21.9', 'Infarto agudo del miocardio, sin otra especificación'],
+  ['I48', 'Fibrilación y aleteo auricular'],
+  ['I26.9', 'Embolia pulmonar sin mención de corazón pulmonar agudo'],
+  ['I63.9', 'Infarto cerebral, no especificado'],
   ['E11.9', 'Diabetes mellitus tipo 2 sin complicaciones'],
+  ['E86', 'Depleción del volumen'],
+  ['E87.1', 'Hiposmolaridad e hiponatremia'],
+  ['E87.6', 'Hipopotasemia'],
+  ['N17.9', 'Insuficiencia renal aguda, no especificada'],
+  ['N18.9', 'Enfermedad renal crónica, no especificada'],
   ['N39.0', 'Infección de vías urinarias, sitio no especificado'],
   ['J18.9', 'Neumonía, no especificada'],
+  ['J44.1', 'Enfermedad pulmonar obstructiva crónica con exacerbación aguda'],
+  ['J80', 'Síndrome de dificultad respiratoria del adulto'],
+  ['J96.0', 'Insuficiencia respiratoria aguda'],
+  ['A41.9', 'Sepsis, no especificada'],
+  ['R57.0', 'Choque cardiogénico'],
+  ['R57.1', 'Choque hipovolémico'],
+  ['R40.2', 'Coma, no especificado'],
+  ['G93.1', 'Lesión cerebral anóxica, no clasificada en otra parte'],
+  ['K85.9', 'Pancreatitis aguda, no especificada'],
+  ['K92.2', 'Hemorragia gastrointestinal, no especificada'],
+  ['D64.9', 'Anemia de tipo no especificado'],
+  ['S06.9', 'Traumatismo intracraneal, no especificado'],
+  ['T07', 'Traumatismos múltiples, no especificados'],
 ];
+/** Ingreso de la paciente: la fecha del diagnóstico no puede ser anterior. */
+const ADMISSION = '2025-10-15';
 const CIE10_OPTIONS = CIE10.map(([code, text]) => ({ value: code, label: `${code} ${text}` }));
 
 const PREVIOUS: Array<{ code: string; severity: string; tone: 'danger' | 'warning'; title: string; date: string; by: string }> = [
@@ -31,14 +75,19 @@ const PREVIOUS: Array<{ code: string; severity: string; tone: 'danger' | 'warnin
   { code: 'E11.9', severity: 'Leve', tone: 'warning', title: 'Diabetes Mellitus Tipo 2', date: '12 May 2024', by: 'Dr. Carlos Méndez' },
 ];
 
-const Field = ({ label, children, className }: { label: string; children: ReactNode; className?: string }) => (
+const Field = ({ label, htmlFor, children, className }: { label: string; htmlFor?: string; children: ReactNode; className?: string }) => (
   <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
-    <p className="font-jakarta text-[12px] font-bold leading-[normal] text-muted">{label}</p>
+    {htmlFor ? (
+      <label htmlFor={htmlFor} className="font-jakarta text-[12px] font-bold leading-[normal] text-muted">
+        {label}
+      </label>
+    ) : (
+      <p className="font-jakarta text-[12px] font-bold leading-[normal] text-muted">{label}</p>
+    )}
     {children}
   </div>
 );
 
-const box = 'flex w-full items-center rounded-lg border bg-white px-3 py-[10px] font-jakarta text-[14px] font-semibold leading-[normal] text-ink';
 
 export default function MedPacienteRegistroDiagnostico() {
   const navigate = useNavigate();
@@ -48,9 +97,27 @@ export default function MedPacienteRegistroDiagnostico() {
   const [severity, setSeverity] = useState('Severa');
   const [uploadOpen, setUploadOpen] = useState(false);
   const [files, setFiles] = useState<string[]>([]);
+  const [description, setDescription] = useState(
+    'Paciente femenina de 67 años con historial de insuficiencia cardíaca congestiva que ingresa con disnea en reposo notable, ortopnea y estertores basales crepitantes bilaterales.',
+  );
+  const [date, setDate] = useState('2026-08-02');
+  const [notes, setNotes] = useState('');
+  const form = useValidation({
+    'dx-cie10': () => (code ? null : 'Elija un código de la lista'),
+    'dx-descripcion': () => checkText(description, { required: true, min: 20, max: 1000, requiredMessage: 'Describa los hallazgos clínicos' }),
+    'dx-fecha': () => checkDate(date, { notBefore: ADMISSION }),
+    'dx-notas': () => checkText(notes, { max: 1000 }),
+  });
   const chevron = <img className="size-3.5 shrink-0" alt="" src={imgChevronDown} />;
 
   const register = () => {
+    form.markAll();
+    const bad = (Object.keys(form.errors) as Array<keyof typeof form.errors>).find((k) => form.errors[k]);
+    if (bad) {
+      toast('Revise los campos marcados', 'info');
+      focusFirst([bad]);
+      return;
+    }
     const [, text] = CIE10.find(([c]) => c === code) ?? CIE10[0];
     const state: RegisteredState = { registered: { code, description: text } };
     toast(`Diagnóstico registrado · ${code}`);
@@ -67,24 +134,36 @@ export default function MedPacienteRegistroDiagnostico() {
             <Field label="Tipo de Diagnóstico">
               <Select variant="input" options={TYPES} value={type} onChange={setType} trailingIcon={chevron} ariaLabel="Tipo de Diagnóstico" />
             </Field>
-            <Field label="Código CIE-10">
-              <Select
-                variant="input"
-                highlighted
+            <Field label="Código CIE-10" htmlFor="dx-cie10">
+              {/* Cerrado muestra código y descripción (en dos líneas si no caben, a 390 px); al tocarlo se escribe para buscar. */}
+              <Combobox
+                id="dx-cie10"
+                label="Código CIE-10"
                 options={CIE10_OPTIONS}
                 value={code}
                 onChange={setCode}
+                onBlur={() => form.touch('dx-cie10')}
+                placeholder="Buscar por código o nombre…"
                 icon={<img className="size-3.5 shrink-0" alt="" src={imgSearch3} />}
-                chevron={false}
-                ariaLabel="Código CIE-10"
+                highlighted
+                error={form.show('dx-cie10')}
               />
+              <FieldError forId="dx-cie10" error={form.show('dx-cie10')} />
             </Field>
           </div>
 
-          <Field label="Descripción / Hallazgos Clínicos">
-            <div className="min-h-20 w-full rounded-lg border border-line bg-white p-3 font-jakarta text-[14px] font-normal leading-5 text-ink">
-              Paciente femenina de 67 años con historial de insuficiencia cardíaca congestiva que ingresa con disnea en reposo notable, ortopnea y estertores basales crepitantes bilaterales.
-            </div>
+          <Field label="Descripción / Hallazgos Clínicos" htmlFor="dx-descripcion">
+            <TextArea
+              id="dx-descripcion"
+              value={description}
+              onChange={setDescription}
+              onBlur={() => form.touch('dx-descripcion')}
+              textSize={14}
+              leading="loose"
+              maxLength={1000}
+              aria-required
+              error={form.show('dx-descripcion')}
+            />
           </Field>
 
           <div className="flex w-full flex-col gap-4 md:flex-row md:items-center">
@@ -98,18 +177,24 @@ export default function MedPacienteRegistroDiagnostico() {
                 ))}
               </div>
             </Field>
-            <Field label="Fecha de Registro" className="md:w-[200px] md:shrink-0">
-              <div className={cn(box, 'justify-between border-line')}>
-                <span>02 Ago 2026</span>
-                <img className="size-3.5 shrink-0" alt="" src={imgCalendar} />
-              </div>
+            <Field label="Fecha de Registro" htmlFor="dx-fecha" className="md:w-[200px] md:shrink-0">
+              <DateField id="dx-fecha" label="Fecha de registro" value={date} onChange={setDate} onBlur={() => form.touch('dx-fecha')} min={ADMISSION} max={todayIso()} error={form.show('dx-fecha')} />
+              <FieldError forId="dx-fecha" error={form.show('dx-fecha')} />
             </Field>
           </div>
 
-          <Field label="Notas Adicionales / Plan de Manejo Inicial">
-            <div className="min-h-[60px] w-full rounded-lg border border-line bg-white p-3 font-jakarta text-[14px] font-normal leading-[normal] text-subtle">
-              Iniciar protocolo de diuréticos IV y control estricto de balance hídrico...
-            </div>
+          <Field label="Notas Adicionales / Plan de Manejo Inicial" htmlFor="dx-notas">
+            <TextArea
+              id="dx-notas"
+              value={notes}
+              onChange={setNotes}
+              onBlur={() => form.touch('dx-notas')}
+              placeholder="Iniciar protocolo de diuréticos IV y control estricto de balance hídrico..."
+              textSize={14}
+              minHeight={60}
+              maxLength={1000}
+              error={form.show('dx-notas')}
+            />
           </Field>
 
           <Field label="Estudios Adjuntos (Rayos X, Labs, ECG)">

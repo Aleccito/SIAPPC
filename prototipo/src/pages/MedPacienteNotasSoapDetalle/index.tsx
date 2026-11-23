@@ -5,7 +5,7 @@ import imgSectionPEllipse from '../../assets/section-p-ellipse.svg';
 import imgSectionSEllipse from '../../assets/section-s-ellipse.svg';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BackButton, Button, CloseButton, Divider, Modal, PatientLayout } from '../../components';
-import { SOAP_HISTORY_PATH, SOAP_NEW_PATH, SOAP_NOTES } from '../../data/soap';
+import { FIGMA_NOTE_ID, SOAP_HISTORY_PATH, SOAP_NEW_PATH, soapNotes } from '../../data/soap';
 import { SoapHistoryView } from '../MedPacienteNotasSoapHistorial/SoapHistoryView';
 
 const META = [
@@ -34,8 +34,9 @@ export default function MedPacienteNotasSoapDetalle() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const index = Number(params.get('nota') ?? 0);
-  const entry = SOAP_NOTES[index] ?? SOAP_NOTES[0];
-  const figma = entry === SOAP_NOTES[0];
+  const notes = soapNotes();
+  const entry = notes[index] ?? notes[0];
+  const figma = entry.id === FIGMA_NOTE_ID;
   const meta = figma
     ? META
     : [
@@ -96,9 +97,14 @@ export default function MedPacienteNotasSoapDetalle() {
           <Button variant="secondary" onClick={close}>
             Cerrar
           </Button>
-          <Button to={SOAP_NEW_PATH}>
-            Editar Nota
-          </Button>
+          {/* Una nota firmada ya no se edita; un borrador se sigue escribiendo en Nueva Nota SOAP. */}
+          {entry.done ? (
+            <Button disabled title="Las notas firmadas no se pueden editar">
+              Nota firmada
+            </Button>
+          ) : (
+            <Button to={`${SOAP_NEW_PATH}?nota=${notes.indexOf(entry)}`}>Editar Nota</Button>
+          )}
         </div>
       </Modal>
     </PatientLayout>

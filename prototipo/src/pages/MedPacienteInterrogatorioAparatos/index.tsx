@@ -1,5 +1,6 @@
 // Pantalla "med/paciente/interrogatorio-aparatos" (Figma node 183:6) — generada desde el diseño original de Figma.
-// Las observaciones son texto fijo (el paso 3 del plan las vuelve editables).
+// Paso 3: las observaciones se escriben. Son obligatorias (10 a 1000 caracteres) en los aparatos con
+// síntomas marcados (REVISION.md, paso 3, punto 8).
 import { useState } from 'react';
 import imgActivity3 from '../../assets/activity-3.svg';
 import imgBone from '../../assets/bone.svg';
@@ -9,7 +10,8 @@ import imgCircleX from '../../assets/circle-x.svg';
 import imgDroplet from '../../assets/droplet.svg';
 import imgIconWrapper from '../../assets/icon-wrapper.svg';
 import imgSparkles from '../../assets/sparkles.svg';
-import { BackButton, Badge, Button, Card, Divider, PatientLayout, rowButton, useToast } from '../../components';
+import { BackButton, Badge, Button, Card, Divider, focusFirst, PatientLayout, rowButton, TextArea, useToast, useValidation } from '../../components';
+import { checkText } from '../../lib/validate';
 import { cn } from '../../lib/cn';
 
 type System = { icon: string; title: string; symptoms: string[]; checked: string[]; notes: string };
@@ -31,12 +33,12 @@ const SYSTEMS: System[] = [
     checked: ['Dolor precordial', 'Palpitaciones', 'Edema', 'Disnea de esfuerzo'],
     notes: 'Se constata edema bilateral de miembros inferiores, grado II. Paciente refiere palpitaciones recurrentes tras mínimos esfuerzos y ortopnea.',
   },
-  { icon: imgCircleX, title: 'Aparato Digestivo', symptoms: ['Náuseas', 'Vómito', 'Dolor abdominal', 'Diarrea', 'Estreñimiento'], checked: [], notes: 'Sin hallazgos.' },
-  { icon: imgDroplet, title: 'Aparato Genitourinario', symptoms: ['Disuria', 'Poliuria', 'Hematuria', 'Oliguria'], checked: [], notes: 'Sin hallazgos.' },
-  { icon: imgBone, title: 'Sistema Músculo-esquelético', symptoms: ['Artralgias', 'Mialgias', 'Rigidez', 'Debilidad'], checked: [], notes: 'Sin hallazgos.' },
-  { icon: imgBrain, title: 'Sistema Neurológico', symptoms: ['Cefalea', 'Mareo', 'Convulsiones', 'Parestesias'], checked: [], notes: 'Sin hallazgos.' },
-  { icon: imgActivity3, title: 'Sistema Endocrino', symptoms: ['Polidipsia', 'Intolerancia al frío', 'Intolerancia al calor', 'Cambios de peso'], checked: [], notes: 'Sin hallazgos.' },
-  { icon: imgSparkles, title: 'Piel y Anexos', symptoms: ['Prurito', 'Exantema', 'Cambios de coloración', 'Lesiones'], checked: [], notes: 'Sin hallazgos.' },
+  { icon: imgCircleX, title: 'Aparato Digestivo', symptoms: ['Náuseas', 'Vómito', 'Dolor abdominal', 'Diarrea', 'Estreñimiento'], checked: [], notes: '' },
+  { icon: imgDroplet, title: 'Aparato Genitourinario', symptoms: ['Disuria', 'Poliuria', 'Hematuria', 'Oliguria'], checked: [], notes: '' },
+  { icon: imgBone, title: 'Sistema Músculo-esquelético', symptoms: ['Artralgias', 'Mialgias', 'Rigidez', 'Debilidad'], checked: [], notes: '' },
+  { icon: imgBrain, title: 'Sistema Neurológico', symptoms: ['Cefalea', 'Mareo', 'Convulsiones', 'Parestesias'], checked: [], notes: '' },
+  { icon: imgActivity3, title: 'Sistema Endocrino', symptoms: ['Polidipsia', 'Intolerancia al frío', 'Intolerancia al calor', 'Cambios de peso'], checked: [], notes: '' },
+  { icon: imgSparkles, title: 'Piel y Anexos', symptoms: ['Prurito', 'Exantema', 'Cambios de coloración', 'Lesiones'], checked: [], notes: '' },
 ];
 
 const FindingsBadge = ({ count }: { count: number }) => (count > 0 ? <Badge tone="warning">Con hallazgos</Badge> : <Badge tone="success">Normal</Badge>);
@@ -63,6 +65,29 @@ export default function MedPacienteInterrogatorioAparatos() {
       return next;
     });
 
+  const [notes, setNotes] = useState(() => SYSTEMS.map((s) => s.notes));
+  // Observaciones obligatorias solo en los aparatos con algún síntoma marcado.
+  const form = useValidation(
+    Object.fromEntries(
+      SYSTEMS.map((s, i) => [
+        `obs-${i}`,
+        () => checkText(notes[i], { required: (checked.get(s.title)?.size ?? 0) > 0, min: 10, max: 1000, requiredMessage: 'Describa los hallazgos de los síntomas marcados' }),
+      ]),
+    ) as Record<string, () => string | null>,
+  );
+  const save = () => {
+    form.markAll();
+    const bad = SYSTEMS.findIndex((_, i) => form.errors[`obs-${i}`]);
+    if (bad >= 0) {
+      // Si el error está en un aparato plegado, se despliega para mostrarlo.
+      setOpen((prev) => new Set(prev).add(SYSTEMS[bad].title));
+      toast('Revise los campos marcados', 'info');
+      requestAnimationFrame(() => focusFirst([`obs-${bad}`]));
+      return;
+    }
+    toast('Interrogatorio guardado');
+  };
+
   return (
     <PatientLayout
       breadcrumb="SIAPPC > Pacientes > María González > Historia Clínica > Interrogatorio"
@@ -71,7 +96,7 @@ export default function MedPacienteInterrogatorioAparatos() {
       actions={<BackButton />}
     >
       <div className="flex w-full flex-col gap-3">
-        {SYSTEMS.map((s) => {
+        {SYSTEMS.map((s, i) => {
           const marks = checked.get(s.title) ?? new Set<string>();
           if (!open.has(s.title)) {
             return (
@@ -124,10 +149,21 @@ export default function MedPacienteInterrogatorioAparatos() {
                 })}
               </ul>
               <div className="flex w-full flex-col gap-2">
-                <p className="font-jakarta text-[12px] font-bold leading-[normal] text-muted">OBSERVACIONES</p>
-                <div className="w-full rounded-lg border border-line bg-surface p-3">
-                  <p className="font-jakarta text-[14px] font-normal leading-[normal] text-ink">{s.notes}</p>
-                </div>
+                <label htmlFor={`obs-${i}`} className="font-jakarta text-[12px] font-bold leading-[normal] text-muted">
+                  OBSERVACIONES
+                </label>
+                <TextArea
+                  id={`obs-${i}`}
+                  value={notes[i]}
+                  onChange={(v) => setNotes((all) => all.map((n, j) => (j === i ? v : n)))}
+                  onBlur={() => form.touch(`obs-${i}`)}
+                  placeholder="Sin hallazgos."
+                  tone="surface"
+                  textSize={14}
+                  minHeight={0}
+                  maxLength={1000}
+                  error={form.show(`obs-${i}`)}
+                />
               </div>
             </Card>
           );
@@ -135,7 +171,7 @@ export default function MedPacienteInterrogatorioAparatos() {
       </div>
 
       <div className="flex w-full justify-end pt-3">
-        <Button size="lg" onClick={() => toast('Interrogatorio guardado')}>
+        <Button size="lg" onClick={save}>
           Guardar Interrogatorio
         </Button>
       </div>

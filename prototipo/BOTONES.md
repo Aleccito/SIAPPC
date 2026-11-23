@@ -448,11 +448,27 @@ Se llega desde "Ver Detalle" o la fila de un monitor (Dispositivos). La cama va 
   `REVISION.md`. Pruebas automáticas del flujo de acceso (escribir, pegar el código, ES/EN, recuperar contraseña,
   cerrar sesión) y de los cambios de roles.
 
-## Queda para el paso 3 (campos de texto)
+## Campos de formulario (paso 3, hecho)
 
-Confirmación de atención (acción tomada, notas) · Entrega de turno (notas generales) · Umbrales (Mín/Máx) ·
-Diagnósticos activos (nota correlativa) · Nueva nota SOAP (S/O/A/P) · Registro de diagnóstico (descripción, fecha,
-notas, búsqueda de CIE-10) · Nota de ingreso, Datos personales y Exploración física (si se quieren editables).
+Todo lo que quedaba para el paso 3 ya se puede escribir y se valida (detalle en `REVISION.md`, "Paso 3"):
+
+| Pantalla | Campos | Al guardar |
+|---|---|---|
+| Nueva Nota SOAP | S, O, A, P | **"Guardar borrador"** (una sección basta) → Historial, "En progreso". **"Guardar y firmar"** (las cuatro, 10–2000 caracteres) → confirmación → Historial, "Completada". Salir con texto pregunta si descartar. |
+| Detalle de nota SOAP | — | "Editar Nota" sigue un borrador; en una nota firmada dice **"Nota firmada"** y está deshabilitado. |
+| Confirmación de atención | Acción tomada (obligatoria), notas | Con errores no confirma. |
+| Entrega de turno | Notas generales | Borrador guarda lo que haya; confirmar pide 20–2000 caracteres. |
+| Configuración de umbrales | Mín / Máx | Al menos un límite por signo activo, en su rango posible y Mín < Máx. |
+| Registro de diagnóstico | CIE-10 (se busca escribiendo), descripción, fecha, notas | Código de la lista, descripción 20–1000, fecha no futura ni anterior al ingreso. |
+| Nota de ingreso | Motivo, padecimiento, plan (**"+ Agregar indicación"**) | Datos de admisión de solo lectura (Admisión). |
+| Exploración física | Somatometría, signos vitales, hallazgos (Normal/Anormal se toca) | IMC automático; rangos de signos vitales; hallazgo anormal necesita texto. |
+| Diagnósticos activos | Nota correlativa | 20–2000 caracteres. |
+| Interrogatorio | Observaciones de cada aparato | Obligatorias si hay síntomas marcados. |
+| Indicaciones médicas | Solución o medicamento (escribir o elegir) | 3–80 caracteres. |
+| Mi Perfil | Contraseña actual, nueva y confirmación; código MFA | Nueva: 12+ con mayúscula, número y símbolo; código de 6 dígitos. |
+| Ayuda | Mensaje a soporte | 10–1000 caracteres. |
+
+**Sin cambio:** Datos Personales (solo lectura, rol); las pantallas de acceso aceptan cualquier dato (paso 2b).
 
 ## Informativo (no se toca)
 

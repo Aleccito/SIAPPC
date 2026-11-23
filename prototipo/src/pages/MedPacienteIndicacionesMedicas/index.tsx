@@ -2,7 +2,8 @@
 import { useState, type ReactNode } from 'react';
 import imgBulletItemEllipse from '../../assets/bullet-item-ellipse.svg';
 import imgHeart4 from '../../assets/heart-4.svg';
-import { BackButton, Badge, Button, Card, IconPlus, Modal, ModalHeader, PatientLayout, Select, Table, useToast } from '../../components';
+import { BackButton, Badge, Button, Card, Combobox, FieldError, IconPlus, Modal, ModalHeader, PatientLayout, Select, Table, useToast, useValidation } from '../../components';
+import { checkText } from '../../lib/validate';
 
 const SOLUTIONS = [
   ['Solución Hartmann 1000ml', '125 ml/hr', 'Vía Central'],
@@ -33,7 +34,7 @@ const STUDIES: Array<[string, string, string, 'warning' | 'info' | 'success']> =
 type Kind = 'Solución intravenosa' | 'Medicamento';
 const KINDS: Kind[] = ['Solución intravenosa', 'Medicamento'];
 
-/** Opciones de ejemplo de "Nueva indicación" (escribir libremente queda para el paso 3). */
+/** Opciones de ejemplo de "Nueva indicación". La solución o el medicamento también se pueden escribir (paso 3). */
 const OPTIONS: Record<Kind, { labels: [string, string, string]; values: [string[], string[], string[]] }> = {
   'Solución intravenosa': {
     labels: ['Solución / composición', 'Infusión', 'Vía'],
@@ -61,19 +62,49 @@ function NewOrderModal({ kind, onClose, onAdd }: { kind: Kind | null; onClose: (
   });
   const { labels, values } = OPTIONS[type];
   const set = (i: number) => (v: string) => setPicked((p) => ({ ...p, [type]: p[type].map((x, j) => (j === i ? v : x)) }));
+  // La primera lista (solución o medicamento) acepta texto libre: obligatorio, de 3 a 80 caracteres.
+  const form = useValidation({ 'indicacion-nombre': () => checkText(picked[type][0], { required: true, min: 3, max: 80, requiredMessage: `Escriba o elija ${type === 'Medicamento' ? 'un medicamento' : 'una solución'}` }) });
+  const add = () => {
+    form.markAll();
+    if (form.errors['indicacion-nombre']) {
+      document.getElementById('indicacion-nombre')?.focus();
+      return;
+    }
+    onAdd(type, picked[type].map((x) => x.trim()));
+  };
 
   return (
     <Modal labelledBy="nueva-indicacion-titulo" open={kind !== null} onClose={onClose} width={480} className="gap-4 p-5 shadow-xl sm:p-6">
       <ModalHeader id="nueva-indicacion-titulo" title="Nueva indicación" onClose={onClose} />
       <Select variant="input" fieldLabel="Tipo" options={KINDS} value={type} onChange={(v) => setType(v as Kind)} />
-      {labels.map((label, i) => (
-        <Select key={`${type}-${label}`} variant="input" fieldLabel={label} options={values[i]} value={picked[type][i]} onChange={set(i)} />
-      ))}
+      {labels.map((label, i) =>
+        i === 0 ? (
+          <div key={`${type}-${label}`} className="flex min-w-0 flex-col gap-1.5">
+            <label htmlFor="indicacion-nombre" className="font-jakarta text-[12px] font-semibold leading-[normal] text-muted">
+              {label}
+            </label>
+            <Combobox
+              id="indicacion-nombre"
+              label={label}
+              freeText
+              options={values[0].map((v) => ({ value: v, label: v }))}
+              value={picked[type][0]}
+              onChange={set(0)}
+              onBlur={() => form.touch('indicacion-nombre')}
+              placeholder="Escriba o elija de la lista…"
+              error={form.show('indicacion-nombre')}
+            />
+            <FieldError forId="indicacion-nombre" error={form.show('indicacion-nombre')} />
+          </div>
+        ) : (
+          <Select key={`${type}-${label}`} variant="input" fieldLabel={label} options={values[i]} value={picked[type][i]} onChange={set(i)} />
+        ),
+      )}
       <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
         <Button variant="secondary" onClick={onClose}>
           Cancelar
         </Button>
-        <Button onClick={() => onAdd(type, picked[type])}>Agregar indicación</Button>
+        <Button onClick={add}>Agregar indicación</Button>
       </div>
     </Modal>
   );
