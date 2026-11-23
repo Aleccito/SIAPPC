@@ -63,27 +63,36 @@ export default function MedPacienteConfigUmbrales() {
           <p className="font-jakarta text-[13px] font-normal text-muted">Configure los límites fisiológicos personalizados para disparar alertas en la central de monitoreo.</p>
         </div>
 
-        <Table minWidth={820}>
-          <div className="flex w-full gap-4 px-4 pb-[10px] font-jakarta text-[12px] font-bold leading-[normal] text-subtle">
-            <p className="w-[220px] shrink-0">SIGNO VITAL</p>
-            <p className="w-[300px] shrink-0">LÍMITES (MIN / MAX)</p>
-            <p className="w-[180px] shrink-0">SEVERIDAD POR DEFECTO</p>
-            <p className="min-w-0 flex-1 text-right">ESTADO</p>
+        {/* Columnas más angostas abajo de 1280 px para que la tabla entre completa a 1024 y 768;
+            en celular cada signo vital es una tarjeta (REVISION.md, V12). A 1440 queda igual que Figma. */}
+        <Table minWidth={0}>
+          <div className="hidden w-full gap-4 px-4 pb-[10px] font-jakarta text-[12px] font-bold leading-[normal] text-subtle md:flex">
+            <p className="w-[150px] shrink-0 xl:w-[220px]">SIGNO VITAL</p>
+            <p className="w-[248px] shrink-0 xl:w-[300px]">LÍMITES (MIN / MAX)</p>
+            <p className="w-[130px] shrink-0 xl:w-[180px]">SEVERIDAD POR DEFECTO</p>
+            <p className="min-w-0 flex-1 whitespace-nowrap text-right">ESTADO</p>
           </div>
           <div className="flex w-full flex-col gap-[10px]">
             {ROWS.map((r, i) => (
-              <div key={r.name} className={cn('flex w-full items-center gap-4 rounded-lg border border-line px-4 py-3 transition-opacity', enabled[i] ? 'bg-white' : 'bg-[#f1f5f9] opacity-65')}>
-                <div className="flex w-[220px] shrink-0 items-center gap-3">
+              <div
+                key={r.name}
+                className={cn(
+                  'flex w-full flex-col gap-3 rounded-lg border border-line px-4 py-3 transition-opacity md:flex-row md:items-center md:gap-4',
+                  enabled[i] ? 'bg-white' : 'bg-[#f1f5f9] opacity-65',
+                )}
+              >
+                <div className="flex items-center gap-3 md:w-[150px] md:shrink-0 xl:w-[220px]">
                   <img className="size-9 shrink-0" alt="" src={r.icon} />
                   <p id={`umbral-${i}`} className={cn('font-jakarta text-[14px] font-bold leading-[normal]', enabled[i] ? 'text-ink' : 'text-subtle')}>
                     {r.name}
                   </p>
                 </div>
-                <div className="flex w-[300px] shrink-0 items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4 md:w-[248px] md:shrink-0 xl:w-[300px]">
                   <LimitBox label="Min" value={r.min} />
                   <LimitBox label="Max" value={r.max} />
                 </div>
-                <div className="w-[180px] shrink-0">
+                <div className="flex items-center gap-3 md:contents">
+                <div className="min-w-0 flex-1 md:w-[130px] md:flex-none md:shrink-0 xl:w-[180px]">
                   <Select
                     variant="compact"
                     options={SEVERITIES}
@@ -94,7 +103,7 @@ export default function MedPacienteConfigUmbrales() {
                     ariaLabel={`Severidad por defecto de ${r.name}`}
                   />
                 </div>
-                <div className="flex min-w-0 flex-1 justify-end">
+                <div className="flex shrink-0 justify-end md:min-w-0 md:flex-1">
                   <button
                     type="button"
                     role="switch"
@@ -105,6 +114,7 @@ export default function MedPacienteConfigUmbrales() {
                   >
                     <img className="h-6 w-11" alt="" src={enabled[i] ? imgToggleSwitch : imgToggleSwitch2} />
                   </button>
+                </div>
                 </div>
               </div>
             ))}

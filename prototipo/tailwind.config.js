@@ -8,7 +8,7 @@ module.exports = {
 			// Colores del diseño de Figma (SIAPPC · módulo médico).
 			// Úsalos con su nombre: bg-primary, text-muted, border-line, bg-danger-soft…
 			colors: {
-				ink: { DEFAULT: '#0f172a', soft: '#1e293b' }, // texto principal, fondo del menú
+				ink: { DEFAULT: '#0f172a', soft: '#1e293b', muted: '#475569' }, // texto principal, fondo del menú, texto de las pantallas de acceso
 				surface: '#f8fafc', // fondo de la app
 				line: '#e2e8f0', // bordes y separadores
 				muted: '#64748b', // texto secundario

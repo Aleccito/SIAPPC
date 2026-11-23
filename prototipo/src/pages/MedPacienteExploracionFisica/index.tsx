@@ -83,7 +83,8 @@ export default function MedPacienteExploracionFisica() {
       <div className="flex w-full flex-col items-stretch gap-5 lg:flex-row">
         <Card className="flex min-w-0 flex-1 flex-col gap-4">
           <CardHeading>Somatometría de Ingreso</CardHeading>
-          <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-4">
+          {/* 4 recuadros solo con la tarjeta ancha: a 1024 px el texto se salía (REVISION.md, V11). */}
+          <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
             {SOMATOMETRY.map(([label, value, note]) => (
               <div key={label} className="flex min-w-0 flex-col gap-1 rounded-lg bg-surface p-3 leading-[normal]">
                 <p className="font-jakarta text-[11px] font-semibold text-muted">{label}</p>

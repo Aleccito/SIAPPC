@@ -111,8 +111,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         onConfirm={() => {
           setConfirmLogout(false);
           onNavigate?.();
-          toast('Sesión cerrada (prototipo)');
-          navigate('/MedDashboardPrincipal');
+          toast('Sesión cerrada');
+          navigate('/Login');
         }}
       >
         Se cerrará la sesión de {CURRENT_USER.name} en este equipo.

@@ -1,6 +1,6 @@
 // Pantalla "med/paciente/datos-personales" (Figma node 191:17) — generada desde el diseño original de Figma.
 import type { ReactNode } from 'react';
-import { BackButton, Button, Card, InfoField, PatientLayout, useToast } from '../../components';
+import { BackButton, Card, InfoField, PatientLayout } from '../../components';
 import { cn } from '../../lib/cn';
 
 type Fields = Array<[string, string]>;
@@ -70,7 +70,6 @@ const Row = ({ main, side }: { main: ReactNode; side: ReactNode }) => (
 );
 
 export default function MedPacienteDatosPersonales() {
-  const toast = useToast();
   return (
     <PatientLayout
       breadcrumb="SIAPPC > Pacientes > María González > Historia Clínica > Datos Personales"
@@ -114,7 +113,8 @@ export default function MedPacienteDatosPersonales() {
         <Row
           main={
           <Section title="Datos Sociales y Demográficos">
-            <FieldList fields={SOCIAL} className="grid-cols-2 gap-3 md:grid-cols-4" />
+            {/* 4 columnas solo con la tarjeta ancha: a 1024 px no caben (REVISION.md, V10). */}
+            <FieldList fields={SOCIAL} className="grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4" />
           </Section>
           }
           side={
@@ -124,11 +124,10 @@ export default function MedPacienteDatosPersonales() {
           }
         />
 
-        <div className="flex w-full justify-end pb-5 pt-2">
-          <Button size="lg" onClick={() => toast('Datos guardados')}>
-            Guardar cambios
-          </Button>
-        </div>
+        {/* Pantalla de consulta: identificación, contacto y seguro los registra Admisión (REVISION.md, R4). */}
+        <p className="w-full pb-5 pt-2 text-right font-jakarta text-[12px] font-medium leading-[normal] text-muted">
+          Datos registrados por Admisión. Para corregirlos, solicítalo a Admisión.
+        </p>
       </div>
     </PatientLayout>
   );

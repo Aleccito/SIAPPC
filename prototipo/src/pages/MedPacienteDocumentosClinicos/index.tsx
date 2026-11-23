@@ -78,7 +78,7 @@ export default function MedPacienteDocumentosClinicos() {
                 <div className="flex min-w-0 flex-1 items-start gap-3">
                   <img className="size-10 shrink-0" alt="" src={d.icon} />
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5 leading-[normal]">
-                    <p className="truncate font-jakarta text-[14px] font-bold text-ink">{d.title}</p>
+                    <p className="break-words font-jakarta text-[14px] font-bold text-ink">{d.title}</p>
                     <p className="font-jakarta text-[11px] font-medium text-muted">{`Tipo: ${d.type} · Subido por: ${d.by}`}</p>
                     <p className="font-jakarta text-[11px] font-medium italic text-muted">{d.note}</p>
                   </div>

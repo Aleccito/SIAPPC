@@ -158,9 +158,9 @@ export default function MedPacienteAntecedentes() {
         </div>
 
         <div className="w-full overflow-hidden rounded-lg border border-line">
-          <Table minWidth={760}>
+          <Table minWidth={848}>
             <div className="flex w-full gap-3 border-b border-line bg-surface px-4 py-3 font-jakarta text-[12px] font-bold leading-[normal] text-muted">
-              <p className="min-w-0 flex-1">ENFERMEDAD / CONDICIÓN</p>
+              <p className="min-w-[180px] flex-1">ENFERMEDAD / CONDICIÓN</p>
               <p className="w-[180px] shrink-0">{section.column}</p>
               <p className="w-[140px] shrink-0">ESTADO</p>
               <p className="w-[280px] shrink-0">OBSERVACIONES / DETALLES</p>
@@ -169,7 +169,7 @@ export default function MedPacienteAntecedentes() {
               const found = r.status !== 'negado';
               return (
                 <div key={r.condition} className="flex w-full items-center gap-3 border-b border-line px-4 py-[14px] font-jakarta text-[14px] leading-[normal] last:border-b-0">
-                  <p className={`min-w-0 flex-1 ${found ? 'font-bold text-ink' : 'font-medium text-muted'}`}>{r.condition}</p>
+                  <p className={`min-w-[180px] flex-1 ${found ? 'font-bold text-ink' : 'font-medium text-muted'}`}>{r.condition}</p>
                   <p className={`w-[180px] shrink-0 font-normal ${found ? 'text-ink' : 'text-muted'}`}>{r.relation}</p>
                   <div className="w-[140px] shrink-0">
                     <StatusBadge status={r.status} />

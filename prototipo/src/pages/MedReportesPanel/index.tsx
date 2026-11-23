@@ -21,6 +21,7 @@ import {
   IconPlus,
   Modal,
   ModalHeader,
+  Pagination,
   rowButton,
   rowLinkClass,
   Select,
@@ -83,8 +84,7 @@ const REPORT_TYPES: Array<[string, Report['type']]> = [
   ['Evolución Clínica', 'CLÍNICO'],
   ['Reporte de Alta', 'CLÍNICO'],
   ['Interconsulta', 'CLÍNICO'],
-  ['Resumen de Ocupación UCI', 'OPERATIVO'],
-  ['Análisis de Alertas Críticas', 'ADMINISTRATIVO'],
+  // Los reportes de ocupación y de alertas son de Admisión y de la administración (REVISION.md, R6).
 ];
 const FORMATS = [
   { value: 'PDF', label: 'PDF' },
@@ -199,9 +199,9 @@ export default function MedReportesPanel() {
     <section className="flex w-full flex-col gap-3">
       <SectionHeader title="Reportes por Paciente" text="Historial de entregas recientes." />
       <div className={tableCard}>
-        <Table minWidth={860}>
+        <Table minWidth={932}>
           <div className={headRow}>
-            <p className="min-w-0 flex-1">NOMBRE DEL ARCHIVO</p>
+            <p className="min-w-[200px] flex-1">NOMBRE DEL ARCHIVO</p>
             <p className="w-[140px] shrink-0">TIPO</p>
             <p className="w-[140px] shrink-0">FECHA</p>
             <p className="w-[160px] shrink-0">GENERADO POR</p>
@@ -210,7 +210,7 @@ export default function MedReportesPanel() {
           </div>
           {rows.map((rep) => (
             <div key={rep.file} {...rowButton(() => previewReport(rep))} aria-label={`Vista previa de ${rep.file}`} className={cn(bodyRow, rowLinkClass)}>
-              <div className="flex min-w-0 flex-1 items-center gap-2">
+              <div className="flex min-w-[200px] flex-1 items-center gap-2">
                 <img className="size-4 shrink-0" alt="" src={imgFileText10} />
                 <p className="min-w-0 flex-1 break-all font-semibold text-ink">{rep.file}</p>
               </div>
@@ -230,17 +230,7 @@ export default function MedReportesPanel() {
           ))}
         </Table>
       </div>
-      <div className="flex w-full flex-wrap items-center justify-between gap-3 pt-3">
-        <p className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">{`Mostrando ${rows.length} de ${history.length} reportes generados`}</p>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setPage(Math.max(1, page - 1))} aria-label="Página anterior">
-            Anterior
-          </Button>
-          <Button variant="secondary" onClick={() => setPage(Math.min(pages, page + 1))} aria-label="Página siguiente">
-            Siguiente
-          </Button>
-        </div>
-      </div>
+      <Pagination summary={`Mostrando ${rows.length} de ${history.length} reportes generados`} page={page} pages={pages} onChange={setPage} className="pt-3" />
     </section>
   );
 
@@ -302,9 +292,9 @@ export default function MedReportesPanel() {
             <section className="flex w-full flex-col gap-3">
               <SectionHeader title="Reportes Pendientes de Entrega" text="Revisa y finaliza los reportes que requieren tu atención." />
               <div className={tableCard}>
-                <Table minWidth={680}>
+                <Table minWidth={820}>
                   <div className={headRow}>
-                    <p className="min-w-0 flex-1">Paciente</p>
+                    <p className="min-w-[160px] flex-1">Paciente</p>
                     <p className="w-[180px] shrink-0">Tipo de Reporte</p>
                     <p className="w-[140px] shrink-0">Fecha Generación</p>
                     <p className="w-[140px] shrink-0">Estado</p>
@@ -312,7 +302,7 @@ export default function MedReportesPanel() {
                   </div>
                   {pending.map((p) => (
                     <div key={p.patient} {...rowButton(() => previewPending(p))} aria-label={`Vista previa: ${p.type} de ${p.patient}`} className={cn(bodyRow, rowLinkClass)}>
-                      <p className="min-w-0 flex-1 font-semibold text-ink">{p.patient}</p>
+                      <p className="min-w-[160px] flex-1 font-semibold text-ink">{p.patient}</p>
                       <p className="w-[180px] shrink-0 text-ink">{p.type}</p>
                       <p className="w-[140px] shrink-0 text-ink">{p.date}</p>
                       <div className="w-[140px] shrink-0">

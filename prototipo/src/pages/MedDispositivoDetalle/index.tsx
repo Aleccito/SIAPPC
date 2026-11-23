@@ -23,6 +23,7 @@ import {
 import { calibrationsOf, deviceByBed, eventsOf, firmwareOf, lastSeenOf, STATUS_TONE } from '../../data/devices';
 import { cn } from '../../lib/cn';
 
+// El médico no calibra equipos: solicita la calibración a Ingeniería Biomédica (REVISION.md, R5).
 const SLOTS = ['Mañana, 08:00', 'Pasado mañana, 10:00', 'En 3 días, 14:00', 'En 7 días, 09:00'];
 
 const DOT = { danger: 'bg-danger', warning: 'bg-warning', success: 'bg-success', neutral: 'bg-subtle' } as const;
@@ -40,7 +41,7 @@ export default function MedDispositivoDetalle() {
   const [faultOpen, setFaultOpen] = useState(false);
   const [reported, setReported] = useState(false);
 
-  const calibrations = [...(scheduled ? [{ date: scheduled, tech: 'Ing. Mario Vargas', result: 'Programada' }] : []), ...calibrationsOf(device)];
+  const calibrations = [...(scheduled ? [{ date: scheduled, tech: 'Ing. Mario Vargas', result: 'Solicitada' }] : []), ...calibrationsOf(device)];
   const events = [
     ...(reported ? [{ time: 'Ahora', text: 'Falla reportada a Ingeniería Biomédica (ticket #BIO-2214)', tone: 'warning' as const }] : []),
     ...eventsOf(device),
@@ -68,7 +69,7 @@ export default function MedDispositivoDetalle() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={() => setCalOpen(true)}>
-              Programar calibración
+              Solicitar calibración
             </Button>
             <Button variant="secondary" onClick={() => setFaultOpen(true)} disabled={reported}>
               {reported ? 'Falla reportada' : 'Reportar falla'}
@@ -158,11 +159,11 @@ export default function MedDispositivoDetalle() {
       </PageBody>
 
       <Modal labelledBy="calibracion-titulo" open={calOpen} onClose={() => setCalOpen(false)} width={440} className="gap-4 p-5 shadow-xl sm:p-6">
-        <ModalHeader id="calibracion-titulo" title="Programar calibración" onClose={() => setCalOpen(false)} />
+        <ModalHeader id="calibracion-titulo" title="Solicitar calibración" onClose={() => setCalOpen(false)} />
         <p className="font-jakarta text-[14px] font-normal leading-[1.5] text-muted">
           Monitor {device.serial} · cama {device.bed}. Ingeniería Biomédica recibirá la solicitud.
         </p>
-        <Select variant="input" fieldLabel="Fecha y hora" options={SLOTS} value={slot} onChange={setSlot} />
+        <Select variant="input" fieldLabel="Fecha y hora preferidas" options={SLOTS} value={slot} onChange={setSlot} />
         <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
           <Button variant="secondary" onClick={() => setCalOpen(false)}>
             Cancelar
@@ -171,10 +172,10 @@ export default function MedDispositivoDetalle() {
             onClick={() => {
               setCalOpen(false);
               setScheduled(slot);
-              toast(`Calibración programada · ${slot}`);
+              toast(`Solicitud enviada a Ingeniería Biomédica · ${slot}`);
             }}
           >
-            Programar
+            Enviar solicitud
           </Button>
         </div>
       </Modal>

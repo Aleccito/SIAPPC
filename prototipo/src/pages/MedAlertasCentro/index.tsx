@@ -119,6 +119,7 @@ export default function MedAlertasCentro() {
     <AppLayout
       breadcrumb="SIAPPC > Alertas"
       title="Centro de Alertas Críticas"
+      actionsInlineFrom="xl"
       actions={
         <>
           <Select options={SEVERITIES} value={severity} onChange={setSeverity} format={(l) => `Severidad: ${l}`} />
@@ -198,12 +199,13 @@ export default function MedAlertasCentro() {
           <section className="flex w-full min-w-0 flex-col gap-3 xl:w-[450px] xl:shrink-0">
             <h2 className="font-jakarta text-[16px] font-extrabold leading-[normal] text-ink">Historial Resuelto (Últimas horas)</h2>
             <div className="w-full overflow-hidden rounded-xl border border-line bg-white">
+              {/* Paciente 20 px más ancho que en Figma para que los nombres no se corten (REVISION.md, V7). */}
               <Table minWidth={426}>
                 <div className="flex w-full gap-3 border-b border-line bg-surface px-3 py-2.5 font-jakarta text-[11px] font-bold leading-[normal] text-muted">
                   <p className="w-[45px] shrink-0">HORA</p>
-                  <p className="w-[105px] shrink-0">PACIENTE</p>
+                  <p className="w-[125px] shrink-0">PACIENTE</p>
                   <p className="min-w-[110px] flex-1">EVENTO</p>
-                  <p className="w-[80px] shrink-0 text-right">RESP.</p>
+                  <p className="w-[60px] shrink-0 text-right">RESP.</p>
                 </div>
                 {history.length === 0 && <EmptyState message="Sin alertas resueltas en este periodo." onReset={resetFilters} />}
                 {history.map(([time, dot, patient, event, by, resp], i) => (
@@ -214,7 +216,7 @@ export default function MedAlertasCentro() {
                     className={cn('flex w-full items-start gap-3 border-b border-line p-3 last:border-b-0', i % 2 ? 'bg-surface' : 'bg-white', rowLinkClass)}
                   >
                     <p className="w-[45px] shrink-0 font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{time}</p>
-                    <div className="flex w-[105px] shrink-0 items-center gap-1.5">
+                    <div className="flex w-[125px] shrink-0 items-center gap-1.5">
                       <img className="size-1.5 shrink-0" alt="" src={dot} />
                       <p className="truncate font-jakarta text-[13px] font-bold leading-[normal] text-ink">{patient}</p>
                     </div>
@@ -222,7 +224,7 @@ export default function MedAlertasCentro() {
                       <p className="font-jakarta text-[12px] font-semibold text-ink">{event}</p>
                       <p className="font-jakarta text-[10px] font-normal text-subtle">{by}</p>
                     </div>
-                    <p className="w-[80px] shrink-0 text-right font-jakarta text-[12px] font-bold leading-[normal] text-success">{resp}</p>
+                    <p className="w-[60px] shrink-0 text-right font-jakarta text-[12px] font-bold leading-[normal] text-success">{resp}</p>
                   </div>
                 ))}
               </Table>

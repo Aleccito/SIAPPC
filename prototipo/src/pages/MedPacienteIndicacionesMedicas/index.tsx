@@ -84,16 +84,16 @@ const CardHeading = ({ children }: { children: ReactNode }) => <h2 className="fo
 function OrdersTable({ head, rows, firstWidth }: { head: string[]; rows: string[][]; firstWidth: string }) {
   return (
     <div className="w-full overflow-hidden rounded-lg border border-line">
-      <Table minWidth={600}>
+      <Table minWidth={680}>
         <div className="flex w-full items-center border-b border-line bg-surface px-3 py-[10px] font-jakarta text-[11px] font-bold uppercase leading-[normal] text-muted">
-          <p className={`${firstWidth} min-w-0`}>{head[0]}</p>
+          <p className={`${firstWidth} min-w-[136px]`}>{head[0]}</p>
           <p className="w-[180px] shrink-0">{head[1]}</p>
           <p className="w-[240px] shrink-0">{head[2]}</p>
           <p className="w-[100px] shrink-0">ESTADO</p>
         </div>
         {rows.map(([name, a, b]) => (
           <div key={name} className="flex w-full items-center border-b border-line p-3 font-jakarta text-[13px] leading-[normal] text-ink last:border-b-0">
-            <p className={`${firstWidth} min-w-0 font-bold`}>{name}</p>
+            <p className={`${firstWidth} min-w-[136px] font-bold`}>{name}</p>
             <p className="w-[180px] shrink-0 font-medium">{a}</p>
             <p className="w-[240px] shrink-0 font-medium">{b}</p>
             <div className="w-[100px] shrink-0">
@@ -155,7 +155,7 @@ export default function MedPacienteIndicacionesMedicas() {
           <OrdersTable head={['MEDICAMENTO / DOSIS', 'VÍA', 'FRECUENCIA']} rows={meds} firstWidth="flex-1" />
         </Card>
 
-        <div className="grid w-full grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <div className="grid w-full grid-cols-1 items-start gap-4 xl:grid-cols-2">
           <div className="flex min-w-0 flex-col gap-4">
             <Card className="flex w-full flex-col gap-3">
               <CardHeading>Dieta e Hidratación</CardHeading>
@@ -181,20 +181,22 @@ export default function MedPacienteIndicacionesMedicas() {
             <Card className="flex w-full flex-col gap-3">
               <CardHeading>Estudios Solicitados</CardHeading>
               <div className="w-full overflow-hidden rounded-lg border border-line">
+                <Table minWidth={360}>
                 <div className="flex w-full gap-[10px] border-b border-line bg-surface px-[10px] py-2 font-jakarta text-[11px] font-bold leading-[normal] text-muted">
-                  <p className="min-w-0 flex-1">ESTUDIO</p>
+                  <p className="min-w-[110px] flex-1">ESTUDIO</p>
                   <p className="w-[100px] shrink-0">TIPO</p>
                   <p className="w-[110px] shrink-0">ESTADO / FECHA</p>
                 </div>
                 {STUDIES.map(([name, type, status, tone]) => (
                   <div key={name} className="flex w-full items-center gap-[10px] border-b border-line px-[10px] py-2 leading-[normal] last:border-b-0">
-                    <p className="min-w-0 flex-1 font-jakarta text-[12px] font-bold text-ink">{name}</p>
+                    <p className="min-w-[110px] flex-1 font-jakarta text-[12px] font-bold text-ink">{name}</p>
                     <p className="w-[100px] shrink-0 font-jakarta text-[11px] font-medium text-muted">{type}</p>
                     <div className="w-[110px] shrink-0">
                       <Badge tone={tone} size="sm">{status}</Badge>
                     </div>
                   </div>
                 ))}
+                </Table>
               </div>
             </Card>
             <Card className="flex w-full flex-col gap-3">

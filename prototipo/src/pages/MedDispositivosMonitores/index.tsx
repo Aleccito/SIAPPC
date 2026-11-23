@@ -7,7 +7,7 @@ import imgKpiRowFrame2 from '../../assets/kpi-row-frame-2.svg';
 import imgKpiRowFrame3 from '../../assets/kpi-row-frame-3.svg';
 import imgKpiRowFrame4 from '../../assets/kpi-row-frame-4.svg';
 import imgSearchFieldVector from '../../assets/search-field-vector.svg';
-import { AppLayout, Badge, Button, Card, EmptyState, KpiCard, rowLinkClass, SearchBox, Select, Table, useRowLink } from '../../components';
+import { AppLayout, Badge, Button, Card, EmptyState, KpiCard, Pagination, rowLinkClass, SearchBox, Select, Table, useRowLink } from '../../components';
 import { deviceDetailPath, DEVICES, STATUS_TONE } from '../../data/devices';
 import { cn } from '../../lib/cn';
 import { matches } from '../../lib/text';
@@ -151,19 +151,7 @@ export default function MedDispositivosMonitores() {
           </Table>
         </Card>
 
-        <div className="flex w-full flex-wrap items-center justify-between gap-3">
-          <p className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">
-            {`Mostrando ${rows.length} de ${filtered.length} monitores UCI activos.`}
-          </p>
-          <div className="flex gap-[10px]">
-            <Button variant="secondary" onClick={() => setPage(Math.max(1, current - 1))} aria-label="Página anterior">
-              Anterior
-            </Button>
-            <Button variant="secondary" onClick={() => setPage(Math.min(pages, current + 1))} aria-label="Página siguiente">
-              Siguiente
-            </Button>
-          </div>
-        </div>
+        <Pagination summary={`Mostrando ${rows.length} de ${filtered.length} monitores UCI activos.`} page={current} pages={pages} onChange={setPage} />
       </div>
     </AppLayout>
   );

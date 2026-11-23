@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '../../lib/cn';
+import { ScrollShadows, useScrollEdges } from './ScrollShadows';
 
 export type TabItem = {
   id: string;
@@ -32,11 +34,27 @@ const styles = {
   },
 };
 
-/** Barra de pestañas. Se desplaza de lado si no cabe. */
+/**
+ * Barra de pestañas. Si no cabe se desplaza de lado: una sombra avisa que hay más pestañas y la
+ * pestaña activa se acomoda a la vista al abrir la pantalla.
+ */
 export function Tabs({ items, active, onChange, variant = 'underline', className }: TabsProps) {
   const s = styles[variant];
+  const [ref, edges] = useScrollEdges<HTMLDivElement>();
+
+  useEffect(() => {
+    const list = ref.current;
+    const tab = list?.querySelector<HTMLElement>('[aria-selected=true]');
+    if (!list || !tab) return;
+    const start = tab.offsetLeft - list.offsetLeft;
+    const end = start + tab.offsetWidth;
+    if (start < list.scrollLeft || end > list.scrollLeft + list.clientWidth) list.scrollLeft = start - (list.clientWidth - tab.offsetWidth) / 2;
+  }, [active, ref]);
+
   return (
-    <div role="tablist" className={cn('flex w-full overflow-x-auto', s.bar, className)}>
+    <div className="relative w-full">
+      <ScrollShadows {...edges} />
+      <div ref={ref} role="tablist" className={cn('flex w-full overflow-x-auto', s.bar, className)}>
       {items.map((item) => {
         const isActive = item.id === active;
         const classes = cn('shrink-0 whitespace-nowrap font-jakarta leading-[normal] transition-colors', s.item, isActive ? s.active : s.idle);
@@ -50,6 +68,7 @@ export function Tabs({ items, active, onChange, variant = 'underline', className
           </button>
         );
       })}
+      </div>
     </div>
   );
 }

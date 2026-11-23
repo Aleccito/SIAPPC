@@ -176,7 +176,7 @@ export default function MedPacienteResumen() {
                       <p className="font-jakarta text-[11px] font-normal text-muted">{text}</p>
                     </div>
                   </div>
-                  <Button variant="secondary" size="sm" onClick={() => attend(info)}>
+                  <Button size="sm" onClick={() => attend(info)}>
                     Atender
                   </Button>
                 </div>
