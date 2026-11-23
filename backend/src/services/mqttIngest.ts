@@ -7,6 +7,7 @@ import { publicarAlerta } from "../lib/eventos.ts";
 import { notificarAlerta } from "../lib/notificaciones.ts";
 import { repartirOnda, waveformSchema } from "./waveform.ts";
 import { encolarAnalisisIA } from "./aiAuto.ts";
+import { ColaPorClave, clasificarLectura, topicCompartido, type Frescura } from "./mqttOrden.ts";
 
 // Forma de siappc/<device>/telemetry, ver iot/src/publisher.py:build_payload.
 // `variable` no es un enum cerrado: sensor.variable_medida es VARCHAR(60) y
@@ -115,6 +116,19 @@ async function updateDeviceStatus(device: string, online: boolean, logger: Fasti
 }
 
 async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogger): Promise<void> {
+  const frescura: Frescura = clasificarLectura(
+    payload.ts,
+    Date.now(),
+    env.mqtt.maxAtrasoMs,
+    env.mqtt.maxAdelantoMs,
+  );
+  // Reloj de la Pi adelantado (sin NTP): guardarla la pondría por delante de
+  // las lecturas reales y la "última lectura" de la cama quedaría congelada.
+  if (frescura === "futura") {
+    logger.warn({ device: payload.device, ts: payload.ts }, "mqtt: lectura descartada, hora en el futuro");
+    return;
+  }
+
   const dispositivo = await prisma.dispositivo.findUnique({
     where: { codigo: payload.device },
     select: { dispositivo_id: true },
@@ -204,6 +218,17 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
         select: { alerta_id: true, fecha_hora: true },
       });
 
+      // Lectura atrasada (llega del buffer de la Pi tras un corte): la alerta
+      // queda registrada como histórico, pero no se avisa como si pasara ahora
+      // —ni campana, ni SSE, ni análisis IA—.
+      if (frescura === "atrasada") {
+        logger.info(
+          { device: payload.device, alertaId: creada.alerta_id, ts: payload.ts },
+          "mqtt: alerta de lectura atrasada, registrada sin aviso en vivo",
+        );
+        return;
+      }
+
       // Aviso en vivo al tablero. Va DESPUÉS de guardar y nunca antes: si el
       // proceso muriera entre el aviso y el INSERT, habría avisado de algo que
       // no existe. Y va fuera de cualquier transacción porque no puede
@@ -260,6 +285,27 @@ async function ingestReading(payload: TelemetryPayload, logger: FastifyBaseLogge
   }
 }
 
+/**
+ * Equipo según el topic: el segmento antes del último (`siappc/<device>/telemetry`).
+ * Exportada para probarla.
+ */
+export function deviceDelTopic(topic: string): string | null {
+  const partes = topic.split("/");
+  return partes.length >= 2 ? partes[partes.length - 2] || null : null;
+}
+
+/**
+ * El `device` del cuerpo tiene que coincidir con el del topic. Si no, un equipo
+ * podría publicar en su propio topic lecturas firmadas con el código de otra
+ * cama —alertas falsas, análisis IA de otro paciente—. Es la mitad del control:
+ * la otra es que el broker solo deje a cada equipo escribir en su topic (ACL).
+ */
+function mismoEquipo(topic: string, device: string, logger: FastifyBaseLogger): boolean {
+  if (deviceDelTopic(topic) === device) return true;
+  logger.warn({ topic, device }, "mqtt: mensaje descartado, el device no coincide con el topic");
+  return false;
+}
+
 async function handleMessage(topic: string, payloadBuf: Buffer, logger: FastifyBaseLogger): Promise<void> {
   // Al borrar un retenido el broker reparte un mensaje vacío. No es un error ni
   // hay nada que ingerir.
@@ -284,6 +330,7 @@ async function handleMessage(topic: string, payloadBuf: Buffer, logger: FastifyB
       logger.warn({ topic, issues: parsed.error.issues }, "mqtt: onda con forma inválida");
       return;
     }
+    if (!mismoEquipo(topic, parsed.data.device, logger)) return;
     repartirOnda(parsed.data);
     return;
   }
@@ -294,6 +341,7 @@ async function handleMessage(topic: string, payloadBuf: Buffer, logger: FastifyB
       logger.warn({ topic, issues: parsed.error.issues }, "mqtt: estado con forma inválida");
       return;
     }
+    if (!mismoEquipo(topic, parsed.data.device, logger)) return;
     await updateDeviceStatus(parsed.data.device, parsed.data.status === "online", logger);
     return;
   }
@@ -304,8 +352,11 @@ async function handleMessage(topic: string, payloadBuf: Buffer, logger: FastifyB
     return;
   }
 
+  if (!mismoEquipo(topic, parsed.data.device, logger)) return;
   await ingestReading(parsed.data, logger);
 }
+
+const colaMensajes = new ColaPorClave();
 
 // Se conecta en segundo plano: si el broker no está arriba, mqtt.js reintenta
 // solo y el servidor HTTP sigue respondiendo mientras tanto.
@@ -317,7 +368,15 @@ export function startMqttIngest(logger: FastifyBaseLogger): mqtt.MqttClient {
     port: env.mqtt.port,
     username: env.mqtt.user,
     password: env.mqtt.password,
-    clientId: `siappc-backend-${Math.random().toString(16).slice(2)}`,
+    // clientId FIJO + clean:false = sesión persistente: mientras el backend está
+    // caído o reiniciándose, el broker guarda los mensajes QoS 1 (telemetría y
+    // estado) y los entrega al reconectar. Con un id aleatorio cada arranque
+    // era una sesión nueva y lo publicado en ese rato se perdía.
+    // Con varias instancias, cada una necesita su propio MQTT_CLIENT_ID (dos
+    // clientes con el mismo id se expulsan entre sí) y MQTT_SHARED_GROUP para
+    // repartirse la telemetría en vez de procesarla por duplicado.
+    clientId: env.mqtt.clientId,
+    clean: false,
     reconnectPeriod: 2000,
   };
 
@@ -340,9 +399,16 @@ export function startMqttIngest(logger: FastifyBaseLogger): mqtt.MqttClient {
     // Al suscribirse al de estado el broker entrega los retenidos, así que el
     // backend se pone al día con los equipos que ya estaban conectados (o
     // caídos) antes de que él arrancara.
-    client.subscribe([env.mqtt.telemetryTopic, env.mqtt.statusTopic], { qos: 1 }, (err) => {
-      if (err) logger.error({ err }, "mqtt: fallo al suscribirse");
-    });
+    // La telemetría va por suscripción compartida si hay grupo: cada lectura la
+    // procesa UNA instancia. El estado no: es idempotente y los retenidos deben
+    // llegarle a todas.
+    client.subscribe(
+      [topicCompartido(env.mqtt.telemetryTopic, env.mqtt.sharedGroup), env.mqtt.statusTopic],
+      { qos: 1 },
+      (err) => {
+        if (err) logger.error({ err }, "mqtt: fallo al suscribirse");
+      },
+    );
     // La onda va en QoS 0 y aparte, a propósito. Es una señal en vivo: un lote
     // que se pierde no se quiere reentregado tres segundos tarde, se quiere
     // olvidado. Con QoS 1 el broker guardaría y reintentaría cientos de
@@ -355,10 +421,16 @@ export function startMqttIngest(logger: FastifyBaseLogger): mqtt.MqttClient {
   client.on("reconnect", () => logger.warn("mqtt: reconectando…"));
   client.on("error", (err) => logger.error({ err }, "mqtt: error de conexión"));
 
+  // La onda se reparte en el acto (no toca la base y el orden lo da el broker).
+  // Telemetría y estado pasan por la cola del equipo: en serie dentro de cada
+  // cama, en paralelo entre camas.
   client.on("message", (topic, payloadBuf) => {
-    handleMessage(topic, payloadBuf, logger).catch((err: unknown) => {
-      logger.error({ err, topic }, "mqtt: error procesando mensaje");
-    });
+    const alFallar = (err: unknown) => logger.error({ err, topic }, "mqtt: error procesando mensaje");
+    if (topic.endsWith("/waveform")) {
+      handleMessage(topic, payloadBuf, logger).catch(alFallar);
+      return;
+    }
+    void colaMensajes.encolar(deviceDelTopic(topic) ?? topic, () => handleMessage(topic, payloadBuf, logger), alFallar);
   });
 
   return client;

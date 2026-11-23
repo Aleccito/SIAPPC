@@ -7,6 +7,7 @@ import { ChatOpenAI } from "@langchain/openai";
 import { prisma } from "./prisma.ts";
 import { ApiError, notFound } from "./http.ts";
 import { env } from "../env.ts";
+import { MAX_CAMPO, MAX_CONTEXTO, recortar } from "../services/aiParse.ts";
 
 export const DISCLAIMER =
   "Sugerencia generada por IA. No sustituye el juicio clínico; verifique dosis, alergias e interacciones antes de indicar.";
@@ -65,7 +66,7 @@ export async function patientContext(patientId: number, hospitalId: number): Pro
   const e = p.expediente;
   const lines = [
     `Edad: ${edad(p.fecha_nacimiento)} años · Sexo: ${p.sexo} · Sangre: ${p.tipo_sangre ?? "?"}`,
-    `Motivo de consulta: ${p.motivo_consulta ?? "-"} · Estado: ${p.estado}`,
+    `Motivo de consulta: ${recortar(p.motivo_consulta ?? "-", MAX_CAMPO)} · Estado: ${p.estado}`,
     `Alergias activas: ${e?.alergias.map((a) => `${a.sustancia} (${a.severidad}${a.reaccion ? `: ${a.reaccion}` : ""})`).join("; ") || "ninguna registrada"}`,
     `Medicamentos activos: ${e?.medicamentos.map((m) => [m.nombre, m.dosis, m.via, m.frecuencia].filter(Boolean).join(" ")).join("; ") || "ninguno registrado"}`,
     `Diagnósticos activos: ${e?.diagnosticos.map((d) => `${d.descripcion}${d.cie10 ? ` [${d.cie10}]` : ""} (${d.tipo})`).join("; ") || "ninguno"}`,
@@ -80,8 +81,13 @@ export async function patientContext(patientId: number, hospitalId: number): Pro
 
   for (const n of p.notas_soap) {
     lines.push(
-      `Nota SOAP ${n.fecha_hora.toISOString()}: S: ${n.subjetivo ?? "-"} | O: ${n.objetivo ?? "-"} | A: ${n.analisis ?? "-"} | P: ${n.plan ?? "-"}`,
+      `Nota SOAP ${n.fecha_hora.toISOString()}: S: ${campo(n.subjetivo)} | O: ${campo(n.objetivo)} | A: ${campo(n.analisis)} | P: ${campo(n.plan)}`,
     );
   }
-  return lines.join("\n");
+  // Tope total: lo que se corta al final son las notas SOAP más viejas.
+  return recortar(lines.join("\n"), MAX_CONTEXTO);
+}
+
+function campo(v: string | null): string {
+  return v ? recortar(v, MAX_CAMPO) : "-";
 }

@@ -12,8 +12,10 @@
 // - Una sola consulta al LLM a la vez y, como mucho, un pendiente por paciente.
 // - Nunca bloquea ni hace fallar la ingesta: todo es fire-and-forget.
 //
-// El enfriamiento y la cola son de este proceso: con varias instancias del
-// backend, cada una analizaría por su cuenta.
+// Con varias instancias del backend, el enfriamiento local filtra el grueso y
+// un candado en Redis (SET NX por paciente y severidad) evita que dos
+// instancias analicen al mismo paciente a la vez. Sin Redis no hay candado:
+// solo vale para una instancia.
 
 import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
@@ -22,8 +24,12 @@ import { DATOS_NO_INSTRUCCIONES, llm, patientContext } from "../lib/clinicalAi.t
 import { redis } from "../lib/redis.ts";
 import { env } from "../env.ts";
 import { debeDisparar, type Severidad } from "./aiCooldown.ts";
+import { extraerIdeas, ideaSchema } from "./aiParse.ts";
 
 export { debeDisparar, type Severidad };
+
+// Subir al cambiar AUTO_SYSTEM: viaja con cada análisis para comparar resultados.
+export const PROMPT_VERSION = "auto-v1";
 
 // AJUSTAR: el usuario afina aquí qué debe/no debe generar la IA.
 const AUTO_SYSTEM = `Eres un asistente de apoyo a la decisión clínica. Hablas con un médico.
@@ -33,17 +39,12 @@ No inventes datos. ${DATOS_NO_INSTRUCCIONES}
 Responde ÚNICAMENTE con JSON válido, en español, con esta forma:
 {"ideas":[{"title":"hipótesis breve","rationale":"justificación breve basada en los datos"}]}`;
 
-const ideaSchema = z.object({
-  title: z.string().trim().min(1).max(200),
-  rationale: z.string().trim().min(1).max(1000),
-});
-
-const ideasSchema = z.object({ ideas: z.array(ideaSchema).min(2) });
-
 const analisisSchema = z.object({
   generatedAt: z.string(),
   severity: z.enum(["alta", "critica"]),
   model: z.string(),
+  // Opcional: los análisis guardados antes de existir el campo no lo traen.
+  promptVersion: z.string().optional(),
   ideas: z.array(ideaSchema),
 });
 
@@ -102,13 +103,19 @@ async function drenar(logger: FastifyBaseLogger): Promise<void> {
   try {
     for (const [patientId, job] of pendientes) {
       pendientes.delete(patientId);
+      const candado = `${NAMESPACE}lock:${patientId}:${job.severity}`;
       try {
+        if (!(await tomarCandado(candado))) {
+          logger.info({ patientId }, "ai_auto: otra instancia ya lo analiza");
+          continue;
+        }
         await analizar(patientId, job.hospitalId, job.severity);
         logger.info({ patientId, severity: job.severity }, "ai_auto: análisis guardado");
       } catch (err: unknown) {
         // Sin marca de disparo: la próxima alerta del paciente reintenta en
         // vez de esperar todo el enfriamiento sin análisis.
         ultimoDisparo.delete(patientId);
+        await soltarCandado(candado);
         // Sin contenido clínico en el log: solo el tipo de error.
         logger.error({ patientId, reason: err instanceof Error ? err.name : "desconocido" }, "ai_auto: análisis fallido");
       }
@@ -118,6 +125,25 @@ async function drenar(logger: FastifyBaseLogger): Promise<void> {
   }
 }
 
+/** true si este proceso puede analizar; sin Redis siempre true. */
+async function tomarCandado(clave: string): Promise<boolean> {
+  if (!redis) return true;
+  try {
+    // Dura lo que el enfriamiento: cubre el análisis y evita que otra
+    // instancia relance al mismo paciente en esa ventana.
+    const ok = await redis.set(clave, "1", "EX", Math.max(env.aiAuto.cooldownSeconds, 1), "NX");
+    return ok === "OK";
+  } catch {
+    // Redis caído: mejor analizar de más que dejar al paciente sin análisis.
+    return true;
+  }
+}
+
+async function soltarCandado(clave: string): Promise<void> {
+  if (!redis) return;
+  await redis.del(clave).catch(() => undefined);
+}
+
 const parser = new StringOutputParser();
 
 async function pedirIdeas(context: string): Promise<AnalisisIA["ideas"] | null> {
@@ -125,16 +151,7 @@ async function pedirIdeas(context: string): Promise<AnalisisIA["ideas"] | null> 
     ["system", AUTO_SYSTEM],
     ["human", `CONTEXTO DEL PACIENTE:\n<datos_paciente>\n${context}\n</datos_paciente>`],
   ]);
-  // Los modelos pequeños suelen envolver el JSON en ```json ... ```.
-  const inicio = texto.indexOf("{");
-  const fin = texto.lastIndexOf("}");
-  if (inicio < 0 || fin < inicio) return null;
-  try {
-    const r = ideasSchema.safeParse(JSON.parse(texto.slice(inicio, fin + 1)));
-    return r.success ? r.data.ideas : null;
-  } catch {
-    return null;
-  }
+  return extraerIdeas(texto);
 }
 
 async function analizar(patientId: number, hospitalId: number, severity: Severidad): Promise<void> {
@@ -145,6 +162,7 @@ async function analizar(patientId: number, hospitalId: number, severity: Severid
     generatedAt: new Date().toISOString(),
     severity,
     model: env.llm.model,
+    promptVersion: PROMPT_VERSION,
     ideas,
   });
 }

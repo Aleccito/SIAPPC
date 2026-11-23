@@ -32,6 +32,18 @@ const {
   // (require_certificate true). Los dos van juntos o ninguno.
   MQTT_CLIENT_CERT_FILE,
   MQTT_CLIENT_KEY_FILE,
+  // Id FIJO de la sesión MQTT del backend: con él el broker guarda la
+  // telemetría mientras el backend está caído (sesión persistente). Con varias
+  // instancias, uno distinto por instancia.
+  MQTT_CLIENT_ID = "siappc-backend",
+  // Grupo de suscripción compartida ($share/<grupo>/…). Solo con varias
+  // instancias: reparte cada lectura a UNA de ellas. Vacío = suscripción normal.
+  MQTT_SHARED_GROUP,
+  // Una lectura más vieja que esto se guarda pero no avisa en vivo (llega del
+  // buffer de la Pi tras un corte). Una más adelantada que MQTT_MAX_ADELANTO se
+  // descarta (reloj de la Pi sin NTP).
+  MQTT_MAX_ATRASO_SECONDS = "60",
+  MQTT_MAX_ADELANTO_SECONDS = "5",
   // Store compartido del límite de peticiones y caché de /sensors/*. Vacía =
   // contador en memoria y sin caché: válido con una sola instancia.
   REDIS_URL,
@@ -114,6 +126,25 @@ if (!Number.isInteger(rateLimitMax) || rateLimitMax < 1) {
   process.exit(1);
 }
 
+const mqttMaxAtraso = Number(MQTT_MAX_ATRASO_SECONDS);
+const mqttMaxAdelanto = Number(MQTT_MAX_ADELANTO_SECONDS);
+if (!Number.isInteger(mqttMaxAtraso) || mqttMaxAtraso < 1) {
+  console.error("MQTT_MAX_ATRASO_SECONDS debe ser un entero de segundos >= 1");
+  process.exit(1);
+}
+if (!Number.isInteger(mqttMaxAdelanto) || mqttMaxAdelanto < 0) {
+  console.error("MQTT_MAX_ADELANTO_SECONDS debe ser un entero de segundos >= 0");
+  process.exit(1);
+}
+if (!/^[A-Za-z0-9_-]{1,64}$/.test(MQTT_CLIENT_ID)) {
+  console.error("MQTT_CLIENT_ID: solo letras, números, - y _ (máx. 64)");
+  process.exit(1);
+}
+if (MQTT_SHARED_GROUP && !/^[A-Za-z0-9_-]{1,64}$/.test(MQTT_SHARED_GROUP)) {
+  console.error("MQTT_SHARED_GROUP: solo letras, números, - y _ (máx. 64)");
+  process.exit(1);
+}
+
 const aiAutoCooldownSeconds = Number(AI_AUTO_COOLDOWN_SECONDS);
 const aiAutoTtlSeconds = Number(AI_AUTO_TTL_SECONDS);
 const llmTimeoutSeconds = Number(LLM_TIMEOUT_SECONDS);
@@ -150,6 +181,10 @@ export const env = {
     telemetryTopic: MQTT_TELEMETRY_TOPIC,
     statusTopic: MQTT_STATUS_TOPIC,
     waveformTopic: MQTT_WAVEFORM_TOPIC,
+    clientId: MQTT_CLIENT_ID,
+    sharedGroup: MQTT_SHARED_GROUP || undefined,
+    maxAtrasoMs: mqttMaxAtraso * 1000,
+    maxAdelantoMs: mqttMaxAdelanto * 1000,
     // null = conexión en texto plano. Con TLS activo el certificado del broker
     // se valida siempre contra esta CA: no hay interruptor para saltarse la
     // verificación, porque un `rejectUnauthorized: false` olvidado deja la

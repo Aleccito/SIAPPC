@@ -44,7 +44,7 @@ async function readError(response: Response): Promise<string> {
   return response.statusText
 }
 
-async function send(path: string, init: RequestInit): Promise<Response> {
+export async function send(path: string, init: RequestInit): Promise<Response> {
   const token = getToken()
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,

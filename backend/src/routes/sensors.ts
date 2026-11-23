@@ -63,23 +63,22 @@ function whereClause(conditions: Prisma.Sql[]): Prisma.Sql {
 // Las dos van además por caché en Redis (lib/cache.ts) con TTL corto, porque el
 // tablero las repite en cada refresco para todos los usuarios conectados.
 //
-// La clave de caché NO incluye al usuario porque estas consultas todavía no
-// filtran por hospital ni por unidad: la respuesta es la misma para cualquiera
-// que pase el `authenticate`. El día que se agregue ese filtro, el
-// identificador correspondiente tiene que entrar en la clave, o un usuario
-// terminaría leyendo la respuesta cacheada de otro hospital.
+// Las dos filtran por el hospital de la sesión (`d.hospital_id`), y por eso el
+// hospital ENTRA en la clave de caché: sin él, un usuario leería la respuesta
+// cacheada de otro hospital.
 export default async function sensorsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
-  app.get("/sensors/readings", async (req) => {
+  app.get("/sensors/readings", { preHandler: [app.requirePermission("monitoreo", "ver")] }, async (req) => {
     const { device, variable, limit } = parseOr400(querySchema, req.query);
+    const hospitalId = req.hospitalId;
 
     // Se construye desde los valores ya validados por zod (`limit` es número,
     // no la cadena que vino en la URL), así una query basura nunca crea clave.
-    const key = cacheKey("readings", { device, variable, limit });
+    const key = cacheKey("readings", { hospitalId, device, variable, limit });
 
     return cached(key, env.sensorsCacheTtl, req.log, async () => {
-      const conditions: Prisma.Sql[] = [];
+      const conditions: Prisma.Sql[] = [Prisma.sql`d.hospital_id = ${hospitalId}`];
       if (device) conditions.push(Prisma.sql`d.codigo = ${device}`);
       if (variable) conditions.push(Prisma.sql`s.variable_medida = ${variable}`);
 
@@ -97,13 +96,14 @@ export default async function sensorsRoutes(app: FastifyInstance) {
     });
   });
 
-  app.get("/sensors/alerts", async (req) => {
+  app.get("/sensors/alerts", { preHandler: [app.requirePermission("alertas", "ver")] }, async (req) => {
     const { device, variable, severity, status, limit } = parseOr400(alertsQuerySchema, req.query);
+    const hospitalId = req.hospitalId;
 
-    const key = cacheKey("alerts", { device, variable, severity, status, limit });
+    const key = cacheKey("alerts", { hospitalId, device, variable, severity, status, limit });
 
     return cached(key, env.sensorsCacheTtl, req.log, async () => {
-      const conditions: Prisma.Sql[] = [];
+      const conditions: Prisma.Sql[] = [Prisma.sql`d.hospital_id = ${hospitalId}`];
       if (device) conditions.push(Prisma.sql`d.codigo = ${device}`);
       if (variable) conditions.push(Prisma.sql`s.variable_medida = ${variable}`);
       if (severity) conditions.push(Prisma.sql`a.severidad = ${severity}`);
