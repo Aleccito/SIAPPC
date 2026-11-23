@@ -4,17 +4,20 @@ Documento de traspaso para seguir el trabajo en Claude Code. Léelo completo ant
 
 ## Qué es
 
-`prototipo/` contiene las **35 pantallas de la página MEDICO** del Figma de SIAPPC, convertidas a
-React a partir del código que genera Figma (codegen). Es un **prototipo visual con datos de ejemplo
+`prototipo/` contiene las **35 pantallas de la página MEDICO** y las **4 de la página LOGIN** del Figma de
+SIAPPC, convertidas a React a partir del código que genera Figma (codegen). Es un **prototipo visual con datos de ejemplo
 escritos en las pantallas**; no se conecta al backend.
 
 - Stack: React 19, Vite 7, Tailwind CSS 3.4, react-router-dom 6, TypeScript.
-- Una carpeta por pantalla: `src/pages/<Nombre>/index.tsx`. Rutas en `src/App.tsx` (`/` abre `MedDashboardPrincipal`).
-  Además de las 35 de Figma hay 2 pantallas nuevas del paso 2 (`MedPacienteNuevo`, `MedDispositivoDetalle`).
+- Una carpeta por pantalla: `src/pages/<Nombre>/index.tsx`. Rutas en `src/App.tsx` (`/` abre el `Login`).
+  Además de las de Figma hay una pantalla nueva del paso 2 (`MedDispositivoDetalle`).
+- Roles (README de la raíz, "5. Entrar"): el prototipo es la aplicación del **médico**. Lo que es de Admisión
+  (registrar pacientes, asignar camas, egresos) o de enfermería no aparece; ver `REVISION.md`, parte 2.1.
 - Datos de ejemplo que comparten varias pantallas en `src/data/`; utilidades en `src/lib/`.
 - Componentes compartidos en `src/components/` (se importan desde `src/components/index.ts`). Ver "Componentes" abajo.
 - Íconos e imágenes exportados de Figma en `src/assets/`.
 - Fuentes (Google Fonts en `index.html`): Plus Jakarta Sans (`font-jakarta`), Inter (`font-inter`), Geist (`font-geist`), definidas en `tailwind.config.js`.
+  Las pantallas del médico usan Plus Jakarta Sans; las de acceso, Geist (como en Figma).
 - Es **independiente de `frontend/`**, que es la app real (MUI + React Query + backend). No comparten código.
 
 ## Dónde está publicado
@@ -36,6 +39,8 @@ escritos en las pantallas**; no se conecta al backend.
 - ~~El código salió de Figma pantalla por pantalla: menú lateral, barra superior, botones, tarjetas y tablas
   copiados en las 35 páginas~~ y ~~medidas fijas (1440×900, `h-[900px]`, columnas fijas)~~ → **resuelto en el paso 1.**
 - ~~~129 botones sin acción y ~85 pestañas que no cambiaban de vista~~ → **resuelto en el paso 2** (ver `BOTONES.md`).
+- ~~Sin pantallas de acceso, acciones de otros roles y textos cortados o tablas aplastadas en celular y 1024 px~~ →
+  **resuelto en la revisión de acceso y roles** (ver `REVISION.md`).
 - Los campos de texto de los formularios (notas, textareas, Mín/Máx, fechas) siguen siendo dibujos: quedan para el
   paso 3. Buscadores, listas desplegables, filtros, interruptores, casillas y opciones ya funcionan.
 
@@ -69,18 +74,36 @@ escritos en las pantallas**; no se conecta al backend.
      cambia algo en la misma pantalla (marcar, silenciar, ordenar, plegar, paginar) o muestra un aviso corto.
    - Componentes nuevos: `Select` (lista desplegable real, varias variantes con el dibujo de Figma), `Popover`,
      `Menu`, `ToastProvider`/`useToast`, `ConfirmDialog`, `ModalHeader`, `DocumentPreview`, `EmptyState`,
-     `useRowLink`/`rowButton` (filas tocables), `AssignBedModal` y `UploadDocumentModal`. `Modal` se cierra con X,
+     `useRowLink`/`rowButton` (filas tocables), `AssignBedModal` (se quitó en la revisión) y `UploadDocumentModal`. `Modal` se cierra con X,
      Escape o el fondo; `BackButton` acepta `to`.
    - Un solo paciente de ejemplo: todo expediente abre las pantallas de María González. Se agregaron datos de ejemplo
      solo donde la paginación o los filtros los necesitan (12 monitores, 12 pacientes, 18 reportes, 24 entregas…).
    - El estado es local y se pierde al recargar; lo que cruza de pantalla viaja en la navegación (alerta atendida,
      entrega de turno confirmada, diagnóstico registrado, nota SOAP elegida con `?nota=`, monitor con `?cama=`).
    - Pantallas nuevas (no vienen de Figma, lo dice un comentario al inicio): **Registro de Paciente**
-     (`MedPacienteNuevo`) y **Detalle de Monitor** (`MedDispositivoDetalle`), adaptables a celular.
+     (`MedPacienteNuevo`, se quitó en la revisión porque es de Admisión) y **Detalle de Monitor**
+     (`MedDispositivoDetalle`), adaptables a celular.
    - `/` abre el Dashboard; el logo del menú lleva al Dashboard; cerrar sesión pide confirmación.
    - Verificado: `npm run build` pasa; las 35 pantallas de Figma se ven igual a 1440 px (comparadas píxel a píxel
      con las del paso 1); las nuevas no se salen de lado a 390, 768 y 1024 px; pruebas automáticas de filtros,
      menús, modales, avisos y navegación con estado.
+2b. ~~**Acceso y revisión.**~~ **Hecho (rama `feature/prototipo-login-revision`).** Detalle y decisiones en `REVISION.md`:
+   - **Pantallas de acceso** (página LOGIN de Figma): `Login` (`/` y `/Login`), `LoginMfa`, `RecuperarContrasena`
+     y `RecuperacionEnviada`, con un layout común (`AuthLayout`: barra con ES/EN/DE, fondo de puntos, barra de
+     estado y pie) y una tarjeta común (`AuthCard`). Flujo: Entrar → código de 6 dígitos → Dashboard; ¿Olvidó su
+     contraseña? → Recuperar → Revisa tu correo → Login; "Cerrar sesión" → Login. Campos y código reales; cualquier
+     dato sirve. ES/EN/DE traducen las cuatro pantallas. Se unificaron las inconsistencias de Figma (15 minutos,
+     `@institucion.org`, un solo "Volver al inicio de sesión", la tarjeta, la barra y el campo del Login en todas);
+     a 1440 el Login se ve igual a su captura.
+   - **Roles:** se quitaron "Nuevo Paciente" y la pantalla Registro de Paciente, "Asignar paciente" en la cama libre
+     y "Guardar cambios" de Datos Personales; "Dar de alta" pasó a "Indicar alta médica", "Programar calibración" a
+     "Solicitar calibración"; Reportes solo genera reportes clínicos; "Gestión de Pacientes" se llama "Mis Pacientes".
+   - **Visual:** títulos en dos líneas y ruta corta en celular; tablas y pestañas con sombra cuando hay más a la
+     derecha; columnas que ya no se aplastan; cabecera del paciente ordenada; arreglos por pantalla a 1024 px
+     (Datos Personales, Exploración, Umbrales, Comparativa, CIE-10); "Atender", selector de periodo, la X de las
+     ventanas y la paginación iguales en todas; la confirmación de atención se abre sobre la pantalla de origen.
+   - Verificado: `npm run build`; capturas a 1440 comparadas con las del paso 2 (solo cambia lo aprobado); revisión
+     automática a 1440, 1024, 768 y 390; pruebas de interacción del acceso y de los roles.
 3. **Formularios.** Campos de texto reales donde hoy hay dibujos (lista en `BOTONES.md`, "Queda para el paso 3"):
    notas y textareas, Mín/Máx de umbrales, fechas, búsqueda escribiendo en CIE-10 y validación. Sin backend.
 4. **Backend.** No se hace en el prototipo: se hace en `frontend/`, según lo que se decida en el paso 0.
@@ -90,21 +113,23 @@ escritos en las pantallas**; no se conecta al backend.
 | Componente | Para qué |
 |---|---|
 | `AppLayout`, `PageBody` | Estructura de toda pantalla: menú + barra superior + contenido. Menú fijo desde 1024 px, plegable abajo de eso. |
+| `AuthLayout`, `AuthCard`, `AuthField`, `AuthButton`, `AuthBackLink`, `useAuthText`, `useCountdown` | Pantallas de acceso: layout, tarjeta, campo y botón del login, enlace de volver, textos ES/EN/DE y contador de "Reenviar". |
 | `Sidebar`, `TopBar`, `TopBarDate`, `NotificationBell` | Partes del layout (la lista del menú y su regla de marcado están en `layout/nav.ts`). |
 | `PatientLayout`, `PatientHeader`, `PatientTabs`, `SoapSections` | Pantallas del expediente del paciente. |
 | `Button`, `BackButton` | Botones: `primary`, `secondary`, `outline`, `soft`, `ghost`, `danger`, `warning`, `success`, `link`; tamaños `sm`/`md`/`lg`; con `to` es enlace. |
 | `Card`, `CardHeader`, `CardTitle`, `Divider` | Tarjetas blancas con borde y la línea divisoria de Figma. |
 | `Badge`, `KpiCard` | Etiquetas de estado (`tone`) e indicadores. |
 | `Tabs`, `SegmentedControl` | Pestañas (subrayado o `pills`) y grupos tipo Grid/Lista. |
-| `Table`, `Pagination` | Tablas con desplazamiento lateral propio y paginación. |
+| `Table`, `Pagination` | Tablas con desplazamiento lateral propio (con sombra en el borde cuando hay más columnas) y paginación con números. |
+| `ScrollShadows`, `useScrollEdges` | Sombras de borde para cualquier contenedor que se desplaza de lado (las usan `Table` y `Tabs`). |
 | `Input`, `TextArea`, `SearchBox`, `InfoField`, `TextBlock` | Campos de texto y datos de solo lectura. |
 | `Select` | Lista desplegable con `options`/`value`/`onChange`. Variantes con el dibujo de cada filtro de Figma: `field`, `stacked`, `chip`, `soft`, `button`, `input`, `input-plain`, `compact`. |
 | `Popover`, `Menu` | Panel flotante (no lo cortan las tablas con desplazamiento) y menú de acciones "•••". |
-| `Modal`, `ModalHeader`, `ConfirmDialog`, `DocumentPreview` | Ventanas emergentes (se cierran con X, Escape o el fondo), confirmación corta y vista previa de documentos. |
+| `Modal`, `ModalHeader`, `CloseButton`, `ConfirmDialog`, `DocumentPreview` | Ventanas emergentes (se cierran con X, Escape o el fondo; la X es `CloseButton` en todas), confirmación corta y vista previa de documentos. |
 | `ToastProvider`, `useToast` | Avisos cortos que sobreviven al cambio de pantalla. |
 | `EmptyState` | "Sin resultados con estos filtros" + Quitar filtros. |
 | `useRowLink`, `rowButton`, `rowLinkClass` | Filas de tabla que llevan a otra pantalla o abren algo (mouse y Enter). |
-| `AssignBedModal`, `UploadDocumentModal` | Asignar paciente a cama libre; subir documento (archivo de ejemplo). |
+| `UploadDocumentModal` | Subir documento (archivo de ejemplo). |
 | `LineChart` | Gráficas de líneas con los puntos de Figma que se estiran al ancho. |
 | `icons.tsx` | Íconos de Lucide (los mismos trazos que exportó Figma) que toman el color del texto. |
 
@@ -161,5 +186,8 @@ original, usa el nodo de la tabla (con el conector de Figma, si está disponible
 | `MedTurnoHistorial` | `med-turno-historial` | `259:15` |
 | `MedTurnoResumenRecibido` | `med/turno/resumen-recibido` | `245:729` |
 | `Notificaciones` | `notificaciones` | `48:447` |
-| `MedPacienteNuevo` | — (pantalla nueva del paso 2) | — |
 | `MedDispositivoDetalle` | — (pantalla nueva del paso 2) | — |
+| `Login` | `siappc-login` (página LOGIN, `344:2`) | `345:1264` |
+| `LoginMfa` | `SIAPPC - MFA` | `345:426` |
+| `RecuperarContrasena` | `SIAPPC - Recovery` | `345:849` |
+| `RecuperacionEnviada` | `siappc-recovery-confirmation` | `345:19` |

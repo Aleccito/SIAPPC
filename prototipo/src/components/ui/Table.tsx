@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/cn';
+import { ScrollShadows, useScrollEdges } from './ScrollShadows';
 
 type TableProps = {
   children: ReactNode;
@@ -11,13 +12,20 @@ type TableProps = {
   className?: string;
 };
 
-/** Contenedor de tabla con desplazamiento horizontal propio. */
+/**
+ * Contenedor de tabla con desplazamiento horizontal propio. Cuando no cabe, una sombra en el
+ * borde avisa que hay más columnas a la derecha (o a la izquierda al desplazar).
+ */
 export function Table({ children, minWidth = 720, className }: TableProps) {
+  const [ref, edges] = useScrollEdges<HTMLDivElement>();
   return (
-    <div className={cn('w-full overflow-x-auto', className)}>
-      <div className="flex w-full flex-col" style={{ minWidth }}>
-        {children}
+    <div className={cn('relative w-full', className)}>
+      <div ref={ref} className="w-full overflow-x-auto">
+        <div className="flex w-full flex-col" style={{ minWidth }}>
+          {children}
+        </div>
       </div>
+      <ScrollShadows {...edges} />
     </div>
   );
 }

@@ -78,6 +78,7 @@ export default function MedTurnoEntregaHandoff() {
 
           <Card className="flex w-full flex-col gap-3">
             <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">Pacientes de Entrega Directa</h2>
+            {/* Novedades y pendientes completos en dos líneas en vez de cortarse (REVISION.md, V9). */}
             <Table minWidth={680}>
               <div className="flex w-full gap-2 bg-[#f1f5f9] p-[10px] font-jakarta text-[11px] font-bold leading-[normal] text-muted">
                 <p className="w-[60px] shrink-0">CAMA</p>
@@ -98,8 +99,8 @@ export default function MedTurnoEntregaHandoff() {
                   <Badge tone={p.tone} size="sm" className="w-[90px] justify-center">
                     {p.status}
                   </Badge>
-                  <p className="w-[220px] shrink-0 truncate font-jakarta text-[12px] font-normal text-muted">{p.news}</p>
-                  <p className={`min-w-0 flex-1 truncate rounded-md px-2 py-0.5 font-jakarta text-[11px] font-semibold ${CHIP[p.pendingTone]}`}>{p.pending}</p>
+                  <p className="w-[220px] shrink-0 font-jakarta text-[12px] font-normal leading-[1.35] text-muted">{p.news}</p>
+                  <p className={`min-w-[120px] flex-1 rounded-md px-2 py-0.5 font-jakarta text-[11px] font-semibold leading-[1.35] ${CHIP[p.pendingTone]}`}>{p.pending}</p>
                 </div>
               ))}
             </Table>

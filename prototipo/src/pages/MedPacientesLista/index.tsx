@@ -12,7 +12,7 @@ import imgMoreHorizontal from '../../assets/more-horizontal.svg';
 import imgSearch from '../../assets/search.svg';
 import imgStateIndicator from '../../assets/state-indicator.svg';
 import imgStateIndicator2 from '../../assets/state-indicator-2.svg';
-import { AppLayout, Badge, Button, Card, Divider, EmptyState, IconPlus, KpiCard, Menu, rowLinkClass, Select, Table, useRowLink, useToast } from '../../components';
+import { AppLayout, Badge, Card, ConfirmDialog, Divider, EmptyState, KpiCard, Menu, Pagination, rowLinkClass, Select, Table, useRowLink, useToast } from '../../components';
 import { cn } from '../../lib/cn';
 import { matches } from '../../lib/text';
 
@@ -86,9 +86,8 @@ const COLS = 'grid grid-cols-[200px_100px_110px_85px_70px_70px_70px_minmax(30px,
 const stop = (e: SyntheticEvent) => e.stopPropagation();
 const icon = (src: string) => <img className="size-3.5 shrink-0" alt="" src={src} />;
 
-function PatientRow({ p }: { p: Patient }) {
+function PatientRow({ p, onDischarge }: { p: Patient; onDischarge: (p: Patient) => void }) {
   const rowLink = useRowLink();
-  const toast = useToast();
   const crit = p.status === 'CRÍTICO';
   return (
     <div
@@ -129,7 +128,8 @@ function PatientRow({ p }: { p: Patient }) {
             { label: 'Ver expediente', to: '/MedPacienteResumen' },
             { label: 'Monitoreo', to: '/MedPacienteMonitoreoDetallado' },
             { label: 'Nueva nota SOAP', to: '/MedPacienteNotasSoapNueva' },
-            { label: 'Dar de alta', tone: 'danger', onSelect: () => toast(`Alta registrada · ${p.name}`) },
+            // El egreso lo hace Admisión; el médico solo indica el alta médica (REVISION.md, R2).
+            { label: 'Indicar alta médica', onSelect: () => onDischarge(p) },
           ]}
         />
       </div>
@@ -138,6 +138,8 @@ function PatientRow({ p }: { p: Patient }) {
 }
 
 export default function MedPacientesLista() {
+  const toast = useToast();
+  const [discharge, setDischarge] = useState<Patient | null>(null);
   const [unit, setUnit] = useState('Todas');
   const [status, setStatus] = useState('Todos');
   const [range, setRange] = useState('-1');
@@ -181,12 +183,7 @@ export default function MedPacientesLista() {
   return (
     <AppLayout
       breadcrumb="SIAPPC > Pacientes"
-      title="Gestión de Pacientes"
-      actions={
-        <Button icon={<IconPlus size={14} />} to="/MedPacienteNuevo">
-          Nuevo Paciente
-        </Button>
-      }
+      title="Mis Pacientes"
     >
       <div className="flex w-full min-w-0 flex-1 flex-col gap-5 p-4 md:p-8">
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
@@ -243,22 +240,12 @@ export default function MedPacientesLista() {
                   <p className="text-right">•••</p>
                 </div>
                 {rows.map((p) => (
-                  <PatientRow key={p.name} p={p} />
+                  <PatientRow key={p.name} p={p} onDischarge={setDischarge} />
                 ))}
                 {rows.length === 0 && <EmptyState onReset={reset} />}
               </Table>
             </Card>
-            <div className="flex w-full flex-wrap items-center justify-between gap-3">
-              <p className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">{`Mostrando ${rows.length} de ${sorted.length} pacientes bajo su cuidado.`}</p>
-              <div className="flex gap-[10px]">
-                <Button variant="secondary" onClick={() => setPage(Math.max(1, current - 1))} aria-label="Página anterior">
-                  Anterior
-                </Button>
-                <Button variant="secondary" onClick={() => setPage(Math.min(pages, current + 1))} aria-label="Página siguiente">
-                  Siguiente
-                </Button>
-              </div>
-            </div>
+            <Pagination summary={`Mostrando ${rows.length} de ${sorted.length} pacientes bajo su cuidado.`} page={current} pages={pages} onChange={setPage} />
           </section>
 
           <Card padding="sm" className="flex w-full min-w-0 flex-col gap-4 drop-shadow-[0px_4px_4px_rgba(0,0,0,0.01)] xl:w-[280px] xl:shrink-0 xl:self-stretch">
@@ -286,6 +273,18 @@ export default function MedPacientesLista() {
           </Card>
         </div>
       </div>
+      <ConfirmDialog
+        open={discharge !== null}
+        title="¿Indicar alta médica?"
+        confirmLabel="Indicar alta"
+        onCancel={() => setDischarge(null)}
+        onConfirm={() => {
+          if (discharge) toast(`Alta médica indicada · ${discharge.name} · Admisión completará el egreso`);
+          setDischarge(null);
+        }}
+      >
+        {discharge && `Se notificará a Admisión que ${discharge.name} (${discharge.bed}) puede egresar. El egreso y la liberación de la cama los hace Admisión.`}
+      </ConfirmDialog>
     </AppLayout>
   );
 }

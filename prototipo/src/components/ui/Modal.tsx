@@ -52,6 +52,15 @@ export function Modal({ labelledBy, open = true, onClose, width = 480, backdrop 
   );
 }
 
+/** X para cerrar una ventana. Es la misma en todas las ventanas del prototipo. */
+export function CloseButton({ onClick, label = 'Cerrar' }: { onClick: () => void; label?: string }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={label} className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface">
+      <IconX size={12} />
+    </button>
+  );
+}
+
 /** Encabezado de modal: título a la izquierda y X para cerrar. */
 export function ModalHeader({ id, title, onClose, icon }: { id: string; title: ReactNode; onClose: () => void; icon?: ReactNode }) {
   return (
@@ -62,9 +71,7 @@ export function ModalHeader({ id, title, onClose, icon }: { id: string; title: R
           {title}
         </h2>
       </div>
-      <button type="button" onClick={onClose} aria-label="Cerrar" className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface">
-        <IconX size={12} />
-      </button>
+      <CloseButton onClick={onClose} />
     </div>
   );
 }

@@ -115,17 +115,18 @@ export default function MedDashboardPrincipal() {
     <AppLayout breadcrumb="SIAPPC > Dashboard" title="Dashboard Principal" actions={<SearchBox to="/MedBusquedaGlobal" placeholder="Buscar paciente por nombre o HC..." width={320} />}>
       <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-5 p-4 md:p-6 xl:flex-row">
         <div className="flex w-full min-w-0 flex-col gap-5 xl:flex-1">
-          <div className="grid w-full grid-cols-1 gap-[14px] sm:grid-cols-3">
+          {/* En celular los tres indicadores van en una fila compacta (REVISION.md, V16). */}
+          <div className="grid w-full grid-cols-3 gap-2 sm:gap-[14px]">
             {KPIS.map((k) => {
               const pressed = !k.to && status === 'ATENCIÓN';
               const body = (
-                <Card raised padding="none" className={cn('relative flex h-full flex-col gap-2 overflow-hidden p-[18px] transition-colors hover:border-subtle', pressed && 'border-primary')}>
+                <Card raised padding="none" className={cn('relative flex h-full flex-col gap-2 overflow-hidden p-3 transition-colors hover:border-subtle sm:p-[18px]', pressed && 'border-primary')}>
                   <span className={cn('absolute inset-y-0 left-0 w-1', k.stripe)} />
                   <div className="flex w-full items-center justify-between pl-1.5">
-                    <p className="font-jakarta text-[13px] font-medium leading-[normal] text-muted">{k.label}</p>
-                    <img className="size-5" alt="" src={k.icon} />
+                    <p className="font-jakarta text-[11px] font-medium leading-[normal] text-muted sm:text-[13px]">{k.label}</p>
+                    <img className="hidden size-5 sm:block" alt="" src={k.icon} />
                   </div>
-                  <p className={cn('pl-1.5 font-jakarta text-[28px] font-extrabold leading-[normal]', k.color)}>{k.value}</p>
+                  <p className={cn('pl-1.5 font-jakarta text-[22px] font-extrabold leading-[normal] sm:text-[28px]', k.color)}>{k.value}</p>
                 </Card>
               );
               return k.to ? (
@@ -246,15 +247,16 @@ export default function MedDashboardPrincipal() {
                   aria-label={`Tendencias de ${t.name}`}
                   className="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-3 transition-colors hover:border-subtle sm:flex-row sm:items-center"
                 >
-                  <div className="flex w-[100px] shrink-0 flex-col gap-0.5 leading-[normal]">
-                    <p className="truncate font-jakarta text-[13px] font-bold text-ink">{t.name}</p>
+                  {/* Nombre completo (en Figma se cortaba a 100 px) y gráficas que se estiran (REVISION.md, V8). */}
+                  <div className="flex min-w-[100px] shrink-0 flex-col gap-0.5 leading-[normal]">
+                    <p className="whitespace-nowrap font-jakarta text-[13px] font-bold text-ink">{t.name}</p>
                     <p className="font-jakarta text-[11px] font-normal text-muted">{t.bed}</p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                     {t.series.map(([label, color, img]) => (
-                      <div key={label} className="flex flex-col gap-0.5">
+                      <div key={label} className="flex min-w-[96px] flex-1 flex-col gap-0.5">
                         <p className={cn('font-jakarta text-[11px] font-semibold leading-[normal]', color)}>{label}</p>
-                        <img className="h-8 w-[110px]" alt="" src={img} />
+                        <img className="h-8 w-full object-fill" alt="" src={img} />
                       </div>
                     ))}
                   </div>

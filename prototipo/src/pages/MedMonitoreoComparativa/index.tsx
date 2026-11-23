@@ -15,7 +15,7 @@ import imgSparklineChart5 from '../../assets/sparkline-chart-5.svg';
 import imgSparklineChart6 from '../../assets/sparkline-chart-6.svg';
 import imgSparklineChart7 from '../../assets/sparkline-chart-7.svg';
 import imgThresholdLinePng from '../../assets/threshold-line.png';
-import { AppLayout, Badge, Button, Divider, LineChart, SearchBox, Select, Table, useToast } from '../../components';
+import { AppLayout, Badge, Button, Divider, LineChart, SearchBox, SegmentedControl, Select, Table, useToast } from '../../components';
 import { cn } from '../../lib/cn';
 
 type Kpi = { label: string; value: string; alert?: 'danger' | 'warning' };
@@ -223,7 +223,7 @@ function Avatar({ p }: { p: Patient }) {
 
 function PatientColumn({ p, charts, hours }: { p: Patient; charts: Chart[]; hours: number }) {
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5 rounded-2xl border border-line bg-white p-5 xl:flex-1">
+    <div className="flex w-full min-w-0 flex-col gap-5 rounded-2xl border border-line bg-white p-5 lg:flex-1">
       <div className="flex w-full items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar p={p} />
@@ -234,7 +234,7 @@ function PatientColumn({ p, charts, hours }: { p: Patient; charts: Chart[]; hour
         </div>
         <Badge tone={p.tone}>{p.status}</Badge>
       </div>
-      <div className="grid w-full grid-cols-3 gap-2 leading-[normal] sm:grid-cols-5">
+      <div className="grid w-full grid-cols-3 gap-2 leading-[normal] sm:grid-cols-5 lg:grid-cols-3 xl:grid-cols-5">
         {p.kpis.map((k) => (
           <div key={k.label} className={cn('flex min-w-0 flex-col gap-1 rounded-lg p-3', k.alert ? KPI_STYLE[k.alert] : 'bg-surface')}>
             <p className={cn('font-jakarta text-[11px] font-semibold', !k.alert && 'text-muted')}>{k.label}</p>
@@ -308,29 +308,20 @@ export default function MedMonitoreoComparativa() {
             </Button>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex gap-0.5 rounded-lg bg-surface p-1" role="group" aria-label="Periodo">
-              {PERIODS.map((p) => (
-                <button
-                  key={p.hours}
-                  type="button"
-                  onClick={() => setHours(p.hours)}
-                  aria-pressed={hours === p.hours}
-                  className={cn(
-                    'rounded-md px-3 py-1.5 font-jakarta text-[12px] leading-[normal] transition-colors',
-                    hours === p.hours ? 'bg-white font-bold text-ink' : 'font-medium text-muted hover:text-ink',
-                  )}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              label="Periodo"
+              items={PERIODS.map((p) => ({ id: String(p.hours), label: p.label }))}
+              active={String(hours)}
+              onChange={(id) => setHours(Number(id))}
+            />
             <Button variant="secondary" icon={<img className="size-3.5" alt="" src={imgDownload} />} onClick={() => toast('Comparativa exportada (PDF)')}>
               Exportar
             </Button>
           </div>
         </div>
 
-        <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
+        {/* Lado a lado desde 1024 px: es una comparación (REVISION.md, V13). */}
+        <div className="flex w-full flex-col items-start gap-5 lg:flex-row">
           <PatientColumn p={a} charts={CHARTS_A} hours={hours} />
           <PatientColumn p={b} charts={CHARTS_B} hours={hours} />
         </div>
@@ -338,19 +329,19 @@ export default function MedMonitoreoComparativa() {
         <div className="flex w-full flex-col gap-4 rounded-2xl border border-line bg-white p-5">
           <h2 className="font-jakarta text-[16px] font-extrabold leading-[normal] text-ink">Resumen Métrico Comparativo</h2>
           <div className="w-full overflow-hidden rounded-lg border border-line">
-            <Table minWidth={960}>
+            <Table minWidth={600}>
               <div className="flex w-full items-center border-b border-line bg-surface px-4 py-3 font-jakarta text-[11px] font-bold uppercase leading-[normal] text-muted">
-                <p className="w-[280px] shrink-0">PARÁMETRO</p>
-                <p className="w-[280px] shrink-0">{`PACIENTE A (${shortName(a.name)})`}</p>
-                <p className="w-[280px] shrink-0">{`PACIENTE B (${shortName(b.name)})`}</p>
-                <p className="min-w-0 flex-1">DIFERENCIA / DELTA</p>
+                <p className="min-w-[150px] flex-[0_1_280px]">PARÁMETRO</p>
+                <p className="min-w-[150px] flex-[0_1_280px]">{`PACIENTE A (${shortName(a.name)})`}</p>
+                <p className="min-w-[150px] flex-[0_1_280px]">{`PACIENTE B (${shortName(b.name)})`}</p>
+                <p className="min-w-[120px] flex-1">DIFERENCIA / DELTA</p>
               </div>
               {summaryRows(a, b).map(([param, va, vb, delta, tone]) => (
                 <div key={param} className="flex w-full items-center border-b border-line px-4 py-[14px] font-jakarta text-[13px] leading-[normal] text-ink last:border-b-0">
-                  <p className="w-[280px] shrink-0 font-bold">{param}</p>
-                  <p className="w-[280px] shrink-0 font-medium">{va}</p>
-                  <p className="w-[280px] shrink-0 font-medium">{vb}</p>
-                  <div className="min-w-0 flex-1">
+                  <p className="min-w-[150px] flex-[0_1_280px] font-bold">{param}</p>
+                  <p className="min-w-[150px] flex-[0_1_280px] font-medium">{va}</p>
+                  <p className="min-w-[150px] flex-[0_1_280px] font-medium">{vb}</p>
+                  <div className="min-w-[120px] flex-1">
                     <Badge tone={tone}>{delta}</Badge>
                   </div>
                 </div>

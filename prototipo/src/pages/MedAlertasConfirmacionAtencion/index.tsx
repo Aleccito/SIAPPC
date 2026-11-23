@@ -1,12 +1,23 @@
 // Pantalla "med/alertas/confirmacion-atencion" (Figma node 245:631) — generada desde el diseño original de Figma.
 // Muestra la alerta desde la que se llegó (Centro de Alertas, Dashboard o Resumen del
 // paciente); si se entra directo, la de Figma. Los campos de texto son del paso 3.
-import { useState } from 'react';
+// La ventana se dibuja sobre la pantalla de origen, no sobre el fondo de ejemplo de Figma
+// ("Centro de Control de Alertas"), para que se vea de dónde se vino (REVISION.md, C8).
+import { useState, type ComponentType } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import imgBell4 from '../../assets/bell-4.svg';
-import imgMockAlertRowEllipse from '../../assets/mock-alert-row-ellipse.svg';
-import { AppLayout, Button, IconX, Modal, SearchBox, Select, useToast } from '../../components';
+import { Button, CloseButton, Modal, Select, useToast } from '../../components';
 import { DEFAULT_ALERT, type AttendedState, type ConfirmState } from '../../data/alerts';
+import MedAlertasCentro from '../MedAlertasCentro';
+import MedDashboardPrincipal from '../MedDashboardPrincipal';
+import MedPacienteResumen from '../MedPacienteResumen';
+
+/** Pantalla que queda de fondo según desde dónde se abrió la confirmación. */
+const BACKGROUND: Record<string, ComponentType> = {
+  '/MedAlertasCentro': MedAlertasCentro,
+  '/MedDashboardPrincipal': MedDashboardPrincipal,
+  '/MedPacienteResumen': MedPacienteResumen,
+};
 
 const CLASSIFICATIONS = ['Alerta verdadera atendida', 'Falsa alarma', 'Artefacto técnico', 'Escalada a otro servicio'];
 
@@ -26,23 +37,14 @@ export default function MedAlertasConfirmacionAtencion() {
     navigate(from, { state });
   };
 
-  return (
-    <AppLayout
-      breadcrumb="SIAPPC > Alertas"
-      title="Centro de Control de Alertas"
-      actions={<SearchBox to="/MedBusquedaGlobal" placeholder="Buscar paciente, HC..." width={280} />}
-    >
-      <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-[20px] p-4 md:p-8" data-name="mock-alerts-body">
-        <p className="font-jakarta text-[18px] font-bold leading-[normal] text-ink">Monitoreo Crítico Activo</p>
-        <div className="flex w-full items-start gap-[12px] rounded-[8px] border border-danger bg-white p-[16px]" data-name="mock-alert-row">
-          <img className="mt-[3px] size-[10px] shrink-0" alt="" src={imgMockAlertRowEllipse} />
-          <p className="font-jakarta text-[14px] font-semibold leading-[normal] text-ink">
-            {alert === DEFAULT_ALERT ? 'SpO2 por debajo de umbral de seguridad en Cama D3' : `${alert.title} — ${alert.bed}`}
-          </p>
-        </div>
-      </div>
+  const Background = BACKGROUND[from] ?? MedAlertasCentro;
 
-      {/* Ventana de confirmación sobre la pantalla */}
+  return (
+    <>
+      {/* La pantalla de origen queda de fondo; la ventana no deja tocarla. */}
+      <div aria-hidden="true" inert>
+        <Background />
+      </div>
       <Modal labelledBy="confirmar-atencion-titulo" width={480} onClose={cancel} className="items-start gap-[20px] p-5 drop-shadow-[0px_16px_16px_rgba(0,0,0,0.25)] sm:p-6">
         <div className="flex w-full items-center justify-between gap-3" data-name="modal-header">
           <div className="flex min-w-0 items-center gap-[12px]" data-name="title-with-icon">
@@ -53,9 +55,7 @@ export default function MedAlertasConfirmacionAtencion() {
               Confirmar Atención de Alerta
             </h2>
           </div>
-          <button type="button" aria-label="Cerrar" onClick={cancel} className="flex size-[16px] shrink-0 items-start text-muted hover:text-ink">
-            <IconX size={12} />
-          </button>
+          <CloseButton onClick={cancel} />
         </div>
 
         <div className="flex w-full flex-col items-start gap-[8px] rounded-[8px] bg-danger-soft p-[16px]" data-name="alert-summary-box">
@@ -100,6 +100,6 @@ export default function MedAlertasConfirmacionAtencion() {
           <Button onClick={confirm}>Confirmar Atención</Button>
         </div>
       </Modal>
-    </AppLayout>
+    </>
   );
 }

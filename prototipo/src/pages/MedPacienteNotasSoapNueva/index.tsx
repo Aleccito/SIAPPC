@@ -7,9 +7,8 @@ import imgModalHeaderFrame from '../../assets/modal-header-frame.svg';
 import imgWave from '../../assets/wave.svg';
 import imgWave2 from '../../assets/wave-2.svg';
 import imgWave3 from '../../assets/wave-3.svg';
-import imgXCircle from '../../assets/x-circle.svg';
 import { useNavigate } from 'react-router-dom';
-import { BackButton, Badge, Button, Card, Divider, Modal, PatientLayout, useToast } from '../../components';
+import { BackButton, Badge, Button, Card, CloseButton, Divider, Modal, PatientLayout, useToast } from '../../components';
 import { SOAP_HISTORY_PATH } from '../../data/soap';
 import { cn } from '../../lib/cn';
 
@@ -115,14 +114,7 @@ export default function MedPacienteNotasSoapNueva() {
               Nueva Nota SOAP
             </h2>
           </div>
-          <button
-            type="button"
-            aria-label="Cerrar"
-            onClick={close}
-            className="flex h-8 w-[42px] shrink-0 items-center justify-center rounded-full bg-[#f1f5f9] transition-colors hover:bg-line"
-          >
-            <img className="size-8" alt="" src={imgXCircle} />
-          </button>
+          <CloseButton onClick={close} />
         </div>
         <Divider />
         <div className="flex w-full flex-col gap-4">
@@ -143,10 +135,10 @@ export default function MedPacienteNotasSoapNueva() {
         </div>
         <Divider />
         <div className="flex w-full flex-wrap justify-end gap-3">
-          <Button variant="secondary" size="lg" onClick={close}>
+          <Button variant="secondary" onClick={close}>
             Cancelar
           </Button>
-          <Button size="lg" onClick={save}>
+          <Button onClick={save}>
             Guardar Nota
           </Button>
         </div>

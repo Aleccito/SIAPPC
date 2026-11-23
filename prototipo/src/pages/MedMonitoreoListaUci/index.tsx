@@ -6,8 +6,7 @@ import imgBedIcon2 from '../../assets/bed-icon-2.svg';
 import imgBedIcon3 from '../../assets/bed-icon-3.svg';
 import imgBedIcon4 from '../../assets/bed-icon-4.svg';
 import imgStatusPillEllipse from '../../assets/status-pill-ellipse.svg';
-import { useState, type KeyboardEvent } from 'react';
-import { AppLayout, AssignBedModal, Badge, rowLinkClass, SegmentedControl, Table, useRowLink, useToast } from '../../components';
+import { AppLayout, Badge, rowLinkClass, SegmentedControl, Table, useRowLink } from '../../components';
 import { cn } from '../../lib/cn';
 
 type Level = 'ok' | 'warn' | 'crit';
@@ -53,9 +52,6 @@ const LEGEND: Array<[string, string]> = [
 
 export default function MedMonitoreoListaUci() {
   const rowLink = useRowLink();
-  const toast = useToast();
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assigned, setAssigned] = useState<string | null>(null);
 
   return (
     <AppLayout
@@ -107,29 +103,20 @@ export default function MedMonitoreoListaUci() {
             </div>
             {BEDS.map((b) => {
               const free = b.status === 'DISPONIBLE';
-              // Las camas ocupadas llevan al expediente; la libre abre "Asignar paciente".
-              const rowProps = free
-                ? {
-                    role: 'button' as const,
-                    tabIndex: 0,
-                    'aria-label': `Asignar paciente a la cama ${b.bed}`,
-                    onClick: () => setAssignOpen(true),
-                    onKeyDown: (e: KeyboardEvent) => e.key === 'Enter' && setAssignOpen(true),
-                  }
-                : { ...rowLink('/MedPacienteResumen'), 'aria-label': `Ver a ${b.name}, cama ${b.bed}` };
+              // Las camas ocupadas llevan al expediente. La libre es informativa: asignar camas es de Admisión.
+              const rowProps = free ? {} : { ...rowLink('/MedPacienteResumen'), 'aria-label': `Ver a ${b.name}, cama ${b.bed}` };
               return (
-              <div key={b.bed} {...rowProps} className={cn('flex min-h-[72px] w-full items-center gap-4 border-b border-line px-6 py-3 last:border-b-0', b.rowBg, rowLinkClass)}>
+              <div key={b.bed} {...rowProps} className={cn('flex min-h-[72px] w-full items-center gap-4 border-b border-line px-6 py-3 last:border-b-0', b.rowBg, !free && rowLinkClass)}>
                 <div className="flex w-[60px] shrink-0 items-center gap-2">
                   <img className="size-[18px]" alt="" src={b.icon} />
                   <p className="font-jakarta text-[12px] font-extrabold leading-[normal] text-ink">{b.bed}</p>
                 </div>
                 <div className="flex w-[140px] shrink-0 flex-col gap-0.5 leading-[normal]">
-                  <p className={cn('font-jakarta text-[12px] font-bold', b.age || (free && assigned) ? 'text-ink' : 'text-muted')}>{free && assigned ? assigned : b.name}</p>
+                  <p className={cn('font-jakarta text-[12px] font-bold', b.age ? 'text-ink' : 'text-muted')}>{b.name}</p>
                   {b.age && <p className="font-jakarta text-[11px] font-medium text-muted">{b.age}</p>}
-                  {free && assigned && <p className="font-jakarta text-[11px] font-medium text-muted">Recién asignado</p>}
                 </div>
                 <div className="w-[90px] shrink-0">
-                  <Badge tone={STATUS_TONE[b.status]} size="sm">{free && assigned ? 'ASIGNADA' : b.status}</Badge>
+                  <Badge tone={STATUS_TONE[b.status]} size="sm">{b.status}</Badge>
                 </div>
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   {VITALS.map((v, i) => {
@@ -155,16 +142,6 @@ export default function MedMonitoreoListaUci() {
           </Table>
         </div>
       </div>
-      <AssignBedModal
-        open={assignOpen}
-        bed="C-07"
-        onClose={() => setAssignOpen(false)}
-        onAssign={(name) => {
-          setAssignOpen(false);
-          setAssigned(name);
-          toast(`${name} asignado a la cama C-07`);
-        }}
-      />
     </AppLayout>
   );
 }

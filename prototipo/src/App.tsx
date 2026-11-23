@@ -23,7 +23,6 @@ import MedPacienteIndicacionesMedicas from './pages/MedPacienteIndicacionesMedic
 import MedPacienteInterrogatorioAparatos from './pages/MedPacienteInterrogatorioAparatos';
 import MedPacienteMonitoreoDetallado from './pages/MedPacienteMonitoreoDetallado';
 import MedPacienteNotaIngreso from './pages/MedPacienteNotaIngreso';
-import MedPacienteNuevo from './pages/MedPacienteNuevo';
 import MedPacienteNotasSoapDetalle from './pages/MedPacienteNotasSoapDetalle';
 import MedPacienteNotasSoapHistorial from './pages/MedPacienteNotasSoapHistorial';
 import MedPacienteNotasSoapNueva from './pages/MedPacienteNotasSoapNueva';
@@ -37,13 +36,22 @@ import MedTurnoEntregaHandoff from './pages/MedTurnoEntregaHandoff';
 import MedTurnoHistorial from './pages/MedTurnoHistorial';
 import MedTurnoResumenRecibido from './pages/MedTurnoResumenRecibido';
 import Notificaciones from './pages/Notificaciones';
+import Login from './pages/Login';
+import LoginMfa from './pages/LoginMfa';
+import RecuperacionEnviada from './pages/RecuperacionEnviada';
+import RecuperarContrasena from './pages/RecuperarContrasena';
 
 function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
       <Routes>
-        <Route path="/" element={<MedDashboardPrincipal />} />
+        {/* Pantallas de acceso (página LOGIN de Figma). "/" abre el Login. */}
+        <Route path="/" element={<Login />} />
+        <Route path="/Login" element={<Login />} />
+        <Route path="/LoginMfa" element={<LoginMfa />} />
+        <Route path="/RecuperarContrasena" element={<RecuperarContrasena />} />
+        <Route path="/RecuperacionEnviada" element={<RecuperacionEnviada />} />
         <Route path="/MedAlertasCentro" element={<MedAlertasCentro />} />
         <Route path="/MedAlertasConfirmacionAtencion" element={<MedAlertasConfirmacionAtencion />} />
         <Route path="/MedAyudaSoporte" element={<MedAyudaSoporte />} />
@@ -69,7 +77,6 @@ function App() {
         <Route path="/MedPacienteMonitoreoDetallado" element={<MedPacienteMonitoreoDetallado />} />
         <Route path="/MedPacienteNotaIngreso" element={<MedPacienteNotaIngreso />} />
         {/* Pantalla nueva del paso 2 (no viene de Figma) */}
-        <Route path="/MedPacienteNuevo" element={<MedPacienteNuevo />} />
         <Route path="/MedPacienteNotasSoapDetalle" element={<MedPacienteNotasSoapDetalle />} />
         <Route path="/MedPacienteNotasSoapHistorial" element={<MedPacienteNotasSoapHistorial />} />
         <Route path="/MedPacienteNotasSoapNueva" element={<MedPacienteNotasSoapNueva />} />

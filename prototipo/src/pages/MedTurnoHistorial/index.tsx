@@ -126,7 +126,7 @@ export default function MedTurnoHistorial() {
           </div>
 
           <div className="w-full overflow-hidden rounded-lg border border-line">
-            <Table minWidth={1030}>
+            <Table minWidth={1084}>
               <div className="flex w-full gap-2 border-b border-line bg-surface p-3 font-jakarta text-[11px] font-bold uppercase leading-[normal] text-muted">
                 <p className="w-[160px] shrink-0">Fecha</p>
                 <p className="w-[200px] shrink-0">Turno</p>
@@ -134,7 +134,7 @@ export default function MedTurnoHistorial() {
                 <p className="w-[180px] shrink-0">Recibió</p>
                 <p className="w-[100px] shrink-0">Pacientes</p>
                 <p className="w-[120px] shrink-0">Estado</p>
-                <p className="min-w-0 flex-1 text-right">Acción</p>
+                <p className="min-w-[68px] flex-1 text-right">Acción</p>
               </div>
               {shown.map((r) => (
                 <div
@@ -155,7 +155,7 @@ export default function MedTurnoHistorial() {
                       {r.status}
                     </Badge>
                   </div>
-                  <div className="flex min-w-0 flex-1 justify-end" onClick={stop} onKeyDown={stop}>
+                  <div className="flex min-w-[68px] flex-1 justify-end" onClick={stop} onKeyDown={stop}>
                     <Button variant="outline" size="sm" to={SUMMARY_PATH}>
                       Ver Resumen
                     </Button>

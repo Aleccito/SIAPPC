@@ -4,7 +4,7 @@ import imgSectionOEllipse from '../../assets/section-o-ellipse.svg';
 import imgSectionPEllipse from '../../assets/section-p-ellipse.svg';
 import imgSectionSEllipse from '../../assets/section-s-ellipse.svg';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BackButton, Button, Divider, Modal, PatientLayout } from '../../components';
+import { BackButton, Button, CloseButton, Divider, Modal, PatientLayout } from '../../components';
 import { SOAP_HISTORY_PATH, SOAP_NEW_PATH, SOAP_NOTES } from '../../data/soap';
 import { SoapHistoryView } from '../MedPacienteNotasSoapHistorial/SoapHistoryView';
 
@@ -64,14 +64,7 @@ export default function MedPacienteNotasSoapDetalle() {
           <h2 id="detalle-soap-titulo" className="min-w-0 flex-1 font-jakarta text-[20px] font-semibold leading-[normal] text-ink">
             Nota SOAP — Detalle
           </h2>
-          <button
-            type="button"
-            aria-label="Cerrar"
-            onClick={close}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#f1f5f9] font-jakarta text-[14px] text-muted transition-colors hover:bg-line"
-          >
-            ✕
-          </button>
+          <CloseButton onClick={close} />
         </div>
 
         <dl className="grid w-full grid-cols-2 gap-x-6 gap-y-3 rounded-lg bg-surface px-4 py-3 leading-[normal] sm:flex sm:flex-wrap">
@@ -100,10 +93,10 @@ export default function MedPacienteNotasSoapDetalle() {
 
         <Divider />
         <div className="flex w-full flex-wrap justify-end gap-3">
-          <Button variant="secondary" size="lg" onClick={close}>
+          <Button variant="secondary" onClick={close}>
             Cerrar
           </Button>
-          <Button size="lg" to={SOAP_NEW_PATH}>
+          <Button to={SOAP_NEW_PATH}>
             Editar Nota
           </Button>
         </div>

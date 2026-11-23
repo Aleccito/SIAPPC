@@ -63,7 +63,7 @@ export default function MedPacienteRegistroDiagnostico() {
         <Card padding="lg" className="flex w-full min-w-0 flex-col gap-5 xl:flex-1">
           <h2 className="font-jakarta text-[16px] font-extrabold leading-[normal] text-ink">Formulario de Diagnóstico Clínico</h2>
 
-          <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
             <Field label="Tipo de Diagnóstico">
               <Select variant="input" options={TYPES} value={type} onChange={setType} trailingIcon={chevron} ariaLabel="Tipo de Diagnóstico" />
             </Field>

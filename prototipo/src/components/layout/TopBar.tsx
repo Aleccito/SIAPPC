@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { cn } from '../../lib/cn';
 import { IconBell, IconCalendar, IconMenu } from '../icons';
 
 export type TopBarProps = {
@@ -12,12 +13,35 @@ export type TopBarProps = {
   notifications?: number;
   /** Abre el menú lateral en pantallas angostas. */
   onMenuClick?: () => void;
+  /**
+   * Desde qué ancho las acciones van en la misma fila que el título. Por defecto 1024 px (`lg`);
+   * `xl` (1280 px) para pantallas con muchas acciones, así el título no se corta a 1024.
+   */
+  actionsInlineFrom?: 'lg' | 'xl';
 };
 
-export function TopBar({ breadcrumb, title, actions, notifications = 3, onMenuClick }: TopBarProps) {
+/** En celular la ruta muestra solo los dos últimos niveles ("… > Historia Clínica > Antecedentes"). */
+function Breadcrumb({ children }: { children: ReactNode }) {
+  const parts = typeof children === 'string' ? children.split(' > ') : null;
+  if (!parts || parts.length <= 2) return <>{children}</>;
+  return (
+    <>
+      <span className="sm:hidden">{`… > ${parts.slice(-2).join(' > ')}`}</span>
+      <span className="hidden sm:inline">{children}</span>
+    </>
+  );
+}
+
+export function TopBar({ breadcrumb, title, actions, notifications = 3, onMenuClick, actionsInlineFrom = 'lg' }: TopBarProps) {
+  const xl = actionsInlineFrom === 'xl';
   return (
     <header className="shrink-0 border-b border-line bg-white">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 md:px-8 lg:h-[72px] lg:flex-nowrap lg:py-0">
+      <div
+        className={cn(
+          'flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 md:px-8',
+          xl ? 'xl:h-[72px] xl:flex-nowrap xl:py-0' : 'lg:h-[72px] lg:flex-nowrap lg:py-0',
+        )}
+      >
         <button
           type="button"
           onClick={onMenuClick}
@@ -27,11 +51,19 @@ export function TopBar({ breadcrumb, title, actions, notifications = 3, onMenuCl
           <IconMenu size={22} />
         </button>
         <div className="flex min-w-0 flex-1 flex-col gap-1 leading-[normal]">
-          <p className="truncate font-jakarta text-[12px] font-medium text-muted">{breadcrumb}</p>
-          <h1 className="truncate font-jakarta text-[20px] font-extrabold text-ink">{title}</h1>
+          <p className="truncate font-jakarta text-[12px] font-medium text-muted">
+            <Breadcrumb>{breadcrumb}</Breadcrumb>
+          </p>
+          {/* En celular el título puede ocupar dos líneas en lugar de cortarse. */}
+          <h1 className="font-jakarta text-[20px] font-extrabold text-ink sm:truncate">{title}</h1>
         </div>
         {actions && (
-          <div className="order-last flex w-full items-center gap-[10px] overflow-x-auto lg:order-none lg:w-auto lg:shrink-0 lg:overflow-visible">
+          <div
+            className={cn(
+              'order-last flex w-full items-center gap-[10px] overflow-x-auto',
+              xl ? 'xl:order-none xl:w-auto xl:shrink-0 xl:overflow-visible' : 'lg:order-none lg:w-auto lg:shrink-0 lg:overflow-visible',
+            )}
+          >
             {actions}
           </div>
         )}

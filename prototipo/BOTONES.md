@@ -3,6 +3,10 @@
 > **Estado: hecho.** El paso 2 quedó implementado como se describe aquí (rama `feature/prototipo-clicable`).
 > La columna **Antes** es cómo estaba cada elemento al empezar el paso; **Ahora** es lo que hace. Lo que se
 > agregó además de la propuesta aprobada va marcado con *(extra)*.
+>
+> **Actualizado con la revisión de acceso y roles** (rama `feature/prototipo-login-revision`, ver `REVISION.md`):
+> pantallas de acceso nuevas, se quitó lo que no le corresponde al médico (marcado **[R1]**…**[R7]**) y se
+> unificaron botones y paginación (**[C1]**…**[C8]**). Esas filas dicen cómo quedaron después de la revisión.
 
 Objetivo: que en `prototipo/` no quede nada que se pueda tocar y no haga nada. Cada elemento hace una de estas cosas:
 
@@ -44,7 +48,10 @@ Columna **Antes**: ✅ ya funcionaba · ⚠️ hacía algo pero incompleto · �
 | `EmptyState` | "Sin resultados con estos filtros" + Quitar filtros. |
 | `useRowLink`, `rowButton`, `rowLinkClass` | Filas que llevan a otra pantalla o abren algo, con Enter y con el mouse, sin anidar enlaces. |
 | `BackButton` (ampliado) | Acepta `to` para volver a una pantalla fija ("Volver al Mapa" → Grid UCI). |
-| `AssignBedModal`, `UploadDocumentModal` | "Asignar paciente" a la cama libre (Grid y Lista UCI) y "Subir documento" (Documentos clínicos y Registro de diagnóstico). |
+| `UploadDocumentModal` | "Subir documento" (Documentos clínicos y Registro de diagnóstico). `AssignBedModal` se borró en la revisión: asignar camas es de Admisión **[R3]**. |
+| `CloseButton` | La X de todas las ventanas (la de `ModalHeader`) **[C3]**. |
+| `ScrollShadows` / `useScrollEdges` | Sombra en el borde de tablas y pestañas que se desplazan de lado (`Table` y `Tabs` ya la traen). |
+| `AuthLayout`, `AuthCard`, `AuthField`, `AuthButton`, `AuthBackLink` | Pantallas de acceso: barra con ES/EN/DE, fondo de puntos, barra de estado, pie y tarjeta. |
 | `Input` (ajustado) | 38 px de alto, igual que las listas de formulario. |
 
 Datos de ejemplo que comparten varias pantallas: `src/data/alerts.ts` (alerta que viaja a la confirmación y de
@@ -61,7 +68,7 @@ mayúsculas: `src/lib/text.ts`.
 | Menú lateral: logo "SIAPPC" | ❌ | **Pantalla**: Dashboard. |
 | Menú lateral: "?" (ayuda) | ✅ Ayuda y Soporte | Se queda igual. |
 | Menú lateral: tarjeta del médico | ✅ Mi Perfil | Se queda igual. |
-| Menú lateral: ícono de cerrar sesión | ⚠️ está dentro del enlace al perfil, lleva a Mi Perfil | **Modal**: botón aparte → "¿Cerrar sesión?" → **Aviso** "Sesión cerrada (prototipo)" y vuelve al Dashboard. |
+| Menú lateral: ícono de cerrar sesión | ⚠️ está dentro del enlace al perfil, lleva a Mi Perfil | **Modal**: botón aparte → "¿Cerrar sesión?" → **Aviso** "Sesión cerrada" y lleva al **Login**. |
 | Barra superior: ☰ | ✅ abre el menú en pantallas angostas | Se queda igual. |
 | Barra superior: campana | ✅ Centro de Notificaciones | Se queda igual. |
 | Buscadores de la barra que llevan a Búsqueda (Confirmación de alerta, Dashboard, Comparativa, Turno historial, Resumen recibido) | ✅ llevan a Búsqueda Global | Se quedan igual. |
@@ -69,20 +76,20 @@ mayúsculas: `src/lib/text.ts`.
 | Cabecera del paciente: "Nueva Nota SOAP" | ✅ Nueva Nota SOAP | Se queda igual. |
 | Cabecera del paciente: "Generar Reporte" | ❌ | **Aviso**: "Reporte de María González generado". |
 | Pestañas del expediente | ✅ llevan a su pantalla | Se quedan igual. |
-| Ruta `/` | abre Centro de Alertas | Abre **Dashboard** (como pide el plan). |
+| Ruta `/` | abre Centro de Alertas | Abre el **Login** (pantallas de acceso, ver abajo). El Dashboard sigue en `/MedDashboardPrincipal`. |
 
 ## Dashboard Principal (`MedDashboardPrincipal`)
 
 | Elemento | Antes | Ahora |
 |---|---|---|
-| Tarjeta "Pacientes Asignados" | ❌ | **Pantalla**: Gestión de Pacientes. |
+| Tarjeta "Pacientes Asignados" | ❌ | **Pantalla**: Mis Pacientes. |
 | Tarjeta "Alertas Críticas" | ❌ | **Pantalla**: Centro de Alertas. |
 | Tarjeta "Pendientes Evaluación" | ❌ | **Estado**: filtra la tabla a los pacientes en "Atención". |
 | Filtro "Unidad: UCI" | ❌ | **Opciones**: UCI / Urgencias / Hospitalización (los de ejemplo son de UCI; las otras muestran la lista vacía con "Quitar filtros"). |
 | Filtro "Estado: Todos" | ❌ | **Opciones**: Todos / Crítico / Atención / Estable → filtra la tabla. |
 | Filas de la tabla (6) | ❌ | **Pantalla**: Resumen del paciente. |
 | Íconos de acción por fila: ojo / corazón / documento / carpeta | ❌ | **Pantalla**: Resumen / Monitoreo detallado / Nueva Nota SOAP / Historia clínica. |
-| "Ver todos →" | ❌ | **Pantalla**: Gestión de Pacientes. |
+| "Ver todos →" | ❌ | **Pantalla**: Mis Pacientes. |
 | Tarjetas de tendencias (2) | ❌ | **Pantalla**: Tendencias de signos vitales. |
 | "Requiere tu atención": GCS Crítico, SpO2 Bajo | ❌ | **Pantalla**: Confirmación de atención con esa alerta. |
 | "Requiere tu atención": Evaluación | ❌ | **Pantalla**: Resumen del paciente. |
@@ -141,7 +148,7 @@ mayúsculas: `src/lib/text.ts`.
 | Filtro "Cama / Todas las UCI" | ❌ | **Opciones**: Todas las UCI / C-01 … C-12. |
 | "Filtrar pacientes o modelo de equipo…" | ❌ (dibujado) | **Estado**: buscador real que filtra por paciente o modelo. |
 | "Ver Detalle" y filas (8) | ❌ | **Pantalla nueva**: Detalle de monitor (ver abajo). |
-| "Anterior" / "Siguiente" | ❌ | **Estado**: pagina (8 de 12: se agregan 4 monitores de ejemplo). |
+| "Anterior" / "Siguiente" | ❌ | **Estado**: pagina (8 de 12: se agregan 4 monitores de ejemplo). Ahora con números de página (`Pagination`) **[C5]**. |
 
 ## Comparativa de Pacientes (`MedMonitoreoComparativa`)
 
@@ -149,7 +156,7 @@ mayúsculas: `src/lib/text.ts`.
 |---|---|---|
 | "Paciente A: María González" / "Paciente B: Juan García" | ❌ | **Opciones**: pacientes de UCI; al elegir cambian nombre, cama, estado y signos de esa columna (las gráficas siguen siendo de ejemplo). |
 | "+ Agregar Paciente" | ❌ | **Aviso**: "La comparativa admite 2 pacientes; cambia A o B desde su lista". |
-| "Últimas 4h / 12h / 24h" | ❌ | **Estado**: cambia la opción marcada y el título de las gráficas. |
+| "Últimas 4h / 12h / 24h" | ❌ | **Estado**: cambia la opción marcada y el título de las gráficas. Usa `SegmentedControl`, como Tendencias **[C2]**. |
 | "Exportar" | ❌ | **Aviso**: "Comparativa exportada (PDF)". |
 | Resumen métrico comparativo | fijo | *(extra)* Encabezados, valores y diferencias se recalculan con los pacientes A y B elegidos. |
 
@@ -159,7 +166,7 @@ mayúsculas: `src/lib/text.ts`.
 |---|---|---|
 | Grid / Lista | ✅ | Se queda igual. |
 | Tarjetas C-01, C-02, C-05, C-06 | ❌ (solo C-03 lleva al Resumen) | **Pantalla**: Resumen del paciente. |
-| Tarjeta C-07 "Disponible" | ❌ | **Modal**: "Asignar paciente a C-07" (lista de pacientes en espera) → la tarjeta muestra al paciente + **Aviso**. |
+| Tarjeta C-07 "Disponible" | ❌ | **Informativa** (sin cursor ni efecto): asignar camas es de Admisión **[R3]**. |
 
 ## Central de Monitoreo — Lista (`MedMonitoreoListaUci`)
 
@@ -167,7 +174,7 @@ mayúsculas: `src/lib/text.ts`.
 |---|---|---|
 | Grid / Lista | ✅ | Se queda igual. |
 | Filas C-01 … C-06 | ❌ | **Pantalla**: Resumen del paciente. |
-| Fila C-07 "Disponible" | ❌ | **Modal**: el mismo de "Asignar paciente". |
+| Fila C-07 "Disponible" | ❌ | **Informativa**, igual que en el Grid **[R3]**. |
 
 ## Centro de Notificaciones (`MedNotificacionesCentro`) y Bandeja (`Notificaciones`)
 
@@ -175,21 +182,21 @@ mayúsculas: `src/lib/text.ts`.
 |---|---|---|
 | "Marcar todas como leídas" | ❌ | **Estado**: quita las marcas de no leída + **Aviso**. |
 | "Tipo: Todas" | ❌ | **Opciones**: los tipos de cada pantalla (Clínica, Asignación, Laboratorio, Imagen, Recordatorio, Sistema) → filtra. |
-| Cada notificación | ❌ | **Estado + Pantalla**: se marca leída y lleva a lo suyo: alertas → Centro de Alertas; asignación/traslado/alta → Resumen o Gestión de Pacientes; laboratorio/imagen → Documentos clínicos; nota SOAP → Notas SOAP; reporte → Reportes; mantenimiento → Dispositivos; actualización del sistema → solo se marca leída. |
+| Cada notificación | ❌ | **Estado + Pantalla**: se marca leída y lleva a lo suyo: alertas → Centro de Alertas; asignación/traslado/alta → Resumen o Mis Pacientes; laboratorio/imagen → Documentos clínicos; nota SOAP → Notas SOAP; reporte → Reportes; mantenimiento → Dispositivos; actualización del sistema → solo se marca leída. |
 
-## Gestión de Pacientes (`MedPacientesLista`)
+## Mis Pacientes (`MedPacientesLista`) — antes "Gestión de Pacientes" **[R7]**
 
 | Elemento | Antes | Ahora |
 |---|---|---|
-| "Nuevo Paciente" | ❌ | **Pantalla nueva**: Registro de paciente (ver abajo). |
+| "Nuevo Paciente" | ❌ | **Se quitó** (botón y pantalla Registro de Paciente): registrar pacientes es de Admisión **[R1]**. |
 | Filtro "Unidad / Todas" | ❌ | **Opciones**: Todas / UCI / Urgencias / Hospitalización. |
 | Filtro "Estado / Todos" | ❌ | **Opciones**: Todos / Crítico / Monitoreo / Estable. |
 | Filtro "Rango de Admisión" | ❌ | **Opciones**: Cualquier fecha / Hoy / Últimos 7 días / Últimos 30 días (se agrega fecha de ingreso de ejemplo). |
 | "Todos ⌄" (junto al buscador) | ❌ | **Opciones**: Todos (orden original) / Más críticos primero / Por cama / Por nombre. |
 | "Filtrar por nombre o ID…" | ❌ (dibujado) | **Estado**: buscador real. |
 | Filas (5) | ⚠️ solo Javier Mendoza lleva al Resumen | **Pantalla**: Resumen del paciente (todas). |
-| "•••" de cada fila | ❌ | **Menú**: Ver expediente / Monitoreo / Nueva nota SOAP / Dar de alta (**Aviso**). |
-| "Anterior" / "Siguiente" | ❌ | **Estado**: pagina (5 de 12: se agregan 7 pacientes de ejemplo). |
+| "•••" de cada fila | ❌ | **Menú**: Ver expediente / Monitoreo / Nueva nota SOAP / **Indicar alta médica** → confirmación → **Aviso** "Alta médica indicada · Admisión completará el egreso" **[R2]**. |
+| "Anterior" / "Siguiente" | ❌ | **Estado**: pagina (5 de 12: se agregan 7 pacientes de ejemplo). Ahora con números de página **[C5]**. |
 | "Alertas Recientes" (4) | ❌ | **Pantalla**: Centro de Alertas. |
 
 ## Mi Perfil (`MedPerfilMiPerfil`)
@@ -211,7 +218,8 @@ mayúsculas: `src/lib/text.ts`.
 | "Entregar" (3) | ❌ | **Modal** de confirmación → la fila sale de pendientes, sube el contador "Entregados" + **Aviso**. |
 | Filas de pendientes y de reportes generados | ❌ | **Modal**: vista previa del reporte (hoja de ejemplo). |
 | Lupa / descarga por fila | ❌ | **Modal** vista previa / **Aviso** "Descargando Reporte_…pdf". |
-| "Anterior" / "Siguiente" | ❌ | **Estado**: pagina (5 de 18: se agregan 13 reportes de ejemplo). |
+| "Anterior" / "Siguiente" | ❌ | **Estado**: pagina (5 de 18: se agregan 13 reportes de ejemplo). Ahora con números de página **[C5]**. |
+| Tipos de "Generar Nuevo Reporte" | — | Solo reportes clínicos: Evolución Clínica, Reporte de Alta, Interconsulta. Se quitaron Ocupación UCI y Análisis de Alertas **[R6]**. |
 | "Configurar y Generar" (2 plantillas) | ❌ | **Modal**: el de "Generar Nuevo Reporte" con el tipo ya elegido. |
 
 ## Entrega de Turno (`MedTurnoEntregaHandoff`)
@@ -250,7 +258,7 @@ mayúsculas: `src/lib/text.ts`.
 |---|---|---|
 | "Volver al Mapa" | ⚠️ regresa a la pantalla anterior | **Pantalla**: Central de Monitoreo (Grid). |
 | "Configurar Umbrales" | ✅ | Se queda igual. |
-| "Atender" (2 alertas) | ❌ | **Pantalla**: Confirmación de atención con esa alerta. *(extra)* Al confirmar se vuelve al Resumen y esa alerta sale de la lista. |
+| "Atender" (2 alertas) | ❌ | **Pantalla**: Confirmación de atención con esa alerta (ahora en azul, como en el Centro de Alertas **[C1]**). *(extra)* Al confirmar se vuelve al Resumen y esa alerta sale de la lista. |
 
 ### Antecedentes (`MedPacienteAntecedentes`)
 
@@ -274,7 +282,7 @@ mayúsculas: `src/lib/text.ts`.
 
 | Elemento | Antes | Ahora |
 |---|---|---|
-| "Guardar cambios" | ❌ | **Aviso**: "Datos guardados". |
+| "Guardar cambios" | ❌ | **Se quitó**: la pantalla es de consulta, con la leyenda "Datos registrados por Admisión" **[R4]**. |
 
 ### Diagnósticos Activos (`MedPacienteDiagnosticosActivos`)
 
@@ -393,20 +401,10 @@ Sin elementos tocables además de "Volver" (las tarjetas de la línea de tiempo 
 Hechas con `AppLayout` y los componentes compartidos; se revisaron a 390, 768, 1024 y 1440 px sin desbordes. Cada
 una lleva al inicio el comentario `// Pantalla nueva del paso 2: no viene de Figma.`
 
-### 1. Registro de Paciente — `MedPacienteNuevo`
+La primera pantalla nueva, **Registro de Paciente** (`MedPacienteNuevo`), se borró en la revisión: registrar
+pacientes es de Admisión **[R1]**.
 
-Se llega desde "Nuevo Paciente" (Gestión de Pacientes).
-
-- **Barra superior**: "SIAPPC > Pacientes > Nuevo" · "Registro de Paciente" · "Volver a Pacientes".
-- **Tarjeta Identificación**: nombre(s), apellidos, cédula o documento, fecha de nacimiento, sexo (lista), tipo de
-  sangre (lista).
-- **Tarjeta Ingreso**: unidad (lista), cama disponible (lista), médico tratante (lista), motivo de ingreso.
-- **Tarjeta Contacto**: teléfono, contacto de emergencia, parentesco (lista), teléfono de emergencia.
-- **Acciones**: "Cancelar" (vuelve a Gestión de Pacientes) y "Registrar paciente" (vuelve con el aviso
-  "Paciente registrado · {nombre}").
-- Los campos usan `Input`, `TextArea` y `Select`; escribir funciona, nada se guarda y la validación queda para el paso 3.
-
-### 2. Detalle de Monitor — `MedDispositivoDetalle`
+### Detalle de Monitor — `MedDispositivoDetalle`
 
 Se llega desde "Ver Detalle" o la fila de un monitor (Dispositivos). La cama va en la ruta
 (`/MedDispositivoDetalle?cama=C-06`) para mostrar el monitor elegido.
@@ -416,9 +414,22 @@ Se llega desde "Ver Detalle" o la fila de un monitor (Dispositivos). La cama va 
 - **Batería y señales**: nivel de batería con barra, señales activas como etiquetas.
 - **Calibraciones** (tabla): fecha, técnico, resultado.
 - **Eventos recientes** (lista): desconexiones, fallas, cambios de batería.
-- **Acciones**: "Programar calibración" (lista de fechas → aviso y la fecha aparece como "Programada" en la tabla),
+- **Acciones**: "Solicitar calibración" **[R5]** (fecha preferida → aviso "Solicitud enviada a Ingeniería Biomédica" y
+  la fecha aparece como "Solicitada" en la tabla),
   "Reportar falla" (confirmación → aviso, evento nuevo en la lista y el botón queda como "Falla reportada"),
   "Ver paciente" (Resumen del paciente; oculto si la cama está libre).
+
+---
+
+## Pantallas de acceso (página LOGIN de Figma)
+
+| Pantalla | Ruta | Elementos |
+|---|---|---|
+| Iniciar sesión (`Login`) | `/` y `/Login` | Correo y contraseña reales (el ojo muestra u oculta, Enter envía); cualquier dato sirve. "¿Olvidó su contraseña?" → Recuperar (con el correo escrito). "Entrar a Central de Monitoreo" → Verificación. |
+| Verificación de seguridad (`LoginMfa`) | `/LoginMfa` | 6 casillas: avanzan solas, Retroceso vuelve, flechas, pegar llena las seis, solo números. "Verificar" con casillas vacías las marca en rojo; con 6 dígitos → Dashboard + **Aviso** "Bienvenido, Dr. Carlos Méndez". "Reenviar" cuenta 0:45 de verdad y en 0 reenvía con aviso. |
+| Recuperar contraseña (`RecuperarContrasena`) | `/RecuperarContrasena` | Correo real; "Enviar enlace de recuperación" → Revisa tu correo con ese correo. |
+| Revisa tu correo (`RecuperacionEnviada`) | `/RecuperacionEnviada` | Muestra el correo escrito (o `medico@institucion.org`); "Reenviar (en 0:45)" cuenta y en 0 pasa a "Reenviar enlace". |
+| Todas | — | ES / EN / DE cambian el idioma de las cuatro pantallas y se recuerda al pasar de una a otra; "Volver al inicio de sesión" → Login. |
 
 ---
 
@@ -432,6 +443,10 @@ Se llega desde "Ver Detalle" o la fila de un monitor (Dispositivos). La cama va 
 - Pruebas automáticas de interacción (Edge sin ventana): filtros que abren sus opciones y filtran, paginación,
   menú "•••", modales que se cierran con Escape, confirmaciones, avisos y el ida y vuelta Centro de Alertas →
   Confirmación → Centro de Alertas y Entrega de turno → Historial.
+- Revisión de acceso y roles: el Login se ve igual a su captura de Figma (1.5 % de diferencia, la misma que la
+  referencia). Las 35 pantallas del médico, comparadas a 1440 px con las del paso 2, solo cambian en lo aprobado en
+  `REVISION.md`. Pruebas automáticas del flujo de acceso (escribir, pegar el código, ES/EN, recuperar contraseña,
+  cerrar sesión) y de los cambios de roles.
 
 ## Queda para el paso 3 (campos de texto)
 
