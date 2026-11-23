@@ -1,4 +1,5 @@
 // Pantalla "med/monitoreo/grid-uci" (Figma node 45:984) — generada desde el diseño original de Figma.
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import imgActivity10 from '../../assets/activity-10.svg';
 import imgActivity8 from '../../assets/activity-8.svg';
@@ -41,9 +42,15 @@ import imgWind2 from '../../assets/wind-2.svg';
 import imgWind3 from '../../assets/wind-3.svg';
 import imgWind4 from '../../assets/wind-4.svg';
 import imgWind5 from '../../assets/wind-5.svg';
-import { AppLayout, SegmentedControl } from '../../components';
+import { AppLayout, AssignBedModal, SegmentedControl, useRowLink, useToast } from '../../components';
 
 export default function MedMonitoreoGridUci() {
+  const rowLink = useRowLink();
+  const toast = useToast();
+  // C-07 está libre: al tocarla se asigna un paciente en espera (estado local).
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assigned, setAssigned] = useState<string | null>(null);
+
   return (
     <AppLayout
       breadcrumb={"SIAPPC > Monitoreo"}
@@ -80,7 +87,7 @@ export default function MedMonitoreoGridUci() {
           </div>
           <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-name="beds-grid">
             <div className="contents" data-name="row-1">
-              <div className="bg-white border-[#1e3a8a] border-b border-l-4 border-r border-t flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px]" data-name="bed-card-C-01">
+              <div className="bg-white border-[#1e3a8a] border-b border-l-4 border-r border-t flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px] cursor-pointer outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary" data-name="bed-card-C-01" {...rowLink('/MedPacienteResumen')} aria-label="Ver paciente de la cama C-01">
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full" data-name="card-header">
                   <div className="content-stretch flex gap-[8px] items-center relative shrink-0" data-name="bed-id">
                     <div className="relative shrink-0 size-[18px]" data-name="bed">
@@ -457,7 +464,7 @@ export default function MedMonitoreoGridUci() {
                   </div>
                 </div>
               </div>
-              <div className="bg-white border-[#dc2626] border-b border-l-4 border-r border-t flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px]" data-name="bed-card-C-02">
+              <div className="bg-white border-[#dc2626] border-b border-l-4 border-r border-t flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px] cursor-pointer outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary" data-name="bed-card-C-02" {...rowLink('/MedPacienteResumen')} aria-label="Ver paciente de la cama C-02">
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full" data-name="card-header">
                   <div className="content-stretch flex gap-[8px] items-center relative shrink-0" data-name="bed-id">
                     <div className="relative shrink-0 size-[18px]" data-name="bed">
@@ -834,7 +841,7 @@ export default function MedMonitoreoGridUci() {
                   </div>
                 </div>
               </div>
-              <Link className="bg-white border-[#dc2626] border-b border-l-4 border-r border-t cursor-pointer flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px]" data-name="bed-card-C-03" to="/MedPacienteResumen">
+              <Link className="bg-white border-[#dc2626] border-b border-l-4 border-r border-t cursor-pointer flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px] cursor-pointer outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary" data-name="bed-card-C-03" to="/MedPacienteResumen">
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full" data-name="card-header">
                   <div className="content-stretch flex gap-[8px] items-center relative shrink-0" data-name="bed-id">
                     <div className="relative shrink-0 size-[18px]" data-name="bed">
@@ -1213,7 +1220,7 @@ export default function MedMonitoreoGridUci() {
               </Link>
             </div>
             <div className="contents" data-name="row-2">
-              <div className="bg-white border-[#d97706] border-b border-l-4 border-r border-t flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px]" data-name="bed-card-C-05">
+              <div className="bg-white border-[#d97706] border-b border-l-4 border-r border-t flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px] cursor-pointer outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary" data-name="bed-card-C-05" {...rowLink('/MedPacienteResumen')} aria-label="Ver paciente de la cama C-05">
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full" data-name="card-header">
                   <div className="content-stretch flex gap-[8px] items-center relative shrink-0" data-name="bed-id">
                     <div className="relative shrink-0 size-[18px]" data-name="bed">
@@ -1590,7 +1597,7 @@ export default function MedMonitoreoGridUci() {
                   </div>
                 </div>
               </div>
-              <div className="bg-white border-[#dc2626] border-b border-l-4 border-r border-t flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px]" data-name="bed-card-C-06">
+              <div className="bg-white border-[#dc2626] border-b border-l-4 border-r border-t flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px] cursor-pointer outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary" data-name="bed-card-C-06" {...rowLink('/MedPacienteResumen')} aria-label="Ver paciente de la cama C-06">
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full" data-name="card-header">
                   <div className="content-stretch flex gap-[8px] items-center relative shrink-0" data-name="bed-id">
                     <div className="relative shrink-0 size-[18px]" data-name="bed">
@@ -1967,7 +1974,7 @@ export default function MedMonitoreoGridUci() {
                   </div>
                 </div>
               </div>
-              <div className="bg-[#f3f4f6] border-[#1e3a8a] border-b border-l-4 border-r border-t flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px]" data-name="bed-card-C-07">
+              <div className="bg-[#f3f4f6] border-[#1e3a8a] border-b border-l-4 border-r border-t flex flex-col gap-[12px] items-start overflow-clip p-[16px] rounded-[12px] min-w-0 xl:h-[360px] cursor-pointer outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary" data-name="bed-card-C-07" role="button" tabIndex={0} aria-label="Asignar paciente a la cama C-07" onClick={() => setAssignOpen(true)} onKeyDown={(e) => e.key === 'Enter' && setAssignOpen(true)}>
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full" data-name="card-header">
                   <div className="content-stretch flex gap-[8px] items-center relative shrink-0" data-name="bed-id">
                     <div className="relative shrink-0 size-[18px]" data-name="bed">
@@ -1976,17 +1983,27 @@ export default function MedMonitoreoGridUci() {
                     <p className="[word-break:break-word] font-jakarta font-extrabold leading-[normal] relative shrink-0 text-[#111827] text-[16px] whitespace-nowrap">C-07</p>
                   </div>
                   <div className="bg-primary-soft content-stretch flex items-start px-[8px] py-[2px] relative rounded-[4px] shrink-0" data-name="status-badge">
-                    <p className="[word-break:break-word] font-jakarta font-extrabold leading-[normal] relative shrink-0 text-[#1e3a8a] text-[10px] whitespace-nowrap">DISPONIBLE</p>
+                    <p className="[word-break:break-word] font-jakarta font-extrabold leading-[normal] relative shrink-0 text-[#1e3a8a] text-[10px] whitespace-nowrap">{assigned ? 'ASIGNADA' : 'DISPONIBLE'}</p>
                   </div>
                 </div>
                 <div className="[word-break:break-word] content-stretch flex flex-col gap-[6px] items-center justify-center leading-[normal] py-[12px] relative shrink-0 text-center w-full" data-name="empty-content">
-                  <p className="font-jakarta font-bold relative shrink-0 text-[#111827] text-[15px] whitespace-nowrap">Disponible</p>
-                  <p className="font-jakarta font-semibold min-w-full relative shrink-0 text-[#6b7280] text-[12px] w-[min-content]">Sin paciente asignado</p>
+                  <p className="font-jakarta font-bold relative shrink-0 text-[#111827] text-[15px] whitespace-nowrap">{assigned ?? 'Disponible'}</p>
+                  <p className="font-jakarta font-semibold min-w-full relative shrink-0 text-[#6b7280] text-[12px] w-[min-content]">{assigned ? 'Recién asignado · monitor sin conectar' : 'Sin paciente asignado'}</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      <AssignBedModal
+        open={assignOpen}
+        bed="C-07"
+        onClose={() => setAssignOpen(false)}
+        onAssign={(name) => {
+          setAssignOpen(false);
+          setAssigned(name);
+          toast(`${name} asignado a la cama C-07`);
+        }}
+      />
     </AppLayout>
   );
 }

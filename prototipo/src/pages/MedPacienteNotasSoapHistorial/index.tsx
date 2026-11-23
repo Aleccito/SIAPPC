@@ -5,7 +5,7 @@ import { SoapHistoryView } from './SoapHistoryView';
 export default function MedPacienteNotasSoapHistorial() {
   return (
     <PatientLayout breadcrumb="SIAPPC > Pacientes > María González > Notas SOAP" title="Notas SOAP" tab="notas" actions={<BackButton />}>
-      <SoapHistoryView linkSelected />
+      <SoapHistoryView />
     </PatientLayout>
   );
 }

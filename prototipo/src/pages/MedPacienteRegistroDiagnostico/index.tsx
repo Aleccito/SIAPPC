@@ -1,17 +1,29 @@
 // Pantalla "med/paciente/registro-diagnostico" (Figma node 140:499) — generada desde el diseño original de Figma.
-// Los campos son dibujos (paso 3 del plan los vuelve editables).
-import type { ReactNode } from 'react';
+// Descripción, fecha y notas son dibujos (el paso 3 del plan los vuelve editables).
+import { useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import imgCalendar from '../../assets/calendar.svg';
 import imgChevronDown from '../../assets/chevron-down.svg';
 import imgRadioOptionEllipse from '../../assets/radio-option-ellipse.svg';
 import imgRadioOptionEllipse2 from '../../assets/radio-option-ellipse-2.svg';
 import imgSearch3 from '../../assets/search-3.svg';
 import imgUploadCloud from '../../assets/upload-cloud.svg';
-import { BackButton, Badge, Button, Card, Divider, PatientLayout } from '../../components';
+import { BackButton, Badge, Button, Card, Divider, PatientLayout, rowButton, Select, UploadDocumentModal, useToast } from '../../components';
+import type { RegisteredState } from '../MedPacienteDiagnosticosActivos';
 import { cn } from '../../lib/cn';
 
 const SEVERITY = ['Leve', 'Moderada', 'Severa', 'Crítica'];
-const SELECTED_SEVERITY = 'Severa';
+const TYPES = ['Diagnóstico Principal', 'Diagnóstico Secundario', 'Complicación'];
+/** Códigos CIE-10 frecuentes de ejemplo; buscar escribiendo queda para el paso 3. */
+const CIE10: Array<[string, string]> = [
+  ['I50.9', 'Insuficiencia cardíaca, no especificada'],
+  ['J81', 'Edema pulmonar'],
+  ['I10', 'Hipertensión esencial (primaria)'],
+  ['E11.9', 'Diabetes mellitus tipo 2 sin complicaciones'],
+  ['N39.0', 'Infección de vías urinarias, sitio no especificado'],
+  ['J18.9', 'Neumonía, no especificada'],
+];
+const CIE10_OPTIONS = CIE10.map(([code, text]) => ({ value: code, label: `${code} ${text}` }));
 
 const PREVIOUS: Array<{ code: string; severity: string; tone: 'danger' | 'warning'; title: string; date: string; by: string }> = [
   { code: 'I50.9', severity: 'Crítica', tone: 'danger', title: 'Insuficiencia Cardíaca Congestiva descompensada', date: 'Hace 2 días', by: 'Dr. Carlos Méndez' },
@@ -29,6 +41,22 @@ const Field = ({ label, children, className }: { label: string; children: ReactN
 const box = 'flex w-full items-center rounded-lg border bg-white px-3 py-[10px] font-jakarta text-[14px] font-semibold leading-[normal] text-ink';
 
 export default function MedPacienteRegistroDiagnostico() {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [type, setType] = useState(TYPES[0]);
+  const [code, setCode] = useState(CIE10[0][0]);
+  const [severity, setSeverity] = useState('Severa');
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [files, setFiles] = useState<string[]>([]);
+  const chevron = <img className="size-3.5 shrink-0" alt="" src={imgChevronDown} />;
+
+  const register = () => {
+    const [, text] = CIE10.find(([c]) => c === code) ?? CIE10[0];
+    const state: RegisteredState = { registered: { code, description: text } };
+    toast(`Diagnóstico registrado · ${code}`);
+    navigate('/MedPacienteDiagnosticosActivos', { state });
+  };
+
   return (
     <PatientLayout breadcrumb="SIAPPC > Pacientes > María González > Historia Clínica" title="Registro de Nuevo Diagnóstico" tab="historia" actions={<BackButton />}>
       <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
@@ -37,16 +65,19 @@ export default function MedPacienteRegistroDiagnostico() {
 
           <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Tipo de Diagnóstico">
-              <div className={cn(box, 'justify-between border-line')}>
-                <span>Diagnóstico Principal</span>
-                <img className="size-3.5 shrink-0" alt="" src={imgChevronDown} />
-              </div>
+              <Select variant="input" options={TYPES} value={type} onChange={setType} trailingIcon={chevron} ariaLabel="Tipo de Diagnóstico" />
             </Field>
             <Field label="Código CIE-10">
-              <div className={cn(box, 'gap-2 border-primary')}>
-                <img className="size-3.5 shrink-0" alt="" src={imgSearch3} />
-                <span className="truncate">I50.9 Insuficiencia cardíaca, no especificada</span>
-              </div>
+              <Select
+                variant="input"
+                highlighted
+                options={CIE10_OPTIONS}
+                value={code}
+                onChange={setCode}
+                icon={<img className="size-3.5 shrink-0" alt="" src={imgSearch3} />}
+                chevron={false}
+                ariaLabel="Código CIE-10"
+              />
             </Field>
           </div>
 
@@ -60,10 +91,10 @@ export default function MedPacienteRegistroDiagnostico() {
             <Field label="Severidad" className="gap-[10px] md:flex-1">
               <div className="flex flex-wrap items-center gap-4" role="radiogroup" aria-label="Severidad">
                 {SEVERITY.map((s) => (
-                  <div key={s} role="radio" aria-checked={s === SELECTED_SEVERITY} className="flex items-center gap-2">
-                    <img className="size-4" alt="" src={s === SELECTED_SEVERITY ? imgRadioOptionEllipse2 : imgRadioOptionEllipse} />
+                  <button key={s} type="button" role="radio" aria-checked={s === severity} onClick={() => setSeverity(s)} className="flex items-center gap-2">
+                    <img className="size-4" alt="" src={s === severity ? imgRadioOptionEllipse2 : imgRadioOptionEllipse} />
                     <span className="font-jakarta text-[13px] font-semibold leading-[normal] text-ink">{s}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </Field>
@@ -82,16 +113,35 @@ export default function MedPacienteRegistroDiagnostico() {
           </Field>
 
           <Field label="Estudios Adjuntos (Rayos X, Labs, ECG)">
-            <div className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line bg-surface p-4 text-center">
+            <div
+              {...rowButton(() => setUploadOpen(true))}
+              aria-label="Subir estudios adjuntos"
+              className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line bg-surface p-4 text-center outline-none transition-colors hover:bg-primary-soft focus-visible:border-primary"
+            >
               <img className="size-6" alt="" src={imgUploadCloud} />
               <p className="font-jakarta text-[13px] font-bold leading-[normal] text-primary">Haga clic para subir archivos o arrástrelos aquí</p>
               <p className="font-jakarta text-[11px] font-normal leading-[normal] text-subtle">PDF, PNG, JPG hasta 10MB</p>
             </div>
+            {files.length > 0 && (
+              <ul className="flex flex-wrap gap-2">
+                {files.map((f) => (
+                  <li key={f}>
+                    <Badge tone="info" size="sm">
+                      {f}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Field>
 
           <div className="flex w-full flex-wrap justify-end gap-3 pt-3">
-            <Button variant="secondary" size="lg">Cancelar</Button>
-            <Button size="lg">Registrar Diagnóstico</Button>
+            <Button variant="secondary" size="lg" onClick={() => navigate(-1)}>
+              Cancelar
+            </Button>
+            <Button size="lg" onClick={register}>
+              Registrar Diagnóstico
+            </Button>
           </div>
         </Card>
 
@@ -115,6 +165,15 @@ export default function MedPacienteRegistroDiagnostico() {
           </ul>
         </Card>
       </div>
+      <UploadDocumentModal
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onUpload={({ name }) => {
+          setUploadOpen(false);
+          setFiles((f) => (f.includes(name) ? f : [...f, name]));
+          toast(`Archivo adjuntado · ${name}`);
+        }}
+      />
     </PatientLayout>
   );
 }

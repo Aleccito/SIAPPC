@@ -1,6 +1,6 @@
 // Pantalla "med/paciente/datos-personales" (Figma node 191:17) — generada desde el diseño original de Figma.
 import type { ReactNode } from 'react';
-import { BackButton, Button, Card, InfoField, PatientLayout } from '../../components';
+import { BackButton, Button, Card, InfoField, PatientLayout, useToast } from '../../components';
 import { cn } from '../../lib/cn';
 
 type Fields = Array<[string, string]>;
@@ -70,6 +70,7 @@ const Row = ({ main, side }: { main: ReactNode; side: ReactNode }) => (
 );
 
 export default function MedPacienteDatosPersonales() {
+  const toast = useToast();
   return (
     <PatientLayout
       breadcrumb="SIAPPC > Pacientes > María González > Historia Clínica > Datos Personales"
@@ -124,7 +125,9 @@ export default function MedPacienteDatosPersonales() {
         />
 
         <div className="flex w-full justify-end pb-5 pt-2">
-          <Button size="lg">Guardar cambios</Button>
+          <Button size="lg" onClick={() => toast('Datos guardados')}>
+            Guardar cambios
+          </Button>
         </div>
       </div>
     </PatientLayout>

@@ -1,7 +1,8 @@
 // Pantalla "med/perfil/mi-perfil" (Figma node 137:9) — generada desde el diseño original de Figma.
+import { useState, type FormEvent } from 'react';
 import imgSwitchTrack from '../../assets/switch-track.svg';
 import imgSwitchTrack2 from '../../assets/switch-track-2.svg';
-import { AppLayout, Badge, Button, Card, CardTitle, Divider, TopBarDate } from '../../components';
+import { AppLayout, Badge, Button, Card, CardTitle, Divider, Input, Modal, ModalHeader, TopBarDate, useToast } from '../../components';
 
 const PRO_INFO = [
   ['Especialidad principal', 'Medicina Crítica y Terapia Intensiva'],
@@ -26,7 +27,63 @@ const STATS = [
   ['Tiempo resp. promedio', '2.1 min', 'text-warning'],
 ];
 
+const QR_SIZE = 21;
+/** Código QR de ejemplo (no se puede escanear): patrón fijo con las tres esquinas de un QR. */
+function SampleQr() {
+  const finder = (x: number, y: number) => {
+    for (const [ox, oy] of [[0, 0], [QR_SIZE - 7, 0], [0, QR_SIZE - 7]]) {
+      const dx = x - ox;
+      const dy = y - oy;
+      if (dx >= 0 && dx < 7 && dy >= 0 && dy < 7) {
+        const ring = Math.min(dx, dy, 6 - dx, 6 - dy);
+        return ring !== 1;
+      }
+    }
+    return null;
+  };
+  const cells: Array<[number, number]> = [];
+  for (let y = 0; y < QR_SIZE; y++) {
+    for (let x = 0; x < QR_SIZE; x++) {
+      const f = finder(x, y);
+      if (f ?? (x * 7 + y * 13 + x * y) % 5 < 2) cells.push([x, y]);
+    }
+  }
+  return (
+    <svg viewBox={`-1 -1 ${QR_SIZE + 2} ${QR_SIZE + 2}`} className="size-40 shrink-0 rounded-lg border border-line bg-white" role="img" aria-label="Código QR de ejemplo">
+      {cells.map(([x, y]) => (
+        <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill="#0f172a" />
+      ))}
+    </svg>
+  );
+}
+
 export default function MedPerfilMiPerfil() {
+  const toast = useToast();
+  const [toggles, setToggles] = useState(TOGGLES.map(([, on]) => on));
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
+  const [mfaOpen, setMfaOpen] = useState(false);
+  const [mfaActive, setMfaActive] = useState(false);
+
+  const flip = (i: number) => {
+    setToggles((t) => t.map((on, j) => (j === i ? !on : on)));
+    toast('Preferencia guardada');
+  };
+
+  const savePassword = (e: FormEvent) => {
+    e.preventDefault();
+    setPasswordOpen(false);
+    setPasswordChanged(true);
+    toast('Contraseña actualizada');
+  };
+
+  const activateMfa = (e: FormEvent) => {
+    e.preventDefault();
+    setMfaOpen(false);
+    setMfaActive(true);
+    toast('MFA activado');
+  };
+
   return (
     <AppLayout breadcrumb="SIAPPC > Mi Perfil" title="Mi Perfil" actions={<TopBarDate>24 Oct 2025, 08:30</TopBarDate>}>
       <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-6 p-4 md:p-8 xl:flex-row">
@@ -74,12 +131,22 @@ export default function MedPerfilMiPerfil() {
               <div className="flex min-w-0 flex-1 flex-col gap-1 leading-[normal]">
                 <p className="font-jakarta text-[14px] font-semibold text-ink">Autenticación y Seguridad</p>
                 <p className="font-jakarta text-[12px] font-normal text-muted">
-                  Último cambio de contraseña hace 3 meses. El acceso MFA añade protección crítica.
+                  {`${passwordChanged ? 'Contraseña cambiada hoy.' : 'Último cambio de contraseña hace 3 meses.'} ${
+                    mfaActive ? 'MFA activo: tu cuenta pide un código al iniciar sesión.' : 'El acceso MFA añade protección crítica.'
+                  }`}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-[10px]">
-                <Button variant="secondary">Cambiar Contraseña</Button>
-                <Button>Configurar MFA</Button>
+              <div className="flex flex-wrap items-center gap-[10px]">
+                <Button variant="secondary" onClick={() => setPasswordOpen(true)}>
+                  Cambiar Contraseña
+                </Button>
+                {mfaActive ? (
+                  <Badge tone="success" dot>
+                    MFA activo
+                  </Badge>
+                ) : (
+                  <Button onClick={() => setMfaOpen(true)}>Configurar MFA</Button>
+                )}
               </div>
             </div>
             <div className="w-full border-t border-line pt-[10px]">
@@ -95,10 +162,21 @@ export default function MedPerfilMiPerfil() {
             <CardTitle>Preferencias de Notificaciones</CardTitle>
             <Divider />
             <div className="flex w-full flex-col gap-1">
-              {TOGGLES.map(([label, on]) => (
+              {TOGGLES.map(([label], i) => (
                 <div key={label} className="flex w-full items-center justify-between gap-4 py-2">
-                  <p className="font-jakarta text-[14px] font-medium leading-[normal] text-ink">{label}</p>
-                  <img className="h-5 w-9 shrink-0" alt={on ? 'Activado' : 'Desactivado'} src={on ? imgSwitchTrack : imgSwitchTrack2} />
+                  <p id={`pref-${i}`} className="font-jakarta text-[14px] font-medium leading-[normal] text-ink">
+                    {label}
+                  </p>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={toggles[i]}
+                    aria-labelledby={`pref-${i}`}
+                    onClick={() => flip(i)}
+                    className="flex shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <img className="h-5 w-9" alt="" src={toggles[i] ? imgSwitchTrack : imgSwitchTrack2} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -118,6 +196,43 @@ export default function MedPerfilMiPerfil() {
           </Card>
         </div>
       </div>
+
+      <Modal labelledBy="password-titulo" open={passwordOpen} onClose={() => setPasswordOpen(false)} width={440} className="p-5 shadow-xl sm:p-6">
+        <form onSubmit={savePassword} className="flex flex-col gap-4">
+          <ModalHeader id="password-titulo" title="Cambiar contraseña" onClose={() => setPasswordOpen(false)} />
+          <Input id="password-actual" label="Contraseña actual" type="password" autoComplete="current-password" />
+          <Input id="password-nueva" label="Nueva contraseña" type="password" autoComplete="new-password" />
+          <Input id="password-confirmar" label="Confirmar nueva contraseña" type="password" autoComplete="new-password" />
+          <p className="font-jakarta text-[12px] font-normal leading-[1.5] text-muted">Mínimo 12 caracteres, con mayúsculas, números y un símbolo.</p>
+          <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
+            <Button variant="secondary" onClick={() => setPasswordOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">Guardar</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal labelledBy="mfa-titulo" open={mfaOpen} onClose={() => setMfaOpen(false)} width={520} className="p-5 shadow-xl sm:p-6">
+        <form onSubmit={activateMfa} className="flex flex-col gap-4">
+          <ModalHeader id="mfa-titulo" title="Configurar MFA" onClose={() => setMfaOpen(false)} />
+          <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+            <SampleQr />
+            <ol className="flex list-decimal flex-col gap-2 pl-5 font-jakarta text-[13px] font-normal leading-[1.5] text-ink">
+              <li>Abre tu aplicación de autenticación (Google Authenticator, Microsoft Authenticator…).</li>
+              <li>Escanea el código QR.</li>
+              <li>Escribe el código de 6 dígitos que muestra la aplicación.</li>
+            </ol>
+          </div>
+          <Input id="mfa-codigo" label="Código de verificación" inputMode="numeric" maxLength={6} placeholder="000000" autoComplete="one-time-code" />
+          <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
+            <Button variant="secondary" onClick={() => setMfaOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">Activar</Button>
+          </div>
+        </form>
+      </Modal>
     </AppLayout>
   );
 }

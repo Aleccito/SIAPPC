@@ -1,63 +1,70 @@
 // Pantalla "med-dispositivos-monitores" (Figma node 265:4) — generada desde el diseño original de Figma.
+import { useState } from 'react';
 import imgDropdownBadgeEllipse2 from '../../assets/dropdown-badge-ellipse-2.svg';
 import imgFiltersRowFrame from '../../assets/filters-row-frame.svg';
 import imgKpiRowFrame from '../../assets/kpi-row-frame.svg';
 import imgKpiRowFrame2 from '../../assets/kpi-row-frame-2.svg';
 import imgKpiRowFrame3 from '../../assets/kpi-row-frame-3.svg';
 import imgKpiRowFrame4 from '../../assets/kpi-row-frame-4.svg';
-import imgRowC01Vector from '../../assets/row-c-01-vector.svg';
-import imgRowC06Vector from '../../assets/row-c-06-vector.svg';
-import imgRowC07Vector from '../../assets/row-c-07-vector.svg';
 import imgSearchFieldVector from '../../assets/search-field-vector.svg';
-import { AppLayout, Badge, Button, Card, KpiCard, SearchBox, Table } from '../../components';
+import { AppLayout, Badge, Button, Card, EmptyState, KpiCard, rowLinkClass, SearchBox, Select, Table, useRowLink } from '../../components';
+import { deviceDetailPath, DEVICES, STATUS_TONE } from '../../data/devices';
 import { cn } from '../../lib/cn';
-
-type Device = {
-  bed: string;
-  icon: string;
-  patient: string;
-  age?: string;
-  model: string;
-  status: 'ACTIVO' | 'FALLA' | 'INACTIVO';
-  battery: number;
-  calibration: string;
-  calibrationDue?: boolean;
-  signals: string[];
-  rowBg?: string;
-};
-
-const STATUS_TONE = { ACTIVO: 'success', FALLA: 'danger', INACTIVO: 'neutral' } as const;
-
-const DEVICES: Device[] = [
-  { bed: 'C-01', icon: imgRowC01Vector, patient: 'María González', age: '64 años', model: 'Philips IntelliVue MX800', status: 'ACTIVO', battery: 92, calibration: '15 Jul 2026', signals: ['ECG', 'SpO2', 'PA'] },
-  { bed: 'C-02', icon: imgRowC01Vector, patient: 'Juan García', age: '72 años', model: 'GE CARESCAPE B650', status: 'ACTIVO', battery: 87, calibration: '20 Jul 2026', signals: ['ECG', 'SpO2', 'PA', 'FR'] },
-  { bed: 'C-03', icon: imgRowC01Vector, patient: 'Carlos Rodríguez', age: '58 años', model: 'Philips IntelliVue MX800', status: 'ACTIVO', battery: 95, calibration: '01 Ago 2026', signals: ['ECG', 'SpO2', 'PA'] },
-  { bed: 'C-05', icon: imgRowC01Vector, patient: 'Laura Torres', age: '49 años', model: 'Mindray BeneVision N22', status: 'ACTIVO', battery: 78, calibration: '10 Jul 2026', signals: ['ECG', 'SpO2', 'PA', 'Temp'] },
-  { bed: 'C-06', icon: imgRowC06Vector, patient: 'Francisco Díaz', age: '81 años', model: 'GE CARESCAPE B650', status: 'FALLA', battery: 15, calibration: '05 Jul 2026', signals: ['ECG (intermitente)'], rowBg: 'bg-danger-soft' },
-  { bed: 'C-07', icon: imgRowC07Vector, patient: '— Disponible —', model: 'Philips IntelliVue MX550', status: 'INACTIVO', battery: 100, calibration: '28 Jul 2026', signals: ['—'], rowBg: 'bg-[rgba(248,250,252,0.7)]' },
-  { bed: 'C-09', icon: imgRowC01Vector, patient: 'Ana Morales', age: '35 años', model: 'Mindray BeneVision N22', status: 'ACTIVO', battery: 65, calibration: '25 Jun 2026', calibrationDue: true, signals: ['ECG', 'SpO2', 'PA'] },
-  { bed: 'C-11', icon: imgRowC01Vector, patient: 'Pedro Sánchez', age: '53 años', model: 'Philips IntelliVue MX800', status: 'ACTIVO', battery: 88, calibration: '30 Jul 2026', signals: ['ECG', 'SpO2', 'PA', 'FR'] },
-];
+import { matches } from '../../lib/text';
 
 const COLS = 'flex w-full items-center gap-4 px-6';
+const PAGE_SIZE = 8;
 
-function FilterBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex shrink-0 items-center gap-3 rounded-lg border border-line bg-white px-3 py-2">
-      <div className="flex flex-col gap-0.5 font-jakarta font-semibold leading-[normal]">
-        <p className="text-[10px] uppercase text-muted">{label}</p>
-        <p className="text-[13px] text-ink">{value}</p>
-      </div>
-      <img className="size-3.5" alt="" src={imgFiltersRowFrame} />
-    </div>
-  );
-}
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'Todos' },
+  { value: 'ACTIVO', label: 'Activo' },
+  { value: 'FALLA', label: 'Falla' },
+  { value: 'INACTIVO', label: 'Inactivo' },
+];
 
+const BED_OPTIONS = [{ value: 'all', label: 'Todas las UCI' }, ...DEVICES.map((d) => d.bed).sort().map((b) => ({ value: b, label: b }))];
+
+const filterIcon = <img className="size-3.5" alt="" src={imgFiltersRowFrame} />;
 const kpiIcon = (src: string) => <img className="size-7 shrink-0" alt="" src={src} />;
 
 export default function MedDispositivosMonitores() {
+  const rowLink = useRowLink();
+  const [serial, setSerial] = useState('');
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('all');
+  const [bed, setBed] = useState('all');
+  const [page, setPage] = useState(1);
+
+  // Cualquier cambio de filtro vuelve a la primera página.
+  const filter = <T,>(set: (v: T) => void) => (v: T) => {
+    set(v);
+    setPage(1);
+  };
+
+  const filtered = DEVICES.filter(
+    (d) =>
+      (status === 'all' || d.status === status) &&
+      (bed === 'all' || d.bed === bed) &&
+      matches(serial, d.serial, d.bed) &&
+      matches(query, d.patient, d.model),
+  );
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const current = Math.min(page, pages);
+  const rows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  const reset = () => {
+    setSerial('');
+    setQuery('');
+    setStatus('all');
+    setBed('all');
+    setPage(1);
+  };
+
   return (
-    <AppLayout breadcrumb="SIAPPC > Dispositivos" title="Dispositivos — Monitores UCI" actions={<SearchBox placeholder="Buscar por serie/ID..." width={260} />}>
+    <AppLayout
+      breadcrumb="SIAPPC > Dispositivos"
+      title="Dispositivos — Monitores UCI"
+      actions={<SearchBox placeholder="Buscar por serie/ID..." width={260} aria-label="Buscar por serie o ID" value={serial} onChange={(e) => filter(setSerial)(e.target.value)} />}
+    >
       <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-4 md:p-8">
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard label="Total Dispositivos" value="12" note="Monitorización central" icon={kpiIcon(imgKpiRowFrame)} />
@@ -67,12 +74,19 @@ export default function MedDispositivosMonitores() {
         </div>
 
         <div className="flex w-full flex-wrap items-center gap-3">
-          <FilterBox label="Estado" value="Todos" />
-          <FilterBox label="Cama" value="Todas las UCI" />
-          <div className="flex min-w-[220px] flex-1 items-center gap-[10px] rounded-lg border border-line bg-white px-[14px] py-[10px]">
+          <Select variant="stacked" label="Estado" options={STATUS_OPTIONS} value={status} onChange={filter(setStatus)} trailingIcon={filterIcon} />
+          <Select variant="stacked" label="Cama" options={BED_OPTIONS} value={bed} onChange={filter(setBed)} trailingIcon={filterIcon} />
+          <label className="flex min-w-[220px] flex-1 items-center gap-[10px] rounded-lg border border-line bg-white px-[14px] py-[10px] focus-within:border-primary">
             <img className="size-3.5 shrink-0" alt="" src={imgSearchFieldVector} />
-            <p className="min-w-0 flex-1 font-jakarta text-[13px] font-normal leading-[normal] text-muted">Filtrar pacientes o modelo de equipo...</p>
-          </div>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => filter(setQuery)(e.target.value)}
+              placeholder="Filtrar pacientes o modelo de equipo..."
+              aria-label="Filtrar pacientes o modelo de equipo"
+              className="min-w-0 flex-1 bg-transparent font-jakarta text-[13px] font-normal leading-[normal] text-ink outline-none placeholder:text-muted"
+            />
+          </label>
         </div>
 
         <Card padding="none" className="w-full overflow-hidden shadow-[0px_4px_8px_0px_rgba(0,0,0,0.01)]">
@@ -87,10 +101,15 @@ export default function MedDispositivosMonitores() {
               <p className="w-[180px] shrink-0">SEÑALES</p>
               <p className="min-w-0 flex-1 text-right">ACCIÓN</p>
             </div>
-            {DEVICES.map((d) => {
+            {rows.map((d) => {
               const low = d.battery < 20;
               return (
-                <div key={d.bed} className={cn(COLS, 'border-b border-line py-3 last:border-b-0', d.rowBg ?? 'bg-white')}>
+                <div
+                  key={d.bed}
+                  {...rowLink(deviceDetailPath(d.bed))}
+                  aria-label={`Ver detalle del monitor de la cama ${d.bed}`}
+                  className={cn(COLS, 'border-b border-line py-3 last:border-b-0', d.rowBg ?? 'bg-white', rowLinkClass)}
+                >
                   <div className="flex w-[60px] shrink-0 items-center gap-2">
                     <img className="size-4" alt="" src={d.icon} />
                     <p className="font-jakarta text-[12px] font-extrabold leading-[normal] text-ink">{d.bed}</p>
@@ -120,20 +139,29 @@ export default function MedDispositivosMonitores() {
                       </span>
                     ))}
                   </div>
-                  <div className="flex min-w-0 flex-1 justify-end">
-                    <Button variant="outline" size="sm">Ver Detalle</Button>
+                  <div className="flex min-w-0 flex-1 justify-end" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" to={deviceDetailPath(d.bed)}>
+                      Ver Detalle
+                    </Button>
                   </div>
                 </div>
               );
             })}
+            {rows.length === 0 && <EmptyState onReset={reset} />}
           </Table>
         </Card>
 
         <div className="flex w-full flex-wrap items-center justify-between gap-3">
-          <p className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">Mostrando 8 de 12 monitores UCI activos.</p>
+          <p className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">
+            {`Mostrando ${rows.length} de ${filtered.length} monitores UCI activos.`}
+          </p>
           <div className="flex gap-[10px]">
-            <Button variant="secondary">Anterior</Button>
-            <Button variant="secondary">Siguiente</Button>
+            <Button variant="secondary" onClick={() => setPage(Math.max(1, current - 1))} aria-label="Página anterior">
+              Anterior
+            </Button>
+            <Button variant="secondary" onClick={() => setPage(Math.min(pages, current + 1))} aria-label="Página siguiente">
+              Siguiente
+            </Button>
           </div>
         </div>
       </div>
