@@ -1,4 +1,5 @@
 // Pantalla "med-dispositivos-monitores" (Figma node 265:4) — generada desde el diseño original de Figma.
+// Los 8 monitores del seed (src/data/devices.ts); el estado en vivo, de GET /dashboard/devices.
 import { useState } from 'react';
 import imgDropdownBadgeEllipse2 from '../../assets/dropdown-badge-ellipse-2.svg';
 import imgFiltersRowFrame from '../../assets/filters-row-frame.svg';
@@ -7,6 +8,7 @@ import imgKpiRowFrame2 from '../../assets/kpi-row-frame-2.svg';
 import imgKpiRowFrame3 from '../../assets/kpi-row-frame-3.svg';
 import imgKpiRowFrame4 from '../../assets/kpi-row-frame-4.svg';
 import imgSearchFieldVector from '../../assets/search-field-vector.svg';
+import { useDeviceStatus } from '../../api/queries';
 import { AppLayout, Badge, Button, Card, EmptyState, KpiCard, Pagination, rowLinkClass, SearchBox, Select, Table, useRowLink } from '../../components';
 import { deviceDetailPath, DEVICES, STATUS_TONE } from '../../data/devices';
 import { cn } from '../../lib/cn';
@@ -22,7 +24,7 @@ const STATUS_OPTIONS = [
   { value: 'INACTIVO', label: 'Inactivo' },
 ];
 
-const BED_OPTIONS = [{ value: 'all', label: 'Todas las UCI' }, ...DEVICES.map((d) => d.bed).sort().map((b) => ({ value: b, label: b }))];
+const BED_OPTIONS = [{ value: 'all', label: 'Todas las camas' }, ...DEVICES.map((d) => d.bed).sort().map((b) => ({ value: b, label: b }))];
 
 const filterIcon = <img className="size-3.5" alt="" src={imgFiltersRowFrame} />;
 const kpiIcon = (src: string) => <img className="size-7 shrink-0" alt="" src={src} />;
@@ -34,6 +36,12 @@ export default function MedDispositivosMonitores() {
   const [status, setStatus] = useState('all');
   const [bed, setBed] = useState('all');
   const [page, setPage] = useState(1);
+  // Estado en vivo del backend; si todavía no llegó, el del seed.
+  const live = useDeviceStatus();
+  const devices = DEVICES.map((d) => {
+    const state = live.data?.find((x) => x.code === d.serial)?.state;
+    return state ? { ...d, status: state === 'activo' ? ('ACTIVO' as const) : state === 'mantenimiento' ? ('FALLA' as const) : ('INACTIVO' as const) } : d;
+  });
 
   // Cualquier cambio de filtro vuelve a la primera página.
   const filter = <T,>(set: (v: T) => void) => (v: T) => {
@@ -41,7 +49,7 @@ export default function MedDispositivosMonitores() {
     setPage(1);
   };
 
-  const filtered = DEVICES.filter(
+  const filtered = devices.filter(
     (d) =>
       (status === 'all' || d.status === status) &&
       (bed === 'all' || d.bed === bed) &&
@@ -67,10 +75,10 @@ export default function MedDispositivosMonitores() {
     >
       <div className="flex w-full min-w-0 flex-1 flex-col gap-6 p-4 md:p-8">
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard label="Total Dispositivos" value="12" note="Monitorización central" icon={kpiIcon(imgKpiRowFrame)} />
-          <KpiCard label="Activos" value="10" tone="success" tint="success" note="En transmisiones" icon={kpiIcon(imgKpiRowFrame2)} />
-          <KpiCard label="En Falla" value="1" tone="danger" tint="danger" note="Soporte requerido" icon={kpiIcon(imgKpiRowFrame3)} />
-          <KpiCard label="Pendiente Calibración" value="2" tone="warning" tint="warning" note="Próximos 7 días" icon={kpiIcon(imgKpiRowFrame4)} />
+          <KpiCard label="Total Dispositivos" value={String(devices.length)} note="Monitorización central" icon={kpiIcon(imgKpiRowFrame)} />
+          <KpiCard label="Activos" value={String(devices.filter((d) => d.status === 'ACTIVO').length)} tone="success" tint="success" note="En transmisiones" icon={kpiIcon(imgKpiRowFrame2)} />
+          <KpiCard label="En Falla" value={String(devices.filter((d) => d.status === 'FALLA').length)} tone="danger" tint="danger" note="Soporte requerido" icon={kpiIcon(imgKpiRowFrame3)} />
+          <KpiCard label="Pendiente Calibración" value={String(devices.filter((d) => d.calibrationDue).length)} tone="warning" tint="warning" note="Vencida o próxima" icon={kpiIcon(imgKpiRowFrame4)} />
         </div>
 
         <div className="flex w-full flex-wrap items-center gap-3">
@@ -92,7 +100,7 @@ export default function MedDispositivosMonitores() {
         <Card padding="none" className="w-full overflow-hidden shadow-[0px_4px_8px_0px_rgba(0,0,0,0.01)]">
           <Table minWidth={1060}>
             <div className={cn(COLS, 'border-b border-line bg-surface py-[14px] font-jakarta text-[11px] font-bold leading-[normal] text-muted')}>
-              <p className="w-[60px] shrink-0">CAMA</p>
+              <p className="w-[76px] shrink-0">CAMA</p>
               <p className="w-[160px] shrink-0">PACIENTE</p>
               <p className="w-[180px] shrink-0">MODELO MONITOR</p>
               <p className="w-[100px] shrink-0">ESTADO</p>
@@ -110,9 +118,9 @@ export default function MedDispositivosMonitores() {
                   aria-label={`Ver detalle del monitor de la cama ${d.bed}`}
                   className={cn(COLS, 'border-b border-line py-3 last:border-b-0', d.rowBg ?? 'bg-white', rowLinkClass)}
                 >
-                  <div className="flex w-[60px] shrink-0 items-center gap-2">
+                  <div className="flex w-[76px] shrink-0 items-center gap-2">
                     <img className="size-4" alt="" src={d.icon} />
-                    <p className="font-jakarta text-[12px] font-extrabold leading-[normal] text-ink">{d.bed}</p>
+                    <p className="whitespace-nowrap font-jakarta text-[12px] font-extrabold leading-[normal] text-ink">{d.bed}</p>
                   </div>
                   <div className="flex w-[160px] shrink-0 flex-col gap-0.5 leading-[normal]">
                     <p className={cn('truncate font-jakarta text-[12px] font-bold', d.age ? 'text-ink' : 'text-muted')}>{d.patient}</p>
@@ -151,7 +159,7 @@ export default function MedDispositivosMonitores() {
           </Table>
         </Card>
 
-        <Pagination summary={`Mostrando ${rows.length} de ${filtered.length} monitores UCI activos.`} page={current} pages={pages} onChange={setPage} />
+        <Pagination summary={`Mostrando ${rows.length} de ${filtered.length} monitores.`} page={current} pages={pages} onChange={setPage} />
       </div>
     </AppLayout>
   );

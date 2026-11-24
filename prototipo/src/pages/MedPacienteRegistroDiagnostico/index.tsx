@@ -1,8 +1,13 @@
 // Pantalla "med/paciente/registro-diagnostico" (Figma node 140:499) — generada desde el diseño original de Figma.
 // Paso 3: el CIE-10 se busca escribiendo; descripción (20 a 1000 caracteres), fecha (no futura ni anterior al
 // ingreso) y notas (hasta 1000) son campos reales (REVISION.md, paso 3, punto 5).
+// Registra con POST /historia/:id/diagnosticos (o PATCH si llega ?diagnostico=<id> desde "editar").
+// El backend no tiene "severidad" ni "hallazgos" en el diagnóstico: van en `notas`.
 import { useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { ApiError, request } from '../../api/http';
+import type { HistoriaEntry } from '../../api/types/clinical';
 import imgChevronDown from '../../assets/chevron-down.svg';
 import imgRadioOptionEllipse from '../../assets/radio-option-ellipse.svg';
 import imgRadioOptionEllipse2 from '../../assets/radio-option-ellipse-2.svg';
@@ -23,15 +28,23 @@ import {
   Select,
   TextArea,
   UploadDocumentModal,
+  usePatient,
   useToast,
   useValidation,
+  type PatientView,
 } from '../../components';
+import { fmtDate } from '../../lib/clinical';
 import { checkDate, checkText, todayIso } from '../../lib/validate';
-import type { RegisteredState } from '../MedPacienteDiagnosticosActivos';
 import { cn } from '../../lib/cn';
+import { usePatientNavigate } from '../../lib/patientLink';
 
 const SEVERITY = ['Leve', 'Moderada', 'Severa', 'Crítica'];
-const TYPES = ['Diagnóstico Principal', 'Diagnóstico Secundario', 'Complicación'];
+/** Los valores del enum `TipoDiagnostico` del backend. */
+const TYPES = [
+  { value: 'presuntivo', label: 'Presuntivo' },
+  { value: 'definitivo', label: 'Definitivo' },
+  { value: 'diferencial', label: 'Diferencial' },
+];
 /** Códigos CIE-10 frecuentes en UCI (datos de ejemplo); el campo los busca por código o por texto. */
 const CIE10: Array<[string, string]> = [
   ['I50.9', 'Insuficiencia cardíaca, no especificada'],
@@ -64,16 +77,21 @@ const CIE10: Array<[string, string]> = [
   ['D64.9', 'Anemia de tipo no especificado'],
   ['S06.9', 'Traumatismo intracraneal, no especificado'],
   ['T07', 'Traumatismos múltiples, no especificados'],
+  // Los de los 8 pacientes del seed.
+  ['N10', 'Nefritis tubulointersticial aguda (pielonefritis)'],
+  ['S72.0', 'Fractura del cuello del fémur'],
+  ['S72.9', 'Fractura del fémur, parte no especificada'],
+  ['S36.9', 'Traumatismo de órgano intraabdominal no especificado'],
+  ['R00.1', 'Bradicardia, no especificada'],
+  ['T46.0', 'Envenenamiento por glucósidos cardiotónicos'],
+  ['E87.5', 'Hiperpotasemia'],
+  ['I47.9', 'Taquicardia paroxística, no especificada'],
+  ['I48.9', 'Fibrilación y aleteo auricular, no especificado'],
+  ['R07.4', 'Dolor en el pecho, no especificado'],
 ];
-/** Ingreso de la paciente: la fecha del diagnóstico no puede ser anterior. */
-const ADMISSION = '2025-10-15';
 const CIE10_OPTIONS = CIE10.map(([code, text]) => ({ value: code, label: `${code} ${text}` }));
 
-const PREVIOUS: Array<{ code: string; severity: string; tone: 'danger' | 'warning'; title: string; date: string; by: string }> = [
-  { code: 'I50.9', severity: 'Crítica', tone: 'danger', title: 'Insuficiencia Cardíaca Congestiva descompensada', date: 'Hace 2 días', by: 'Dr. Carlos Méndez' },
-  { code: 'I10', severity: 'Moderada', tone: 'warning', title: 'Hipertensión Arterial Primaria', date: '15 Oct 2025', by: 'Dra. Lucía Torres' },
-  { code: 'E11.9', severity: 'Leve', tone: 'warning', title: 'Diabetes Mellitus Tipo 2', date: '12 May 2024', by: 'Dr. Carlos Méndez' },
-];
+const TYPE_TONE: Record<string, 'success' | 'warning' | 'info'> = { definitivo: 'success', presuntivo: 'warning', diferencial: 'info' };
 
 const Field = ({ label, htmlFor, children, className }: { label: string; htmlFor?: string; children: ReactNode; className?: string }) => (
   <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
@@ -90,27 +108,58 @@ const Field = ({ label, htmlFor, children, className }: { label: string; htmlFor
 
 
 export default function MedPacienteRegistroDiagnostico() {
-  const navigate = useNavigate();
+  const { view } = usePatient();
+  const [params] = useSearchParams();
+  const editId = params.get('diagnostico');
+  const editing = view?.expediente?.diagnosticos.find((d) => d.id === editId);
+  return (
+    <PatientLayout
+      breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica`}
+      title={editing ? 'Editar Diagnóstico' : 'Registro de Nuevo Diagnóstico'}
+      tab="historia"
+      actions={<BackButton />}
+    >
+      {view?.expediente && <Registro key={editing?.id ?? 'nuevo'} v={view} editing={editing} />}
+    </PatientLayout>
+  );
+}
+
+/** "Severidad: Severa. Hallazgos: … Plan: …" ⇄ los tres campos del formulario. */
+function readNotes(notes: unknown) {
+  const text = typeof notes === 'string' ? notes : '';
+  return {
+    severity: /Severidad: (\w+)/.exec(text)?.[1] ?? 'Moderada',
+    description: /Hallazgos: ([\s\S]*?)(?: Plan: |$)/.exec(text)?.[1] ?? '',
+    plan: / Plan: ([\s\S]*)$/.exec(text)?.[1] ?? '',
+  };
+}
+
+function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | undefined }) {
+  const navigate = usePatientNavigate();
   const toast = useToast();
-  const [type, setType] = useState(TYPES[0]);
-  const [code, setCode] = useState(CIE10[0][0]);
-  const [severity, setSeverity] = useState('Severa');
+  const queryClient = useQueryClient();
+  const previous = readNotes(editing?.notes);
+  // La fecha del diagnóstico no puede ser anterior al ingreso.
+  const admission = (v.assigned?.admittedAt ?? v.patient.arrivedAt).slice(0, 10);
+  const [type, setType] = useState(String(editing?.type ?? 'presuntivo'));
+  const [code, setCode] = useState(String(editing?.code ?? ''));
+  const [severity, setSeverity] = useState(previous.severity);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [files, setFiles] = useState<string[]>([]);
-  const [description, setDescription] = useState(
-    'Paciente femenina de 67 años con historial de insuficiencia cardíaca congestiva que ingresa con disnea en reposo notable, ortopnea y estertores basales crepitantes bilaterales.',
-  );
-  const [date, setDate] = useState('2026-08-02');
-  const [notes, setNotes] = useState('');
+  const [description, setDescription] = useState(previous.description);
+  const [date, setDate] = useState(String(editing?.diagnosedOn ?? todayIso()));
+  const [notes, setNotes] = useState(previous.plan);
+  const [saving, setSaving] = useState(false);
   const form = useValidation({
     'dx-cie10': () => (code ? null : 'Elija un código de la lista'),
     'dx-descripcion': () => checkText(description, { required: true, min: 20, max: 1000, requiredMessage: 'Describa los hallazgos clínicos' }),
-    'dx-fecha': () => checkDate(date, { notBefore: ADMISSION }),
+    'dx-fecha': () => checkDate(date, { notBefore: editing ? undefined : admission }),
     'dx-notas': () => checkText(notes, { max: 1000 }),
   });
   const chevron = <img className="size-3.5 shrink-0" alt="" src={imgChevronDown} />;
+  const others = (v.expediente?.diagnosticos ?? []).filter((d) => d.id !== editing?.id);
 
-  const register = () => {
+  const register = async () => {
     form.markAll();
     const bad = (Object.keys(form.errors) as Array<keyof typeof form.errors>).find((k) => form.errors[k]);
     if (bad) {
@@ -118,14 +167,33 @@ export default function MedPacienteRegistroDiagnostico() {
       focusFirst([bad]);
       return;
     }
-    const [, text] = CIE10.find(([c]) => c === code) ?? CIE10[0];
-    const state: RegisteredState = { registered: { code, description: text } };
-    toast(`Diagnóstico registrado · ${code}`);
-    navigate('/MedPacienteDiagnosticosActivos', { state });
+    if (saving) return;
+    setSaving(true);
+    const [, text] = CIE10.find(([c]) => c === code) ?? [code, code];
+    const body = {
+      code,
+      description: text,
+      type,
+      status: 'activo',
+      diagnosedOn: date,
+      notes: `Severidad: ${severity}. Hallazgos: ${description.trim()}${notes.trim() ? ` Plan: ${notes.trim()}` : ''}`,
+    };
+    try {
+      const path = `/historia/${v.id}/diagnosticos`;
+      if (editing) await request(`${path}/${editing.id}`, { method: 'PATCH', body: JSON.stringify(body) });
+      else await request(path, { method: 'POST', body: JSON.stringify(body) });
+      await queryClient.invalidateQueries({ queryKey: ['expediente', v.id] });
+      toast(`Diagnóstico ${editing ? 'actualizado' : 'registrado'} · ${code}`);
+      navigate('/MedPacienteDiagnosticosActivos');
+    } catch (e) {
+      toast(e instanceof ApiError && e.status === 403 ? 'Su rol no puede registrar diagnósticos' : 'No se pudo registrar el diagnóstico', 'info');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <PatientLayout breadcrumb="SIAPPC > Pacientes > María González > Historia Clínica" title="Registro de Nuevo Diagnóstico" tab="historia" actions={<BackButton />}>
+    <>
       <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
         <Card padding="lg" className="flex w-full min-w-0 flex-col gap-5 xl:flex-1">
           <h2 className="font-jakarta text-[16px] font-extrabold leading-[normal] text-ink">Formulario de Diagnóstico Clínico</h2>
@@ -178,7 +246,7 @@ export default function MedPacienteRegistroDiagnostico() {
               </div>
             </Field>
             <Field label="Fecha de Registro" htmlFor="dx-fecha" className="md:w-[200px] md:shrink-0">
-              <DateField id="dx-fecha" label="Fecha de registro" value={date} onChange={setDate} onBlur={() => form.touch('dx-fecha')} min={ADMISSION} max={todayIso()} error={form.show('dx-fecha')} />
+              <DateField id="dx-fecha" label="Fecha de registro" value={date} onChange={setDate} onBlur={() => form.touch('dx-fecha')} min={editing ? undefined : admission} max={todayIso()} error={form.show('dx-fecha')} />
               <FieldError forId="dx-fecha" error={form.show('dx-fecha')} />
             </Field>
           </div>
@@ -224,8 +292,8 @@ export default function MedPacienteRegistroDiagnostico() {
             <Button variant="secondary" size="lg" onClick={() => navigate(-1)}>
               Cancelar
             </Button>
-            <Button size="lg" onClick={register}>
-              Registrar Diagnóstico
+            <Button size="lg" onClick={() => void register()}>
+              {editing ? 'Guardar Cambios' : 'Registrar Diagnóstico'}
             </Button>
           </div>
         </Card>
@@ -234,19 +302,22 @@ export default function MedPacienteRegistroDiagnostico() {
           <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">Diagnósticos Previos</h2>
           <Divider />
           <ul className="flex w-full flex-col gap-3">
-            {PREVIOUS.map((d) => (
-              <li key={d.code} className="flex w-full flex-col gap-2 rounded-lg border border-line p-3">
+            {others.map((d) => (
+              <li key={d.id} className="flex w-full flex-col gap-2 rounded-lg border border-line p-3">
                 <div className="flex w-full items-center justify-between">
-                  <Badge tone="neutral" size="sm">{d.code}</Badge>
-                  <Badge tone={d.tone} size="sm">{d.severity}</Badge>
+                  <Badge tone="neutral" size="sm">{String(d.code ?? '—')}</Badge>
+                  <Badge tone={d.status === 'resuelto' ? 'success' : TYPE_TONE[String(d.type)] ?? 'warning'} size="sm">
+                    {d.status === 'resuelto' ? 'Resuelto' : TYPES.find((t) => t.value === d.type)?.label ?? String(d.type)}
+                  </Badge>
                 </div>
-                <p className="font-jakarta text-[13px] font-bold leading-[normal] text-ink">{d.title}</p>
+                <p className="font-jakarta text-[13px] font-bold leading-[normal] text-ink">{String(d.description)}</p>
                 <div className="flex w-full justify-between gap-3 text-[11px] leading-[normal] text-muted">
-                  <p className="font-jakarta font-normal">{d.date}</p>
-                  <p className="font-jakarta font-medium">{d.by}</p>
+                  <p className="font-jakarta font-normal">{fmtDate(d.diagnosedOn as string | null)}</p>
+                  <p className="font-jakarta font-medium">{d.status === 'resuelto' ? 'Antecedente' : 'Ingreso actual'}</p>
                 </div>
               </li>
             ))}
+            {others.length === 0 && <li className="font-jakarta text-[13px] text-muted">Sin diagnósticos previos.</li>}
           </ul>
         </Card>
       </div>
@@ -259,6 +330,6 @@ export default function MedPacienteRegistroDiagnostico() {
           toast(`Archivo adjuntado · ${name}`);
         }}
       />
-    </PatientLayout>
+    </>
   );
 }

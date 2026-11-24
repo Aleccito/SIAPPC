@@ -1,6 +1,8 @@
 // Pantalla "med/reportes/panel" (Figma node 48:241) — generada desde el diseño original de Figma.
 import { useState, type ReactNode, type SyntheticEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { usePatients } from '../../api/queries';
+import { fmtDate } from '../../lib/clinical';
 import imgCheckCircle2 from '../../assets/check-circle-2.svg';
 import imgClipboard4 from '../../assets/clipboard-4.svg';
 import imgClock from '../../assets/clock.svg';
@@ -38,10 +40,14 @@ const TABS = [
 
 type Pending = { patient: string; type: string; date: string; status: string; style: string };
 
+// No viene del seed: el backend no tiene reportes clínicos por paciente (CONEXION-BACKEND.md, pedido 14).
+// `GET /reports` es la bitácora del ETL. Estos son reportes inventados de los 8 pacientes del seed.
+const daysAgo = (n: number) => fmtDate(new Date(Date.now() - n * 86_400_000).toISOString());
+
 const PENDING: Pending[] = [
-  { patient: 'María González', type: 'Evolución Clínica', date: '24 Oct 2025', status: 'Pendiente revisión', style: 'bg-[#ffedd5] text-[#f97316]' },
-  { patient: 'Javier Mendoza', type: 'Alta Médica', date: '23 Oct 2025', status: 'Listo para entregar', style: 'bg-success-soft text-success' },
-  { patient: 'Sofía Martínez', type: 'Interconsulta', date: '22 Oct 2025', status: 'Pendiente firma', style: 'bg-[#f3f4f6] text-muted' },
+  { patient: 'Rogelio Batista Quintero', type: 'Evolución Clínica', date: daysAgo(0), status: 'Pendiente revisión', style: 'bg-[#ffedd5] text-[#f97316]' },
+  { patient: 'Paloma Esquivel Núñez', type: 'Alta Médica', date: daysAgo(0), status: 'Listo para entregar', style: 'bg-success-soft text-success' },
+  { patient: 'Teodoro Lasso Mejía', type: 'Interconsulta', date: daysAgo(0), status: 'Pendiente firma', style: 'bg-[#f3f4f6] text-muted' },
 ];
 
 const TYPE_STYLE = { CLÍNICO: 'bg-primary-soft text-primary', OPERATIVO: 'bg-success-soft text-success', ADMINISTRATIVO: 'bg-[#f3f4f6] text-muted' };
@@ -51,26 +57,17 @@ type Report = { file: string; type: keyof typeof TYPE_STYLE; date: string; by: s
 
 const r = (file: string, type: Report['type'], date: string, by: string, format: Report['format']): Report => ({ file, type, date, by, format });
 
+// Historial: reportes de los 8 pacientes desde que ingresaron, más los operativos de la unidad.
+// La paginación conserva el tamaño de página de Figma (5).
 const HISTORY: Report[] = [
-  r('Reporte_Clinico_PT-8821_Rodríguez.pdf', 'CLÍNICO', '24 Oct 2025', 'Dr. Roberto Silva', 'PDF'),
-  r('Resumen_Ocupacion_UCI_S42.xlsx', 'OPERATIVO', '23 Oct 2025', 'Sist. Administrativo', 'EXCEL'),
-  r('Analisis_Alertas_Criticas_Septiembre.pdf', 'ADMINISTRATIVO', '01 Oct 2025', 'Dr. Carlos Méndez', 'PDF'),
-  r('Evolucion_Mendoza_PT-8822.pdf', 'CLÍNICO', '29 Sep 2025', 'Dr. Roberto Silva', 'PDF'),
-  r('Consolidado_Farmacos_UCI_Q3.xlsx', 'OPERATIVO', '15 Sep 2025', 'Enf. Lucía Fernández', 'EXCEL'),
-  // Agregados para la paginación ("5 de 18"), datos de ejemplo.
-  r('Alta_Martinez_PT-8823.pdf', 'CLÍNICO', '12 Sep 2025', 'Dr. Carlos Méndez', 'PDF'),
-  r('Indicadores_Calidad_UCI_Agosto.xlsx', 'ADMINISTRATIVO', '05 Sep 2025', 'Sist. Administrativo', 'EXCEL'),
-  r('Interconsulta_Gomez_PT-8824.pdf', 'CLÍNICO', '30 Ago 2025', 'Dr. Roberto Silva', 'PDF'),
-  r('Resumen_Ocupacion_UCI_S34.xlsx', 'OPERATIVO', '25 Ago 2025', 'Sist. Administrativo', 'EXCEL'),
-  r('Evolucion_Fernandez_PT-8825.pdf', 'CLÍNICO', '19 Ago 2025', 'Dr. Carlos Méndez', 'PDF'),
-  r('Analisis_Alertas_Criticas_Julio.pdf', 'ADMINISTRATIVO', '01 Ago 2025', 'Dr. Carlos Méndez', 'PDF'),
-  r('Consolidado_Farmacos_UCI_Q2.xlsx', 'OPERATIVO', '15 Jul 2025', 'Enf. Lucía Fernández', 'EXCEL'),
-  r('Alta_Ruiz_PT-8826.pdf', 'CLÍNICO', '08 Jul 2025', 'Dr. Roberto Silva', 'PDF'),
-  r('Resumen_Ocupacion_UCI_S26.xlsx', 'OPERATIVO', '30 Jun 2025', 'Sist. Administrativo', 'EXCEL'),
-  r('Evolucion_Diaz_PT-8827.pdf', 'CLÍNICO', '22 Jun 2025', 'Dr. Carlos Méndez', 'PDF'),
-  r('Analisis_Alertas_Criticas_Mayo.pdf', 'ADMINISTRATIVO', '02 Jun 2025', 'Dr. Carlos Méndez', 'PDF'),
-  r('Interconsulta_Morales_PT-8828.pdf', 'CLÍNICO', '27 May 2025', 'Dr. Roberto Silva', 'PDF'),
-  r('Consolidado_Farmacos_UCI_Q1.xlsx', 'OPERATIVO', '15 Abr 2025', 'Enf. Lucía Fernández', 'EXCEL'),
+  r('Evolucion_Clinica_Montenegro_DEMO-0002.pdf', 'CLÍNICO', daysAgo(0), 'Dr. Carlos Méndez', 'PDF'),
+  r('Interconsulta_Vallejo_DEMO-0004.pdf', 'CLÍNICO', daysAgo(0), 'Dr. Carlos Méndez', 'PDF'),
+  r('Resumen_Ocupacion_UCI.xlsx', 'OPERATIVO', daysAgo(1), 'Sist. Administrativo', 'EXCEL'),
+  r('Evolucion_Clinica_Ruiz_DEMO-0003.pdf', 'CLÍNICO', daysAgo(1), 'Dr. Carlos Méndez', 'PDF'),
+  r('Evolucion_Clinica_Barrios_DEMO-0008.pdf', 'CLÍNICO', daysAgo(1), 'Dr. Carlos Méndez', 'PDF'),
+  r('Evolucion_Clinica_Esquivel_DEMO-0007.pdf', 'CLÍNICO', daysAgo(2), 'Dra. Ana Gómez', 'PDF'),
+  r('Consolidado_Farmacos_UCI.xlsx', 'OPERATIVO', daysAgo(6), 'Lic. Lucía Ramos', 'EXCEL'),
+  r('Analisis_Alertas_Criticas_Mensual.pdf', 'ADMINISTRATIVO', daysAgo(22), 'Dr. Carlos Méndez', 'PDF'),
 ];
 
 const TEMPLATES: Array<[string, string, string, string]> = [
@@ -78,8 +75,7 @@ const TEMPLATES: Array<[string, string, string, string]> = [
   [imgImageIcon, 'Reporte de Alta', 'Documento final con recomendaciones, medicación y seguimiento post-egreso.', 'Reporte de Alta'],
 ];
 
-// Opciones de "Generar Nuevo Reporte" (datos de ejemplo).
-const REPORT_PATIENTS = ['María González', 'Javier Mendoza', 'Sofía Martínez', 'Elena Rodríguez', 'Ricardo Gómez'];
+// Opciones de "Generar Nuevo Reporte": los pacientes salen de GET /patients.
 const REPORT_TYPES: Array<[string, Report['type']]> = [
   ['Evolución Clínica', 'CLÍNICO'],
   ['Reporte de Alta', 'CLÍNICO'],
@@ -91,11 +87,11 @@ const FORMATS = [
   { value: 'EXCEL', label: 'Excel' },
 ];
 
-const TODAY = '24 Oct 2025';
+const TODAY = daysAgo(0);
 const PAGE_SIZE = 5;
 const stop = (e: SyntheticEvent) => e.stopPropagation();
 
-/** "Evolución Clínica" + "María González" → "Evolucion_Clinica_Gonzalez.pdf" */
+/** "Evolución Clínica" + "Rogelio Batista Quintero" → "Evolucion_Clinica_Batista.pdf" */
 const fileName = (type: string, patient: string, format: Report['format']) => {
   const part = (s: string) =>
     s
@@ -142,7 +138,9 @@ export default function MedReportesPanel() {
   const [toDeliver, setToDeliver] = useState<Pending | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
-  const [draft, setDraft] = useState({ patient: REPORT_PATIENTS[0], type: REPORT_TYPES[0][0], format: 'PDF' as Report['format'] });
+  const patientNames = (usePatients().data?.items ?? []).map((p) => p.name);
+  const [draft, setDraft] = useState({ patient: '', type: REPORT_TYPES[0][0], format: 'PDF' as Report['format'] });
+  const draftPatient = draft.patient || patientNames[0] || '';
 
   const generated = history.length - HISTORY.length;
   const pages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
@@ -160,7 +158,7 @@ export default function MedReportesPanel() {
   };
   const generate = () => {
     const category = REPORT_TYPES.find(([t]) => t === draft.type)?.[1] ?? 'CLÍNICO';
-    const file = fileName(draft.type, draft.patient, draft.format);
+    const file = fileName(draft.type, draftPatient, draft.format);
     setHistory((h) => [{ file, type: category, date: TODAY, by: 'Dr. Carlos Méndez', format: draft.format }, ...h]);
     setPage(1);
     setGenerateOpen(false);
@@ -345,10 +343,10 @@ export default function MedReportesPanel() {
 
       <Modal labelledBy="generar-titulo" open={generateOpen} onClose={() => setGenerateOpen(false)} width={480} className="gap-4 p-5 shadow-xl sm:p-6">
         <ModalHeader id="generar-titulo" title="Generar nuevo reporte" onClose={() => setGenerateOpen(false)} />
-        <Select variant="input" fieldLabel="Paciente" options={REPORT_PATIENTS} value={draft.patient} onChange={(patient) => setDraft((d) => ({ ...d, patient }))} />
+        <Select variant="input" fieldLabel="Paciente" options={patientNames.length ? patientNames : ['—']} value={draftPatient} onChange={(patient) => setDraft((d) => ({ ...d, patient }))} />
         <Select variant="input" fieldLabel="Tipo de reporte" options={REPORT_TYPES.map(([t]) => t)} value={draft.type} onChange={(type) => setDraft((d) => ({ ...d, type }))} />
         <Select variant="input" fieldLabel="Formato" options={FORMATS} value={draft.format} onChange={(format) => setDraft((d) => ({ ...d, format: format as Report['format'] }))} />
-        <p className="break-all font-jakarta text-[12px] font-medium leading-[normal] text-muted">{`Archivo: ${fileName(draft.type, draft.patient, draft.format)}`}</p>
+        <p className="break-all font-jakarta text-[12px] font-medium leading-[normal] text-muted">{`Archivo: ${fileName(draft.type, draftPatient, draft.format)}`}</p>
         <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
           <Button variant="secondary" onClick={() => setGenerateOpen(false)}>
             Cancelar

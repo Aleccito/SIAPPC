@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { useWithPatient } from '../../lib/patientLink';
 import { cn } from '../../lib/cn';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'soft' | 'ghost' | 'danger' | 'warning' | 'success' | 'link';
@@ -49,9 +50,10 @@ type ButtonAsLink = CommonProps & { to: string; onClick?: () => void; 'aria-labe
 
 export type ButtonProps = ButtonAsButton | ButtonAsLink;
 
-/** Botón del diseño. Con `to` se comporta como enlace a otra pantalla. */
+/** Botón del diseño. Con `to` se comporta como enlace a otra pantalla (y conserva el paciente del expediente). */
 export function Button(props: ButtonProps) {
   const { variant = 'primary', size = 'md', icon, iconRight, fullWidth, className, children } = props;
+  const keepPatient = useWithPatient();
   const classes = cn(base, variants[variant], variant === 'link' ? linkSizes[size] : sizes[size], fullWidth && 'w-full', className);
   const content = (
     <>
@@ -63,7 +65,7 @@ export function Button(props: ButtonProps) {
 
   if (props.to !== undefined) {
     return (
-      <Link to={props.to} onClick={props.onClick} aria-label={props['aria-label']} title={props.title} className={classes}>
+      <Link to={keepPatient(props.to)} onClick={props.onClick} aria-label={props['aria-label']} title={props.title} className={classes}>
         {content}
       </Link>
     );

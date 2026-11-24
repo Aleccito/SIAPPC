@@ -1,14 +1,16 @@
 # Conectar el prototipo con el backend real — plan
 
-> **Estado: plan, sin código.** Se ejecuta después del paso de IA (`REVISION-IA.md`). Hasta entonces el prototipo
-> corre en modo `mock` y lo publicado en https://prototipo.melo-coton.uk no necesita backend.
+> **Estado: plan; la base ya está en el código (PR 2 de `REVISION-IA.md`).** Existen `src/api/`, el interruptor
+> `VITE_API_MODE` (`src/api/mode.ts`, `.env.example`) y el proxy de `/api` en `vite.config.ts`. Falta conectar grupo
+> por grupo (sección 6), después del paso de IA. Hasta entonces el prototipo corre en modo `mock` y lo publicado en
+> https://prototipo.melo-coton.uk no necesita backend.
 
 Fuentes: `backend/src/routes/*.ts`, `backend/src/plugins/auth.ts`, `backend/prisma/schema.prisma`,
 `backend/db/seed.sql`, `docker-compose.yml` y, en `frontend/`, `src/shared/api/http.ts`, `src/modules/registry.ts`,
 `src/modules/auth/*` y los `api/*.ts` y `types.ts` de cada módulo.
 
-Punto de partida (lo deja hecho el paso de IA): las pantallas solo hablan con `src/api/`, cuyos servicios son copias
-de los de `frontend/`; un interruptor `VITE_API_MODE=mock|real` decide si `send()` va al simulador o a `/api`.
+Punto de partida (hecho en el PR 2): las pantallas solo hablan con `src/api/`, cuyos servicios son copias de los de
+`frontend/`; el interruptor `VITE_API_MODE=mock|real|mixto` decide si `send()` va al simulador o a `/api`.
 
 ---
 
@@ -19,17 +21,14 @@ El backend sirve sus rutas en la raíz, así que el proxy quita el prefijo.
 
 ### En desarrollo: proxy de Vite
 
+Ya está en `prototipo/vite.config.ts` (igual que en `frontend/`); en modo mock no llega nada a `/api`:
+
 ```ts
-// prototipo/vite.config.ts
-server: {
-  port: 5173,
-  strictPort: true,
-  proxy: {
-    '/api': {
-      target: process.env.BACKEND_URL ?? 'http://localhost:3001',
-      changeOrigin: true,
-      rewrite: (path) => path.replace(/^\/api/, ''),
-    },
+proxy: {
+  '/api': {
+    target: 'http://localhost:3001',
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api/, ''),
   },
 },
 ```
@@ -231,7 +230,9 @@ VITE_API_REAL=auth,dashboard,patients # solo estos grupos de rutas van al backen
 
 `http.ts` decide por el inicio de la ruta (`/auth`, `/dashboard`, `/patients`, `/historia`, `/soap`, `/monitoring`,
 `/sensors`, `/alerts`, `/notifications`, `/reports`, `/search`, `/ai`). En modo mixto los ids del simulador y los del
-backend no coinciden, pero las pantallas se hablan por cédula, que es la misma en los dos (DEMO-0001…).
+backend no coinciden, pero las pantallas se hablan por cédula, que es la misma en los dos (DEMO-0001…). Con `auth`
+en el backend, el simulador acepta el JWT real y toma el rol de su carga (`src/api/mock/session.ts`), así que los
+grupos que siguen simulados responden con los permisos de quien entró.
 
 Para cada grupo, el PR que lo conecta:
 1. Lo agrega a `VITE_API_REAL` en `.env.development` y prueba contra el backend con el seed de demo.

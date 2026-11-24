@@ -1,7 +1,11 @@
 // Pantalla "med/paciente/config-umbrales" (Figma node 140:259) — generada desde el diseño original de Figma.
 // Paso 3: Mín/Máx son campos numéricos. Cada signo activo necesita al menos un límite, dentro de su rango
 // posible y con el mínimo menor que el máximo (REVISION.md, paso 3, punto 4).
+// El backend no tiene umbrales por paciente (los de backend/src/services/mqttIngest.ts son iguales para
+// todos): se guardan por paciente en src/api/sinBackend.ts. Los sugeridos son los de Figma.
 import { Fragment, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { getUmbrales, saveUmbrales, useExtra, type Umbrales } from '../../api/sinBackend';
 import imgActivity7 from '../../assets/activity-7.svg';
 import imgBulletItemEllipse from '../../assets/bullet-item-ellipse.svg';
 import imgChevronDown from '../../assets/chevron-down.svg';
@@ -13,7 +17,7 @@ import imgToggleSwitch from '../../assets/toggle-switch.svg';
 import imgToggleSwitch2 from '../../assets/toggle-switch-2.svg';
 import imgTrendingUp from '../../assets/trending-up.svg';
 import imgWind from '../../assets/wind.svg';
-import { BackButton, Button, Card, FieldError, focusFirst, NumberField, PatientLayout, Select, Table, useToast, useValidation } from '../../components';
+import { BackButton, Button, Card, FieldError, focusFirst, NumberField, PatientLayout, Select, Table, usePatient, useToast, useValidation, type PatientView } from '../../components';
 import { cn } from '../../lib/cn';
 import { checkNumber, parseNumber, VITAL_RANGES, type NumberRule } from '../../lib/validate';
 
@@ -65,9 +69,6 @@ const initialSeverity = () => ROWS.map((r) => r.severity);
 const initialEnabled = () => ROWS.map((r) => r.enabled);
 const initialLimits = (): Limits[] => ROWS.map((r) => ({ min: r.min ?? '', max: r.max ?? '' }));
 
-// Lo guardado se conserva mientras no se recargue la página (sin backend).
-let saved: { severity: string[]; enabled: boolean[]; limits: Limits[] } | null = null;
-
 /** Errores de una fila activa: cada límite en su rango y, si hay dos, el mínimo menor que el máximo. */
 function rowErrors(l: Limits, r: (typeof ROWS)[number], on: boolean) {
   if (!on) return { min: null, max: null };
@@ -83,7 +84,18 @@ function rowErrors(l: Limits, r: (typeof ROWS)[number], on: boolean) {
 }
 
 export default function MedPacienteConfigUmbrales() {
+  const { view } = usePatient();
+  const saved = useExtra('umbrales', view?.cedula, getUmbrales);
+  return (
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Umbrales`} title="Configuración de Umbrales de Alarma" tab="monitoreo" actions={<BackButton />}>
+      {view && saved.isSuccess && <UmbralesForm key={view.cedula} v={view} saved={saved.data} />}
+    </PatientLayout>
+  );
+}
+
+function UmbralesForm({ v, saved }: { v: PatientView; saved: Umbrales | null }) {
   const toast = useToast();
+  const queryClient = useQueryClient();
   const [severity, setSeverity] = useState(() => saved?.severity ?? initialSeverity());
   const [enabled, setEnabled] = useState(() => saved?.enabled ?? initialEnabled());
   const [limits, setLimits] = useState(() => saved?.limits ?? initialLimits());
@@ -99,7 +111,7 @@ export default function MedPacienteConfigUmbrales() {
     ) as Record<string, () => string | null>,
   );
   const setLimit = (i: number, key: keyof Limits, v: string) => setLimits((all) => all.map((l, j) => (j === i ? { ...l, [key]: v } : l)));
-  const save = () => {
+  const save = async () => {
     form.markAll();
     const bad = Object.keys(form.errors).find((k) => form.errors[k]);
     if (bad) {
@@ -107,13 +119,13 @@ export default function MedPacienteConfigUmbrales() {
       focusFirst([bad]);
       return;
     }
-    saved = { severity, enabled, limits };
-    toast('Umbrales guardados');
+    await saveUmbrales(v.cedula, { severity, enabled, limits });
+    await queryClient.invalidateQueries({ queryKey: ['sinBackend', 'umbrales', v.cedula] });
+    toast(`Umbrales guardados · ${v.name}`);
   };
   const update = <T,>(set: (fn: (prev: T[]) => T[]) => void, i: number, value: T) => set((prev) => prev.map((x, j) => (j === i ? value : x)));
 
   return (
-    <PatientLayout breadcrumb="SIAPPC > Pacientes > María González > Umbrales" title="Configuración de Umbrales de Alarma" tab="monitoreo" actions={<BackButton />}>
       <Card padding="lg" className="flex w-full flex-col gap-5 drop-shadow-[0px_4px_6px_rgba(0,0,0,0.01)]">
         <div className="flex w-full flex-col gap-1.5 leading-[normal]">
           <h2 className="font-jakarta text-[16px] font-extrabold text-ink">Configuración de Parámetros Clínicos</h2>
@@ -217,11 +229,10 @@ export default function MedPacienteConfigUmbrales() {
           >
             Restablecer valores sugeridos
           </Button>
-          <Button size="lg" onClick={save}>
+          <Button size="lg" onClick={() => void save()}>
             Guardar Configuración
           </Button>
         </div>
       </Card>
-    </PatientLayout>
   );
 }

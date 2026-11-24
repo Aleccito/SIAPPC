@@ -1,7 +1,10 @@
 // Pantalla "med/paciente/interrogatorio-aparatos" (Figma node 183:6) — generada desde el diseño original de Figma.
 // Paso 3: las observaciones se escriben. Son obligatorias (10 a 1000 caracteres) en los aparatos con
 // síntomas marcados (REVISION.md, paso 3, punto 8).
+// El backend no tiene interrogatorio: lo marcado de cada paciente sale de src/api/sinBackend.ts.
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { getInterrogatorio, saveInterrogatorio, useExtra, type Interrogatorio } from '../../api/sinBackend';
 import imgActivity3 from '../../assets/activity-3.svg';
 import imgBone from '../../assets/bone.svg';
 import imgBrain from '../../assets/brain.svg';
@@ -10,43 +13,48 @@ import imgCircleX from '../../assets/circle-x.svg';
 import imgDroplet from '../../assets/droplet.svg';
 import imgIconWrapper from '../../assets/icon-wrapper.svg';
 import imgSparkles from '../../assets/sparkles.svg';
-import { BackButton, Badge, Button, Card, Divider, focusFirst, PatientLayout, rowButton, TextArea, useToast, useValidation } from '../../components';
+import { BackButton, Badge, Button, Card, Divider, focusFirst, PatientLayout, rowButton, TextArea, usePatient, useToast, useValidation, type PatientView } from '../../components';
 import { checkText } from '../../lib/validate';
 import { cn } from '../../lib/cn';
 
-type System = { icon: string; title: string; symptoms: string[]; checked: string[]; notes: string };
+type System = { icon: string; title: string; symptoms: string[] };
 
-// Respiratorio y Cardiovascular vienen abiertos y con hallazgos, como en Figma; los
-// síntomas de los demás aparatos son de ejemplo (sin marcar).
+// Aparatos y síntomas que se pueden marcar. Se agregaron los que usan los 8 pacientes del seed
+// (dolor lumbar, confusión, síncope, dolor y deformidad).
 const SYSTEMS: System[] = [
-  {
-    icon: imgCircleX,
-    title: 'Aparato Respiratorio',
-    symptoms: ['Disnea', 'Tos', 'Expectoración', 'Hemoptisis', 'Dolor torácico', 'Sibilancias'],
-    checked: ['Disnea', 'Tos', 'Dolor torácico', 'Sibilancias'],
-    notes: 'Paciente refiere disnea de medianos esfuerzos que progresa a pequeños esfuerzos. Tos esporádica no productiva, acompañada de sibilancias inspiratorias ocasionales y dolor torácico opresivo leve.',
-  },
-  {
-    icon: imgIconWrapper,
-    title: 'Aparato Cardiovascular',
-    symptoms: ['Dolor precordial', 'Palpitaciones', 'Edema', 'Disnea de esfuerzo', 'Claudicación'],
-    checked: ['Dolor precordial', 'Palpitaciones', 'Edema', 'Disnea de esfuerzo'],
-    notes: 'Se constata edema bilateral de miembros inferiores, grado II. Paciente refiere palpitaciones recurrentes tras mínimos esfuerzos y ortopnea.',
-  },
-  { icon: imgCircleX, title: 'Aparato Digestivo', symptoms: ['Náuseas', 'Vómito', 'Dolor abdominal', 'Diarrea', 'Estreñimiento'], checked: [], notes: '' },
-  { icon: imgDroplet, title: 'Aparato Genitourinario', symptoms: ['Disuria', 'Poliuria', 'Hematuria', 'Oliguria'], checked: [], notes: '' },
-  { icon: imgBone, title: 'Sistema Músculo-esquelético', symptoms: ['Artralgias', 'Mialgias', 'Rigidez', 'Debilidad'], checked: [], notes: '' },
-  { icon: imgBrain, title: 'Sistema Neurológico', symptoms: ['Cefalea', 'Mareo', 'Convulsiones', 'Parestesias'], checked: [], notes: '' },
-  { icon: imgActivity3, title: 'Sistema Endocrino', symptoms: ['Polidipsia', 'Intolerancia al frío', 'Intolerancia al calor', 'Cambios de peso'], checked: [], notes: '' },
-  { icon: imgSparkles, title: 'Piel y Anexos', symptoms: ['Prurito', 'Exantema', 'Cambios de coloración', 'Lesiones'], checked: [], notes: '' },
+  { icon: imgCircleX, title: 'Aparato Respiratorio', symptoms: ['Disnea', 'Tos', 'Expectoración', 'Hemoptisis', 'Dolor torácico', 'Sibilancias'] },
+  { icon: imgIconWrapper, title: 'Aparato Cardiovascular', symptoms: ['Dolor precordial', 'Palpitaciones', 'Edema', 'Disnea de esfuerzo', 'Claudicación', 'Síncope'] },
+  { icon: imgCircleX, title: 'Aparato Digestivo', symptoms: ['Náuseas', 'Vómito', 'Dolor abdominal', 'Diarrea', 'Estreñimiento'] },
+  { icon: imgDroplet, title: 'Aparato Genitourinario', symptoms: ['Disuria', 'Poliuria', 'Hematuria', 'Oliguria', 'Dolor lumbar'] },
+  { icon: imgBone, title: 'Sistema Músculo-esquelético', symptoms: ['Artralgias', 'Mialgias', 'Rigidez', 'Debilidad', 'Dolor', 'Deformidad'] },
+  { icon: imgBrain, title: 'Sistema Neurológico', symptoms: ['Cefalea', 'Mareo', 'Confusión', 'Convulsiones', 'Parestesias'] },
+  { icon: imgActivity3, title: 'Sistema Endocrino', symptoms: ['Polidipsia', 'Intolerancia al frío', 'Intolerancia al calor', 'Cambios de peso'] },
+  { icon: imgSparkles, title: 'Piel y Anexos', symptoms: ['Prurito', 'Exantema', 'Cambios de coloración', 'Lesiones'] },
 ];
 
 const FindingsBadge = ({ count }: { count: number }) => (count > 0 ? <Badge tone="warning">Con hallazgos</Badge> : <Badge tone="success">Normal</Badge>);
 
 export default function MedPacienteInterrogatorioAparatos() {
+  const { view } = usePatient();
+  const data = useExtra('interrogatorio', view?.cedula, getInterrogatorio);
+  return (
+    <PatientLayout
+      breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Interrogatorio`}
+      title="Interrogatorio por Aparatos y Sistemas"
+      tab="historia"
+      actions={<BackButton />}
+    >
+      {view && data.data && <InterrogatorioForm key={view.cedula} v={view} data={data.data} />}
+    </PatientLayout>
+  );
+}
+
+function InterrogatorioForm({ v, data }: { v: PatientView; data: Interrogatorio }) {
   const toast = useToast();
-  const [open, setOpen] = useState(() => new Set(SYSTEMS.slice(0, 2).map((s) => s.title)));
-  const [checked, setChecked] = useState(() => new Map(SYSTEMS.map((s) => [s.title, new Set(s.checked)])));
+  const queryClient = useQueryClient();
+  // Abiertos: los aparatos con síntomas marcados.
+  const [open, setOpen] = useState(() => new Set(SYSTEMS.filter((s) => data[s.title]?.marcados.length).map((s) => s.title)));
+  const [checked, setChecked] = useState(() => new Map(SYSTEMS.map((s) => [s.title, new Set(data[s.title]?.marcados ?? [])])));
 
   const toggleOpen = (title: string) =>
     setOpen((prev) => {
@@ -65,7 +73,7 @@ export default function MedPacienteInterrogatorioAparatos() {
       return next;
     });
 
-  const [notes, setNotes] = useState(() => SYSTEMS.map((s) => s.notes));
+  const [notes, setNotes] = useState(() => SYSTEMS.map((s) => data[s.title]?.notas ?? ''));
   // Observaciones obligatorias solo en los aparatos con algún síntoma marcado.
   const form = useValidation(
     Object.fromEntries(
@@ -75,7 +83,7 @@ export default function MedPacienteInterrogatorioAparatos() {
       ]),
     ) as Record<string, () => string | null>,
   );
-  const save = () => {
+  const save = async () => {
     form.markAll();
     const bad = SYSTEMS.findIndex((_, i) => form.errors[`obs-${i}`]);
     if (bad >= 0) {
@@ -85,16 +93,16 @@ export default function MedPacienteInterrogatorioAparatos() {
       requestAnimationFrame(() => focusFirst([`obs-${bad}`]));
       return;
     }
+    const next: Interrogatorio = Object.fromEntries(
+      SYSTEMS.map((s, i) => [s.title, { marcados: [...(checked.get(s.title) ?? [])], notas: notes[i].trim() }]).filter(([, x]) => typeof x !== 'string' && (x.marcados.length || x.notas)),
+    );
+    await saveInterrogatorio(v.cedula, next);
+    await queryClient.invalidateQueries({ queryKey: ['sinBackend', 'interrogatorio', v.cedula] });
     toast('Interrogatorio guardado');
   };
 
   return (
-    <PatientLayout
-      breadcrumb="SIAPPC > Pacientes > María González > Historia Clínica > Interrogatorio"
-      title="Interrogatorio por Aparatos y Sistemas"
-      tab="historia"
-      actions={<BackButton />}
-    >
+    <>
       <div className="flex w-full flex-col gap-3">
         {SYSTEMS.map((s, i) => {
           const marks = checked.get(s.title) ?? new Set<string>();
@@ -171,10 +179,10 @@ export default function MedPacienteInterrogatorioAparatos() {
       </div>
 
       <div className="flex w-full justify-end pt-3">
-        <Button size="lg" onClick={save}>
+        <Button size="lg" onClick={() => void save()}>
           Guardar Interrogatorio
         </Button>
       </div>
-    </PatientLayout>
+    </>
   );
 }

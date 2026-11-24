@@ -1,7 +1,7 @@
 // Pantalla "SIAPPC - MFA" (Figma node 345:426, página LOGIN), con la tarjeta del Login (REVISION.md, punto 5).
 // Sin backend: cualquier código de 6 dígitos pasa.
 import { useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import imgShield from '../../assets/login-shield.svg';
 import { AuthBackLink, AuthButton, AuthCard, AuthLayout, useAuthText, useCountdown, useToast } from '../../components';
 import { cn } from '../../lib/cn';
@@ -10,6 +10,7 @@ const LENGTH = 6;
 
 export default function LoginMfa() {
   const navigate = useNavigate();
+  const volver = (useLocation().state as { volver?: string } | null)?.volver;
   const toast = useToast();
   const { t } = useAuthText();
   const { left, label, restart } = useCountdown(45);
@@ -54,7 +55,8 @@ export default function LoginMfa() {
       return;
     }
     toast(t.welcome);
-    navigate('/MedDashboardPrincipal');
+    // Vuelve a la pantalla que pidió el Login, si la hubo (sesión vencida o enlace directo).
+    navigate(volver ?? '/MedDashboardPrincipal', { replace: true });
   };
 
   return (

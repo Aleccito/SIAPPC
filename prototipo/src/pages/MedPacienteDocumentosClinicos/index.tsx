@@ -1,5 +1,10 @@
 // Pantalla "med/paciente/documentos-clinicos" (Figma node 191:553) — generada desde el diseño original de Figma.
+// Documentos del expediente (GET /historia/:id, `documentos`). "Subir" registra la ficha con
+// POST /historia/:id/documentos: el backend todavía no guarda el archivo (CONEXION-BACKEND.md, pedido 15).
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ApiError, request } from '../../api/http';
+import type { HistoriaEntry } from '../../api/types/clinical';
 import imgFileText7 from '../../assets/file-text-7.svg';
 import imgImageIcon from '../../assets/image-icon.svg';
 import imgLabIcon from '../../assets/lab-icon.svg';
@@ -14,40 +19,79 @@ import {
   PatientLayout,
   rowButton,
   UploadDocumentModal,
+  usePatient,
   useToast,
   type DocumentType,
+  type PatientView,
 } from '../../components';
+import { fmtDate, staffName } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 
 const FILTERS = ['Todos', 'Laboratorio', 'Imagen', 'Consentimiento', 'Otro'];
 
-type Doc = { icon: string; title: string; type: DocumentType; by: string; note: string };
+type Doc = { id: string; icon: string; title: string; type: DocumentType; by: string; note: string; date: string };
 
 const ICON: Record<DocumentType, string> = { Consentimiento: imgFileText7, Laboratorio: imgLabIcon, Imagen: imgImageIcon, Otro: imgFileText7 };
 
-const DOCS: Doc[] = [
-  { icon: imgFileText7, title: 'Consentimiento Informado', type: 'Consentimiento', by: 'Admisión', note: 'Firmado por paciente y familiar responsable al ingreso UCI' },
-  { icon: imgLabIcon, title: 'Resultados de Laboratorio - 23 Oct 2025', type: 'Laboratorio', by: 'Dr. Carlos Méndez', note: 'BH completa, QS, electrolitos séricos, gasometría arterial. Valores críticos marcados.' },
-  { icon: imgImageIcon, title: 'Radiografía de Tórax AP', type: 'Imagen', by: 'Radiología', note: 'Infiltrados bilaterales basales compatibles con edema pulmonar. Comparar con estudio previo 18 Oct.' },
-  { icon: imgImageIcon, title: 'Ecocardiograma Transtorácico', type: 'Imagen', by: 'Cardiología', note: 'FEVI 35%, hipocinesia global. Insuficiencia mitral moderada.' },
-];
+/** `TipoDocumento` del backend ⇄ los filtros de la pantalla. */
+const FROM_API: Record<string, DocumentType> = { laboratorio: 'Laboratorio', imagenologia: 'Imagen', consentimiento: 'Consentimiento' };
+const TO_API: Record<DocumentType, string> = { Laboratorio: 'laboratorio', Imagen: 'imagenologia', Consentimiento: 'consentimiento', Otro: 'otro' };
+
+function toDoc(e: HistoriaEntry): Doc {
+  const type = FROM_API[String(e.type)] ?? 'Otro';
+  return {
+    id: e.id,
+    icon: ICON[type],
+    title: String(e.title),
+    type,
+    // `uploadedBy` lo agrega el simulador; el backend guarda quién lo registró pero no lo devuelve.
+    by: staffName((e.uploadedBy as string | undefined) ?? null),
+    note: String(e.description ?? ''),
+    date: fmtDate((e.documentedOn as string | null) ?? null),
+  };
+}
 
 export default function MedPacienteDocumentosClinicos() {
-  const toast = useToast();
-  const [filter, setFilter] = useState('Todos');
-  const [docs, setDocs] = useState(DOCS);
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [preview, setPreview] = useState<Doc | null>(null);
-  const shown = docs.filter((d) => filter === 'Todos' || d.type === filter);
-  const download = (title: string) => toast(`Descargando ${title}`, 'info');
-
+  const { view } = usePatient();
   return (
     <PatientLayout
-      breadcrumb="SIAPPC > Pacientes > María González > Historia Clínica > Documentos"
+      breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Documentos`}
       title="Documentos Clínicos Adjuntos"
       tab="documentos"
       actions={<BackButton />}
     >
+      {view && <Documentos v={view} />}
+    </PatientLayout>
+  );
+}
+
+function Documentos({ v }: { v: PatientView }) {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [filter, setFilter] = useState('Todos');
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [preview, setPreview] = useState<Doc | null>(null);
+  const docs = (v.expediente?.documentos ?? []).map(toDoc);
+  const shown = docs.filter((d) => filter === 'Todos' || d.type === filter);
+  const download = (title: string) => toast(`Descargando ${title}`, 'info');
+
+  const upload = async (type: DocumentType, name: string) => {
+    try {
+      await request(`/historia/${v.id}/documentos`, {
+        method: 'POST',
+        body: JSON.stringify({ type: TO_API[type], title: name, description: 'Subido hace un momento.', documentedOn: new Date().toISOString().slice(0, 10), uploadedBy: 'Carlos Méndez' }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ['expediente', v.id] });
+      setUploadOpen(false);
+      setFilter('Todos');
+      toast(`Documento subido · ${name}`);
+    } catch (e) {
+      toast(e instanceof ApiError && e.status === 403 ? 'Su rol no puede subir documentos' : 'No se pudo subir el documento', 'info');
+    }
+  };
+
+  return (
+    <>
       <div className="flex w-full flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
           {FILTERS.map((f) => (
@@ -73,13 +117,13 @@ export default function MedPacienteDocumentosClinicos() {
       <div className="flex w-full flex-1 flex-col items-stretch gap-5 xl:flex-row">
         <ul className="flex w-full min-w-0 flex-col gap-3 xl:flex-1">
           {shown.map((d) => (
-            <li key={d.title}>
+            <li key={d.id}>
               <Card padding="sm" className="flex w-full flex-col gap-3 sm:flex-row sm:items-start">
                 <div className="flex min-w-0 flex-1 items-start gap-3">
                   <img className="size-10 shrink-0" alt="" src={d.icon} />
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5 leading-[normal]">
                     <p className="break-words font-jakarta text-[14px] font-bold text-ink">{d.title}</p>
-                    <p className="font-jakarta text-[11px] font-medium text-muted">{`Tipo: ${d.type} · Subido por: ${d.by}`}</p>
+                    <p className="font-jakarta text-[11px] font-medium text-muted">{`Tipo: ${d.type} · Subido por: ${d.by} · ${d.date}`}</p>
                     <p className="font-jakarta text-[11px] font-medium italic text-muted">{d.note}</p>
                   </div>
                 </div>
@@ -97,7 +141,11 @@ export default function MedPacienteDocumentosClinicos() {
           {shown.length === 0 && (
             <li>
               <Card padding="none">
-                <EmptyState message={`Sin documentos de tipo ${filter}.`} onReset={() => setFilter('Todos')} />
+                {docs.length === 0 ? (
+                  <p className="p-4 font-jakarta text-[13px] text-muted">Este paciente todavía no tiene documentos.</p>
+                ) : (
+                  <EmptyState message={`Sin documentos de tipo ${filter}.`} onReset={() => setFilter('Todos')} />
+                )}
               </Card>
             </li>
           )}
@@ -122,12 +170,7 @@ export default function MedPacienteDocumentosClinicos() {
       <UploadDocumentModal
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
-        onUpload={({ type, name }) => {
-          setUploadOpen(false);
-          setDocs((all) => [{ icon: ICON[type], title: name, type, by: 'Dr. Carlos Méndez', note: 'Subido hace un momento.' }, ...all]);
-          setFilter('Todos');
-          toast(`Documento subido · ${name}`);
-        }}
+        onUpload={({ type, name }) => void upload(type, name)}
       />
       <DocumentPreview
         open={preview !== null}
@@ -135,7 +178,7 @@ export default function MedPacienteDocumentosClinicos() {
         meta={
           preview
             ? [
-                ['Paciente', 'María González'],
+                ['Paciente', v.name],
                 ['Tipo', preview.type],
                 ['Subido por', preview.by],
                 ['Nota', preview.note],
@@ -145,6 +188,6 @@ export default function MedPacienteDocumentosClinicos() {
         onClose={() => setPreview(null)}
         onDownload={() => preview && download(preview.title)}
       />
-    </PatientLayout>
+    </>
   );
 }

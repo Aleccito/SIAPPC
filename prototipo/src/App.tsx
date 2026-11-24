@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './components';
+import { SessionProvider } from './components/auth/session';
 import MedAlertasCentro from './pages/MedAlertasCentro';
 import MedAlertasConfirmacionAtencion from './pages/MedAlertasConfirmacionAtencion';
 import MedAyudaSoporte from './pages/MedAyudaSoporte';
@@ -45,6 +46,8 @@ function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
+      {/* Sin sesión, las pantallas de adentro mandan al Login (components/auth/session.tsx). */}
+      <SessionProvider>
       <Routes>
         {/* Pantallas de acceso (página LOGIN de Figma). "/" abre el Login. */}
         <Route path="/" element={<Login />} />
@@ -91,6 +94,7 @@ function App() {
         <Route path="/MedTurnoResumenRecibido" element={<MedTurnoResumenRecibido />} />
         <Route path="/Notificaciones" element={<Notificaciones />} />
       </Routes>
+      </SessionProvider>
       </ToastProvider>
     </BrowserRouter>
   );

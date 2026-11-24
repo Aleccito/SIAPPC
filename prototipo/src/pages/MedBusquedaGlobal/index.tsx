@@ -1,13 +1,21 @@
 // Pantalla "med/busqueda/global" (Figma node 245:498) — generada desde el diseño original de Figma.
+// GET /search?q= con las reglas del backend: paciente por nombre o cédula, nota SOAP por su texto y
+// documento por su título. Abre con "Batista" (un paciente, una nota y un documento del seed de demo).
 import { useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { usePatients } from '../../api/queries';
+import { search } from '../../api/search';
 import imgClipboard2 from '../../assets/clipboard-2.svg';
 import imgFile from '../../assets/file.svg';
 import imgUser2 from '../../assets/user-2.svg';
 import imgUser3 from '../../assets/user-3.svg';
 import { AppLayout, Badge, Button, Card, EmptyState, SearchBox, Tabs } from '../../components';
-import { matches } from '../../lib/text';
+import { fmtDate, surnameFirst } from '../../lib/clinical';
+import { patientPath } from '../../lib/patientLink';
 
 type Kind = 'patients' | 'soap' | 'docs';
+const DEFAULT_QUERY = 'Batista';
 
 function ResultCard({ icon, iconBg, children, actions }: { icon: string; iconBg: string; children: ReactNode; actions: ReactNode }) {
   return (
@@ -29,99 +37,75 @@ const Meta = ({ label, value }: { label: string; value: string }) => (
   </p>
 );
 
-// Cada resultado lleva el texto con el que se busca. Todos los expedientes son el de ejemplo.
-const RESULTS: Array<{ id: string; kind: Kind; search: string; card: ReactNode }> = [
-  {
-    id: 'maria',
-    kind: 'patients',
-    search: 'María González PT-8821 Insuficiencia Cardíaca Congestiva UCI Cama D3',
-    card: (
-      <ResultCard
-        icon={imgUser2}
-        iconBg="bg-primary-soft"
-        actions={
-          <>
-            <Button variant="secondary" to="/MedPacienteDatosPersonales">Ver Perfil</Button>
-            <Button to="/MedPacienteMonitoreoDetallado">Monitoreo</Button>
-          </>
-        }
-      >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="font-jakarta text-[16px] font-bold leading-[normal] text-ink">María González</p>
-          <Badge tone="danger">Crítico</Badge>
-          <Badge tone="info">UCI Cama D3</Badge>
-        </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          <Meta label="HC:" value="PT-8821" />
-          <Meta label="Diagnóstico:" value="Insuficiencia Cardíaca Congestiva" />
-        </div>
-      </ResultCard>
-    ),
-  },
-  {
-    id: 'roberto',
-    kind: 'patients',
-    search: 'Roberto González Vega PT-4412 Fractura femoral expuesta Piso 2 Cama 8',
-    card: (
-      <ResultCard
-        icon={imgUser3}
-        iconBg="bg-success-soft"
-        actions={
-          <>
-            <Button variant="secondary" to="/MedPacienteDatosPersonales">Ver Perfil</Button>
-            <Button variant="secondary" to="/MedPacienteHistoriaClinicaGeneral">Ver Historia</Button>
-          </>
-        }
-      >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="font-jakarta text-[16px] font-bold leading-[normal] text-ink">Roberto González Vega</p>
-          <Badge tone="success">Estable</Badge>
-          <Badge tone="neutral">Piso 2 Cama 8</Badge>
-        </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          <Meta label="HC:" value="PT-4412" />
-          <Meta label="Diagnóstico:" value="Fractura femoral expuesta" />
-        </div>
-      </ResultCard>
-    ),
-  },
-  {
-    id: 'nota',
-    kind: 'soap',
-    search: 'Nota SOAP González María deterioro hemodinámico presión pulmonar',
-    card: (
-      <ResultCard icon={imgClipboard2} iconBg="bg-warning-soft" actions={<Button variant="secondary" to="/MedPacienteNotasSoapDetalle">Ver Nota</Button>}>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 leading-[normal]">
-          <p className="font-jakarta text-[16px] font-bold text-ink">Nota SOAP — González, María</p>
-          <p className="font-jakarta text-[12px] font-normal text-muted">15 Oct 2025</p>
-        </div>
-        <p className="max-w-[700px] truncate font-jakarta text-[13px] font-normal leading-[normal] text-muted">
-          "Paciente presenta deterioro hemodinámico, con elevación de presión pulmonar capilar. Se incrementa dosis de soporte..."
-        </p>
-      </ResultCard>
-    ),
-  },
-  {
-    id: 'tac',
-    kind: 'docs',
-    search: 'TAC_Gonzalez_Maria.pdf Radiología Imagenología UCI',
-    card: (
-      <ResultCard icon={imgFile} iconBg="bg-[rgba(239,68,68,0.1)]" actions={<Button variant="secondary" to="/MedPacienteDocumentosClinicos">Ver Documento</Button>}>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="break-all font-jakarta text-[16px] font-bold leading-[normal] text-ink">TAC_Gonzalez_Maria.pdf</p>
-          <Badge tone="danger" size="sm">PDF</Badge>
-        </div>
-        <p className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">Subido el 12 Oct 2025 • Radiología &amp; Imagenología UCI</p>
-      </ResultCard>
-    ),
-  },
-];
-
 export default function MedBusquedaGlobal() {
+  const [params] = useSearchParams();
   const [tab, setTab] = useState('all');
-  const [query, setQuery] = useState('González');
+  const [query, setQuery] = useState(params.get('q') ?? DEFAULT_QUERY);
+  const q = query.trim();
+  // Mientras llega la respuesta nueva se siguen viendo los resultados anteriores.
+  const response = useQuery({ queryKey: ['search', q], queryFn: () => search(q), enabled: q.length >= 2, placeholderData: keepPreviousData });
+  const patients = usePatients();
+  const cedulaOf = (id: string) => patients.data?.items.find((p) => p.id === id)?.document ?? '';
+  const data = q.length >= 2 ? response.data : undefined;
 
-  const found = RESULTS.filter((r) => matches(query, r.search));
+  const found: Array<{ id: string; kind: Kind; card: ReactNode }> = [
+    ...(data?.patients ?? []).map((p) => ({
+      id: `p-${p.id}`,
+      kind: 'patients' as const,
+      card: (
+        <ResultCard
+          icon={p.critical ? imgUser2 : imgUser3}
+          iconBg={p.critical ? 'bg-primary-soft' : 'bg-success-soft'}
+          actions={
+            <>
+              <Button variant="secondary" to={patientPath('/MedPacienteDatosPersonales', p.document)}>
+                Ver Perfil
+              </Button>
+              <Button to={patientPath('/MedPacienteMonitoreoDetallado', p.document)}>Monitoreo</Button>
+            </>
+          }
+        >
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="font-jakarta text-[16px] font-bold leading-[normal] text-ink">{p.name}</p>
+            <Badge tone={p.critical ? 'danger' : 'success'}>{p.critical ? 'Con alertas' : 'Estable'}</Badge>
+            {p.bed && <Badge tone="info">{`${p.unit ?? ''} Cama ${p.bed}`}</Badge>}
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <Meta label="HC:" value={p.document} />
+            <Meta label="Diagnóstico:" value={p.diagnosis ?? '—'} />
+          </div>
+        </ResultCard>
+      ),
+    })),
+    ...(data?.notes ?? []).map((n) => ({
+      id: `n-${n.id}`,
+      kind: 'soap' as const,
+      card: (
+        <ResultCard icon={imgClipboard2} iconBg="bg-warning-soft" actions={<Button variant="secondary" to={patientPath('/MedPacienteNotasSoapDetalle', cedulaOf(n.patientId), { nota: n.id })}>Ver Nota</Button>}>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 leading-[normal]">
+            <p className="font-jakarta text-[16px] font-bold text-ink">{`Nota SOAP — ${surnameFirst(n.patientName)}`}</p>
+            <p className="font-jakarta text-[12px] font-normal text-muted">{fmtDate(n.at)}</p>
+          </div>
+          <p className="max-w-[700px] truncate font-jakarta text-[13px] font-normal leading-[normal] text-muted">{`"${n.excerpt}"`}</p>
+        </ResultCard>
+      ),
+    })),
+    ...(data?.documents ?? []).map((d) => ({
+      id: `d-${d.id}`,
+      kind: 'docs' as const,
+      card: (
+        <ResultCard icon={imgFile} iconBg="bg-[rgba(239,68,68,0.1)]" actions={<Button variant="secondary" to={patientPath('/MedPacienteDocumentosClinicos', cedulaOf(d.patientId))}>Ver Documento</Button>}>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="break-all font-jakarta text-[16px] font-bold leading-[normal] text-ink">{d.title}</p>
+            <Badge tone="danger" size="sm">
+              PDF
+            </Badge>
+          </div>
+          <p className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">{`Subido el ${fmtDate(d.at)} • ${d.patientName}${d.unit ? ` • ${d.unit}` : ''}`}</p>
+        </ResultCard>
+      ),
+    })),
+  ];
   const count = (kind: Kind) => found.filter((r) => r.kind === kind).length;
   const tabs = [
     { id: 'all', label: `Todos (${found.length})` },
@@ -159,9 +143,9 @@ export default function MedBusquedaGlobal() {
           {shown.length === 0 && (
             <Card>
               <EmptyState
-                message="No hay resultados para esta búsqueda."
+                message={q.length < 2 ? 'Escriba al menos 2 caracteres para buscar.' : response.isFetching ? 'Buscando…' : 'No hay resultados para esta búsqueda.'}
                 onReset={() => {
-                  setQuery('González');
+                  setQuery(DEFAULT_QUERY);
                   setTab('all');
                 }}
               />
