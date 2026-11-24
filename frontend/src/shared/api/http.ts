@@ -1,6 +1,6 @@
-// Every request goes to a same-origin /api prefix: Vite proxies it in dev and
-// nginx proxies it in the container, so the browser never makes a cross-origin
-// call and there is no CORS to configure.
+// Toda petición va al prefijo /api del mismo origen: en desarrollo lo redirige
+// Vite y en el contenedor nginx, así el navegador nunca hace llamadas a otro
+// origen y no hay CORS que configurar.
 const BASE_URL = '/api'
 const TOKEN_KEY = 'auth.token'
 
@@ -26,8 +26,8 @@ export class ApiError extends Error {
   }
 }
 
-// The backend answers errors as { error: string } or, for Zod failures, as
-// { error: ZodIssue[] }. Both collapse to one line for the caller.
+// El backend responde errores como { error: string } o, si falla Zod, como
+// { error: ZodIssue[] }. Ambos se reducen a una línea para quien llama.
 async function readError(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { error?: unknown }
@@ -39,7 +39,7 @@ async function readError(response: Response): Promise<string> {
         .join(', ')
     }
   } catch {
-    // Not JSON — fall through to the status text.
+    // No es JSON — se usa el texto del estado HTTP.
   }
   return response.statusText
 }

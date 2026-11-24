@@ -1,8 +1,8 @@
 import { request } from '../../../shared/api/http'
 import type { Report } from '../types'
 
-// The list is the ETL run log: every row is one execution of a process in
-// backend/etl/. See backend/etl/README.md.
+// La lista es la bitácora de corridas del ETL: cada fila es una ejecución de un
+// proceso de backend/etl/. Ver backend/etl/README.md.
 export async function listReports(): Promise<Report[]> {
   return request<Report[]>('/reports')
 }

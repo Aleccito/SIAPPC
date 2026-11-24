@@ -17,8 +17,8 @@ import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined'
 import type { Role } from './auth/types'
 import type { StringKey } from '../shared/i18n/dictionary'
 
-// Each module registers its route and nav entry here. Adding a module later
-// means appending one entry, not editing the layout.
+// Cada módulo registra aquí su ruta y su entrada del menú. Agregar un módulo
+// después es añadir una entrada, no editar el layout.
 //
 // Aquí NO están ni Power BI ni FlexSim, y es a propósito. Los informes de
 // simulación se hacen conectando Power BI directo a MariaDB (base `siappc_sim`,
@@ -29,10 +29,10 @@ export type AppModule = {
   path: string
   label: StringKey
   icon: SvgIconComponent
-  // Route-level code split: the page chunk is fetched on first navigation, so
-  // it stays out of the entry bundle. Shape matches React Router's lazy field.
+  // División de código por ruta: el chunk de la página se descarga en la primera
+  // navegación y queda fuera del bundle inicial. Misma forma que `lazy` de React Router.
   lazy: () => Promise<{ Component: ComponentType }>
-  // Omitted means every signed-in user sees it.
+  // Si se omite, lo ve todo usuario con sesión iniciada.
   requiredRole?: Role
 }
 

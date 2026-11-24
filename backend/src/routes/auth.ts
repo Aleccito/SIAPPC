@@ -139,8 +139,8 @@ export default async function authRoutes(app: FastifyInstance) {
       include: USER_INCLUDE,
     });
 
-    // Same error for "no existe" and "clave incorrecta": don't leak which one
-    // failed. El mensaje ya era igual; lo que delataba la diferencia era el
+    // Mismo error para "no existe" y "clave incorrecta": no revela cuál
+    // falló. El mensaje ya era igual; lo que delataba la diferencia era el
     // TIEMPO — sin usuario no se llegaba a bcrypt y la respuesta salía en 8 ms
     // en vez de 110. Sin cuenta se compara igualmente contra un hash de mentira
     // (ver verifyAgainstDummy) para que las dos ramas cuesten lo mismo.

@@ -352,8 +352,8 @@ export function LoginPage() {
                   placeholder={t('login.emailPlaceholder')}
                   type="email"
                   value={email}
-                  // A failure from the previous attempt no longer describes what
-                  // is in the field once the user starts fixing it.
+                  // El error del intento anterior ya no describe lo que hay en
+                  // el campo en cuanto el usuario empieza a corregirlo.
                   onChange={(event) => {
                     setEmail(event.target.value)
                     setError(null)

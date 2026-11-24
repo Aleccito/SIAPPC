@@ -1,8 +1,8 @@
 import type { Prisma } from "./generated/prisma/client.ts";
 import type { TipoSangre as PrismaTipoSangre } from "./generated/prisma/enums.ts";
 
-// Mirrors frontend/src/modules/auth/types.ts and patients/types.ts.
-// The frontend owns these shapes; the backend must produce exactly them.
+// Espejo de frontend/src/modules/auth/types.ts y patients/types.ts.
+// Estas formas las define el frontend; el backend debe producirlas tal cual.
 
 // Los roles viven en la tabla `rol`, no en el código: un administrador puede
 // crear roles personalizados. Por eso es string y no una unión cerrada.
