@@ -1,9 +1,9 @@
 # Conectar el prototipo con el backend real — plan
 
-> **Estado: plan; la base ya está en el código (PR 2 de `REVISION-IA.md`).** Existen `src/api/`, el interruptor
-> `VITE_API_MODE` (`src/api/mode.ts`, `.env.example`) y el proxy de `/api` en `vite.config.ts`. Falta conectar grupo
-> por grupo (sección 6), después del paso de IA. Hasta entonces el prototipo corre en modo `mock` y lo publicado en
-> https://prototipo.melo-coton.uk no necesita backend.
+> **Estado: plan; la base ya está en el código (PRs 2 y 3 de `REVISION-IA.md`).** Existen `src/api/` (con `ai.ts`,
+> copia del `aiApi.ts` de los PRs #54–#58), el interruptor `VITE_API_MODE` (`src/api/mode.ts`, `.env.example`) y el
+> proxy de `/api` en `vite.config.ts`. Falta conectar grupo por grupo (sección 6). Hasta entonces el prototipo corre
+> en modo `mock` y lo publicado en https://prototipo.melo-coton.uk no necesita backend.
 
 Fuentes: `backend/src/routes/*.ts`, `backend/src/plugins/auth.ts`, `backend/prisma/schema.prisma`,
 `backend/db/seed.sql`, `docker-compose.yml` y, en `frontend/`, `src/shared/api/http.ts`, `src/modules/registry.ts`,
@@ -208,8 +208,8 @@ de cada pantalla).
 | Búsqueda | `GET /search?q` | `SearchResponse` | — | — |
 | Mi Perfil | `GET /auth/me` | `User` | Cambio de contraseña, MFA, sesiones, especialidad (la tabla `usuario_especializacion` existe sin endpoint) | Esos datos |
 | Ayuda y soporte | — | — | Envío de solicitudes | Todo |
-| Asistente IA (nueva) | `POST /ai/assist/stream` | `AiAssistInput`, `AiStreamHandlers` (aiApi) | Latido mientras piensa | — |
-| Ideas de la IA (tarjeta) | `GET /ai/assist/:patientId` | `AiAnalysis`, `AiAnalysisResponse` | `expiresAt` (hoy se calcula con los 15 min de la configuración) | — |
+| Asistente IA (nueva) | `POST /ai/assist/stream` (`patientId` obligatorio desde el PR #55) | `AiAssistInput`, `AiStreamHandlers` (aiApi) | Latido mientras piensa | "Lo que verá la IA": se arma en el navegador con `src/lib/aiTemas.ts`, copia de `services/aiTemas.ts`; un endpoint con el contexto evitaría copiar las reglas |
+| Ideas de la IA (tarjeta) | `GET /ai/assist/:patientId` y `POST /ai/assist/:patientId/ideas` (a pedido, severidad `solicitado`) | `AiAnalysis`, `AiAnalysisResponse` | `expiresAt` (hoy se calcula con los 15 min de la configuración) | — |
 
 El paciente va en la URL por cédula. En real, `src/api/patients.ts` traduce cédula → id con `GET /patients` (una
 llamada en caché) hasta que exista `GET /patients?document=` (sección 7).

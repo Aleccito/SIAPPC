@@ -23,17 +23,6 @@ const inventado: Inventado = {
   temp: 36.2,
   // Llegó hace 3 h: la exploración física todavía está pendiente.
   exploracion: null,
-  notasSoap: [
-    {
-      horasAtras: 2.5,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'borrador',
-      s: 'Motociclista con casco, impacto lateral a velocidad moderada. Refiere dolor abdominal difuso y en muslo izquierdo.',
-      o: 'FC 138 lpm, PA 92/58 mmHg, FR 24 rpm, SpO2 94 %. Deformidad de muslo izquierdo; abdomen doloroso con defensa en hipocondrio izquierdo. FAST positivo en espacio esplenorrenal.',
-      a: 'Politraumatismo con choque hemorrágico clase II–III; probable lesión esplénica. Fractura cerrada de fémur izquierdo.',
-      p: 'Ácido tranexámico 1 g IV (administrado). Transfusión de concentrados eritrocitarios. TC de abdomen si estabiliza; valoración por Cirugía General y Ortopedia. Material libre de látex.',
-    },
-  ],
   antecedentes: [{ tipo: 'habito', descripcion: 'Consumo ocasional de alcohol', parentesco: null, anio: null }],
   resueltos: [],
   hospitalizaciones: [],

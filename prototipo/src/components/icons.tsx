@@ -45,3 +45,9 @@ export const IconPlus = createIcon('IconPlus', 14, 'M2.91797 7.00177H11.0856M7.0
 export const IconCheck = createIcon('IconCheck', 14, 'M11.6644 3.5L5.24841 9.9162L2.33203 6.99975');
 export const IconX = createIcon('IconX', 10, 'M7.5 2.5L2.5 7.5M2.5 2.5L7.5 7.5');
 export const IconMenu = createIcon('IconMenu', 24, 'M4 6H20M4 12H20M4 18H20');
+
+// Íconos de la IA (PR 3). No vienen de Figma: trazos de Lucide en 24 px (sparkles, square, copy, send).
+export const IconSparkles = createIcon('IconSparkles', 24, 'M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.14 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0zM20 3v4M22 5h-4M4 17v2M5 18H3');
+export const IconStop = createIcon('IconStop', 24, 'M6 6h12v12H6z');
+export const IconCopy = createIcon('IconCopy', 24, 'M8 8h12v12H8zM4 16V4h12');
+export const IconSend = createIcon('IconSend', 24, 'M22 2 11 13M22 2l-7 20-4-9-9-4z');

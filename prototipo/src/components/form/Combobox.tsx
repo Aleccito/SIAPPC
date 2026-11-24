@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 import { matches } from '../../lib/text';
 import type { ErrorText } from '../../lib/validate';
@@ -23,6 +23,8 @@ type ComboboxProps = {
   highlighted?: boolean;
   label: string;
   error?: ErrorText;
+  /** Abre la búsqueda con este texto ya escrito; `seq` distinto para repetirla (PR 3: "Buscar en CIE-10"). */
+  search?: { text: string; seq: number } | null;
 };
 
 /**
@@ -30,7 +32,7 @@ type ComboboxProps = {
  * línea si no cabe); al tocarla se escribe para filtrar, sin importar tildes ni mayúsculas.
  * Flechas para moverse, Enter para elegir y Escape para cerrar.
  */
-export function Combobox({ id, options, value, onChange, onBlur, freeText = false, placeholder = 'Buscar…', icon, highlighted, label, error }: ComboboxProps) {
+export function Combobox({ id, options, value, onChange, onBlur, freeText = false, placeholder = 'Buscar…', icon, highlighted, label, error, search }: ComboboxProps) {
   const box = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
@@ -43,6 +45,17 @@ export function Combobox({ id, options, value, onChange, onBlur, freeText = fals
   const shown = current?.label ?? (freeText ? value : pending);
   const results = options.filter((o) => matches(query, o.label, o.value));
   const listId = `${id}-lista`;
+
+  useEffect(() => {
+    if (!search) return;
+    setQuery(search.text);
+    setActive(0);
+    setEditing(true);
+    requestAnimationFrame(() => {
+      input.current?.focus();
+      input.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  }, [search]);
 
   const start = () => {
     setQuery(freeText ? value : pending);

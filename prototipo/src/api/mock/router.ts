@@ -9,6 +9,7 @@ import { delayFor, wait, type DelayKind } from './delay';
 import { clearFlag, mockFlags } from './flags';
 import { puede, tokenDe, usuarioDeLogin, usuarioDeToken, type Accion } from './session';
 import * as db from './db';
+import * as ia from './ai';
 
 type Ctx = {
   method: string;
@@ -269,6 +270,49 @@ route('GET', '/search', { delay: 'lista' }, ({ query }) => {
   );
   const body: SearchResponse = { query: q, patients, notes, documents, total: patients.length + notes.length + documents.length };
   return json(200, body);
+});
+
+// --- Asistente de IA (backend/src/routes/ai.ts) ------------------------------------------------------------
+
+const IA: [string, Accion] = ['asistente_ia', 'ver'];
+const RATE = 'Rate limit exceeded, retry in 1 minute';
+
+/** El paciente de la ruta /ai/assist/:id (entero positivo, como el zod del backend), o el error. */
+function pacienteIa(id: string): number | Response {
+  if (!/^[1-9]\d*$/.test(id)) return error(400, 'patientId inválido');
+  const demo = db.demoDe(id);
+  return demo ? db.indiceDe(demo) : error(404, 'Paciente no encontrado');
+}
+
+// Toda consulta va sobre un paciente (PR #55): sin él, 400 antes de abrir el flujo.
+route('POST', '/ai/assist/stream', { perm: IA, delay: 'detalle' }, async ({ body, signal }) => {
+  const id = body.patientId;
+  if (id === undefined || id === null || id === '' || !/^[1-9]\d*$/.test(String(id))) return error(400, 'Selecciona un paciente');
+  const question = texto(body.question);
+  const symptoms = texto(body.symptoms);
+  if (!question && !symptoms) return error(400, 'Escribe la consulta');
+  if ((question?.length ?? 0) > 5000 || (symptoms?.length ?? 0) > 5000) return error(400, 'La consulta no puede pasar de 5000 caracteres');
+  const demo = db.demoDe(String(id));
+  if (!demo) return error(404, 'Paciente no encontrado');
+  if (ia.excedido('consulta')) return error(429, RATE);
+  if (mockFlags().ia === 'caida') return error(503, ia.NO_DISPONIBLE);
+  const respuesta = ia.responder(db.indiceDe(demo), [symptoms && `Síntomas/hallazgos: ${symptoms}`, question].filter(Boolean).join('\n'));
+  return new Response(ia.flujo(respuesta, signal), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+});
+
+route('GET', '/ai/assist/:id', { perm: IA }, ({ params }) => {
+  const i = pacienteIa(params.id);
+  return typeof i === 'number' ? json(200, { analysis: ia.analisisVigente(i), disclaimer: ia.DISCLAIMER }) : i;
+});
+
+// Ideas a pedido (PR #55): aunque el paciente no tenga alertas; tarda lo que tarde el modelo.
+route('POST', '/ai/assist/:id/ideas', { perm: IA, delay: 'detalle' }, async ({ params, signal }) => {
+  const i = pacienteIa(params.id);
+  if (typeof i !== 'number') return i;
+  if (ia.excedido('ideas')) return error(429, RATE);
+  await wait(ia.tiempos().ideas, signal);
+  if (mockFlags().ia === 'caida') return error(503, ia.NO_DISPONIBLE);
+  return json(200, { analysis: ia.generarIdeas(i), disclaimer: ia.DISCLAIMER });
 });
 
 // --- Flujo de alertas -------------------------------------------------------

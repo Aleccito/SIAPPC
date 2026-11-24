@@ -36,26 +36,6 @@ const inventado: Inventado = {
       },
     },
   },
-  notasSoap: [
-    {
-      horasAtras: 39,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'firmada',
-      s: 'Dolor epigástrico intenso en cinturón con vómitos, tras ingesta abundante de alcohol.',
-      o: 'FC 112 lpm, PA 134/82 mmHg, T 38 °C. Lipasa 1 840 U/L (12 veces lo normal).',
-      a: 'Pancreatitis aguda de probable origen alcohólico; BISAP 1.',
-      p: 'Ayuno. Hartmann 125 mL/h. Tramadol 50 mg IV c/8 h. Omeprazol 40 mg IV. Tiamina. Vigilar abstinencia (CIWA-Ar).',
-    },
-    {
-      horasAtras: 6,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'firmada',
-      s: 'Dolor 5/10; sin vómitos. Algo tembloroso.',
-      o: 'FC 111 lpm, FR 23 rpm, T 37.8 °C, SpO2 95 %. CIWA-Ar 9.',
-      a: 'Pancreatitis aguda sin falla orgánica; abstinencia alcohólica leve.',
-      p: 'Iniciar líquidos claros si tolera. Tiamina 100 mg IV c/24 h. TC con contraste a las 72 h si no mejora.',
-    },
-  ],
   antecedentes: [
     { tipo: 'habito', descripcion: 'Tabaquismo, 10 cigarrillos al día', parentesco: null, anio: null },
     { tipo: 'familiar', descripcion: 'Cirrosis hepática', parentesco: 'Padre', anio: null },

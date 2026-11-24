@@ -125,7 +125,7 @@ para hacerlo está listo (`.env.example`, `CONEXION-BACKEND.md`).
      "+ Agregar indicación"); el CIE-10 elegido ya no se corta a 390 px.
    - Verificado: `npm run build`; capturas a 1440 comparadas con las de antes del paso; pruebas automáticas de cada
      formulario (errores, rangos, Mín < Máx, búsqueda CIE-10, borrador y firma de la nota SOAP).
-4. **Pacientes del seed, capa `src/api/` e IA.** *En curso.* Propuesta aprobada en `REVISION-IA.md`, en tres PRs:
+4. ~~**Pacientes del seed, capa `src/api/` e IA.**~~ **Hecho.** Propuesta aprobada en `REVISION-IA.md`, en tres PRs:
    - ~~**PR 1 — Cerrar sesión.**~~ **Hecho (rama `feature/prototipo-cerrar-sesion`).** El diálogo no se veía a 1440
      ni a 1024 (quedaba dentro del menú `sticky` y la pantalla lo tapaba). Ahora `Modal` se dibuja en `body` (portal),
      hay una escala de capas en `tailwind.config.js` (`z-drawer`, `z-modal`, `z-popover`, `z-toast`), la confirmación
@@ -147,7 +147,18 @@ para hacerlo está listo (`.env.example`, `CONEXION-BACKEND.md`).
      - Verificado: `npm run build`; capturas a 1440 comparadas con la línea base (cambia el contenido, no la
        estructura); revisión automática a 1440, 1024, 768 y 390; pruebas automáticas de las 8 fichas en sus 18
        pantallas, recarga, cédula inexistente, listas con los 8, cerrar sesión y entrar como enfermero.
-   - **PR 3 — Módulos de IA** (consulta libre y análisis automático).
+   - ~~**PR 3 — Módulos de IA.**~~ **Hecho (rama `feature/prototipo-ia`).** Sigue la IA nueva de `dev` (PRs #54–#58;
+     lo que cambió del plan, en `REVISION-IA.md` sección 10) y el detalle está en la sección 11:
+     - Consulta libre en `/MedAsistenteIa` y en un panel lateral ("Consultar IA" en la cabecera del paciente). Exige
+       paciente, responde solo lo que se pregunta y muestra "Lo que verá la IA".
+     - Ideas de la IA: el análisis automático de los críticos y "Generar ideas" a pedido. Aparecen en el Resumen, el
+       Monitoreo detallado, la Confirmación de atención, la Nota SOAP, el Registro de diagnóstico ("Buscar en
+       CIE-10") y el Dashboard.
+     - "Llevar a la nota": la sugerencia llega a la Nota SOAP en una bandeja sin revisar. Para firmar una nota con
+       texto de la IA hay que marcar "Revisé el texto sugerido por la IA".
+     - Solo la ven los médicos (`asistente_ia`, sin el admin). Simulada con `?ia=lenta|caida|corte|sin-analisis`.
+     - Las notas SOAP son las 8 que ahora trae el seed (una firmada por paciente).
+     - Verificado: `npm run build`, revisión automática a 4 anchos y pruebas automáticas de IA, más las del PR 2.
 5. **Conectar con el backend.** Plan en `CONEXION-BACKEND.md`: el prototipo sigue como segunda app, aparte de
    `frontend/`, y se conecta por grupos de rutas.
 

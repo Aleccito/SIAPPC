@@ -1,13 +1,17 @@
 import type { ComponentType } from 'react';
-import { IconActivity, IconBell, IconCpu, IconDashboard, IconFileText, IconUsers, type IconProps } from '../icons';
+import { IconActivity, IconBell, IconCpu, IconDashboard, IconFileText, IconSparkles, IconUsers, type IconProps } from '../icons';
 
-export type NavSection = 'dashboard' | 'pacientes' | 'monitoreo' | 'alertas' | 'reportes' | 'dispositivos';
+export type NavSection = 'dashboard' | 'pacientes' | 'monitoreo' | 'alertas' | 'asistente' | 'reportes' | 'dispositivos';
 
 export type NavItem = {
   section: NavSection;
   label: string;
   to: string;
   icon: ComponentType<IconProps>;
+  /** Permiso que hace falta para verla (módulo de seed.sql, acción "ver"); sin él, la ve cualquiera con sesión. */
+  perm?: string;
+  /** Roles que no la ven aunque tengan el permiso (la IA no se le muestra al admin). */
+  hideFor?: string[];
 };
 
 /** Menú lateral: una sola lista para todas las pantallas. */
@@ -16,6 +20,8 @@ export const NAV_ITEMS: NavItem[] = [
   { section: 'pacientes', label: 'Pacientes', to: '/MedPacientesLista', icon: IconUsers },
   { section: 'monitoreo', label: 'Monitoreo', to: '/MedMonitoreoGridUci', icon: IconActivity },
   { section: 'alertas', label: 'Alertas', to: '/MedAlertasCentro', icon: IconBell },
+  // No viene de Figma (PR 3): la consulta libre a la IA, solo con el permiso `asistente_ia`.
+  { section: 'asistente', label: 'Asistente IA', to: '/MedAsistenteIa', icon: IconSparkles, perm: 'asistente_ia', hideFor: ['admin'] },
   { section: 'reportes', label: 'Reportes', to: '/MedReportesPanel', icon: IconFileText },
   { section: 'dispositivos', label: 'Dispositivos', to: '/MedDispositivosMonitores', icon: IconCpu },
 ];
@@ -33,6 +39,7 @@ export function sectionForPath(pathname: string): NavSection | null {
   if (page.startsWith('MedMonitoreo')) return 'monitoreo';
   if (page.startsWith('MedReportes') || page.startsWith('MedTurno')) return 'reportes';
   if (page.startsWith('MedDispositivos')) return 'dispositivos';
+  if (page.startsWith('MedAsistenteIa')) return 'asistente';
   return null;
 }
 

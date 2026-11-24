@@ -42,6 +42,16 @@ Abre http://localhost:5173 y navega con el menú lateral, o entra directo a cual
 - `.env.example` trae el interruptor `VITE_API_MODE` (`mock` por defecto, `real` o `mixto`) y el proxy de `/api` ya
   está en `vite.config.ts`.
 
+## IA (simulada)
+
+- "Asistente IA" en el menú (`/MedAsistenteIa`) y "Consultar IA" en la cabecera de cada paciente: consulta libre
+  sobre un paciente. Las ideas de la IA aparecen en el Resumen y, en los críticos, en el Monitoreo detallado.
+- Es un simulador: responde en segundos con textos escritos para cada paciente y se presenta como
+  `medgemma-4b-it (simulado)`. Nada de lo que dice se guarda; si se lleva a una nota SOAP, el médico la revisa y
+  la firma.
+- Solo la ven los médicos. Para probar estados: `?ia=lenta` (tiempos del modelo real), `?ia=caida` (no
+  disponible), `?ia=corte` (se corta a mitad), `?ia=sin-analisis` y `?ia=normal` para volver.
+
 ## Notas
 
 - Íconos e imágenes viven en `src/assets/`, exportados de Figma.
@@ -63,6 +73,7 @@ Abre http://localhost:5173 y navega con el menú lateral, o entra directo a cual
 | `/RecuperacionEnviada` | siappc-recovery-confirmation |
 | `/MedAlertasCentro` | med/alertas/centro |
 | `/MedAlertasConfirmacionAtencion` | med/alertas/confirmacion-atencion |
+| `/MedAsistenteIa` | asistente de IA **(nueva, no viene de Figma)** |
 | `/MedAyudaSoporte` | med/ayuda/soporte **(nueva)** |
 | `/MedBusquedaGlobal` | med/busqueda/global |
 | `/MedDashboardPrincipal` | med/dashboard/principal |

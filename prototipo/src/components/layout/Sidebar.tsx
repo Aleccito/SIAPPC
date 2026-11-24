@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import avatar from '../../assets/avatar-2.png';
 import { cn } from '../../lib/cn';
 import { LogoutDialog } from '../auth/LogoutDialog';
-import { useDisplayUser } from '../auth/session';
+import { useDisplayUser, useSession } from '../auth/session';
 import { IconLogOut } from '../icons';
 import { NAV_ITEMS, sectionForPath } from './nav';
 
@@ -23,6 +23,7 @@ export function Sidebar({ className, onNavigate, onLogout }: SidebarProps) {
   const active = sectionForPath(pathname);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const user = useDisplayUser();
+  const { can, user: sessionUser } = useSession();
 
   return (
     <aside
@@ -41,7 +42,7 @@ export function Sidebar({ className, onNavigate, onLogout }: SidebarProps) {
         </Link>
 
         <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.map(({ section, label, to, icon: Icon }) => {
+          {NAV_ITEMS.filter((item) => (!item.perm || can(item.perm, 'ver')) && !(sessionUser && item.hideFor?.includes(sessionUser.role))).map(({ section, label, to, icon: Icon }) => {
             const isActive = section === active;
             return (
               <Link

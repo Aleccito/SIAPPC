@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './components';
 import { SessionProvider } from './components/auth/session';
+import { AiPanelProvider } from './components/ai/AiPanel';
+import MedAsistenteIa from './pages/MedAsistenteIa';
 import MedAlertasCentro from './pages/MedAlertasCentro';
 import MedAlertasConfirmacionAtencion from './pages/MedAlertasConfirmacionAtencion';
 import MedAyudaSoporte from './pages/MedAyudaSoporte';
@@ -48,6 +50,8 @@ function App() {
       <ToastProvider>
       {/* Sin sesión, las pantallas de adentro mandan al Login (components/auth/session.tsx). */}
       <SessionProvider>
+      {/* Panel lateral de la IA (PR 3): se abre desde cualquier pantalla con useAiPanel(). */}
+      <AiPanelProvider>
       <Routes>
         {/* Pantallas de acceso (página LOGIN de Figma). "/" abre el Login. */}
         <Route path="/" element={<Login />} />
@@ -58,6 +62,8 @@ function App() {
         <Route path="/MedAlertasCentro" element={<MedAlertasCentro />} />
         <Route path="/MedAlertasConfirmacionAtencion" element={<MedAlertasConfirmacionAtencion />} />
         <Route path="/MedAyudaSoporte" element={<MedAyudaSoporte />} />
+        {/* Nueva del PR 3 (no viene de Figma): consulta libre a la IA. */}
+        <Route path="/MedAsistenteIa" element={<MedAsistenteIa />} />
         <Route path="/MedBusquedaGlobal" element={<MedBusquedaGlobal />} />
         <Route path="/MedDashboardPrincipal" element={<MedDashboardPrincipal />} />
         <Route path="/MedDispositivosMonitores" element={<MedDispositivosMonitores />} />
@@ -94,6 +100,7 @@ function App() {
         <Route path="/MedTurnoResumenRecibido" element={<MedTurnoResumenRecibido />} />
         <Route path="/Notificaciones" element={<Notificaciones />} />
       </Routes>
+      </AiPanelProvider>
       </SessionProvider>
       </ToastProvider>
     </BrowserRouter>

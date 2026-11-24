@@ -36,26 +36,6 @@ const inventado: Inventado = {
       neurologico: { inspeccion: ['anormal', 'Desorientado en tiempo, obedece órdenes simples. Glasgow 13 (O3 V4 M6).'] },
     },
   },
-  notasSoap: [
-    {
-      horasAtras: 19,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'firmada',
-      s: 'La esposa del Sr. Batista refiere fiebre de hasta 39.5 °C, confusión y dolor lumbar derecho de 3 días; disuria la semana previa.',
-      o: 'FC 118 lpm, PA 84/50 mmHg, FR 24 rpm, T 39.2 °C, SpO2 93 %. Puñopercusión derecha positiva. Glasgow 13.',
-      a: 'Sepsis de probable foco urinario (pielonefritis derecha) en paciente diabético. Hipotensión con respuesta parcial a cristaloides.',
-      p: 'Hemocultivos ×2 y urocultivo. Ceftriaxona 2 g IV c/24 h (alergia a penicilina con urticaria: vigilar). Cristaloides 30 mL/kg. Suspender metformina y enalapril. Lactato y glucemia capilar c/4 h.',
-    },
-    {
-      horasAtras: 2,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'firmada',
-      s: 'Más somnoliento; el familiar lo nota más confundido que en la mañana.',
-      o: 'FC 132 lpm, SpO2 88 % con puntas nasales a 3 L, FR 30 rpm, PA 92/54 mmHg, T 38.9 °C. Lactato 3.8 mmol/L.',
-      a: 'Sepsis sin mejoría a las 18 h de antibiótico; riesgo de progresión a choque séptico.',
-      p: 'Noradrenalina si PAM < 65 mmHg. Ecografía renal para descartar obstrucción. Gasometría arterial. O2 para SpO2 ≥ 92 %.',
-    },
-  ],
   antecedentes: [
     { tipo: 'habito', descripcion: 'Exfumador, 20 paquetes-año', parentesco: null, anio: 2015 },
     { tipo: 'quirurgico', descripcion: 'Colecistectomía laparoscópica', parentesco: null, anio: 2016 },

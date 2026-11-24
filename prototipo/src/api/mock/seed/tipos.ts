@@ -24,6 +24,18 @@ export type SeedPaciente = {
   /** Una lectura por minuto: la primera de hace 40 min y la última de "ahora". */
   lecturas: Record<string, number[]>;
   alertas: Array<{ variable: string; indice: number; tipo: string; severidad: string; mensaje: string; estado: string }>;
+  /** La nota SOAP firmada que el seed trae para cada paciente (autor y firmante por correo). */
+  notaSoap: null | {
+    horasAtras: number;
+    autor: string;
+    subjetivo: string;
+    objetivo: string;
+    analisis: string;
+    plan: string;
+    estado: string;
+    firmadaPor: string | null;
+    firmadaHorasAtras: number | null;
+  };
 };
 
 /** Fecha civil "AAAA-MM-DD", o días antes de hoy. */
@@ -33,17 +45,6 @@ export type Fecha = string | number;
 export type Hallazgo = ['normal' | 'anormal', string];
 export type Region = 'cabeza_cuello' | 'torax' | 'abdomen' | 'extremidades_superiores' | 'extremidades_inferiores' | 'neurologico';
 export type Tecnica = 'inspeccion' | 'palpacion' | 'percusion' | 'auscultacion';
-
-export type NotaInventada = {
-  /** Horas antes de "ahora". */
-  horasAtras: number;
-  autor: string;
-  estado: 'firmada' | 'borrador';
-  s: string;
-  o: string;
-  a: string;
-  p: string;
-};
 
 /** Todo lo de aquí NO viene del seed: se inventó coherente con el caso de cada paciente. */
 export type Inventado = {
@@ -77,7 +78,6 @@ export type Inventado = {
     /** Solo lo que no es el texto normal por defecto de esa región y técnica. */
     hallazgos: Partial<Record<Region, Partial<Record<Tecnica, Hallazgo>>>>;
   };
-  notasSoap: NotaInventada[];
   /** Antecedentes además de los del seed (`antecedente`). */
   antecedentes: Array<{ tipo: string; descripcion: string; parentesco: string | null; anio: number | null }>;
   /** Diagnósticos resueltos de antes (`diagnostico_clinico` con estado `resuelto`). */

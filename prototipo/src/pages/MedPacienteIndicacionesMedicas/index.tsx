@@ -8,7 +8,7 @@ import imgHeart4 from '../../assets/heart-4.svg';
 import { ApiError, request } from '../../api/http';
 import { getIndicacionesExtra, useExtra } from '../../api/sinBackend';
 import type { HistoriaEntry } from '../../api/types/clinical';
-import { BackButton, Badge, Button, Card, Combobox, FieldError, IconPlus, Modal, ModalHeader, PatientLayout, Select, Table, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
+import { BackButton, Badge, Button, Card, Combobox, FieldError, IconPlus, IconSparkles, INTERACTIONS_QUESTION, Modal, ModalHeader, PatientLayout, Select, Table, useAiPanel, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
 import { checkText } from '../../lib/validate';
 
 /** Vía del backend ⇄ abreviatura de la pantalla. */
@@ -155,6 +155,7 @@ function Indicaciones({ v, modal, setModal, canAdd }: { v: PatientView; modal: K
   const toast = useToast();
   const queryClient = useQueryClient();
   const extra = useExtra('indicaciones', v.cedula, getIndicacionesExtra).data;
+  const ai = useAiPanel();
   const active = (v.expediente?.medicamentos ?? []).filter((m) => m.status === 'activo');
   const solutions = [
     ...active.filter(isSolution).map((m) => [`${String(m.name)}${m.dose ? ` ${m.dose}` : ''}`, String(m.frequency ?? '—'), ROUTE_SHORT[String(m.route)] === 'IV' ? 'Periférica' : String(m.route ?? '—')]),
@@ -195,11 +196,19 @@ function Indicaciones({ v, modal, setModal, canAdd }: { v: PatientView; modal: K
         <Card className="flex w-full flex-col gap-[14px]">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <CardHeading>Medicamentos Farmacológicos</CardHeading>
-            {canAdd && (
-              <Button variant="soft" size="sm" onClick={() => setModal('Medicamento')}>
-                + Agregar Medicamento
-              </Button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* No viene de Figma (PR 3): antes de indicar, revisar alergias e interacciones (el aviso del backend lo pide). */}
+              {ai.available && (
+                <Button variant="ghost" size="sm" icon={<IconSparkles size={14} />} onClick={() => ai.open({ cedula: v.cedula, question: INTERACTIONS_QUESTION })}>
+                  Revisar interacciones con IA
+                </Button>
+              )}
+              {canAdd && (
+                <Button variant="soft" size="sm" onClick={() => setModal('Medicamento')}>
+                  + Agregar Medicamento
+                </Button>
+              )}
+            </div>
           </div>
           <OrdersTable head={['MEDICAMENTO / DOSIS', 'VÍA', 'FRECUENCIA']} rows={meds} firstWidth="flex-1" />
         </Card>

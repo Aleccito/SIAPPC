@@ -2,7 +2,7 @@
 // lo genera un script que solo lee el SQL. Las fechas del seed son relativas (`NOW() - INTERVAL 20 HOUR`);
 // aquí van como "horas/días atrás" y el simulador las vuelve fechas al cargar la página.
 // Lecturas: una por minuto; la primera es de hace 40 min (2400 s) y la última, de "ahora".
-// Alertas: `indice` es la lectura que la disparó.
+// Alertas: `indice` es la lectura que la disparó. `notaSoap`: la nota firmada que el seed trae para cada paciente.
 // Las camas incluyen las 19 del seed; `ocupadaPor` dice qué cédula la ocupa (DEMO-0009… no se cargan).
 /* eslint-disable */
 import type { SeedCama, SeedPaciente } from './tipos';
@@ -263,7 +263,18 @@ export const DEL_SEED: Record<string, SeedPaciente> = {
       { "variable": "spo2", "indice": 38, "tipo": "spo2_bajo", "severidad": "alta", "mensaje": "SpO2 88% bajo", "estado": "abierta" },
       { "variable": "spo2", "indice": 39, "tipo": "spo2_bajo", "severidad": "alta", "mensaje": "SpO2 88% bajo", "estado": "abierta" },
       { "variable": "spo2", "indice": 40, "tipo": "spo2_bajo", "severidad": "alta", "mensaje": "SpO2 88% bajo", "estado": "abierta" }
-    ]
+    ],
+    "notaSoap": {
+      "horasAtras": 2,
+      "autor": "medico@institucion.org",
+      "subjetivo": "Fiebre de 39 °C, confusión y dolor lumbar desde hace 3 días; disuria previa.",
+      "objetivo": "FC 118, PA 92/58, FR 24, T 39.2 °C. Puñopercusión derecha positiva. Desorientado en tiempo.",
+      "analisis": "Probable sepsis de origen urinario (pielonefritis complicada) en diabético.",
+      "plan": "Hemocultivos y urocultivo, lactato, cristaloides 30 ml/kg, ceftriaxona IV, control de glucemia y diuresis horaria.",
+      "estado": "firmada",
+      "firmadaPor": "medico@institucion.org",
+      "firmadaHorasAtras": 2
+    }
   },
   "DEMO-0002": {
     "cedula": "DEMO-0002",
@@ -388,7 +399,18 @@ export const DEL_SEED: Record<string, SeedPaciente> = {
       { "variable": "resp", "indice": 38, "tipo": "resp_fuera_de_rango", "severidad": "alta", "mensaje": "Respiración estimada 31 rpm fuera de rango", "estado": "abierta" },
       { "variable": "resp", "indice": 39, "tipo": "resp_fuera_de_rango", "severidad": "alta", "mensaje": "Respiración estimada 31 rpm fuera de rango", "estado": "abierta" },
       { "variable": "resp", "indice": 40, "tipo": "resp_fuera_de_rango", "severidad": "alta", "mensaje": "Respiración estimada 31 rpm fuera de rango", "estado": "abierta" }
-    ]
+    ],
+    "notaSoap": {
+      "horasAtras": 2,
+      "autor": "medico@institucion.org",
+      "subjetivo": "Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cadera.",
+      "objetivo": "FC 112, SpO2 89 % aire ambiente, FR 26. Pantorrilla izquierda edematizada.",
+      "analisis": "Sospecha alta de tromboembolia pulmonar posoperatoria.",
+      "plan": "Angio-TC de tórax, dímero D, oxígeno a SpO2 > 92 %, valorar anticoagulación según riesgo de sangrado.",
+      "estado": "firmada",
+      "firmadaPor": "medico@institucion.org",
+      "firmadaHorasAtras": 2
+    }
   },
   "DEMO-0003": {
     "cedula": "DEMO-0003",
@@ -518,7 +540,18 @@ export const DEL_SEED: Record<string, SeedPaciente> = {
       { "variable": "spo2", "indice": 38, "tipo": "spo2_bajo", "severidad": "critica", "mensaje": "SpO2 84% crítico", "estado": "abierta" },
       { "variable": "spo2", "indice": 39, "tipo": "spo2_bajo", "severidad": "alta", "mensaje": "SpO2 85% bajo", "estado": "abierta" },
       { "variable": "spo2", "indice": 40, "tipo": "spo2_bajo", "severidad": "alta", "mensaje": "SpO2 85% bajo", "estado": "abierta" }
-    ]
+    ],
+    "notaSoap": {
+      "horasAtras": 2,
+      "autor": "medico@institucion.org",
+      "subjetivo": "Tos con esputo purulento y disnea progresiva; EPOC conocido.",
+      "objetivo": "SpO2 86 %, FR 28, sibilancias difusas y uso de musculatura accesoria.",
+      "analisis": "Exacerbación de EPOC de probable causa infecciosa.",
+      "plan": "Gasometría, Rx de tórax, broncodilatadores nebulizados, prednisona, antibiótico y O2 controlado (meta 88–92 %).",
+      "estado": "firmada",
+      "firmadaPor": "medico@institucion.org",
+      "firmadaHorasAtras": 2
+    }
   },
   "DEMO-0004": {
     "cedula": "DEMO-0004",
@@ -629,7 +662,18 @@ export const DEL_SEED: Record<string, SeedPaciente> = {
       { "variable": "hr", "indice": 38, "tipo": "hr_fuera_de_rango", "severidad": "critica", "mensaje": "Frecuencia cardiaca 148 bpm fuera de rango crítico", "estado": "abierta" },
       { "variable": "hr", "indice": 39, "tipo": "hr_fuera_de_rango", "severidad": "critica", "mensaje": "Frecuencia cardiaca 146 bpm fuera de rango crítico", "estado": "abierta" },
       { "variable": "hr", "indice": 40, "tipo": "hr_fuera_de_rango", "severidad": "critica", "mensaje": "Frecuencia cardiaca 149 bpm fuera de rango crítico", "estado": "abierta" }
-    ]
+    ],
+    "notaSoap": {
+      "horasAtras": 2,
+      "autor": "medico@institucion.org",
+      "subjetivo": "Accidente de motocicleta; dolor abdominal y en muslo derecho.",
+      "objetivo": "FC 124, PA 98/60. Abdomen doloroso con defensa. Deformidad de fémur derecho.",
+      "analisis": "Politraumatismo: posible lesión intraabdominal y fractura diafisaria de fémur.",
+      "plan": "FAST, TC corporal, reserva de hemoderivados, inmovilización y valoración por cirugía y ortopedia.",
+      "estado": "firmada",
+      "firmadaPor": "medico@institucion.org",
+      "firmadaHorasAtras": 2
+    }
   },
   "DEMO-0005": {
     "cedula": "DEMO-0005",
@@ -763,7 +807,18 @@ export const DEL_SEED: Record<string, SeedPaciente> = {
       { "variable": "hr", "indice": 38, "tipo": "hr_fuera_de_rango", "severidad": "critica", "mensaje": "Frecuencia cardiaca 34 bpm fuera de rango crítico", "estado": "abierta" },
       { "variable": "hr", "indice": 39, "tipo": "hr_fuera_de_rango", "severidad": "critica", "mensaje": "Frecuencia cardiaca 38 bpm fuera de rango crítico", "estado": "abierta" },
       { "variable": "hr", "indice": 40, "tipo": "hr_fuera_de_rango", "severidad": "critica", "mensaje": "Frecuencia cardiaca 35 bpm fuera de rango crítico", "estado": "abierta" }
-    ]
+    ],
+    "notaSoap": {
+      "horasAtras": 2,
+      "autor": "medico@institucion.org",
+      "subjetivo": "Mareo, debilidad y casi síncope; anticoagulada con warfarina, toma digoxina.",
+      "objetivo": "FC 42, ritmo irregular. PA 100/62. Sin focalidad neurológica.",
+      "analisis": "Bradicardia sintomática; descartar intoxicación digitálica.",
+      "plan": "ECG, digoxinemia, electrolitos, INR; suspender digoxina, monitor continuo, atropina disponible.",
+      "estado": "firmada",
+      "firmadaPor": "medico@institucion.org",
+      "firmadaHorasAtras": 2
+    }
   },
   "DEMO-0006": {
     "cedula": "DEMO-0006",
@@ -885,7 +940,18 @@ export const DEL_SEED: Record<string, SeedPaciente> = {
       { "variable": "hr", "indice": 38, "tipo": "hr_fuera_de_rango", "severidad": "critica", "mensaje": "Frecuencia cardiaca 153 bpm fuera de rango crítico", "estado": "abierta" },
       { "variable": "hr", "indice": 39, "tipo": "hr_fuera_de_rango", "severidad": "critica", "mensaje": "Frecuencia cardiaca 151 bpm fuera de rango crítico", "estado": "abierta" },
       { "variable": "hr", "indice": 40, "tipo": "hr_fuera_de_rango", "severidad": "critica", "mensaje": "Frecuencia cardiaca 150 bpm fuera de rango crítico", "estado": "abierta" }
-    ]
+    ],
+    "notaSoap": {
+      "horasAtras": 2,
+      "autor": "medico@institucion.org",
+      "subjetivo": "Palpitaciones y opresión torácica de 2 horas.",
+      "objetivo": "FC 148 irregular, PA 128/80. Sin signos de insuficiencia cardíaca.",
+      "analisis": "Fibrilación auricular con respuesta ventricular rápida; descartar SCA.",
+      "plan": "ECG seriado, troponinas, control de frecuencia, valorar anticoagulación (CHA2DS2-VASc).",
+      "estado": "firmada",
+      "firmadaPor": "medico@institucion.org",
+      "firmadaHorasAtras": 2
+    }
   },
   "DEMO-0007": {
     "cedula": "DEMO-0007",
@@ -965,7 +1031,18 @@ export const DEL_SEED: Record<string, SeedPaciente> = {
       "spo2": [92, 91, 91, 91, 91, 91, 91, 91, 91, 91, 91, 92, 91, 92, 91, 92, 92, 92, 92, 92, 92, 91, 92, 93, 92, 93, 92, 92, 92, 93, 93, 93, 93, 93, 93, 93, 93, 92, 93, 93, 93],
       "resp": [25, 25, 24, 24, 25, 24, 23, 24, 23, 24, 24, 23, 24, 24, 23, 24, 23, 22, 23, 22, 22, 21, 22, 22, 22, 22, 21, 22, 22, 21, 21, 20, 21, 20, 20, 21, 20, 20, 20, 20, 19]
     },
-    "alertas": []
+    "alertas": [],
+    "notaSoap": {
+      "horasAtras": 2,
+      "autor": "medico@institucion.org",
+      "subjetivo": "Fiebre y tos con dolor pleurítico de 4 días.",
+      "objetivo": "T 38.6 °C, FR 22, SpO2 93 %. Crepitantes en base derecha.",
+      "analisis": "Neumonía adquirida en la comunidad, CURB-65 bajo.",
+      "plan": "Rx de tórax, hemograma, PCR, continuar amoxicilina/clavulánico, antipiréticos e hidratación.",
+      "estado": "firmada",
+      "firmadaPor": "medico@institucion.org",
+      "firmadaHorasAtras": 2
+    }
   },
   "DEMO-0008": {
     "cedula": "DEMO-0008",
@@ -1053,6 +1130,17 @@ export const DEL_SEED: Record<string, SeedPaciente> = {
       "spo2": [95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 94, 96, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95],
       "resp": [20, 20, 19, 20, 20, 20, 21, 21, 21, 19, 21, 21, 21, 20, 20, 20, 21, 21, 22, 21, 22, 21, 20, 22, 20, 22, 21, 22, 23, 22, 21, 22, 23, 22, 21, 22, 23, 22, 23, 23, 23]
     },
-    "alertas": []
+    "alertas": [],
+    "notaSoap": {
+      "horasAtras": 2,
+      "autor": "medico@institucion.org",
+      "subjetivo": "Dolor abdominal intenso en epigastrio irradiado en cinturón, con vómitos.",
+      "objetivo": "FC 110, abdomen distendido y doloroso, sin irritación peritoneal franca.",
+      "analisis": "Probable pancreatitis aguda.",
+      "plan": "Lipasa, perfil hepático, ecografía abdominal, hidratación IV, analgesia y ayuno inicial.",
+      "estado": "firmada",
+      "firmadaPor": "medico@institucion.org",
+      "firmadaHorasAtras": 2
+    }
   }
 };
