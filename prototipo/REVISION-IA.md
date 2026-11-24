@@ -3,7 +3,8 @@
 > **Estado: aprobada ("Aprobar todo").** Se hace en tres PRs (sección 8).
 > - **PR 1, cerrar sesión: hecho** (sección 6, con las capturas del después).
 > - **PR 2, los 8 pacientes y la capa `src/api/`: hecho** (sección 9, con lo que cambió respecto de lo aprobado).
-> - PR 3 (IA): pendiente.
+> - **PR 3, la IA: hecho** (sección 11). **La IA de `dev` cambió después de aprobar esto** (PRs #54–#58): lo que
+>   cambia del plan está en la sección 10, y manda sobre las secciones 3 a 5.
 >
 > El plan para conectar con el backend real está aparte, en `CONEXION-BACKEND.md`.
 
@@ -469,3 +470,115 @@ a `src/api/`; ninguna tiene ya pacientes escritos ni a María González.
 - **Aviso para la sección del administrador:** `src/data/devices.ts` conserva sus exportaciones (`Device` gana `cedula`
   y `unit` opcionales); el contenido son los 8 monitores del seed. Sus pantallas quedan detrás de la sesión: el
   simulador entra como el médico y con `admin@institucion.org` como administrador (permisos de `permisos.ts`).
+
+---
+
+## 10. La IA nueva de `dev` (PRs #54 a #58) — qué cambia del plan
+
+Después de aprobar las secciones 3 a 5, Adrian cambió la IA del backend y de `frontend/` (`backend/src/routes/ai.ts`,
+`lib/clinicalAi.ts`, `services/aiAuto.ts`, `services/aiTemas.ts`; `frontend/…/aiApi.ts`, `AiIdeasCard.tsx`,
+`AiConsultPage.tsx`) y el seed de demo. El PR 3 sigue el contrato nuevo; donde choca con lo aprobado, manda esto.
+
+| # | Qué cambió en `dev` | Antes (aprobado) | Ahora en el PR 3 |
+|---|---|---|---|
+| C1 | **La consulta libre exige paciente.** `patientId` es obligatorio: sin él, 400 "Selecciona un paciente"; sin pregunta, 400 "Escribe la consulta" | `/MedAsistenteIa` ofrecía "Sin paciente — consulta general" | Sin esa opción. La pantalla abre con el paciente de `?paciente=` o pide elegirlo: "Para empezar, elija el paciente sobre el que quiere consultar." y "Consultar" y las preguntas rápidas quedan desactivadas. El simulador responde los mismos 400 |
+| C2 | **La IA responde solo lo que se pregunta.** Un dato (edad, médico a cargo, cama, alergias) → una frase corta; "estudios" → solo estudios. Las 5 secciones (**Banderas rojas, Diferenciales, Estudios, Manejo, Datos faltantes**, 2–4 viñetas cada una) solo en preguntas abiertas ("¿qué tiene?", "analiza al paciente") | Siempre las 5 secciones | El simulador clasifica la pregunta igual (copia de las reglas de `aiTemas.ts`) y responde en ese formato. "Llevar a la nota" ofrece secciones solo cuando la respuesta las trae; si no, la respuesta completa |
+| C3 | **El contexto va por temas.** Siempre: paciente, edad, sexo, sangre, motivo, estado, alergias, medicamentos y diagnósticos activos. Lo demás (signos y su tendencia de 6 h, alertas, exploración, antecedentes, notas, médico a cargo, cama, documentos…) solo si la pregunta lo toca; una pregunta que pide razonar recibe todo lo clínico | "Lo que verá la IA" mostraba un bloque fijo (últimas 3 notas, signos…) | "Lo que verá la IA" muestra lo mínimo siempre y marca qué secciones extra se mandan **para la pregunta escrita**, con las mismas reglas (`src/lib/aiTemas.ts`, copia de `backend/src/services/aiTemas.ts`) |
+| C4 | **Ideas a pedido:** POST `/ai/assist/:patientId/ideas` genera ideas aunque el paciente no tenga alertas, con severidad `solicitado` ("A solicitud"); límite 5 por minuto; 503 si el modelo falla. El análisis queda guardado y GET `/ai/assist/:patientId` lo devuelve | La tarjeta solo leía el análisis automático y solo aparecía con alerta alta o crítica | `AiIdeasCard` lleva el botón **Generar ideas / Actualizar / Generando…** (como `frontend/`). En el **Resumen** aparece en los 8 pacientes (DEMO-0007 y DEMO-0008, sin alertas, empiezan vacíos y se pueden pedir); en el **Monitoreo detallado** sigue solo con el paciente crítico, como `BedMonitorPage` |
+| C5 | **Ideas más cortas:** 2 o 3 hipótesis, título de hasta 6 palabras y justificación de hasta 15 que cita el dato ("SpO2 86 %, FR 28") | 2 a 4, con justificación libre | El simulador las escribe así |
+| C6 | **Textos nuevos** de `frontend/`: no disponible "Por ahora el asistente de IA no está disponible. Puede intentarlo de nuevo en unos minutos."; sin permiso "Su cuenta todavía no tiene acceso al asistente de IA. Un administrador puede habilitarlo."; 429 "Se hicieron varias consultas seguidas. Espere un minuto y podrá continuar."; detenida "Detuvo la consulta. Aquí queda lo que se alcanzó a responder."; sin ideas "Todavía no hay ideas para este paciente. Puede pedirlas con «Generar ideas»." | Los textos de la sección 4 | Se usan los de `frontend/` |
+| C7 | **El seed trae una nota SOAP firmada por paciente** (DEMO-0001…0008, hace 2 h, de Carlos Méndez) | Notas inventadas: 1 a 3 por paciente y un borrador en DEMO-0004 | `delSeed.ts` las trae tal cual (`notaSoap`) y el simulador usa **solo esas**: se quitaron las inventadas. Consecuencias: la búsqueda "Batista" ya no encuentra una nota (sí el paciente y el documento); no hay borrador al empezar, así que el recordatorio de "Nota SOAP sin firmar" aparece cuando se guarda uno; la IA ve 1 nota por paciente más las que se escriban |
+
+Lo demás de las secciones 3 a 5 se mantiene: el panel lateral, "✦ Consultar IA" en la cabecera, las ubicaciones,
+"Llevar a la nota" con la bandeja "sin revisar" y la casilla de D8, el modelo `medgemma-4b-it (simulado)` y los
+interruptores `?ia=lenta|caida|corte|sin-analisis`.
+
+---
+
+## 11. PR 3 — hecho
+
+Rama `feature/prototipo-ia`, con el contrato nuevo de la sección 10. Todo lo de IA es nuevo y cada archivo lo dice
+al inicio ("No viene de Figma").
+
+**Cómo quedó**
+
+- `src/api/ai.ts`: copia del `aiApi.ts` de `frontend/` (`getAiAnalysis`, `generateAiIdeas`, `streamAiAssist`).
+  `src/lib/aiTemas.ts`: copia de `backend/src/services/aiTemas.ts`.
+- Simulador (`src/api/mock/ai.ts` y `iaRespuestas.ts`): `POST /ai/assist/stream` con los marcos `inicio`, `trozo`,
+  `fin` y `error`; `GET /ai/assist/:id`; `POST /ai/assist/:id/ideas`. Tiene los mismos 400 ("Selecciona un
+  paciente", "Escribe la consulta"), 404, 403 (enfermería), 429 (10 consultas y 5 pedidos de ideas por minuto) y
+  503. El modelo se anuncia como `medgemma-4b-it (simulado)`.
+- `src/components/ai/`:
+  - `AiConsult` y `useAiConsult`: la consulta, con sus estados pensando, escribiendo, respuesta, detenida, error y
+    cortada.
+  - `AiPanel` y `useAiPanel`: el panel lateral.
+  - `AiContext`: "Lo que verá la IA".
+  - `AiIdeasCard`: variantes `full`, `compact`, `collapsible` y `cie10`.
+  - `AiAnswer` y `AiDisclaimer`, `TakeToNote` ("Llevar a la nota"), `AiSuggestionTray` y `aiSuggestion.ts`
+    (sessionStorage por cédula).
+  - `useAiAccess`: permiso `asistente_ia` y que el rol no sea admin.
+- Pantalla nueva `/MedAsistenteIa` y entrada "Asistente IA" en el menú.
+- **Dónde aparece la IA:**
+  - "Consultar IA" en la cabecera del paciente.
+  - Ideas en el Resumen (los 8) y en el Monitoreo detallado (solo críticos).
+  - Desplegable de solo lectura en Confirmación de atención y en la Nota SOAP nueva.
+  - Hipótesis con "Buscar en CIE-10" en Registro de diagnóstico.
+  - "Revisar interacciones con IA" en Indicaciones.
+  - "La IA propuso N hipótesis" en el Dashboard.
+- **Nota SOAP:**
+  - La bandeja "sin revisar" con Insertar en A / P / Descartar.
+  - Si la nota tiene texto de la IA, "Firmar" queda desactivado hasta marcar "Revisé el texto sugerido por la IA
+    (dosis, alergias e interacciones)" (D8).
+  - La sugerencia se borra al firmar, al descartar y al cerrar sesión.
+
+**Archivos compartidos que se tocaron** (además de los de IA): `App.tsx` (`AiPanelProvider` y 1 ruta),
+`layout/nav.ts` (1 entrada; `NavItem` gana `perm` y `hideFor`, opcionales), `layout/Sidebar.tsx` (filtra por
+permiso), `components/index.ts` y `icons.tsx` (solo se agrega), `ui/Modal.tsx` (`ConfirmDialog` gana
+`confirmDisabled`, opcional), `form/Combobox.tsx` (gana `search`, opcional) y `auth/session.tsx` (al salir borra
+las sugerencias). `main.tsx` no cambia: el panel necesita el router y va en `App.tsx`. Para la sección del
+administrador: nada de lo suyo cambia de forma; el admin no ve la IA.
+
+**Diferencias con lo aprobado** (además de la sección 10)
+
+1. **"Lo que verá la IA" no se pide al servidor:** el backend no expone `patientContext`. Se arma en el navegador
+   con los mismos datos (expediente, signos, notas) y las mismas reglas de temas; si el backend cambia esas reglas,
+   hay que volver a copiar `aiTemas.ts`.
+2. **"Desactualizado"** se marca como en `frontend/`: solo si llega por el flujo una alerta del paciente más nueva
+   que el análisis. El simulador no genera alertas nuevas, así que en la demo no se ve.
+3. **El análisis automático del simulador se renueva cada 10 min** ("hace 4 min" al abrir): en el backend las
+   alertas siguen llegando y lo vuelven a disparar. Sin esto caducaría a los 15 min con la página abierta.
+4. **"Buscar en CIE-10"** escribe la palabra de la hipótesis que encuentra menos códigos sin quedar en cero
+   ("Tromboembolia pulmonar…" → "embolia"). El buscador de CIE-10 busca texto, no frases.
+5. **La búsqueda global sigue abriendo con "Batista"**, que ahora da el paciente y el documento (C7).
+
+**Verificación**
+
+- `npm run build` y `tsc` pasan.
+- Capturas a 1440, 1024, 768 y 390: ninguna pantalla se sale de lado. Las únicas marcas son los recortes y saltos
+  de línea aceptados en el PR 2.
+- Pruebas automáticas de IA (Edge sin ventana), todas pasan:
+  - **Consulta:**
+    - Sin paciente, pide elegirlo y no deja consultar.
+    - "Manejo inicial" pasa por pensando y escribiendo, y responde solo el manejo, con la bandera roja.
+    - Un dato ("¿quién es el médico a cargo y en qué cama está?") da una frase, y "Lo que verá la IA" agrega médico
+      y cama.
+  - **Estados:**
+    - Detener: queda "Detuvo la consulta" y "Llevar a la nota" desactivado.
+    - `?ia=caida`: aviso y "Reintentar".
+    - `?ia=corte`: lo escrito queda marcado como cortado.
+  - **Ideas:**
+    - DEMO-0004 empieza sin ideas.
+    - DEMO-0003 (crítico) muestra 3 hipótesis con el aviso.
+    - Monitoreo detallado: ideas solo en el crítico.
+    - "Generar ideas" en DEMO-0007 da "A solicitud".
+  - **Nota SOAP:**
+    - "Llevar a la nota" → insertar en A → firmar exige la casilla; sin texto clínico en la URL y sin sugerencias
+      al terminar.
+    - La sugerencia sobrevive a recargar y no aparece en la nota de otro paciente.
+  - **Otras pantallas:** Indicaciones abre el panel y pregunta sola; "Buscar en CIE-10"; "La IA propuso…" en el
+    Dashboard; el desplegable de la Confirmación.
+  - **Enfermería:** no ve el menú, el botón ni las ideas, y por URL ve el aviso del 403.
+  - **Cerrar sesión:** borra las sugerencias.
+- **Pruebas del PR 2 de nuevo:**
+  - Recarga, cédula inexistente, listas (con la búsqueda ajustada por C7) y sesión.
+  - Las 8 fichas en sus 18 pantallas.

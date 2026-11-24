@@ -38,3 +38,4 @@ export { PatientLayout, PatientProblem, ContentLoading } from './patient/Patient
 export { usePatient, mainDiagnosis, type PatientView } from './patient/usePatient';
 export { SoapSections, type SoapNote } from './patient/SoapSections';
 export { UploadDocumentModal, type DocumentType, type UploadedDocument } from './patient/UploadDocumentModal';
+export * from './ai';

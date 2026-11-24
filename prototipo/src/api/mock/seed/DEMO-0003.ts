@@ -36,26 +36,6 @@ const inventado: Inventado = {
       extremidades_superiores: { inspeccion: ['anormal', 'Acropaquias y cianosis distal leve.'] },
     },
   },
-  notasSoap: [
-    {
-      horasAtras: 29,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'firmada',
-      s: 'Aumento de la disnea y del volumen del esputo, que se volvió purulento, desde hace 4 días.',
-      o: 'FC 104 lpm, FR 26 rpm, SpO2 86 % con O2 2 L, T 38.1 °C. Sibilancias difusas.',
-      a: 'Exacerbación de EPOC (Anthonisen tipo I), probablemente infecciosa.',
-      p: 'Broncodilatadores nebulizados c/4 h. Prednisona 40 mg c/24 h por 5 días. Antibiótico sin sulfonamidas (alergia). O2 para SpO2 88–92 %. Gasometría.',
-    },
-    {
-      horasAtras: 3,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'firmada',
-      s: 'Más somnoliento esta tarde.',
-      o: 'FC 114 lpm, SpO2 85 % con Venturi 28 %, FR 28 rpm. Gasometría: pH 7.30, PaCO2 62 mmHg.',
-      a: 'Acidosis respiratoria aguda sobre crónica; riesgo de fatiga respiratoria.',
-      p: 'Iniciar ventilación no invasiva (BiPAP). Evitar oxígeno en exceso. Gasometría de control en 1 h.',
-    },
-  ],
   antecedentes: [
     { tipo: 'personal', descripcion: 'Cor pulmonale crónico', parentesco: null, anio: 2021 },
     { tipo: 'habito', descripcion: 'Exposición a humo de leña en la infancia', parentesco: null, anio: null },

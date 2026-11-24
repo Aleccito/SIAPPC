@@ -23,26 +23,6 @@ const inventado: Inventado = {
   temp: 36.7,
   // Llegó hace 6 h: la exploración física todavía está pendiente.
   exploracion: null,
-  notasSoap: [
-    {
-      horasAtras: 5.5,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'firmada',
-      s: 'Palpitaciones de inicio brusco durante esfuerzo, con opresión torácica y sudoración fría; 2 h de evolución.',
-      o: 'FC 150 lpm regular, PA 112/72 mmHg, SpO2 95 %. ECG: taquicardia regular de QRS estrecho sin ondas P visibles.',
-      a: 'Taquicardia supraventricular paroxística probable; descartar flutter 2:1 y síndrome coronario agudo (antecedente familiar).',
-      p: 'Maniobras vagales; adenosina 6 mg IV en bolo rápido si persiste, con registro de ECG. Troponinas seriadas y electrolitos.',
-    },
-    {
-      horasAtras: 1.5,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'firmada',
-      s: 'Persisten las palpitaciones; opresión leve.',
-      o: 'FC 150 lpm sin cambios tras maniobras vagales y adenosina 6 y 12 mg (bloqueo transitorio); PA 108/70 mmHg.',
-      a: 'Probable flutter auricular 2:1, desenmascarado con adenosina.',
-      p: 'Control de frecuencia con diltiazem IV (suspender amlodipino). Cardioversión eléctrica si hay inestabilidad. Ecocardiograma. Anticoagulación según CHA2DS2-VASc.',
-    },
-  ],
   antecedentes: [{ tipo: 'habito', descripcion: 'Exfumador, 15 paquetes-año', parentesco: null, anio: 2018 }],
   resueltos: [],
   hospitalizaciones: [],

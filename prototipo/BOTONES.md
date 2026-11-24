@@ -507,3 +507,27 @@ simulador responde con los 8 pacientes de `backend/db/seed-demo.sql`).
 | Resumen de Turno Recibido | "Ver Paciente" y filas | Los 8 pacientes; pendientes y alergias salen de cada uno. |
 | Notificaciones | Lista y "Marcar como leídas" | Avisos de alertas del simulador más avisos inventados (el seed no trae notificaciones); lo leído se recuerda. |
 | Formularios del expediente | "Guardar", "Firmar", "Registrar" | Van al simulador (POST/PUT/PATCH como el backend) y se ven en las otras pantallas: notas SOAP, diagnósticos, antecedentes, documentos, umbrales, exploración, nota de ingreso, interrogatorio, indicaciones. |
+
+## Paso 4 — IA (PR 3)
+
+Todo es nuevo (en Figma no hay IA) y solo lo ve quien tiene `asistente_ia` y no es admin. Detalle en
+`REVISION-IA.md`, secciones 10 y 11.
+
+| Dónde | Elemento | Qué hace |
+|---|---|---|
+| Menú lateral | "Asistente IA" | **Pantalla**: `/MedAsistenteIa`. |
+| Asistente IA | "Paciente" | **Opciones**: los 8; sin paciente no se puede consultar. |
+| Asistente IA y panel | Preguntas rápidas (5) | **Estado**: envían la pregunta (Mayús+clic solo la copian al cuadro). |
+| Asistente IA y panel | "Consultar" / "Detener" (Ctrl+Enter) | **Estado**: pensando → escribiendo → respuesta; "Detener" la corta y deja lo escrito. |
+| Asistente IA y panel | "Llevar a la nota" | **Menú**: qué llevar (respuesta completa o una sección) y a dónde (A o P) → **Pantalla** Nueva Nota SOAP con la bandeja. |
+| Asistente IA y panel | "Copiar" / "Nueva consulta" / "Reintentar" / "Volver a preguntar" | **Aviso** "Respuesta copiada" / **Estado**. |
+| Cabecera del paciente | "Consultar IA" | **Modal**: panel lateral con el paciente elegido (Escape o el fondo lo cierran). |
+| Resumen, Monitoreo detallado (críticos), Registro de diagnóstico | "Generar ideas" / "Actualizar" | **Estado**: pide ideas a la IA ("Generando…" → "A solicitud"). |
+| Resumen | "Preguntar más" (en cada idea) | **Modal**: panel con "Profundiza en: {idea}", enviada sola. |
+| Resumen | "Llevar a la nota" (ideas) | **Menú**: Evaluación (A) o Plan (P) → Nueva Nota SOAP. |
+| Registro de diagnóstico | "Buscar en CIE-10" | **Estado**: escribe la hipótesis en el buscador de CIE-10 y lo abre. |
+| Indicaciones médicas | "Revisar interacciones con IA" | **Modal**: panel que pregunta solo por alergias e interacciones. |
+| Confirmación de atención, Nota SOAP | "Ideas de la IA para este paciente (n)" | **Estado**: despliega las ideas (solo lectura). |
+| Nota SOAP | "Insertar en Evaluación (A)" / "Insertar en Plan (P)" / "Descartar" | **Estado**: agrega el texto al final de la sección o descarta la sugerencia. |
+| Nota SOAP | Casilla "Revisé el texto sugerido por la IA" | **Estado**: sin marcarla, "Firmar" queda desactivado (solo si la nota tiene texto de la IA). |
+| Dashboard | "La IA propuso N hipótesis · hace X" | **Pantalla**: Resumen de ese paciente. |

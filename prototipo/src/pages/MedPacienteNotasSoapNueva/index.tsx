@@ -2,6 +2,9 @@
 // Paso 3: S/O/A/P son campos reales. "Guardar borrador" pide al menos una sección; "Guardar y firmar"
 // pide las cuatro (10 a 2000 caracteres) y confirma antes de firmar (REVISION.md, paso 3, punto 1).
 // Guarda con POST /soap/notes (o PUT + /sign si sigue un borrador) para el paciente de la URL.
+// PR 3 (no viene de Figma): la bandeja "Sugerencia de la IA — sin revisar" cuando se llega con "Llevar a la
+// nota", las ideas de la IA en un desplegable y, si la nota tiene texto que vino de la IA, la casilla "Revisé el
+// texto sugerido por la IA" para poder firmar (REVISION-IA.md, sección 5 y D8). Al backend llega lo de siempre.
 import imgAvatar2Png from '../../assets/avatar-2.png';
 import imgHeaderRowFrame from '../../assets/header-row-frame.svg';
 import imgHeaderRowFrame2 from '../../assets/header-row-frame-2.svg';
@@ -18,8 +21,16 @@ import { useMonitoredBeds, useSoapNote, useSoapNotes } from '../../api/queries';
 import { getSignosExtra, useExtra } from '../../api/sinBackend';
 import type { SoapNote as ApiSoapNote } from '../../api/types/clinical';
 import {
+  aiTextUsed,
+  AiIdeasCard,
+  AiSuggestionTray,
   BackButton,
   Badge,
+  clearAiText,
+  discardSuggestion,
+  markAiTextUsed,
+  readSuggestion,
+  type SoapTarget,
   Button,
   Card,
   CloseButton,
@@ -94,6 +105,25 @@ function NuevaNota({ v, draft }: { v: PatientView; draft: ApiSoapNote | null }) 
   const [mode, setMode] = useState<'draft' | 'sign'>('draft');
   const [confirmSign, setConfirmSign] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  // La sugerencia viaja ligada a la cédula: la de otro paciente no aparece aquí.
+  const [suggestion, setSuggestion] = useState(() => readSuggestion(v.cedula));
+  const [aiUsed, setAiUsed] = useState(() => aiTextUsed(v.cedula));
+  const [reviewed, setReviewed] = useState(false);
+  const insert = (target: SoapTarget) => {
+    if (!suggestion) return;
+    setText((t) => ({ ...t, [target]: t[target].trim() ? `${t[target].trimEnd()}\n\n${suggestion.text}` : suggestion.text }));
+    markAiTextUsed(v.cedula);
+    setAiUsed(true);
+    discardSuggestion(v.cedula);
+    setSuggestion(null);
+    toast(`Sugerencia insertada en ${target === 'a' ? 'Evaluación (A)' : 'Plan (P)'}: revísela antes de firmar`);
+    focusFirst([`soap-${target}`]);
+  };
+  const dropSuggestion = () => {
+    discardSuggestion(v.cedula);
+    setSuggestion(null);
+    toast('Sugerencia descartada');
+  };
 
   const empty = FIELDS.every((f) => !text[f.key].trim());
   const dirty = FIELDS.some((f) => text[f.key] !== initial[f.key]);
@@ -135,6 +165,7 @@ function NuevaNota({ v, draft }: { v: PatientView; draft: ApiSoapNote | null }) 
       }
       await queryClient.invalidateQueries({ queryKey: ['soapNotes', v.id] });
       if (draft) await queryClient.invalidateQueries({ queryKey: ['soapNote', draft.id] });
+      if (done) clearAiText(v.cedula);
       toast(done ? 'Nota firmada' : 'Borrador guardado');
       navigate(SOAP_HISTORY_PATH);
     } catch (e) {
@@ -229,6 +260,8 @@ function NuevaNota({ v, draft }: { v: PatientView; draft: ApiSoapNote | null }) 
           <CloseButton onClick={close} />
         </div>
         <Divider />
+        {suggestion && <AiSuggestionTray suggestion={suggestion} onInsert={insert} onDiscard={dropSuggestion} />}
+        <AiIdeasCard variant="collapsible" patientId={v.id} cedula={v.cedula} className="w-full" />
         <div className="flex w-full flex-col gap-4">
           <p className="font-jakarta text-[14px] font-bold uppercase leading-[normal] text-ink">Notas de Progreso Clínico</p>
           <div className="flex w-full flex-col gap-[14px]">
@@ -273,13 +306,23 @@ function NuevaNota({ v, draft }: { v: PatientView; draft: ApiSoapNote | null }) 
         open={confirmSign}
         title="¿Firmar la nota?"
         confirmLabel="Firmar"
-        onCancel={() => setConfirmSign(false)}
+        onCancel={() => {
+          setConfirmSign(false);
+          setReviewed(false);
+        }}
+        confirmDisabled={aiUsed && !reviewed}
         onConfirm={() => {
           setConfirmSign(false);
           void store(true);
         }}
       >
-        {`Se firmará como ${me.name}. Una vez firmada, la nota no se puede editar.`}
+        <p>{`Se firmará como ${me.name}. Una vez firmada, la nota no se puede editar.`}</p>
+        {aiUsed && (
+          <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-lg border border-[#fde68a] bg-[#fffbeb] p-3 font-semibold text-[#92400e]">
+            <input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-primary" />
+            Revisé el texto sugerido por la IA (dosis, alergias e interacciones)
+          </label>
+        )}
       </ConfirmDialog>
       <ConfirmDialog
         open={confirmDiscard}
@@ -288,7 +331,10 @@ function NuevaNota({ v, draft }: { v: PatientView; draft: ApiSoapNote | null }) 
         confirmVariant="danger"
         cancelLabel="Seguir escribiendo"
         onCancel={() => setConfirmDiscard(false)}
-        onConfirm={() => navigate(SOAP_HISTORY_PATH)}
+        onConfirm={() => {
+          clearAiText(v.cedula);
+          navigate(SOAP_HISTORY_PATH);
+        }}
       >
         Se perderá lo que escribió en esta nota.
       </ConfirmDialog>

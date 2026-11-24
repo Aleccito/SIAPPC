@@ -10,7 +10,7 @@ import imgEcgWave from '../../assets/ecg-wave.svg';
 import imgHeaderRowFrame from '../../assets/header-row-frame.svg';
 import imgSpo2Wave from '../../assets/spo2-wave.svg';
 import imgTempWave from '../../assets/temp-wave.svg';
-import { AppLink, BackButton, Badge, Card, Divider, PatientLayout, usePatient, type PatientView } from '../../components';
+import { AiIdeasCard, AppLink, BackButton, Badge, Card, Divider, PatientLayout, usePatient, type PatientView } from '../../components';
 import { alertTitle, groupAlerts, vitalTone } from '../../lib/alerts';
 import { fmtAgo } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
@@ -117,8 +117,9 @@ function Monitoreo({ v }: { v: PatientView }) {
 
   return (
       <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
+        <div className="flex w-full min-w-0 flex-col gap-4 xl:max-w-[707px] xl:flex-1">
         {/* El monitor lleva a las tendencias de signos vitales */}
-        <AppLink to="/MedPacienteTendenciasVitales" className="w-full min-w-0 xl:max-w-[707px] xl:flex-1" aria-label="Ver tendencias de signos vitales">
+        <AppLink to="/MedPacienteTendenciasVitales" className="w-full min-w-0" aria-label="Ver tendencias de signos vitales">
           <div className="flex w-full flex-col gap-[14px] rounded-xl border border-white bg-white p-4 drop-shadow-[0px_8px_10px_rgba(0,0,0,0.25)] sm:p-5">
             <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-black">{`Monitor de Cama - Cama ${v.bed ?? '—'}`}</h2>
             {signals.map((s) => (
@@ -141,6 +142,9 @@ function Monitoreo({ v }: { v: PatientView }) {
             ))}
           </div>
         </AppLink>
+        {/* No viene de Figma (PR 3): ideas de la IA bajo el monitor, solo con el paciente crítico (como BedMonitorPage). */}
+        {v.state === 'critico' && <AiIdeasCard variant="compact" patientId={v.id} cedula={v.cedula} />}
+        </div>
 
         <div className="flex w-full min-w-0 flex-col gap-4 xl:w-[443px] xl:shrink-0">
           <Card raised className="flex w-full flex-col gap-[14px]">

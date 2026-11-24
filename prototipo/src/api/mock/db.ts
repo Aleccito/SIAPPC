@@ -22,7 +22,7 @@ import { DEMO_0007 } from './seed/DEMO-0007';
 import { DEMO_0008 } from './seed/DEMO-0008';
 import { DEL_SEED_CAMAS } from './seed/delSeed';
 import type { Fecha, PacienteDemo, Region, Tecnica } from './seed/tipos';
-import { MEDICO } from './session';
+import { USUARIOS } from './session';
 
 export const DEMOS: PacienteDemo[] = [DEMO_0001, DEMO_0002, DEMO_0003, DEMO_0004, DEMO_0005, DEMO_0006, DEMO_0007, DEMO_0008];
 
@@ -357,30 +357,34 @@ export function expediente(i: number): Expediente {
 
 // --- Notas SOAP -------------------------------------------------------------
 
-let notaId = 1;
-const notasBase: SoapNote[] = DEMOS.flatMap((d, i) =>
-  d.inventado.notasSoap.map((n) => {
-    const at = isoHace(n.horasAtras * HORA);
-    const firmada = n.estado === 'firmada';
-    const autorId = n.autor === MEDICO.name || n.autor === `Dr. ${MEDICO.name}` ? MEDICO.id : '90';
-    return {
-      id: String(notaId++),
+// La nota firmada que el seed trae para cada paciente (backend/db/seed-demo.sql), tal cual. El autor y el firmante
+// vienen por correo; se buscan en las cuentas de seed.sql.
+const usuarioPorCorreo = (email: string | null) => USUARIOS.find((u) => u.email === email) ?? null;
+const notasBase: SoapNote[] = DEMOS.flatMap((d, i) => {
+  const n = d.delSeed.notaSoap;
+  if (!n) return [];
+  const autor = usuarioPorCorreo(n.autor);
+  const firmante = usuarioPorCorreo(n.firmadaPor);
+  const firmada = n.estado === 'firmada';
+  return [
+    {
+      id: idDe(i),
       patientId: idDe(i),
-      authorId: autorId,
-      authorName: n.autor.replace(/^Dra?\. /, ''),
+      authorId: autor?.id ?? '0',
+      authorName: autor?.name ?? n.autor,
       parentId: null,
-      at,
-      subjective: n.s,
-      objective: n.o,
-      assessment: n.a,
-      plan: n.p,
-      status: n.estado,
-      signedById: firmada ? autorId : null,
-      signedByName: firmada ? n.autor.replace(/^Dra?\. /, '') : null,
-      signedAt: firmada ? isoHace(n.horasAtras * HORA - 10 * MIN) : null,
-    } satisfies SoapNote;
-  }),
-);
+      at: isoHace(n.horasAtras * HORA),
+      subjective: n.subjetivo,
+      objective: n.objetivo,
+      assessment: n.analisis,
+      plan: n.plan,
+      status: n.estado as SoapNote['status'],
+      signedById: firmada ? firmante?.id ?? null : null,
+      signedByName: firmada ? firmante?.name ?? n.firmadaPor : null,
+      signedAt: firmada && n.firmadaHorasAtras !== null ? isoHace(n.firmadaHorasAtras * HORA) : null,
+    } satisfies SoapNote,
+  ];
+});
 
 /** Todas las notas (las del prototipo incluidas), con los cambios aplicados. */
 export function notas(): SoapNote[] {

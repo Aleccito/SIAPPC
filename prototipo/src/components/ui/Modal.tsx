@@ -91,10 +91,12 @@ type ConfirmDialogProps = {
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Deja "confirmar" desactivado (por ejemplo, hasta marcar una casilla). */
+  confirmDisabled?: boolean;
 };
 
 /** Confirmación corta: título, texto y Cancelar / Confirmar. */
-export function ConfirmDialog({ open, title, children, confirmLabel, confirmVariant = 'primary', cancelLabel = 'Cancelar', onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, title, children, confirmLabel, confirmVariant = 'primary', cancelLabel = 'Cancelar', onConfirm, onCancel, confirmDisabled }: ConfirmDialogProps) {
   return (
     <Modal labelledBy="confirm-dialog-title" open={open} onClose={onCancel} width={420} className="gap-4 p-5 shadow-xl sm:p-6">
       <ModalHeader id="confirm-dialog-title" title={title} onClose={onCancel} />
@@ -103,7 +105,7 @@ export function ConfirmDialog({ open, title, children, confirmLabel, confirmVari
         <Button variant="secondary" onClick={onCancel}>
           {cancelLabel}
         </Button>
-        <Button variant={confirmVariant} onClick={onConfirm}>
+        <Button variant={confirmVariant} onClick={onConfirm} disabled={confirmDisabled}>
           {confirmLabel}
         </Button>
       </div>

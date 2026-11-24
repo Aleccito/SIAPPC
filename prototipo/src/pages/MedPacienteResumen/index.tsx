@@ -10,7 +10,7 @@ import imgLiveIndicatorEllipse from '../../assets/live-indicator-ellipse.svg';
 import imgWaveLine from '../../assets/wave-line.svg';
 import { useAlerts, useAssignments, useDeviceStatus, useMonitoredBeds, useSoapNotes } from '../../api/queries';
 import { getDatosExtra, getSignosExtra, useExtra } from '../../api/sinBackend';
-import { AppLink, BackButton, Badge, Button, Card, Divider, PatientLayout, SoapSections, usePatient, type PatientView } from '../../components';
+import { AiIdeasCard, AppLink, BackButton, Badge, Button, Card, Divider, PatientLayout, SoapSections, usePatient, type PatientView } from '../../components';
 import { alertInfoFrom, attendedAlerts, CONFIRM_PATH, type AttendedState, type ConfirmState } from '../../data/alerts';
 import { toSoapSections } from '../../data/soap';
 import { alertTitle, alertValueText, groupAlerts, vitalTone } from '../../lib/alerts';
@@ -124,7 +124,7 @@ function Resumen({ v }: { v: PatientView }) {
 
   return (
     <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
-      <div className="flex w-full min-w-0 flex-col xl:max-w-[630px] xl:flex-1">
+      <div className="flex w-full min-w-0 flex-col gap-4 xl:max-w-[630px] xl:flex-1">
         <div className="flex w-full flex-col gap-4 rounded-xl bg-[#0b1220] p-4 drop-shadow-[0px_8px_10px_rgba(0,0,0,0.25)] sm:p-5 xl:min-h-[571px]">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-white">{`Monitor de Signos Vitales — Cama ${v.bed ?? '—'}`}</h2>
@@ -168,6 +168,8 @@ function Resumen({ v }: { v: PatientView }) {
             <p className="font-jakarta font-bold">{`Ref: ${device ?? '—'}`}</p>
           </div>
         </div>
+        {/* No viene de Figma (PR 3): ideas de la IA en el espacio libre bajo el monitor, para los 8 (C4). */}
+        <AiIdeasCard patientId={v.id} cedula={v.cedula} />
       </div>
 
       <div className="flex w-full min-w-0 flex-col gap-4 xl:w-[474px] xl:shrink-0">

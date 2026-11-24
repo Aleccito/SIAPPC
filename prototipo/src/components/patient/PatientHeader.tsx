@@ -1,6 +1,7 @@
 import { fmtDate, initials } from '../../lib/clinical';
 import { useSession } from '../auth/session';
-import { IconClipboard, IconFileText } from '../icons';
+import { useAiPanel } from '../ai/AiPanel';
+import { IconClipboard, IconFileText, IconSparkles } from '../icons';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -25,6 +26,7 @@ export function PatientAvatar({ name, size = 56 }: { name: string; size?: number
 export function PatientHeader({ view }: { view: PatientView | undefined }) {
   const toast = useToast();
   const { can } = useSession();
+  const ai = useAiPanel();
   return (
     <Card raised className="w-full">
       {/* Debajo de 1280 px los botones van en una fila bajo los datos; en celular, a todo el ancho. */}
@@ -69,6 +71,12 @@ export function PatientHeader({ view }: { view: PatientView | undefined }) {
           <Button variant="secondary" icon={<IconFileText size={14} />} onClick={() => view && toast(`Reporte de ${view.name} generado`)}>
             Generar Reporte
           </Button>
+          {/* No viene de Figma (PR 3): abre la consulta a la IA en el panel lateral, con este paciente. */}
+          {ai.available && view && (
+            <Button variant="soft" icon={<IconSparkles size={14} />} onClick={() => ai.open({ cedula: view.cedula })}>
+              Consultar IA
+            </Button>
+          )}
         </div>
       </div>
     </Card>

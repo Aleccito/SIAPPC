@@ -39,26 +39,6 @@ const inventado: Inventado = {
       },
     },
   },
-  notasSoap: [
-    {
-      horasAtras: 11,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'firmada',
-      s: 'Disnea súbita y dolor torácico pleurítico derecho al intentar sentarse, al 5.º día de osteosíntesis de cadera.',
-      o: 'FC 112 lpm, FR 26 rpm, SpO2 88 % al aire, PA 104/66 mmHg. Pantorrilla derecha aumentada de volumen.',
-      a: 'Tromboembolia pulmonar probable (Wells 7.5) pese a profilaxis con enoxaparina. Sin choque.',
-      p: 'Angio-TC de tórax urgente y dímero D. Ecocardiograma para valorar ventrículo derecho. Anticoagulación plena tras valorar sangrado con Ortopedia. O2 para SpO2 ≥ 92 %.',
-    },
-    {
-      horasAtras: 1,
-      autor: 'Dr. Carlos Méndez',
-      estado: 'firmada',
-      s: 'Refiere más falta de aire; ansiosa.',
-      o: 'FC 126 lpm, SpO2 83 % con mascarilla reservorio, FR 31 rpm, PA 98/62 mmHg. Angio-TC: defectos de llenado lobares derechos.',
-      a: 'TEP confirmada con hipoxemia grave y tendencia a hipotensión: riesgo intermedio-alto.',
-      p: 'Valorar trombólisis o trombectomía con Cardiología. Troponina y BNP. Preparar ventilación si empeora.',
-    },
-  ],
   antecedentes: [
     { tipo: 'familiar', descripcion: 'Trombosis venosa profunda', parentesco: 'Madre', anio: null },
     { tipo: 'ginecoobstetrico', descripcion: 'G2 P2; menopausia a los 50 años', parentesco: null, anio: 2021 },

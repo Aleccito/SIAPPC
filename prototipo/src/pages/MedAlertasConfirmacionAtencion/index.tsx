@@ -11,7 +11,7 @@ import { useState, type ComponentType } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import imgBell4 from '../../assets/bell-4.svg';
 import { useAlerts, useAssignedPatients } from '../../api/queries';
-import { Button, CloseButton, focusFirst, Modal, Select, TextArea, useToast, useValidation } from '../../components';
+import { AiIdeasCard, Button, CloseButton, focusFirst, Modal, Select, TextArea, useToast, useValidation } from '../../components';
 import { alertInfoFrom, attendedAlerts, type AlertInfo, type AttendedState, type ConfirmState } from '../../data/alerts';
 import { groupAlerts } from '../../lib/alerts';
 import { checkText } from '../../lib/validate';
@@ -47,6 +47,8 @@ export default function MedAlertasConfirmacionAtencion() {
   const alert: AlertInfo = incoming?.alert ??
     fallback ?? { id: '', patient: 'Cargando…', bed: '', title: 'Cargando la alerta…', detail: '' };
   const from = incoming?.from ?? '/MedAlertasCentro';
+  const assigned = useAssignedPatients();
+  const aiPatientId = assigned.data?.find((p) => p.document === alert.cedula)?.id;
   const [classification, setClassification] = useState(CLASSIFICATIONS[0]);
   const [action, setAction] = useState('');
   const [notes, setNotes] = useState('');
@@ -100,6 +102,9 @@ export default function MedAlertasConfirmacionAtencion() {
             <p className="text-[12px] leading-[normal] text-muted">{alert.detail}</p>
           </div>
         </div>
+
+        {/* No viene de Figma (PR 3): las ideas ayudan a decidir, pero no se copian a lo que se registra. */}
+        {aiPatientId && alert.cedula && <AiIdeasCard variant="collapsible" patientId={aiPatientId} cedula={alert.cedula} className="w-full" />}
 
         <div className="relative h-0 w-full">
           <div className="absolute inset-x-0 -top-px h-px bg-line" />

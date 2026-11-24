@@ -11,6 +11,7 @@ import { MEDICO, tokenDe } from '../../api/mock/session';
 import type { Credentials, User } from '../../api/types/auth';
 import { CURRENT_USER } from '../layout/nav';
 import { useToast } from '../ui/Toast';
+import { clearAllAiSuggestions } from '../ai/aiSuggestion';
 
 /** Marca de "cerró sesión a propósito": sin ella, el modo mock entra solo como el médico. */
 const SALIO = 'auth.salio';
@@ -94,6 +95,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     () =>
       onUnauthorized(() => {
         clearToken();
+        clearAllAiSuggestions();
         storage.remove(USER_KEY);
         storage.set(SALIO, '1');
         queryClient.clear();
@@ -114,6 +116,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await apiLogout();
+    clearAllAiSuggestions();
     storage.set(SALIO, '1');
     queryClient.clear();
     setUser(null);

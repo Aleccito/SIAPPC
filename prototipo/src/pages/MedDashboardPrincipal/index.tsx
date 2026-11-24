@@ -3,6 +3,8 @@
 // del seed. Los indicadores se calculan; PA y temperatura salen de src/api/sinBackend.ts.
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { getAiAnalysis } from '../../api/ai';
 import { useReadings } from '../../api/queries';
 import imgAlertTriangle2 from '../../assets/alert-triangle-2.svg';
 import imgCheckSquare from '../../assets/check-square.svg';
@@ -12,7 +14,7 @@ import imgFolder from '../../assets/folder.svg';
 import imgHeart2 from '../../assets/heart-2.svg';
 import imgHeart3 from '../../assets/heart-3.svg';
 import imgUsers3 from '../../assets/users-3.svg';
-import { AppLayout, Badge, Button, Card, EmptyState, rowLinkClass, SearchBox, Select, Table, useRowLink } from '../../components';
+import { aiAnalysisKey, AppLayout, Badge, Button, Card, EmptyState, IconSparkles, rowLinkClass, SearchBox, Select, Table, useAiAccess, useRowLink } from '../../components';
 import { Sparkline } from '../../components/ui/Sparkline';
 import { alertInfoFrom, CONFIRM_PATH, type ConfirmState } from '../../data/alerts';
 import { usePatientRows, vitalsText, type PatientRow } from '../../data/patients';
@@ -47,7 +49,7 @@ const ROW_ACTIONS = [
 
 const FROM = '/MedDashboardPrincipal';
 
-type Attention = { key: string; tag: string; tone: 'danger' | 'warning' | 'neutral'; when: string; at: string; text: string; bed: string; to: string; state?: ConfirmState };
+type Attention = { key: string; tag: string; tone: 'danger' | 'warning' | 'neutral'; when: string; at: string; text: string; bed: string; to: string; state?: ConfirmState; patientId?: string; cedula?: string };
 
 const BED_COLOR = { danger: 'text-danger', warning: 'text-warning', neutral: 'text-muted' };
 
@@ -73,6 +75,8 @@ function attentionItems(rows: PatientRow[]): Attention[] {
         bed: r.bed ?? '—',
         to: `${CONFIRM_PATH}?paciente=${r.document}`,
         state: { from: FROM, alert: alertInfoFrom(g, { cedula: r.document, name: r.name, bed: r.bed }) },
+        patientId: r.id,
+        cedula: r.document,
       },
     ];
   });
@@ -91,6 +95,25 @@ function attentionItems(rows: PatientRow[]): Attention[] {
   const crit = alerts.filter((a) => a.tone === 'danger');
   const rest = alerts.filter((a) => a.tone !== 'danger');
   return [...crit.slice(0, 2), ...pending.slice(0, 1), ...crit.slice(2), ...rest, ...pending.slice(1)].slice(0, 4);
+}
+
+/**
+ * No viene de Figma (PR 3): bajo la alerta de un paciente con análisis de la IA, "✦ La IA propuso 3 hipótesis ·
+ * hace 4 min", que lleva a su Resumen (donde están las ideas). Sin permiso o sin análisis, nada.
+ */
+function AiHint({ patientId, cedula }: { patientId: string; cedula: string }) {
+  const query = useQuery({ queryKey: aiAnalysisKey(patientId), queryFn: () => getAiAnalysis(patientId), enabled: useAiAccess(), refetchInterval: 30_000 });
+  const a = query.data?.analysis;
+  if (!a) return null;
+  return (
+    <Link
+      to={patientPath('/MedPacienteResumen', cedula)}
+      className="mt-1 flex items-center gap-1.5 rounded-md px-2 py-1 font-jakarta text-[12px] font-semibold text-primary hover:bg-primary-soft"
+    >
+      <IconSparkles size={13} />
+      {`La IA propuso ${a.ideas.length} hipótesis · ${fmtAgo(a.generatedAt)}`}
+    </Link>
+  );
 }
 
 /** Minigráficas de FC y SpO2 de un paciente: sus 40 min de lecturas del seed. */
@@ -302,6 +325,7 @@ export default function MedDashboardPrincipal() {
                   <p className="font-jakarta text-[12px] font-semibold leading-[17px] text-ink">{a.text}</p>
                   <p className={cn('font-jakarta text-[11px] font-bold leading-[normal]', BED_COLOR[a.tone])}>{a.bed}</p>
                 </button>
+                {a.patientId && a.cedula && <AiHint patientId={a.patientId} cedula={a.cedula} />}
               </li>
             ))}
           </ul>

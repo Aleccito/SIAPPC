@@ -147,15 +147,16 @@ export const getNotificacionesExtra = () =>
         to: `/MedPacienteDocumentosClinicos?paciente=${x.d.delSeed.cedula}`,
       });
     }
-    for (const d of db.DEMOS) {
-      const borrador = d.inventado.notasSoap.find((n) => n.estado === 'borrador');
-      if (!borrador) continue;
+    // Un recordatorio por cada borrador guardado en el prototipo (el seed solo trae notas firmadas).
+    for (const n of db.notas().filter((x) => x.status === 'borrador')) {
+      const d = db.demoDe(n.patientId);
+      if (!d) continue;
       lista.push({
-        id: `recordatorio-${d.delSeed.cedula}`,
+        id: `recordatorio-${n.id}`,
         tipo: 'recordatorio',
         titulo: `Nota SOAP sin firmar - ${d.delSeed.nombre}`,
         texto: `El borrador de evolución de ${d.delSeed.nombre} (Cama ${d.delSeed.ingreso.cama}) sigue sin firmar.`,
-        at: db.isoHace((borrador.horasAtras - 0.5) * 3_600_000),
+        at: n.at,
         to: `/MedPacienteNotasSoapHistorial?paciente=${d.delSeed.cedula}`,
       });
     }

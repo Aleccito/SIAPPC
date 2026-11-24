@@ -33,6 +33,8 @@ import {
   useValidation,
   type PatientView,
 } from '../../components';
+import { AiIdeasCard } from '../../components/ai';
+import { matches, plain } from '../../lib/text';
 import { fmtDate } from '../../lib/clinical';
 import { checkDate, checkText, todayIso } from '../../lib/validate';
 import { cn } from '../../lib/cn';
@@ -45,6 +47,24 @@ const TYPES = [
   { value: 'definitivo', label: 'Definitivo' },
   { value: 'diferencial', label: 'Diferencial' },
 ];
+/**
+ * Qué escribir en el buscador de CIE-10 para una hipótesis de la IA (PR 3): la palabra (o el final de una palabra
+ * larga, "tromboembolia" → "embolia") que encuentra menos códigos sin quedarse en cero. Si ninguna encuentra, la
+ * primera palabra: el médico la corrige.
+ */
+function cie10Query(title: string): string {
+  const words = plain(title)
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4 && !['clase', 'alto', 'grado', 'riesgo', 'posible', 'probable'].includes(w));
+  const candidates = [...words, ...words.filter((w) => w.length > 8).map((w) => w.slice(-7))];
+  let best: [string, number] | null = null;
+  for (const c of candidates) {
+    const n = CIE10.filter(([code, label]) => matches(c, label, code)).length;
+    if (n > 0 && (!best || n < best[1])) best = [c, n];
+  }
+  return best?.[0] ?? words[0] ?? title;
+}
+
 /** Códigos CIE-10 frecuentes en UCI (datos de ejemplo); el campo los busca por código o por texto. */
 const CIE10: Array<[string, string]> = [
   ['I50.9', 'Insuficiencia cardíaca, no especificada'],
@@ -143,6 +163,7 @@ function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | und
   const admission = (v.assigned?.admittedAt ?? v.patient.arrivedAt).slice(0, 10);
   const [type, setType] = useState(String(editing?.type ?? 'presuntivo'));
   const [code, setCode] = useState(String(editing?.code ?? ''));
+  const [cieSearch, setCieSearch] = useState<{ text: string; seq: number } | null>(null);
   const [severity, setSeverity] = useState(previous.severity);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [files, setFiles] = useState<string[]>([]);
@@ -214,6 +235,7 @@ function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | und
                 placeholder="Buscar por código o nombre…"
                 icon={<img className="size-3.5 shrink-0" alt="" src={imgSearch3} />}
                 highlighted
+                search={cieSearch}
                 error={form.show('dx-cie10')}
               />
               <FieldError forId="dx-cie10" error={form.show('dx-cie10')} />
@@ -298,7 +320,8 @@ function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | und
           </div>
         </Card>
 
-        <Card className="flex w-full min-w-0 flex-col gap-4 xl:w-[340px] xl:shrink-0">
+        <div className="flex w-full min-w-0 flex-col gap-4 xl:w-[340px] xl:shrink-0">
+        <Card className="flex w-full min-w-0 flex-col gap-4">
           <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">Diagnósticos Previos</h2>
           <Divider />
           <ul className="flex w-full flex-col gap-3">
@@ -320,6 +343,9 @@ function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | und
             {others.length === 0 && <li className="font-jakarta text-[13px] text-muted">Sin diagnósticos previos.</li>}
           </ul>
         </Card>
+        {/* No viene de Figma (PR 3): las hipótesis de la IA solo aceleran la búsqueda del código; no registran nada. */}
+        <AiIdeasCard variant="cie10" patientId={v.id} cedula={v.cedula} onSearchCie10={(title) => setCieSearch({ text: cie10Query(title), seq: Date.now() })} />
+        </div>
       </div>
       <UploadDocumentModal
         open={uploadOpen}
