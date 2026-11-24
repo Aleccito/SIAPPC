@@ -7,7 +7,7 @@ import imgBedIcon2 from '../../assets/bed-icon-2.svg';
 import imgBedIcon3 from '../../assets/bed-icon-3.svg';
 import imgBedIcon4 from '../../assets/bed-icon-4.svg';
 import imgStatusPillEllipse from '../../assets/status-pill-ellipse.svg';
-import { AppLayout, Badge, rowLinkClass, Table, useRowLink } from '../../components';
+import { AppLayout, Badge, rowLinkClass, Table, useRowLink, useSession } from '../../components';
 import { unitSummary, useUnitBeds, useUnitParam, type BedView } from '../../components/monitor/BedCards';
 import { vitalTone } from '../../lib/alerts';
 import { ageFrom, fmtAgoShort, STATE_LABEL } from '../../lib/clinical';
@@ -59,6 +59,8 @@ function cells(b: BedView): Array<[keyof typeof LEVEL_COLOR, string]> {
 
 export default function MedMonitoreoListaUci() {
   const rowLink = useRowLink();
+  // Sin el expediente (el administrativo), las filas se miran pero no abren nada.
+  const opens = useSession().can('historia_clinica', 'ver');
   const [unit, setUnit] = useUnitParam();
   const { beds, units } = useUnitBeds(unit);
   const summary = unitSummary(beds, unit);
@@ -104,10 +106,10 @@ export default function MedMonitoreoListaUci() {
               const style = b.state ? STATE_STYLE[b.state] : null;
               const row = free ? null : cells(b);
               // Las camas ocupadas llevan al expediente. La libre es informativa: asignar camas es de Admisión.
-              const rowProps = free ? {} : { ...rowLink(patientPath('/MedPacienteResumen', b.cedula!)), 'aria-label': `Ver a ${b.patientName}, cama ${b.bed}` };
+              const rowProps = free || !opens ? {} : { ...rowLink(patientPath('/MedPacienteResumen', b.cedula!)), 'aria-label': `Ver a ${b.patientName}, cama ${b.bed}` };
               const age = ageFrom(b.birthDate);
               return (
-                <div key={b.id} {...rowProps} className={cn('flex min-h-[72px] w-full items-center gap-4 border-b border-line px-6 py-3 last:border-b-0', style?.row ?? 'bg-[#f3f4f6]', !free && rowLinkClass)}>
+                <div key={b.id} {...rowProps} className={cn('flex min-h-[72px] w-full items-center gap-4 border-b border-line px-6 py-3 last:border-b-0', style?.row ?? 'bg-[#f3f4f6]', !free && opens && rowLinkClass)}>
                   <div className="flex w-[60px] shrink-0 items-center gap-2">
                     <img className="size-[18px]" alt="" src={style?.icon ?? imgBedIcon4} />
                     <p className="whitespace-nowrap font-jakarta text-[12px] font-extrabold leading-[normal] text-ink">{b.bed}</p>

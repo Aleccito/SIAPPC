@@ -46,16 +46,21 @@ export function Combobox({ id, options, value, onChange, onBlur, freeText = fals
   const results = options.filter((o) => matches(query, o.label, o.value));
   const listId = `${id}-lista`;
 
+  // El foco va cuando el buscador ya está abierto (el campo existe solo mientras se edita).
+  const focusOnOpen = useRef(false);
   useEffect(() => {
     if (!search) return;
     setQuery(search.text);
     setActive(0);
     setEditing(true);
-    requestAnimationFrame(() => {
-      input.current?.focus();
-      input.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    });
+    focusOnOpen.current = true;
   }, [search]);
+  useEffect(() => {
+    if (!editing || !focusOnOpen.current || !input.current) return;
+    focusOnOpen.current = false;
+    input.current.focus();
+    input.current.scrollIntoView({ block: 'center' });
+  }, [editing, search]);
 
   const start = () => {
     setQuery(freeText ? value : pending);

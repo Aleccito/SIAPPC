@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import avatar from '../../assets/avatar-2.png';
 import { cn } from '../../lib/cn';
 import { LogoutDialog } from '../auth/LogoutDialog';
-import { useDisplayUser, useSession } from '../auth/session';
+import { initials } from '../../lib/clinical';
+import { landingFor, useDisplayUser, useSession } from '../auth/session';
 import { IconLogOut } from '../icons';
 import { NAV_ITEMS, sectionForPath } from './nav';
 
@@ -31,7 +31,7 @@ export function Sidebar({ className, onNavigate, onLogout }: SidebarProps) {
       aria-label="Menú principal"
     >
       <div className="flex flex-col gap-8">
-        <Link to="/MedDashboardPrincipal" onClick={onNavigate} aria-label="SIAPPC, ir al Dashboard" className="flex items-center gap-3">
+        <Link to={landingFor(sessionUser?.role)} onClick={onNavigate} aria-label="SIAPPC, ir al inicio" className="flex items-center gap-3">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary">
             <span className="font-jakarta text-[14px] font-extrabold leading-[normal] text-white">S</span>
           </div>
@@ -42,7 +42,7 @@ export function Sidebar({ className, onNavigate, onLogout }: SidebarProps) {
         </Link>
 
         <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.filter((item) => (!item.perm || can(item.perm, 'ver')) && !(sessionUser && item.hideFor?.includes(sessionUser.role))).map(({ section, label, to, icon: Icon }) => {
+          {NAV_ITEMS.filter((item) => (item.perm ?? []).every((p) => can(p, 'ver')) && !(sessionUser && item.hideFor?.includes(sessionUser.role))).map(({ section, label, to, icon: Icon }) => {
             const isActive = section === active;
             return (
               <Link
@@ -71,6 +71,12 @@ export function Sidebar({ className, onNavigate, onLogout }: SidebarProps) {
       </div>
 
       <div className="mt-8 flex flex-col">
+        {sessionUser?.role === 'administrativo' && (
+          // El trabajo del administrativo (Admisión) no está en el prototipo (CONEXION-BACKEND.md, 9.1).
+          <p className="mb-4 rounded-lg bg-white/5 p-3 font-jakarta text-[11px] leading-[1.45] text-subtle">
+            Ingresos, egresos y citas están en la app principal de SIAPPC (Admisión).
+          </p>
+        )}
         <Link
           to="/MedAyudaSoporte"
           onClick={onNavigate}
@@ -89,7 +95,10 @@ export function Sidebar({ className, onNavigate, onLogout }: SidebarProps) {
           </div>
           <div className="flex w-full items-center gap-3">
             <Link to="/MedPerfilMiPerfil" onClick={onNavigate} className="flex min-w-0 flex-1 items-center gap-3">
-              <img src={avatar} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+              {/* Iniciales del usuario de la sesión: la foto de Figma era de una sola persona (como D2 en los pacientes). */}
+              <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary font-jakarta text-[14px] font-extrabold leading-[normal] text-white">
+                {initials(user.plainName || user.name)}
+              </span>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5 whitespace-nowrap leading-[normal]">
                 <p className="truncate font-jakarta text-[13px] font-bold text-white">{user.name}</p>
                 <p className="truncate font-jakarta text-[11px] font-medium text-muted">{user.role}</p>

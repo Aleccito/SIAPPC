@@ -1,9 +1,9 @@
 // Pantalla "siappc-login" (Figma node 345:1264, página LOGIN). Entra con POST /auth/login (src/api/auth.ts).
-// En modo mock cualquier dato sirve; las cuentas de backend/db/seed.sql entran con su rol.
+// Con el backend real, las cuentas de backend/db/seed.sql (README de la raíz, "5. Entrar"); con el login simulado,
+// cualquier dato sirve y esas cuentas entran con su rol. Después siempre viene el código de verificación.
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../../api/http';
-import { API_MODE } from '../../api/mode';
 import { useSession } from '../../components/auth/session';
 import imgEye from '../../assets/login-eye.svg';
 import { AuthButton, AuthCard, AuthDivider, AuthField, AuthLayout, useAuthText } from '../../components';
@@ -35,9 +35,8 @@ export default function Login() {
     setError(null);
     try {
       await signIn({ email, password });
-      // El backend no tiene MFA (CONEXION-BACKEND.md, sección 2): con el backend real se entra directo.
-      if (API_MODE === 'real') navigate(volver ?? '/MedDashboardPrincipal', { replace: true });
-      else navigate('/LoginMfa', { state: { volver } });
+      // El backend no tiene MFA: el código es un paso temporal con un valor fijo (CONEXION-BACKEND.md, sección 2).
+      navigate('/LoginMfa', { state: { volver } });
     } catch (e) {
       const status = e instanceof ApiError ? e.status : 0;
       setError(

@@ -282,10 +282,17 @@ services:
       backend:
         condition: service_healthy
 
-  # Prototipo visual del módulo médico: las 35 pantallas de Figma en React +
-  # Tailwind, con datos de ejemplo escritos en las pantallas. NO es el tablero
-  # real (ese es `frontend`) y no habla con el backend, así que no depende de
-  # ningún otro servicio. Ver prototipo/LEEME.md.
+  # Prototipo del módulo médico: las pantallas de Figma en React + Tailwind
+  # (segunda app, aparte de `frontend`). Sus datos vienen del backend por /api
+  # (su nginx hace de proxy) o de un simulador en el navegador, según
+  # VITE_API_MODE, que se fija al construir. Ver prototipo/LEEME.md y
+  # prototipo/CONEXION-BACKEND.md.
+  #
+  #   PROTOTIPO_API_MODE  mock | mixto | real
+  #   PROTOTIPO_API_REAL  en mixto, los grupos o rutas que van al backend
+  #
+  # Sin depends_on a propósito: tiene que arrancar aunque el backend no esté
+  # (sus pantallas cargan y solo /api responde 502).
   #
   # Va en un perfil propio para que `docker compose up` no lo levante junto con
   # el sistema. Se levanta nombrándolo:
@@ -294,7 +301,11 @@ services:
   #
   # En 8082: 8080 es el tablero y 8081 el adminer.
   prototipo:
-    build: ./prototipo
+    build:
+      context: ./prototipo
+      args:
+        VITE_API_MODE: ${PROTOTIPO_API_MODE:-mixto}
+        VITE_API_REAL: ${PROTOTIPO_API_REAL:-auth,dashboard/assigned-patients,sensors}
     container_name: siappc-prototipo
     profiles: ['prototipo']
     restart: unless-stopped

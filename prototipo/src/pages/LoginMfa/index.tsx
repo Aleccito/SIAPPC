@@ -1,9 +1,11 @@
 // Pantalla "SIAPPC - MFA" (Figma node 345:426, página LOGIN), con la tarjeta del Login (REVISION.md, punto 5).
-// Sin backend: cualquier código de 6 dígitos pasa.
+// Paso temporal después del login: el backend no tiene MFA, así que solo pasa el código fijo 000000 (lo dice la
+// pantalla). Sin pasarlo no se entra a la app. Pendiente para cuando exista (CONEXION-BACKEND.md, pedido 17).
 import { useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import imgShield from '../../assets/login-shield.svg';
-import { AuthBackLink, AuthButton, AuthCard, AuthLayout, useAuthText, useCountdown, useToast } from '../../components';
+import { AuthBackLink, AuthButton, AuthCard, AuthLayout, useAuthText, useCountdown, useDisplayUser, useToast } from '../../components';
+import { landingFor, useSession } from '../../components/auth/session';
 import { cn } from '../../lib/cn';
 
 const LENGTH = 6;
@@ -16,6 +18,9 @@ export default function LoginMfa() {
   const { left, label, restart } = useCountdown(45);
   const [digits, setDigits] = useState<string[]>(() => Array(LENGTH).fill(''));
   const [error, setError] = useState(false);
+  const [wrong, setWrong] = useState(false);
+  const { user, mfaPending, verifyMfa } = useSession();
+  const me = useDisplayUser();
   const boxes = useRef<Array<HTMLInputElement | null>>([]);
 
   const focus = (i: number) => boxes.current[Math.max(0, Math.min(LENGTH - 1, i))]?.focus();
@@ -26,6 +31,7 @@ export default function LoginMfa() {
     if (!chars.length) return;
     setDigits((d) => d.map((x, i) => (i >= from && i < from + chars.length ? chars[i - from] : x)));
     setError(false);
+    setWrong(false);
     focus(from + chars.length);
   };
 
@@ -54,10 +60,20 @@ export default function LoginMfa() {
       focus(digits.findIndex((d) => !d));
       return;
     }
-    toast(t.welcome);
-    // Vuelve a la pantalla que pidió el Login, si la hubo (sesión vencida o enlace directo).
-    navigate(volver ?? '/MedDashboardPrincipal', { replace: true });
+    if (!verifyMfa(digits.join(''))) {
+      setWrong(true);
+      setDigits(Array(LENGTH).fill(''));
+      focus(0);
+      return;
+    }
+    toast(t.welcome(me.name));
+    // Vuelve a la pantalla que pidió el Login, si la hubo (sesión vencida o enlace directo); si no, la de su rol.
+    navigate(volver ?? landingFor(user?.role), { replace: true });
   };
+
+  // Sin login hecho no hay nada que verificar; con la sesión ya abierta, tampoco.
+  if (!user) return <Navigate to="/Login" replace state={{ volver }} />;
+  if (!mfaPending) return <Navigate to={volver ?? landingFor(user.role)} replace />;
 
   return (
     <AuthLayout>
@@ -97,11 +113,12 @@ export default function LoginMfa() {
               />
             ))}
           </div>
-          {error && (
+          {(error || wrong) && (
             <p className="text-center text-[13px] font-semibold text-danger" role="alert">
-              {t.missingDigits}
+              {wrong ? t.wrongCode : t.missingDigits}
             </p>
           )}
+          <p className="text-center text-[12px] font-medium text-muted">{t.tempCode}</p>
         </div>
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
           <span className="font-normal text-muted">{t.noCode}</span>

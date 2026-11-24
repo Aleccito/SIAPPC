@@ -69,10 +69,10 @@ export function clearAiText(cedula: string) {
 /** Al cerrar sesión: no queda ninguna sugerencia ni marca de ningún paciente. */
 export function clearAllAiSuggestions() {
   try {
-    for (let i = sessionStorage.length - 1; i >= 0; i--) {
-      const k = sessionStorage.key(i);
-      if (k && (k.startsWith('ai.sugerencia.') || k.startsWith('ai.usada.'))) sessionStorage.removeItem(k);
-    }
+    // Primero se juntan las claves y después se borran: al borrar, el navegador puede reordenarlas y un recorrido por
+    // índice se saltaría alguna.
+    const keys = Object.keys(sessionStorage).filter((k) => k.startsWith('ai.sugerencia.') || k.startsWith('ai.usada.'));
+    for (const k of keys) sessionStorage.removeItem(k);
   } catch {
     // Nada que borrar.
   }

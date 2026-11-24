@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useUnreadCount } from '../../data/notifications';
+import { useSession } from '../auth/session';
 import { cn } from '../../lib/cn';
 import { IconBell, IconCalendar, IconMenu } from '../icons';
 
@@ -86,6 +87,13 @@ export function TopBarDate({ children }: { children: ReactNode }) {
 
 /** Campana de la barra superior: sin `count`, muestra las notificaciones sin leer (src/data/notifications.ts). */
 export function NotificationBell({ count: fixed }: { count?: number }) {
+  const { user, can } = useSession();
+  // Los avisos son alertas de pacientes: sin `alertas:ver`, o siendo el admin, no hay campana.
+  const visible = !!user && user.role !== 'admin' && can('alertas', 'ver');
+  return visible ? <Bell fixed={fixed} /> : null;
+}
+
+function Bell({ fixed }: { fixed?: number }) {
   const live = useUnreadCount();
   const count = fixed ?? live ?? 0;
   return (

@@ -159,8 +159,16 @@ para hacerlo está listo (`.env.example`, `CONEXION-BACKEND.md`).
      - Solo la ven los médicos (`asistente_ia`, sin el admin). Simulada con `?ia=lenta|caida|corte|sin-analisis`.
      - Las notas SOAP son las 8 que ahora trae el seed (una firmada por paciente).
      - Verificado: `npm run build`, revisión automática a 4 anchos y pruebas automáticas de IA, más las del PR 2.
-5. **Conectar con el backend.** Plan en `CONEXION-BACKEND.md`: el prototipo sigue como segunda app, aparte de
-   `frontend/`, y se conecta por grupos de rutas.
+5. **Conectar con el backend.** *En curso.* Plan aprobado en `CONEXION-BACKEND.md`, secciones 6 y 9. Tres PRs
+   (acceso y tablero; pacientes y expediente; tiempo real y lo demás), con el modo `mixto` en lo publicado hasta el
+   tercero, que deja `VITE_API_MODE=real`. Administración la conecta la sección `Admin*`.
+   - **PR 1 — Acceso y tablero** (rama `feature/prototipo-conexion-1`):
+     - nginx con `/api` y el modo en el build.
+     - Login real con el código 000000 y la sesión.
+     - Menú y pantallas por rol, y Mi Perfil desde la sesión.
+     - Dashboard real.
+     - Íconos de notificaciones arreglados.
+     - Detalle y estado de las pruebas en `CONEXION-BACKEND.md`, sección 10.
 
 ## Componentes (`src/components/`)
 

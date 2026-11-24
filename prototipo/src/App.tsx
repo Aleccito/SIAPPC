@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './components';
 import { SessionProvider } from './components/auth/session';
 import { AiPanelProvider } from './components/ai/AiPanel';
+import { RoleGuard } from './components/auth/RoleGuard';
 import MedAsistenteIa from './pages/MedAsistenteIa';
 import MedAlertasCentro from './pages/MedAlertasCentro';
 import MedAlertasConfirmacionAtencion from './pages/MedAlertasConfirmacionAtencion';
@@ -52,6 +53,8 @@ function App() {
       <SessionProvider>
       {/* Panel lateral de la IA (PR 3): se abre desde cualquier pantalla con useAiPanel(). */}
       <AiPanelProvider>
+      {/* Qué pantallas abre cada rol (conexión, PR 1). */}
+      <RoleGuard>
       <Routes>
         {/* Pantallas de acceso (página LOGIN de Figma). "/" abre el Login. */}
         <Route path="/" element={<Login />} />
@@ -100,6 +103,7 @@ function App() {
         <Route path="/MedTurnoResumenRecibido" element={<MedTurnoResumenRecibido />} />
         <Route path="/Notificaciones" element={<Notificaciones />} />
       </Routes>
+      </RoleGuard>
       </AiPanelProvider>
       </SessionProvider>
       </ToastProvider>
