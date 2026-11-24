@@ -296,8 +296,9 @@ export default function MedDashboardPrincipal() {
 
           <Card className="flex w-full flex-col gap-[14px]">
             <div className="flex flex-col gap-0.5 leading-[normal]">
-              <h2 className="font-jakarta text-[15px] font-extrabold text-ink">📈 Tendencias de Pacientes Críticos (Últimas 4 Horas)</h2>
-              <p className="font-jakarta text-[12px] font-normal text-muted">Lecturas en tiempo real</p>
+              <h2 className="font-jakarta text-[15px] font-extrabold text-ink">📈 Tendencias de Pacientes Críticos</h2>
+              {/* Las últimas 41 lecturas de cada signo (el seed trae una por minuto; un equipo publica una por segundo). */}
+              <p className="font-jakarta text-[12px] font-normal text-muted">Últimas lecturas, se actualizan solas</p>
             </div>
             <div className="grid w-full grid-cols-1 gap-4 min-[1400px]:grid-cols-2">
               {trends.map((r) => (

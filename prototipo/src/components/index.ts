@@ -30,6 +30,7 @@ export { Menu, type MenuItem } from './ui/Menu';
 export { Popover } from './ui/Popover';
 export { ToastProvider, useToast } from './ui/Toast';
 export { EmptyState } from './ui/EmptyState';
+export { NotificationIcon } from './ui/NotificationIcon';
 export { DocumentPreview } from './ui/DocumentPreview';
 export { useRowLink, rowButton, rowLinkClass } from './ui/rowLink';
 export { AppLink } from './ui/AppLink';

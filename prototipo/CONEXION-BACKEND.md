@@ -1,9 +1,9 @@
 # Conectar el prototipo con el backend real — plan
 
-> **Estado: plan; la base ya está en el código (PRs 2 y 3 de `REVISION-IA.md`).** Existen `src/api/` (con `ai.ts`,
-> copia del `aiApi.ts` de los PRs #54–#58), el interruptor `VITE_API_MODE` (`src/api/mode.ts`, `.env.example`) y el
-> proxy de `/api` en `vite.config.ts`. Falta conectar grupo por grupo (sección 6). Hasta entonces el prototipo corre
-> en modo `mock` y lo publicado en https://prototipo.melo-coton.uk no necesita backend.
+> **Estado: plan de ejecución para aprobar (sección 9).** La base ya está en el código (PRs 2 y 3 de
+> `REVISION-IA.md`): `src/api/` (con `ai.ts`, copia del `aiApi.ts` de los PRs #54–#58), el interruptor
+> `VITE_API_MODE` (`src/api/mode.ts`, `.env.example`) y el proxy de `/api` en `vite.config.ts`. La conexión se hace en
+> **3 PRs** (sección 6); hasta terminarlos lo publicado en https://prototipo.melo-coton.uk usa el modo `mixto`.
 
 Fuentes: `backend/src/routes/*.ts`, `backend/src/plugins/auth.ts`, `backend/prisma/schema.prisma`,
 `backend/db/seed.sql`, `docker-compose.yml` y, en `frontend/`, `src/shared/api/http.ts`, `src/modules/registry.ts`,
@@ -162,7 +162,7 @@ la interfaz se la oculta por rol, como pediste. Conviene quitarla del seed para 
 
 | Pantalla | Qué pasa en modo real mientras no exista |
 |---|---|
-| **Código MFA** (`LoginMfa`) | El login real entra directo al Dashboard; la pantalla se queda solo en modo mock |
+| **Código MFA** (`LoginMfa`) | **Decidido:** se queda como paso temporal después del login real. Solo acepta `000000`; con otro código muestra el error y no se entra a la app hasta pasarla (la sesión no se abre del todo). Pendiente para cuando el backend tenga MFA (pedido 17) |
 | **Recuperar contraseña** (`RecuperarContrasena`, `RecuperacionEnviada`) | "¿Olvidó su contraseña?" muestra "Pídale al administrador que restablezca su contraseña" |
 | **Mi Perfil**: cambiar contraseña, activar MFA, sesiones abiertas | Se ven desactivados, con "Disponible cuando el sistema lo permita" |
 
@@ -266,22 +266,18 @@ Se agrega en el paso de IA (`REVISION-IA.md`, D7), así que la conexión no lo e
 
 ## 6. Orden de los PRs
 
-Cada uno conecta un grupo, deja lo demás en el simulador y no rompe lo publicado (que sigue en `mock` hasta el final).
+Tres PRs, uno a la vez, cada uno en su rama desde `dev`. Cada uno pasa a real sus grupos con el modo `mixto`
+(`VITE_API_REAL`); lo demás sigue en el simulador hasta que le toque, así lo publicado no se rompe en el medio. El
+detalle (qué entra, qué queda simulado, cómo se prueba) está en la sección 9.
 
-| # | PR | Grupos que pasan a real | Qué se prueba |
+| # | Rama | Grupos que pasan a real | Lo principal |
 |---|---|---|---|
-| 1 | Login y menú por rol | `/auth` | nginx y proxy de Vite (sección 1), `VITE_API_MODE`, entrar con las 4 cuentas del seed, 401/403/429, salir revoca el token, menú por permisos |
-| 2 | Dashboard | `/dashboard`, `/sensors` (lectura) | KPI y tabla contra el seed; qué pasa sin PA |
-| 3 | Pacientes y expediente | `/patients`, `/historia` | Cédula → id; las 8 fichas y sus pestañas; altas en antecedentes, diagnósticos, indicaciones y exploración |
-| 4 | Notas SOAP | `/soap` | Borrador, firma, adenda, nota firmada no editable; la enfermera solo lee |
-| 5 | Monitoreo | `/monitoring` | Unidades desde la respuesta, camas libres, la onda del ECG |
-| 6 | Alertas | `/alerts/stream`, `/notifications` | El flujo en vivo a través de nginx y del túnel; contador de la campana. Atender sigue simulado hasta que exista el endpoint |
-| 7 | Reportes | `/reports` | Exportar actividad clínica (CSV); el resto sigue simulado |
-| 8 | Dispositivos | `/dashboard/devices` | Estados y última lectura reales |
-| 9 | Administración | `/users`, `/roles`, `/permissions`, `/audit` | Lo hace quien lleva la sección `Admin*` |
-| 10 | IA real | `/ai` | Consulta con el modelo local (tiempos reales, cancelar corta la generación), análisis automático, 403 de la enfermera, 503 con el modelo apagado, el latido detrás de Cloudflare |
+| 1 | `feature/prototipo-conexion-1` | `auth`, `dashboard/assigned-patients`, `sensors` | nginx con `/api`, modo en el build, login real con el código `000000`, sesión, menú por rol, Mi Perfil, Dashboard real; arreglo del ícono de notificaciones |
+| 2 | `feature/prototipo-conexion-2` | + `patients`, `historia`, `soap`, `search` | Las fichas con todas sus pestañas, altas reales, notas SOAP (borrador, firma, adenda, la enfermera solo lee), búsqueda |
+| 3 | `feature/prototipo-conexion-3` | todo: `VITE_API_MODE=real` | Monitoreo y onda ECG, alertas en vivo, campana, dispositivos, reportes, IA real |
 
-Al final: `VITE_API_MODE=real` en el `docker-compose.yml` del servidor y `docker compose … up -d --build prototipo`.
+**Administración queda fuera** (`/users`, `/roles`, `/permissions`, `/audit`): la conecta quien hace la sección
+`Admin*`, en su rama.
 
 ---
 
@@ -333,8 +329,8 @@ Al final: `VITE_API_MODE=real` en el `docker-compose.yml` del servidor y `docker
 - **El prototipo es la segunda app** (puerto 8082, https://prototipo.melo-coton.uk). No comparten código: el
   prototipo copia tipos y servicios de `frontend/` y anota de dónde salen. Si un tipo cambia en `frontend/` o en el
   backend, se actualiza la copia en el PR de conexión de ese grupo.
-- **Cuándo lo reemplaza:** cuando estén conectados los 10 PRs de la sección 6 y el prototipo cubra lo que `frontend/`
-  hace hoy y él no:
+- **Cuándo lo reemplaza:** cuando estén conectados los 3 PRs de la sección 6 (y la sección `Admin*`) y el prototipo
+  cubra lo que `frontend/` hace hoy y él no:
   - Admisión: camas, ingresos, egresos y citas (rol administrativo).
   - Ronda en tablet (`/ronda`) y la bandeja de Sensores.
   - Idiomas EN/DE fuera del acceso (`frontend/` traduce todo).
@@ -342,3 +338,396 @@ Al final: `VITE_API_MODE=real` en el `docker-compose.yml` del servidor y `docker
 - **Cómo se reemplaza:** el servicio `frontend` de `docker-compose.yml` pasa a construir `./prototipo` (o se renombra
   la carpeta), en el mismo puerto 8080, con `VITE_API_MODE=real` y el nginx de la sección 1. `frontend/` queda en el
   historial de git y se borra en un PR aparte, cuando nadie lo necesite.
+
+---
+
+## 9. Ejecución
+
+> **Estado: para aprobar.** Fase 1, sin código. Lo marcado **(a aprobar)** es una propuesta mía.
+
+### 9.1 Qué entra en cada PR
+
+Antes de empezar revisé las copias de `src/api/` y `src/api/types/` contra `frontend/` y el backend de hoy (después de
+los PRs #54–#58). Solo cambiaron comentarios (traducidos al español); ninguna función, tipo ni ruta. La matriz de
+permisos de `seed.sql` es la misma que copia `src/api/permisos.ts`. Cada PR las vuelve a comparar antes de conectar
+su grupo.
+
+**Agrupar por ruta, no solo por el primer segmento (a aprobar).** Hoy `VITE_API_REAL=dashboard` manda al backend
+todo `/dashboard/*`. Pero el tablero va en el PR 1 y `/dashboard/devices` (dispositivos), en el PR 3. Propongo que
+`VITE_API_REAL` acepte prefijos de ruta (`dashboard/assigned-patients`) además de grupos (`dashboard`). Es un cambio
+de una línea en `src/api/mode.ts`.
+
+#### PR 1 — acceso y tablero (`feature/prototipo-conexion-1`)
+
+Lo publicado queda en `VITE_API_MODE=mixto` con `VITE_API_REAL=auth,dashboard/assigned-patients,sensors`.
+
+- **nginx del prototipo** (`prototipo/nginx.conf`): la sección 1, tal cual.
+  - `resolver 127.0.0.11` con `backend` en una variable, así que se resuelve en cada petición. Si el backend no
+    existe o cambia de IP, solo `/api` da 502 y las pantallas siguen.
+  - `proxy_buffering off` y `proxy_read_timeout 300s` para los flujos SSE.
+  - `X-Forwarded-For $remote_addr`.
+  - Opcional: `real_ip` de Cloudflare.
+- **Modo en el build:**
+  - `prototipo/Dockerfile` recibe `ARG VITE_API_MODE` y `ARG VITE_API_REAL`.
+  - El servicio `prototipo` de `docker-compose.yml` los pasa con `${PROTOTIPO_API_MODE:-mixto}` y
+    `${PROTOTIPO_API_REAL:-…}`. Los valores por defecto son los de este PR, así que el despliegue automático de `dev`
+    toma solo lo publicado.
+  - Sin `depends_on: backend`.
+  - El modo `mock` sigue siendo el de `npm run dev` sin `.env.local`.
+- **Login real:**
+  - `POST /auth/login` con las cuentas del seed: 401 → "Correo o contraseña incorrectos"; 429 → "Demasiados
+    intentos. Espere 15 minutos."
+  - Después, **`LoginMfa` con el código fijo `000000`**; otro código da el error. La sesión no queda abierta hasta
+    pasarla: el token se guarda como "pendiente" y las rutas internas mandan a `LoginMfa`.
+  - `GET /auth/me` al recargar.
+  - `POST /auth/logout` revoca el token.
+  - Cualquier 401 → aviso "Su sesión terminó" y Login con `?volver=`.
+  - Se quita la entrada automática como médico: solo queda en modo `mock`.
+- **Sesión y menú por rol:**
+  - El pie del menú y Mi Perfil salen de `/auth/me` (nombre, rol, unidad, correo).
+  - El menú y las acciones salen de `can()` con la matriz copiada (sección 2), hasta que el backend mande los
+    permisos (pedido 1).
+  - Mi Perfil: cambiar contraseña y MFA se ven desactivados, con "Disponible cuando el sistema lo permita".
+- **Qué ve cada rol (a aprobar):**
+  - **Médico:** todo lo clínico.
+  - **Enfermería:**
+    - Dashboard y Mis Pacientes con sus pacientes asignados.
+    - Expediente y notas de solo lectura (sin "Nueva Nota SOAP" ni altas).
+    - Monitoreo, alertas, dispositivos y reportes.
+    - Sin IA.
+    - Ojo: hoy el seed no le asigna ningún paciente, así que su tablero sale vacío; ver 9.3.
+  - **Administrativo** (propuesta: no tiene pantallas propias en el prototipo, porque su trabajo es Admisión):
+    - Ve Monitoreo (camas y ocupación, con `monitoreo:ver`, sin abrir el expediente: no tiene `historia_clinica`),
+      Dispositivos, Alertas (solo ver) y Reportes.
+    - Entra a la Central de monitoreo.
+    - El Dashboard no: es "mis pacientes asignados" y nunca tiene.
+    - Un aviso en su menú dice que ingresos, egresos y citas están en la app principal (`frontend/`, puerto 8080).
+  - **Admin** (propuesta):
+    - No ve nada clínico aunque la matriz le dé `ver`: todas las entradas clínicas llevan `hideFor: ['admin']`.
+    - Las rutas clínicas le muestran "Esta cuenta es técnica: no ve información clínica".
+    - Entra a Mi Perfil hasta que llegue la sección `Admin*`, que pondrá su propia pantalla de inicio.
+- **Dashboard real:**
+  - `GET /dashboard/assigned-patients`, `GET /sensors/alerts` y `GET /sensors/readings` (tendencias de la tabla).
+  - KPIs, tabla, "Requiere tu atención" y minigráficas calculados con esos datos.
+  - Nada escrito a mano. Glasgow y "evaluado" vienen del tablero real (`glasgow`, `examined`).
+- **El ícono de notificaciones** (9.6).
+
+**Mientras tanto siguen simulados:**
+- Expediente, notas, búsqueda, monitoreo, alertas en vivo, campana, dispositivos, reportes e IA.
+- Lo de `sinBackend.ts`.
+
+**Efecto visible:**
+- El Dashboard real del médico muestra **15 pacientes** (el seed le asigna DEMO-0001…0015). Al abrir DEMO-0009 en
+  adelante, el expediente simulado dice "Paciente no encontrado" hasta el PR 2.
+- La Central de monitoreo sigue mostrando los 8 del simulador.
+- Lo anoto en la descripción del PR.
+
+#### PR 2 — pacientes y expediente (`feature/prototipo-conexion-2`)
+
+Lo publicado queda en `mixto`, con `VITE_API_REAL` = lo del PR 1 + `patients,historia,soap,search`.
+
+- **Pacientes:**
+  - `GET /patients` (cédula → id, en caché) y `GET /patients/:id`.
+  - Asignaciones (`/patients/:id/assignments`).
+  - Las fichas de **todos** los pacientes del médico, no solo de los 8.
+- **Expediente** (`/historia`):
+  - Lectura de todas las categorías y altas reales: antecedentes, diagnósticos (con el CIE-10 local),
+    medicamentos, documentos (solo la ficha) y evoluciones (nota correlativa).
+  - `PATCH` de observaciones y `PUT` de la exploración física. Después de escribir, se invalida lo que corresponde.
+- **Notas SOAP** (`/soap`):
+  - Borrador (`POST` sin `sign`, `PUT`/`PATCH`), firma (`POST /sign`), adenda (`POST /addendum`).
+  - Una nota firmada no se edita: el backend da 409 y la interfaz ni lo ofrece.
+  - La enfermera solo lee (sin botones; si forzara, 403 → aviso).
+  - La casilla de D8 sigue igual.
+- **Búsqueda** real (`/search`).
+- **`sinBackend.ts` sin 404:** hoy lo inventado está por cédula y solo existe para DEMO-0001…0008. Para cualquier otro
+  paciente real devuelve "sin dato" y las pantallas muestran "—" o "Sin registro". Aplica a: PA, temperatura, nota de
+  ingreso, interrogatorio, indicaciones no farmacológicas, paneles del monitoreo detallado, umbrales y turno. Queda
+  marcado en el código ("simulado: falta en el backend") y en los pedidos.
+
+**Mientras tanto siguen simulados:** monitoreo, alertas en vivo, campana, dispositivos, reportes, IA y lo de
+`sinBackend.ts`.
+
+#### PR 3 — tiempo real y lo demás (`feature/prototipo-conexion-3`)
+
+Lo publicado queda en **`VITE_API_MODE=real`**: solo lo de `sinBackend.ts` sigue simulado.
+
+- **Monitoreo:**
+  - `GET /monitoring/beds?unitId`: las unidades salen de la respuesta y las camas libres, también.
+  - La onda ECG en vivo (`GET /monitoring/:device/waveform`, SSE) en el Resumen, el Monitoreo detallado y las
+    tarjetas de la central, en un `<canvas>`. Si no llega señal: "Sin señal de ECG".
+- **Alertas en vivo:**
+  - `GET /alerts/stream` (una conexión para toda la app).
+  - Centro de alertas real; "atender" sigue simulado hasta que exista la ruta (pedido 2).
+- **Campana y notificaciones:** `GET /notifications`, `POST /notifications/:id/read` y `POST /notifications/read-all`.
+  Los tipos que el backend no da se quitan, no se inventan.
+- **Dispositivos:** `GET /dashboard/devices` (estado, última lectura). Firmware, calibraciones y eventos siguen
+  simulados (pedido 18).
+- **Reportes:** `GET /reports` (corridas del ETL) y el CSV de actividad clínica. Los reportes clínicos por paciente
+  siguen simulados (pedido 14).
+- **IA real** (`/ai`):
+  - El modelo del servidor, con sus tiempos reales (30 s a 1,5 min).
+  - "Detener" corta la generación.
+  - 403 de enfermería, 503 con el modelo apagado.
+  - Ideas a pedido y análisis automático.
+- **Se quita el modo `mixto`** del build publicado; el código lo conserva para trabajar por partes.
+
+### 9.2 Cómo se actualiza cada dato en vivo
+
+| Dato | Cómo llega | Cada cuánto / cuándo | Si se cae la conexión |
+|---|---|---|---|
+| Alertas nuevas | SSE `/alerts/stream`, una sola conexión (`suscribirEventos`) | Al instante. Cada `alerta` invalida alertas, tablero, camas, notificaciones y el análisis IA de ese paciente; las críticas muestran un aviso | Reintenta cada 3 s (como `frontend/`). Mientras tanto, un aviso discreto en la barra: "Sin conexión en vivo; reintentando". Las recargas de abajo siguen, así que nada se queda congelado |
+| Campana | Marco `notificacion` del mismo flujo + `GET /notifications` | Al instante, y cada 60 s por si acaso | Igual que arriba |
+| Signos vitales (tablero, central, resumen, monitoreo) | `GET /dashboard/assigned-patients`, `/monitoring/beds`, `/sensors/readings` (no hay flujo de signos) | Cada 15 s (como el tablero de `frontend/`) y en cuanto llega una `alerta` | La consulta queda en error: se muestra el último dato con "hace X" y el aviso de conexión; reintenta en la siguiente vuelta |
+| Tendencias y minigráficas | `GET /sensors/readings?device&variable&limit` | Cada 60 s | Igual |
+| Onda ECG | SSE `/monitoring/:device/waveform`, solo mientras se mira esa cama | Al ritmo del equipo (`hz`); se cierra al salir de la pantalla | Reintenta cada 3 s; si pasan 5 s sin muestras, "Sin señal de ECG" |
+| Dispositivos | `GET /dashboard/devices` | Cada 30 s (el estado lo mueve el MQTT `status`) | Igual que signos |
+| Análisis IA | `GET /ai/assist/:patientId` | Cada 30 s y con cada `alerta` del paciente | La tarjeta muestra su error con "Reintentar" |
+| Sesión | Cualquier 401 | — | Se cierra y va al Login con `?volver=` |
+
+Reglas comunes:
+- Las recargas se pausan con la pestaña oculta y se hace una al volver (`refetchOnWindowFocus` en modo real).
+- Si el backend no responde (502), cada pantalla muestra su estado de error con "Reintentar", más el aviso de
+  conexión en la barra.
+
+**Para que los datos se muevan hace falta quien los publique (a aprobar).** Las lecturas de `seed-demo.sql` son de
+los 40 minutos anteriores a cargarlo y **no avanzan solas**. El README lo dice: "se desactualizan". Sin un equipo
+publicando por MQTT, el prototipo real muestra todo "hace 3 h", sin alertas nuevas ni onda ECG. Propuesta:
+- Un **publicador de demo** en `prototipo/tools/telemetria-demo/`, un script de Node:
+  - Por cada `DEMO-DEV-xx` publica `hr`, `spo2` y `resp` una vez por segundo, continuando la serie de cada paciente:
+    el que viene en bradicardia sigue en bradicardia.
+  - Publica la onda ECG con el formato de `backend/src/services/waveform.ts`.
+  - Usa el tema y las credenciales MQTT del `.env`.
+- Se corre con `docker run` en la red de Compose, local y en el servidor, y lo detienes cuando quieras.
+- Las lecturas fuera de rango generan alertas reales y disparan el análisis automático de la IA.
+- Alternativa: `iot/src/main.py --simulate` con un proceso por equipo, pero da valores genéricos que no siguen el caso
+  de cada paciente.
+- A largo plazo, que Adrian lo adopte como servicio `demo` del Compose (pedido 23).
+
+### 9.3 Qué datos necesita la base y cómo revisarlos
+
+La base del servidor (y la local) necesita:
+
+1. **El seed base** (`schema.sql` y `seed.sql`): se aplica solo al crear el volumen.
+2. **`seed-demo.sql`**: los 18 pacientes `DEMO-*`, sus camas, equipos `DEMO-DEV-*`, lecturas y alertas. Se aplica
+   **una sola vez**: falla si ya existen.
+3. **Los parches**, que se pueden correr varias veces:
+   - `backend/db/parches/2026-11-23-permiso-asistente-ia.sql` (permiso de la IA).
+   - `backend/db/parches/2026-11-24-notas-soap-demo.sql` (una nota firmada por paciente `DEMO-*`).
+4. **Pacientes asignados a la enfermera.** El seed solo asigna al médico (15 filas en `medico_paciente`). Los asigna
+   `asignar-enfermeria.sql` (abajo), y va como pedido 24 para que lo traiga el seed.
+
+**Revisar y cargar** con `prototipo/tools/base/base.sh`. Corre dentro del contenedor de MariaDB, con sus propias
+variables, así que no se escriben contraseñas y funciona igual en PowerShell y en Git Bash. Desde la raíz; en el
+servidor, con `-f docker-compose.yml -f docker-compose.prod.yml`:
+
+```
+docker compose cp backend/db mariadb:/tmp/db
+docker compose cp prototipo/tools/base mariadb:/tmp/base
+docker compose exec mariadb sh /tmp/base/base.sh revisar
+docker compose exec mariadb sh /tmp/base/base.sh cargar
+```
+
+`revisar` solo lee (`revisar.sql`). Lo esperado:
+- 18 pacientes y al menos 18 notas.
+- `medico 15`, y `enfermero 15` después de cargar.
+- `permiso_ia 1`.
+- Una `ultima_lectura` de hace segundos si el publicador está corriendo.
+
+`cargar` se puede repetir sin problema:
+- Aplica `seed-demo.sql` solo si no hay pacientes DEMO.
+- Corre los dos parches.
+- Asigna a la enfermera los pacientes DEMO del médico (`asignar-enfermeria.sql`). Es por SQL y no por la API, para no
+  poner contraseñas en un script; es dato de demo, como el seed.
+- Termina con la revisión.
+
+Si `seed-demo.sql` ya estaba cargado y las lecturas quedaron viejas, no se vuelve a cargar: el publicador de demo
+(9.2) es lo que las pone al día.
+
+### 9.4 Cómo voy a probar contra el backend real en local
+
+1. **Levantar el Compose de la raíz:** `docker compose up -d --build`, con el `.env` del equipo, y esperar a que
+   `http://localhost:3001/health` responda.
+2. **Cargar los datos** de 9.3 (tú corres los comandos; yo solo leo).
+3. **Publicador de demo** (9.2) corriendo, para tener lecturas, alertas y onda en vivo.
+4. **El prototipo, de dos formas:**
+   - `npm run dev` con `prototipo/.env.local` en `mixto`/`real` (proxy de Vite a `localhost:3001`).
+   - El contenedor: `docker compose --profile prototipo up -d --build prototipo`, en `http://localhost:8082`, para
+     probar el nginx, los flujos sin búfer y el 502 con el backend apagado.
+5. **Pruebas automáticas** (Edge sin ventana, como en `REVISION-IA.md`), entrando con las 4 cuentas del seed:
+   - Médico: todo.
+   - Enfermera: solo lectura, sin IA.
+   - Administrativo: lo de 9.1.
+   - Admin: nada clínico.
+   - Además, cada PR prueba lo suyo y el modo `mock` sigue pasando sus pruebas.
+6. **Capturas** a 1440, 1024 y 390 sin desplazamiento lateral.
+7. **IA (PR 3):** necesita Docker Model Runner con el modelo `medgemma-4b-it` descargado.
+
+**Qué falta hoy para poder probar** (revisado en este equipo):
+- **Docker Desktop no está corriendo:** el motor no responde (`docker ps` falla). Hay que abrirlo.
+- Compose está instalado (v5.1.3), el `.env` de la raíz existe y los certificados del broker están en
+  `infra/mosquitto/certs/`.
+- Para el PR 3: el modelo en Docker Model Runner (`docker model pull` del modelo de `LLM_MODEL`; unos 2,5 GB) y Model
+  Runner activado en Docker Desktop.
+- No sé si la base del servidor tiene `seed-demo.sql` y los parches: hay que correr la revisión de 9.3 allá.
+
+### 9.5 Pedidos para Adrian (actualiza la sección 7)
+
+Siguen los de la sección 7, con estos cambios:
+
+- **El 7 (`asistente_ia` del admin):** la interfaz se lo oculta, y ahora tampoco ve nada clínico. Conviene alinear la
+  matriz: `ver` sin necesidad para el admin en `pacientes`, `historia_clinica`, `notas_soap`, `monitoreo` y
+  `alertas`.
+- **El 17 (MFA)** pasa a tener efecto en la interfaz: mientras no exista, `LoginMfa` acepta `000000`.
+
+Pedidos nuevos:
+
+23. **Publicador de telemetría de demo** como servicio opcional del Compose (perfil `demo`), para que el servidor tenga
+    datos vivos sin depender de que alguien lo corra.
+24. **Asignar los pacientes `DEMO-*` también a la enfermera** en `seed-demo.sql` (hoy solo al médico), para que su
+    tablero no salga vacío.
+25. **`refresh` de las lecturas del seed:** un parche que mueva las lecturas y alertas de `seed-demo.sql` a "ahora"
+    (o que el seed las cree relativas al arranque), para demos sin publicador.
+26. **Médico y `alertas:editar`:** hoy el médico solo puede ver alertas; cuando exista "atender" (pedido 2), decidir si
+    también las atiende (en Figma, sí).
+27. **El límite de login cuenta también los intentos buenos** (`max: 5` cada 15 min por IP y correo, sin
+    `skipSuccessfulRequests`). Con las cuentas de demo compartidas, cinco entradas seguidas a `medico@institucion.org`
+    la bloquean 15 minutos, aunque todas sean correctas; pasó en las pruebas del PR 1. Propuesta: contar solo los
+    fallidos. Mientras tanto, el nginx del prototipo toma la IP real de Cloudflare (`CF-Connecting-IP`), así cada
+    visitante tiene su propio contador.
+
+### 9.6 El ícono de notificaciones
+
+Revisé con capturas a 1440, 1024 y 390 px:
+- la campana de la barra superior;
+- los íconos de cada aviso en la bandeja (`Notificaciones`, nodo 48:447);
+- los íconos de cada aviso en el Centro (`MedNotificacionesCentro`, nodo 333:4).
+
+Las ampliaciones del antes están en `docs/conexion/`.
+
+| Bandeja 1440 | Centro 1440 | Centro 390 | Campana |
+|---|---|---|---|
+| ![bandeja](docs/conexion/icono-antes-bandeja-1440.png) | ![centro](docs/conexion/icono-antes-centro-1440.png) | ![centro 390](docs/conexion/icono-antes-centro-390.png) | ![campana](docs/conexion/icono-antes-campana-1440.png) |
+
+Qué está mal:
+
+1. **Recorte en el Centro.** `bell-6.svg`, `bell-7.svg`, `users-5.svg`, `file-text-5.svg` y `cpu-4.svg` se exportaron de
+   Figma con el dibujo más grande que su caja: coordenadas de −0,34 a 16,33 en un `viewBox` de 16. Con el trazo de
+   2 px, el borde se corta por los cuatro lados.
+   - A la campana le queda la base plana y el badajo reducido a una rayita suelta.
+   - Pasa igual en los tres anchos: es el archivo, no el diseño adaptable.
+2. **Trazo grueso en la bandeja.** `bell-4.svg` y `bell-5.svg` sí caben, pero su trazo de 2 px en 16 px convierte el
+   badajo (un arco de radio 1,3) en una gota rellena.
+3. **Ícono equivocado en la bandeja:**
+   - La asignación de un paciente lleva el chip de CPU (`cpu-2.svg`).
+   - La nota SOAP lleva el de personas (`users-4.svg`).
+   - Así venía de Figma, pero el Centro (333:4) usa personas para la asignación y portapapeles para notas y
+     recordatorios: el mismo aviso se ve con dos íconos distintos según la pantalla.
+4. **La campana de la barra superior está bien:** es `IconBell` de `icons.tsx` (Lucide, 18 px, trazo de 2 px sin
+   escalar). El contador rojo tampoco tapa nada.
+
+Arreglo propuesto (PR 1):
+- Los íconos de los avisos dejan de ser los SVG exportados y pasan a los de `icons.tsx` (`IconBell`, `IconUsers`,
+  `IconClipboard`, `IconFileText`, `IconCpu`, `IconActivity`, y uno nuevo `IconCheckCircle`). Toman el color del tema
+  (`text-danger`, `text-warning`…), así que no se recortan y su trazo es el del resto de la interfaz.
+- Una sola tabla tipo → ícono y color para las dos pantallas, en `src/data/notifications.ts`:
+
+  | Tipo | Ícono |
+  |---|---|
+  | Alerta crítica | campana roja |
+  | Alerta temprana | campana ámbar |
+  | Asignación | personas |
+  | Laboratorio, imagen | documento |
+  | Nota o recordatorio | portapapeles |
+  | Sistema | chip |
+
+- Los SVG viejos se quedan en `src/assets/` por la rama del administrador.
+- Verificación: las mismas capturas del después a 1440, 1024 y 390.
+
+---
+
+## 10. PR 1 — acceso y tablero
+
+Rama `feature/prototipo-conexion-1`. Lo publicado queda en `mixto` con `auth,dashboard/assigned-patients,sensors`.
+
+**Cómo quedó**
+
+- **nginx y build:**
+  - `prototipo/nginx.conf`: proxy de `/api` con `resolver`, sin búfer y con 300 s para los flujos. Toma la IP real
+    de Cloudflare (`CF-Connecting-IP`, solo desde la red local o de Docker), para que el límite de login sea por
+    visitante (pedido 27).
+  - `prototipo/Dockerfile`: `ARG VITE_API_MODE` y `VITE_API_REAL`.
+  - `docker-compose.yml`, servicio `prototipo`: los pasa como `PROTOTIPO_API_MODE` y `PROTOTIPO_API_REAL`, sin
+    `depends_on`.
+- **`src/api/mode.ts`:** `VITE_API_REAL` acepta grupos (`sensors`) o rutas (`dashboard/assigned-patients`).
+  `REAL_AUTH` dice si el login es el del backend.
+- **Sesión** (`components/auth/session.tsx`):
+  - Login real y después `LoginMfa`. La sesión queda "pendiente" hasta poner 000000; con otro código, "El código no
+    es válido". La pantalla avisa del código temporal.
+  - Con el login real ya no se entra solo como el médico.
+  - `/auth/me` al abrir la app.
+  - Un 401 vuelve al Login y, al entrar, a la pantalla donde estaba.
+  - La pantalla de inicio depende del rol (`landingFor`).
+- **Por rol:**
+  - `nav.ts`: cada entrada dice qué permisos necesita y a quién no se le muestra.
+  - `RoleGuard` (alrededor de las rutas en `App.tsx`): una ruta sin permiso muestra "No tiene permiso para ver esto",
+    y una clínica para el admin, "Esta cuenta es técnica".
+  - Campana: solo con `alertas:ver` y sin el admin.
+  - Las camas no abren el expediente sin `historia_clinica` (administrativo), que además ve el aviso de Admisión.
+- **Mi Perfil y el pie del menú:**
+  - Salen de la sesión: nombre con su título, rol, unidad, correo, teléfono y última actividad.
+  - Iniciales en lugar de la foto de Figma.
+  - Se quitaron la especialidad, la cédula profesional, los años y el turno inventados.
+  - "Ahora mismo" calcula pacientes a cargo y sus alertas abiertas.
+  - Con el login real, cambiar la contraseña y MFA quedan desactivados.
+- **Dashboard:**
+  - Ya leía todo de `src/api/`. Con datos reales, se recarga cada 15 s y al volver a la pestaña.
+  - El título de las tendencias ya no dice "Últimas 4 Horas" (son las últimas lecturas).
+- **Íconos de notificaciones:**
+  - `components/ui/NotificationIcon.tsx`, una sola tabla para las dos pantallas, con los íconos de `icons.tsx` a
+    18 px.
+  - Ver 9.6.
+
+| Después: bandeja 1440 | Centro 1440 | Centro 390 |
+|---|---|---|
+| ![bandeja](docs/conexion/icono-despues-bandeja-1440.png) | ![centro](docs/conexion/icono-despues-centro-1440.png) | ![centro 390](docs/conexion/icono-despues-centro-390.png) |
+
+**Verificación**
+
+- `npm run build` y `tsc` pasan, en modo `mock` y en `mixto` con las rutas del PR 1.
+- **Modo `mock`** (pruebas automáticas de Edge sin ventana):
+  - **Sesión:** otro código que no sea 000000 da error, y mientras tanto ninguna pantalla de adentro se abre.
+  - **Roles:**
+    - Administrativo: entra a la central, sin Dashboard, Pacientes ni IA; las camas no abren el expediente.
+    - Admin: entra a Mi Perfil, sin menú clínico ni campana; una pantalla clínica dice "cuenta técnica".
+    - Médico: Mi Perfil con sus datos y cifras calculadas.
+  - Las pruebas anteriores (fichas, listas, IA, sesión) siguen pasando.
+- **Contra el backend real** (Compose local con `seed-demo.sql`, los parches y `base.sh cargar`; prototipo en
+  `mixto`):
+  - **Login:**
+    - Sin sesión no se entra solo.
+    - Contraseña equivocada → "Correo o contraseña incorrectos" (401); muchos intentos → "Demasiados intentos" (429).
+  - **Médico:**
+    - Entra con 000000 y llega al Dashboard real: 16 asignados (incluye DEMO-0009 en adelante), 5 críticos y
+      16 pendientes de evaluación (la base no tiene exploraciones).
+    - Mi Perfil con `/auth/me` y la misma cifra.
+    - Recargar conserva la sesión.
+    - Cerrar sesión revoca el token: el mismo token da 401 en `/auth/me`.
+    - Con un token vencido va al Login con el aviso y vuelve a la pantalla donde estaba.
+  - **Enfermería:** su tablero con sus 16 asignados, sin IA.
+  - **Administrativo:** entra a la central, sin Dashboard ni Pacientes.
+  - **Admin:** sin menú clínico ni campana; una pantalla clínica dice "cuenta técnica".
+  - **Contenedor** (`docker compose --profile prototipo up -d --build prototipo`, en 8082):
+    - Sirve las pantallas, pasa `/api` al backend y trae compilado el modo del PR 1.
+    - Con el backend apagado, las pantallas siguen y solo `/api` da 502. Al recrear el backend, vuelve solo, sin
+      reiniciar el prototipo.
+    - El flujo de alertas llega en 84 ms (sin búfer).
+    - Con `CF-Connecting-IP`, el backend ve la IP del visitante.
+  - **Capturas** con la sesión del médico a 1440, 1024 y 390 (Dashboard, Mi Perfil, notificaciones, central): sin
+    desplazamiento lateral ni textos cortados.
+- **Lo que se ve y no es error:**
+  - Las lecturas y alertas son las de `seed-demo.sql` ("hace 22 min") porque nadie publica por MQTT (9.2,
+    publicador de demo, PR 3).
+  - Abrir un paciente más allá de los 8 da "Paciente no encontrado" hasta el PR 2.
+- **Ojo con las pruebas:** el backend permite 5 logins por IP y correo cada 15 min, contando también los buenos
+  (pedido 27). Repetir las pruebas reales seguidas bloquea la cuenta 15 minutos.

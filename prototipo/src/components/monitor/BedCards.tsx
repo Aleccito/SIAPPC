@@ -29,6 +29,7 @@ import { clinicalState, STATE_LABEL, type ClinicalState } from '../../lib/clinic
 import { cn } from '../../lib/cn';
 import { patientPath } from '../../lib/patientLink';
 import { useRowLink } from '../ui/rowLink';
+import { useSession } from '../auth/session';
 
 export const DEFAULT_UNIT = 'UCI';
 
@@ -122,6 +123,8 @@ export function EcgTrace({ color, className }: { color: string; className?: stri
 
 export function BedCard({ b }: { b: BedView }) {
   const rowLink = useRowLink();
+  // Sin el expediente (el administrativo), la tarjeta se mira pero no abre nada.
+  const opens = useSession().can('historia_clinica', 'ver');
   if (!b.state || !b.patientName || !b.cedula) {
     return (
       <div className="flex min-w-0 flex-col items-start gap-3 overflow-clip rounded-xl border border-b border-l-4 border-r border-t border-[#1e3a8a] bg-[#f3f4f6] p-4 xl:h-[360px]">
@@ -144,10 +147,11 @@ export function BedCard({ b }: { b: BedView }) {
   const pa = b.signos?.pa;
   return (
     <div
-      {...rowLink(patientPath('/MedPacienteResumen', b.cedula))}
-      aria-label={`Ver paciente de la cama ${b.bed}`}
+      {...(opens ? rowLink(patientPath('/MedPacienteResumen', b.cedula)) : {})}
+      aria-label={opens ? `Ver paciente de la cama ${b.bed}` : undefined}
       className={cn(
-        'flex min-w-0 cursor-pointer flex-col items-start gap-3 overflow-clip rounded-xl border border-b border-l-4 border-r border-t bg-white p-4 outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary xl:h-[360px]',
+        opens && 'cursor-pointer',
+        'flex min-w-0 flex-col items-start gap-3 overflow-clip rounded-xl border border-b border-l-4 border-r border-t bg-white p-4 outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary xl:h-[360px]',
         style.border,
       )}
     >

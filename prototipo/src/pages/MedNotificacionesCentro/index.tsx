@@ -3,27 +3,22 @@
 // recordatorio, imagen, sistema) no existen en el backend y salen de src/api/sinBackend.ts.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import imgBell6 from '../../assets/bell-6.svg';
-import imgBell7 from '../../assets/bell-7.svg';
-import imgClipboard2 from '../../assets/clipboard-2.svg';
-import imgCpu4 from '../../assets/cpu-4.svg';
-import imgFileText5 from '../../assets/file-text-5.svg';
 import imgUnreadIndicatorContainer2 from '../../assets/unread-indicator-container-2.svg';
-import imgUsers5 from '../../assets/users-5.svg';
-import { AppLayout, Badge, Button, Card, Divider, EmptyState, IconCheck, Select, useToast } from '../../components';
+import { AppLayout, Badge, Button, Card, Divider, EmptyState, IconCheck, NotificationIcon, Select, useToast } from '../../components';
 import { useNotificationFeed, type FeedItem, type FeedKind } from '../../data/notifications';
 import { cn } from '../../lib/cn';
 
 type Tone = 'danger' | 'warning' | 'success' | 'info' | 'neutral';
 
-const STYLE: Record<FeedKind, { icon: string; iconBg: string; tag: string; tone: Tone }> = {
-  alertaCritica: { icon: imgBell6, iconBg: 'bg-danger-soft', tag: 'Clínica', tone: 'danger' },
-  alertaTemprana: { icon: imgBell7, iconBg: 'bg-warning-soft', tag: 'Clínica', tone: 'danger' },
-  asignacion: { icon: imgUsers5, iconBg: 'bg-primary-soft', tag: 'Asignación', tone: 'info' },
-  laboratorio: { icon: imgFileText5, iconBg: 'bg-success-soft', tag: 'Laboratorio', tone: 'success' },
-  recordatorio: { icon: imgClipboard2, iconBg: 'bg-warning-soft', tag: 'Recordatorio', tone: 'warning' },
-  imagen: { icon: imgFileText5, iconBg: 'bg-success-soft', tag: 'Imagen', tone: 'success' },
-  sistema: { icon: imgCpu4, iconBg: 'bg-[#f1f5f9]', tag: 'Sistema', tone: 'neutral' },
+// El ícono y su color salen de NotificationIcon (los mismos que en la bandeja); aquí la etiqueta.
+const STYLE: Record<FeedKind, { tag: string; tone: Tone }> = {
+  alertaCritica: { tag: 'Clínica', tone: 'danger' },
+  alertaTemprana: { tag: 'Clínica', tone: 'danger' },
+  asignacion: { tag: 'Asignación', tone: 'info' },
+  laboratorio: { tag: 'Laboratorio', tone: 'success' },
+  recordatorio: { tag: 'Recordatorio', tone: 'warning' },
+  imagen: { tag: 'Imagen', tone: 'success' },
+  sistema: { tag: 'Sistema', tone: 'neutral' },
 };
 
 const TYPES = ['Todas', 'Clínica', 'Asignación', 'Laboratorio', 'Recordatorio', 'Imagen', 'Sistema'];
@@ -86,9 +81,7 @@ export default function MedNotificacionesCentro() {
                       >
                         <div className="flex w-14 shrink-0 items-center gap-2">
                           {r.unread ? <img className="h-2 w-4 shrink-0" alt="Sin leer" src={imgUnreadIndicatorContainer2} /> : <span className="h-2 w-4 shrink-0" />}
-                          <div className={`flex size-8 shrink-0 items-center justify-center rounded-full ${s.iconBg}`}>
-                            <img className="size-4" alt="" src={s.icon} />
-                          </div>
+                          <NotificationIcon kind={r.kind} size="sm" />
                         </div>
                         <div className="flex min-w-0 flex-1 basis-48 flex-col gap-0.5">
                           <p className={`font-jakarta text-[13px] leading-[normal] text-ink ${r.unread ? 'font-bold' : 'font-semibold'}`}>{r.title}</p>

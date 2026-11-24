@@ -2,9 +2,9 @@
 
 Las 35 pantallas de la página **MEDICO** de Figma y las 4 de **LOGIN**, generadas a partir del diseño original.
 Es una **segunda app**, aparte de `frontend/` (la app real), sin código compartido. Las pantallas piden sus datos a
-`src/api/` como lo haría la app real, y un simulador en el navegador responde con los **8 pacientes de
-`backend/db/seed-demo.sql`** (DEMO-0001…0008). No necesita backend; conectarlo se explica en
-[CONEXION-BACKEND.md](CONEXION-BACKEND.md).
+`src/api/`, que los trae del backend (`/api`) o de un simulador en el navegador con los **8 pacientes de
+`backend/db/seed-demo.sql`** (DEMO-0001…0008), según `VITE_API_MODE`. La conexión va en 3 PRs:
+[CONEXION-BACKEND.md](CONEXION-BACKEND.md), secciones 6 y 9.
 
 ## Verlo con Docker (servidor)
 
@@ -30,17 +30,26 @@ Abre http://localhost:5173 y navega con el menú lateral, o entra directo a cual
 
 ## Datos y sesión
 
-- Al entrar directo a una pantalla, el simulador abre sesión como el médico (Dr. Carlos Méndez). En el Login sirve
-  cualquier contraseña y cualquier código de 6 dígitos; con `enfermero@institucion.org` se entra como enfermería
-  (sin "Nueva Nota SOAP"). Después de "Cerrar sesión" hay que volver a entrar.
+- **Con el backend** (lo publicado, `mixto` o `real`): se entra con las cuentas del seed (README de la raíz, "5.
+  Entrar"). Después del login viene el código de verificación: mientras el backend no tenga MFA, el código es
+  **000000** (lo dice la pantalla) y sin él no se entra. Cada rol ve lo suyo:
+  - Médico: todo lo clínico.
+  - Enfermería: solo lectura, sin IA.
+  - Administrativo: monitoreo, alertas, dispositivos y reportes, sin abrir el expediente.
+  - Admin: nada clínico; entra a Mi Perfil.
+- **Con el simulador** (`npm run dev` sin `.env.local`): al entrar directo a una pantalla se abre sesión como el
+  médico. En el Login sirve cualquier contraseña (las cuentas del seed entran con su rol) y el código también es
+  000000. Después de "Cerrar sesión" hay que volver a entrar.
 - El paciente va en la URL: `/MedPacienteResumen?paciente=DEMO-0005`. Sin `?paciente=` se abre DEMO-0002; una cédula
   que no existe muestra "Paciente no encontrado".
 - Lo que se escribe (notas SOAP, diagnósticos, umbrales, borradores) se guarda en la pestaña del navegador y sobrevive
   a recargar; se pierde al cerrarla.
 - Las respuestas tardan un poco, como un servidor. Para probar: `?retraso=0` (sin espera), `?sesion=vencida` (la
   siguiente petición responde 401 y vuelve al Login).
-- `.env.example` trae el interruptor `VITE_API_MODE` (`mock` por defecto, `real` o `mixto`) y el proxy de `/api` ya
-  está en `vite.config.ts`.
+- `.env.example` trae el interruptor `VITE_API_MODE` (`mock` por defecto, `real` o `mixto`, con `VITE_API_REAL`
+  para elegir grupos o rutas) y el proxy de `/api` está en `vite.config.ts`. En el contenedor, el modo se fija al
+  construir (`PROTOTIPO_API_MODE` y `PROTOTIPO_API_REAL` en el `.env` del servidor; por defecto, lo del último PR
+  de conexión) y el nginx del prototipo hace de proxy de `/api` hacia el backend.
 
 ## IA (simulada)
 
