@@ -175,7 +175,8 @@ export default async function aiRoutes(app: FastifyInstance) {
         req.log.info({ userId: req.user.sub, patientId }, "ai_ideas");
         return { analysis, disclaimer: DISCLAIMER };
       } catch (err: unknown) {
-        req.log.error({ reason: err instanceof Error ? err.name : "desconocido" }, "ai_ideas: LLM no disponible");
+        // El mensaje del error (timeout, conexión, "JSON inválido") no lleva datos del paciente.
+        req.log.error({ patientId, reason: err instanceof Error ? `${err.name}: ${err.message.slice(0, 200)}` : "desconocido" }, "ai_ideas: falló");
         throw llmNoDisponible();
       }
     },
