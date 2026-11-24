@@ -77,7 +77,7 @@ export function Popover({ anchor, open, onClose, align = 'left', minWidth = 0, c
     <div
       ref={ref}
       style={{ position: 'fixed', top: pos?.top ?? -9999, left: pos?.left ?? -9999, minWidth: Math.max(minWidth, pos?.width ?? 0) }}
-      className={cn('z-[45] max-h-72 overflow-y-auto rounded-lg border border-line bg-white py-1 shadow-lg', className)}
+      className={cn('z-popover max-h-72 overflow-y-auto rounded-lg border border-line bg-white py-1 shadow-lg', className)}
     >
       {children}
     </div>,

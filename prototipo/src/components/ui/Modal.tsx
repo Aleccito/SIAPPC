@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../lib/cn';
 import { IconX } from '../icons';
 import { Button, type ButtonVariant } from './Button';
@@ -22,6 +23,10 @@ type ModalProps = {
  * Ventana sobre la pantalla con fondo oscuro. Se centra y, si no cabe en alto,
  * se desplaza dentro del fondo en lugar de cortarse. Se cierra con Escape o
  * tocando el fondo cuando recibe `onClose`.
+ *
+ * Se dibuja en `body` (portal): si quedara dentro de un contenedor `sticky` o con
+ * `transform` —como el menú lateral—, su capa solo valdría ahí dentro y el resto
+ * de la pantalla la taparía (REVISION-IA.md, sección 6).
  */
 export function Modal({ labelledBy, open = true, onClose, width = 480, backdrop = 'bg-[rgba(0,0,0,0.4)]', className, children }: ModalProps) {
   useEffect(() => {
@@ -32,9 +37,9 @@ export function Modal({ labelledBy, open = true, onClose, width = 480, backdrop 
   }, [open, onClose]);
 
   if (!open) return null;
-  return (
+  return createPortal(
     <div
-      className={cn('fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 sm:items-center', backdrop)}
+      className={cn('fixed inset-0 z-modal flex items-start justify-center overflow-y-auto p-4 sm:items-center', backdrop)}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
@@ -48,7 +53,8 @@ export function Modal({ labelledBy, open = true, onClose, width = 480, backdrop 
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

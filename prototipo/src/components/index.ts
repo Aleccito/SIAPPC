@@ -6,6 +6,8 @@ export { Sidebar } from './layout/Sidebar';
 export { AuthLayout } from './auth/AuthLayout';
 export { AuthCard, AuthDivider, AuthField, AuthButton, AuthBackLink, useCountdown } from './auth/AuthCard';
 export { useAuthText, AUTH_LANGS, type AuthLang } from './auth/authText';
+export { useLogout } from './auth/useLogout';
+export { LogoutDialog } from './auth/LogoutDialog';
 export { TopBar, TopBarDate, NotificationBell } from './layout/TopBar';
 export { NAV_ITEMS, sectionForPath, CURRENT_USER } from './layout/nav';
 export { Button } from './ui/Button';

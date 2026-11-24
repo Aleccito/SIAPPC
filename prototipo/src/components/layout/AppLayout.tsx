@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { cn } from '../../lib/cn';
+import { LogoutDialog } from '../auth/LogoutDialog';
 import { IconX } from '../icons';
 import { Sidebar } from './Sidebar';
 import { TopBar, type TopBarProps } from './TopBar';
@@ -18,7 +19,14 @@ type AppLayoutProps = Omit<TopBarProps, 'onMenuClick'> & {
  */
 export function AppLayout({ children, className, ...topBar }: AppLayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const { pathname } = useLocation();
+  // La confirmación vive aquí y no en el menú: en celular el menú se cierra (y se desmonta)
+  // al tocar "Cerrar sesión", y la confirmación queda sola sobre la pantalla.
+  const askLogout = () => {
+    setMenuOpen(false);
+    setConfirmLogout(true);
+  };
 
   useEffect(() => setMenuOpen(false), [pathname]);
 
@@ -32,13 +40,13 @@ export function AppLayout({ children, className, ...topBar }: AppLayoutProps) {
   return (
     <div className="flex min-h-screen bg-surface">
       <div className="sticky top-0 hidden h-screen shrink-0 lg:block">
-        <Sidebar />
+        <Sidebar onLogout={askLogout} />
       </div>
 
       {menuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menú">
+        <div className="fixed inset-0 z-drawer lg:hidden" role="dialog" aria-modal="true" aria-label="Menú">
           <div className="absolute inset-0 bg-ink/60" onClick={() => setMenuOpen(false)} />
-          <Sidebar className="relative shadow-xl" onNavigate={() => setMenuOpen(false)} />
+          <Sidebar className="relative shadow-xl" onNavigate={() => setMenuOpen(false)} onLogout={askLogout} />
           <button
             type="button"
             onClick={() => setMenuOpen(false)}
@@ -54,6 +62,8 @@ export function AppLayout({ children, className, ...topBar }: AppLayoutProps) {
         <TopBar {...topBar} onMenuClick={() => setMenuOpen(true)} />
         <main className={cn('flex min-w-0 flex-1 flex-col', className)}>{children}</main>
       </div>
+
+      <LogoutDialog open={confirmLogout} onClose={() => setConfirmLogout(false)} />
     </div>
   );
 }

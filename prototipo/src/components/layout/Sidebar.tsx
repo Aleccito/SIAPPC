@@ -1,23 +1,25 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import avatar from '../../assets/avatar-2.png';
 import { cn } from '../../lib/cn';
+import { LogoutDialog } from '../auth/LogoutDialog';
 import { IconLogOut } from '../icons';
-import { ConfirmDialog } from '../ui/Modal';
-import { useToast } from '../ui/Toast';
 import { CURRENT_USER, NAV_ITEMS, sectionForPath } from './nav';
 
 type SidebarProps = {
   className?: string;
   /** Se llama al elegir un enlace (para cerrar el menú en pantallas angostas). */
   onNavigate?: () => void;
+  /**
+   * Se llama al tocar "Cerrar sesión". `AppLayout` lo usa para cerrar el menú de celular y
+   * abrir la confirmación fuera de él. Sin esta función, el menú abre la confirmación él mismo.
+   */
+  onLogout?: () => void;
 };
 
-export function Sidebar({ className, onNavigate }: SidebarProps) {
+export function Sidebar({ className, onNavigate, onLogout }: SidebarProps) {
   const { pathname } = useLocation();
   const active = sectionForPath(pathname);
-  const navigate = useNavigate();
-  const toast = useToast();
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   return (
@@ -92,7 +94,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
             </Link>
             <button
               type="button"
-              onClick={() => setConfirmLogout(true)}
+              onClick={() => (onLogout ? onLogout() : setConfirmLogout(true))}
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
               className="shrink-0 rounded text-muted transition-colors hover:text-white"
@@ -102,21 +104,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           </div>
         </div>
       </div>
-      <ConfirmDialog
-        open={confirmLogout}
-        title="¿Cerrar sesión?"
-        confirmLabel="Cerrar sesión"
-        confirmVariant="danger"
-        onCancel={() => setConfirmLogout(false)}
-        onConfirm={() => {
-          setConfirmLogout(false);
-          onNavigate?.();
-          toast('Sesión cerrada');
-          navigate('/Login');
-        }}
-      >
-        Se cerrará la sesión de {CURRENT_USER.name} en este equipo.
-      </ConfirmDialog>
+      {!onLogout && <LogoutDialog open={confirmLogout} onClose={() => setConfirmLogout(false)} />}
     </aside>
   );
 }
