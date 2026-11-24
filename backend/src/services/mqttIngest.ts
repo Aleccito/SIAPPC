@@ -42,10 +42,10 @@ type AlertInfo = {
 function evaluateAlert(variable: string, value: number): AlertInfo | null {
   if (variable === "hr") {
     if (value < 40 || value > 140) {
-      return { tipo: "hr_fuera_de_rango", severidad: "critica", mensaje: `Frecuencia cardiaca ${value} bpm fuera de rango crítico` };
+      return { tipo: "hr_fuera_de_rango", severidad: "critica", mensaje: `Frecuencia cardíaca ${value} lpm fuera de rango crítico` };
     }
     if (value < 50 || value > 120) {
-      return { tipo: "hr_fuera_de_rango", severidad: "alta", mensaje: `Frecuencia cardiaca ${value} bpm fuera de rango` };
+      return { tipo: "hr_fuera_de_rango", severidad: "alta", mensaje: `Frecuencia cardíaca ${value} lpm fuera de rango` };
     }
     return null;
   }
@@ -64,10 +64,10 @@ function evaluateAlert(variable: string, value: number): AlertInfo | null {
   // series y no una lectura suelta: no se puede resolver aquí.
   if (variable === "pr") {
     if (value < 40 || value > 140) {
-      return { tipo: "pr_fuera_de_rango", severidad: "critica", mensaje: `Frecuencia de pulso ${value} bpm fuera de rango crítico` };
+      return { tipo: "pr_fuera_de_rango", severidad: "critica", mensaje: `Frecuencia de pulso ${value} lpm fuera de rango crítico` };
     }
     if (value < 50 || value > 120) {
-      return { tipo: "pr_fuera_de_rango", severidad: "alta", mensaje: `Frecuencia de pulso ${value} bpm fuera de rango` };
+      return { tipo: "pr_fuera_de_rango", severidad: "alta", mensaje: `Frecuencia de pulso ${value} lpm fuera de rango` };
     }
     return null;
   }

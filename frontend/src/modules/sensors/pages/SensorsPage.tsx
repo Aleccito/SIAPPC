@@ -23,6 +23,7 @@ import { listAlerts, listReadings } from '../api/sensorsApi'
 import { alertSeverities, alertStatuses } from '../types'
 import type { AlertSeverity, AlertStatus } from '../types'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
+import { nombreVital } from '../../../shared/i18n/vitalName'
 import type { StringKey } from '../../../shared/i18n/dictionary'
 import { usePageHeader } from '../../../app/pageHeader'
 
@@ -141,7 +142,7 @@ export function SensorsPage() {
             <MenuItem value={ALL}>{t('sensors.filter.all')}</MenuItem>
             {variables.map((name) => (
               <MenuItem key={name} value={name}>
-                {name}
+                {nombreVital(name)}
               </MenuItem>
             ))}
           </TextField>
@@ -240,7 +241,7 @@ export function SensorsPage() {
                     {alert.device}
                   </Link>
                 </TableCell>
-                <TableCell>{alert.variable}</TableCell>
+                <TableCell>{nombreVital(alert.variable)}</TableCell>
                 <TableCell>
                   {alert.value} {alert.unit}
                 </TableCell>
@@ -293,7 +294,7 @@ export function SensorsPage() {
                     {reading.device}
                   </Link>
                 </TableCell>
-                <TableCell>{reading.variable}</TableCell>
+                <TableCell>{nombreVital(reading.variable)}</TableCell>
                 <TableCell>
                   {reading.value} {reading.unit}
                 </TableCell>

@@ -1,6 +1,7 @@
 import { Alert, Box, Stack } from '@mui/material'
 import { useAuth } from '../../auth/useAuth'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
+import { nombreVital } from '../../../shared/i18n/vitalName'
 import { usePageHeader } from '../../../app/pageHeader'
 import { useAlertStream } from '../useAlertStream'
 import { WidgetCard } from '../components/WidgetCard'
@@ -58,7 +59,7 @@ export function MainPage() {
         >
           {t('dash.live.alert', {
             patient: ultima.patientName ?? ultima.device,
-            detail: ultima.message ?? `${ultima.variable} ${ultima.value} ${ultima.unit}`,
+            detail: ultima.message ?? `${nombreVital(ultima.variable)} ${ultima.value} ${ultima.unit}`,
           })}
         </Alert>
       )}

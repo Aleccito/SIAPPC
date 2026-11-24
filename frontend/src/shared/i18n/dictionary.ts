@@ -20,6 +20,13 @@ export type Language = 'es'
 export const locales: Record<Language, string> = { es: 'es-MX' }
 
 const es = {
+  'vital.hr': 'Frecuencia cardíaca',
+  'vital.spo2': 'Saturación de oxígeno (SpO2)',
+  'vital.pa': 'Presión arterial',
+  'vital.temp': 'Temperatura',
+  'vital.resp': 'Frecuencia respiratoria',
+  'vital.pr': 'Frecuencia de pulso',
+  'vital.pi': 'Índice de perfusión',
   'nav.dashboard': 'Inicio',
   'nav.patients': 'Pacientes',
   'nav.sensors': 'Monitoreo',
@@ -129,7 +136,7 @@ const es = {
   'central.spo2': 'SpO2',
   'central.fr': 'FR',
   'central.gcs': 'GCS',
-  'central.unit.hr': 'bpm',
+  'central.unit.hr': 'lpm',
   'central.unit.spo2': '%',
   'central.unit.fr': 'rpm',
   'central.unit.gcs': 'pts',

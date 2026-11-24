@@ -6,8 +6,8 @@ export type Report = {
   source: string
   status: ReportStatus
   updatedAt: string
-  // ETL run detail: rows read from the operational tables, rows written to the
-  // datamart, and the reason a run ended in red.
+  // Detalle de la corrida del ETL: filas leídas de las tablas operativas, filas
+  // escritas en el datamart y el motivo si la corrida terminó en rojo.
   rowsRead: number
   rowsWritten: number
   error: string | null

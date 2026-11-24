@@ -12,8 +12,8 @@ export const brandBlue = '#2b5c86'
 // Tinte claro del mismo azul, para iconos y acentos sobre fondo oscuro.
 export const brandBlueSoft = '#9dc0dd'
 
-// Sidebar tokens live outside the palette: the shell is dark navy while the
-// rest of the app stays white, so a single palette mode cannot express both.
+// Los tokens de la barra lateral van fuera de la paleta: el marco es azul marino
+// oscuro y el resto de la app blanco, y un solo modo de paleta no expresa ambos.
 export const sidebar = {
   bg: '#0f172a',
   text: '#e2e8f0',
@@ -50,8 +50,8 @@ export const theme = createTheme({
   palette: {
     mode: 'light',
     background: {
-      // Content area is white. Cards sit on it and are told apart by their
-      // border, not by a background shift.
+      // El área de contenido es blanca. Las tarjetas se distinguen por su
+      // borde, no por un cambio de fondo.
       default: '#ffffff',
       paper: '#ffffff',
     },
@@ -95,8 +95,8 @@ export const theme = createTheme({
         root: {
           textTransform: 'none',
           fontWeight: 600,
-          // Press feedback: the button acknowledges the click before the
-          // navigation or mutation it triggers has a chance to respond.
+          // Respuesta al presionar: el botón reconoce el clic antes de que la
+          // navegación o la mutación que dispara alcance a responder.
           transition: 'transform 160ms cubic-bezier(0.23, 1, 0.32, 1)',
           '&:active': { transform: 'scale(0.97)' },
           '@media (prefers-reduced-motion: reduce)': {

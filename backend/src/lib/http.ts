@@ -9,6 +9,9 @@
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
+// Los mensajes de validación llegan tal cual a los formularios: en español.
+z.config(z.locales.es());
+
 export class ApiError extends Error {
   // Campos declarados y asignados a mano, no propiedades de parámetro: Node
   // ejecuta estos .ts quitando los tipos y nada más, y `constructor(readonly

@@ -1,5 +1,5 @@
-// Mirrors backend/src/types.ts SensorReading. `variable` is not a closed union
-// on the backend (sensor.variable_medida is VARCHAR), so it stays a string here.
+// Espejo de SensorReading en backend/src/types.ts. `variable` no es una unión
+// cerrada en el backend (sensor.variable_medida es VARCHAR), así que aquí es string.
 export type SensorReading = {
   id: string
   device: string
@@ -15,8 +15,8 @@ export type ReadingsFilter = {
   limit?: number
 }
 
-// Mirrors backend/src/types.ts SensorAlert. Severity and status are the raw
-// `alerta` ENUM values; the UI translates them for display only.
+// Espejo de SensorAlert en backend/src/types.ts. Severidad y estado son los valores
+// crudos del ENUM de `alerta`; la interfaz solo los traduce para mostrarlos.
 export const alertSeverities = ['baja', 'media', 'alta', 'critica'] as const
 export type AlertSeverity = (typeof alertSeverities)[number]
 

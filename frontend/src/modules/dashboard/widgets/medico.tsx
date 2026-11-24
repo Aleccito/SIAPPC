@@ -37,6 +37,7 @@ import {
 } from '../presentation'
 import { REFRESH_INTERVAL_MS, useAssignedPatients, useBedOccupancy, useOpenAlerts } from '../queries'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
+import { nombreVital } from '../../../shared/i18n/vitalName'
 import type { ClinicalState } from '../presentation'
 import type { AssignedPatient } from '../types'
 
@@ -404,7 +405,7 @@ export function ActiveAlertsWidget() {
               {alert.message ?? alert.type}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {alert.variable} · {alert.value} {alert.unit} ·{' '}
+              {nombreVital(alert.variable)} · {alert.value} {alert.unit} ·{' '}
               {new Date(alert.at).toLocaleString(locale)}
             </Typography>
           </Box>
