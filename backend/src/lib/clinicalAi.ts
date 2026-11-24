@@ -27,6 +27,9 @@ export const llm =new ChatOpenAI({
   configuration: { baseURL: env.llm.url },
   model: env.llm.model,
   temperature: 0.2,
+  // Tope explícito: sin él, el servidor aplica el suyo y la respuesta puede
+  // cortarse a media frase. Con el prompt "breve y directo" sobra margen.
+  maxTokens: 900,
   // Sin tope, un Model Runner apagado deja la petición colgada (reintentos largos).
   maxRetries: 1,
   timeout: env.llm.timeoutMs,
