@@ -34,7 +34,7 @@ const QUICK: StringKey[] = [
 
 const MAX_PREGUNTA = 5_000
 
-type Estado = 'idle' | 'streaming' | 'done' | 'error'
+type Estado = 'idle' | 'streaming' | 'done' | 'stopped' | 'error'
 
 /**
  * Consulta libre al asistente clínico (POST /ai/assist/stream).
@@ -54,6 +54,8 @@ export function AiConsultPage() {
     setSearchParams(id === '' ? {} : { patientId: id }, { replace: true })
 
   const patients = useQuery({ queryKey: ['patients'], queryFn: () => listPatients() })
+  const nombrePaciente =
+    patients.data?.items.find((p) => String(p.id) === patientId)?.name ?? `#${patientId}`
 
   const [question, setQuestion] = useState('')
   const [asked, setAsked] = useState('')
@@ -69,20 +71,20 @@ export function AiConsultPage() {
 
   async function preguntar(texto: string) {
     const q = texto.trim()
-    if (!q || estado === 'streaming') return
+    if (!q || !patientId || estado === 'streaming') return
 
     control.current?.abort()
     const propio = new AbortController()
     control.current = propio
 
-    setAsked(q)
+    setAsked(`${t('aiConsult.ofPatient')} ${nombrePaciente}: ${q}`)
     setAnswer('')
     setError(null)
     setEstado('streaming')
 
     try {
       await streamAiAssist(
-        { patientId: patientId ? Number(patientId) : undefined, question: q },
+        { patientId: Number(patientId), question: q },
         {
           onStart: (info) => {
             setModel(info.model)
@@ -95,7 +97,7 @@ export function AiConsultPage() {
       setEstado('done')
     } catch (err: unknown) {
       if (propio.signal.aborted) {
-        setEstado('done')
+        setEstado('stopped')
         return
       }
       setEstado('error')
@@ -111,6 +113,7 @@ export function AiConsultPage() {
   }
 
   const generando = estado === 'streaming'
+  const sinPaciente = patientId === ''
 
   return (
     <Stack spacing={2.5}>
@@ -126,9 +129,6 @@ export function AiConsultPage() {
             sx={{ maxWidth: 420 }}
             helperText={t('aiConsult.patientHelp')}
           >
-            <MenuItem value="">
-              <em>{t('aiConsult.noPatient')}</em>
-            </MenuItem>
             {(patients.data?.items ?? []).map((patient) => (
               <MenuItem key={patient.id} value={patient.id}>
                 {patient.name} — {patient.document}
@@ -147,7 +147,7 @@ export function AiConsultPage() {
                   label={t(key)}
                   variant="outlined"
                   color="primary"
-                  disabled={generando}
+                  disabled={generando || sinPaciente}
                   // Clic = enviar ya. Mayús+clic = solo copiar al cuadro para editarla.
                   onClick={(event) => {
                     if (event.shiftKey) setQuestion(t(key))
@@ -184,16 +184,32 @@ export function AiConsultPage() {
                   void preguntar(question)
                 }
               }}
-              disabled={generando}
+              disabled={generando || sinPaciente}
               helperText={`${question.length}/${MAX_PREGUNTA} · ${t('aiConsult.shortcut')}`}
             />
             <Stack direction="row" spacing={1} sx={{ mt: 1.5, justifyContent: 'flex-end' }}>
+              {/* `key` distinta en cada botón: si React reutilizara el mismo
+                  <button>, al terminar el clic en Detener ya sería type="submit"
+                  y el formulario se reenviaría, reiniciando la respuesta. */}
               {generando ? (
-                <Button variant="outlined" color="inherit" startIcon={<StopIcon />} onClick={detener}>
+                <Button
+                  key="detener"
+                  type="button"
+                  variant="outlined"
+                  color="inherit"
+                  startIcon={<StopIcon />}
+                  onClick={detener}
+                >
                   {t('aiConsult.stop')}
                 </Button>
               ) : (
-                <Button type="submit" variant="contained" startIcon={<SendIcon />} disabled={!question.trim()}>
+                <Button
+                  key="enviar"
+                  type="submit"
+                  variant="contained"
+                  startIcon={<SendIcon />}
+                  disabled={!question.trim() || sinPaciente}
+                >
                   {t('aiConsult.send')}
                 </Button>
               )}
@@ -202,6 +218,7 @@ export function AiConsultPage() {
         </Stack>
       </Paper>
 
+      {sinPaciente && <Alert severity="info">{t('aiConsult.pickPatient')}</Alert>}
       {error && <Alert severity="error">{error}</Alert>}
 
       {(asked || generando) && (
@@ -227,7 +244,7 @@ export function AiConsultPage() {
             {generando && answer !== '' && <Box component="span" sx={{ opacity: 0.6 }}>▍</Box>}
           </Typography>
 
-          {estado === 'done' && answer === '' && (
+          {estado === 'stopped' && (
             <Typography variant="body2" color="text.secondary">
               {t('aiConsult.stopped')}
             </Typography>

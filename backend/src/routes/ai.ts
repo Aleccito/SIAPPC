@@ -14,7 +14,7 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { prisma } from "../lib/prisma.ts";
 import { notFound, parseOr400 } from "../lib/http.ts";
 import { DATOS_NO_INSTRUCCIONES, DISCLAIMER, llm, llmNoDisponible, patientContext } from "../lib/clinicalAi.ts";
-import { leerAnalisisIA } from "../services/aiAuto.ts";
+import { generarAnalisisIA, leerAnalisisIA } from "../services/aiAuto.ts";
 import { env } from "../env.ts";
 
 const SYSTEM = `Eres un asistente de apoyo a la decisión clínica para médicos de un hospital de trauma.
@@ -41,12 +41,14 @@ const prompt = ChatPromptTemplate.fromMessages([
 
 const chain = prompt.pipe(llm).pipe(new StringOutputParser());
 
+// Toda consulta va sobre un paciente: sin él la IA no tiene datos reales y
+// respondería en el aire.
 const bodySchema = z.object({
-  patientId: z.coerce.number().int().positive().optional(),
+  patientId: z.coerce.number({ message: "Selecciona un paciente" }).int().positive(),
   symptoms: z.string().trim().max(5_000).optional(),
   question: z.string().trim().max(5_000).optional(),
-}).refine((v) => v.patientId || v.symptoms || v.question, {
-  message: "Hace falta patientId, symptoms o question",
+}).refine((v) => v.symptoms || v.question, {
+  message: "Escribe la consulta",
 });
 
 function marco(evento: string, datos: unknown): string {
@@ -56,13 +58,14 @@ function marco(evento: string, datos: unknown): string {
 /** Valida el cuerpo y arma contexto + pregunta. Lanza 400/404 antes de tocar el LLM. */
 async function prepararConsulta(body: unknown, hospitalId: number) {
   const input = parseOr400(bodySchema, body);
-  const context = input.patientId
-    ? await patientContext(input.patientId, hospitalId)
-    : "Sin paciente asociado (consulta general).";
-  const question = [
+  const context = await patientContext(input.patientId, hospitalId);
+  const consulta = [
     input.symptoms && `Síntomas/hallazgos: ${input.symptoms}`,
-    input.question ?? "Sugiere diferenciales y manejo para este paciente de alto riesgo.",
+    input.question,
   ].filter(Boolean).join("\n");
+  // "Del paciente [x]: consulta". El nombre no va al modelo (no le hace falta
+  // para razonar); la pregunta se ancla al paciente del contexto.
+  const question = `Del paciente del contexto: ${consulta}`;
   return { input, context, question };
 }
 
@@ -159,4 +162,24 @@ export default async function aiRoutes(app: FastifyInstance) {
     if (!existe) throw notFound("Paciente no encontrado");
     return { analysis: await leerAnalisisIA(patientId), disclaimer: DISCLAIMER };
   });
+
+  // Ideas a pedido: el médico las genera desde el expediente aunque el
+  // paciente no tenga alertas. Mismo formato corto que el análisis automático.
+  app.post(
+    "/ai/assist/:patientId/ideas",
+    { preHandler: medico, config: { rateLimit: { max: 5, timeWindow: "1 minute" } } },
+    async (req) => {
+      const { patientId } = parseOr400(z.object({ patientId: z.coerce.number().int().positive() }), req.params);
+      const existe = await prisma.paciente.count({ where: { paciente_id: patientId, hospital_id: req.hospitalId } });
+      if (!existe) throw notFound("Paciente no encontrado");
+      try {
+        const analysis = await generarAnalisisIA(patientId, req.hospitalId);
+        req.log.info({ userId: req.user.sub, patientId }, "ai_ideas");
+        return { analysis, disclaimer: DISCLAIMER };
+      } catch (err: unknown) {
+        req.log.error({ reason: err instanceof Error ? err.name : "desconocido" }, "ai_ideas: LLM no disponible");
+        throw llmNoDisponible();
+      }
+    },
+  );
 }

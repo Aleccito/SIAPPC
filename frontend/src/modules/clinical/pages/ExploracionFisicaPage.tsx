@@ -132,7 +132,11 @@ export function ExploracionFisicaPage() {
         spacing={1}
         sx={{ alignItems: { sm: 'center' } }}
       >
-        <Button component={RouterLink} to="/expediente" startIcon={<ArrowBackIcon />}>
+        <Button
+          component={RouterLink}
+          to={patientId ? `/expediente?patientId=${encodeURIComponent(patientId)}` : '/expediente'}
+          startIcon={<ArrowBackIcon />}
+        >
           {t(K.back)}
         </Button>
         <Box sx={{ flexGrow: 1 }} />
