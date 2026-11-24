@@ -3,8 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import avatar from '../../assets/avatar-2.png';
 import { cn } from '../../lib/cn';
 import { LogoutDialog } from '../auth/LogoutDialog';
+import { useDisplayUser } from '../auth/session';
 import { IconLogOut } from '../icons';
-import { CURRENT_USER, NAV_ITEMS, sectionForPath } from './nav';
+import { NAV_ITEMS, sectionForPath } from './nav';
 
 type SidebarProps = {
   className?: string;
@@ -21,6 +22,7 @@ export function Sidebar({ className, onNavigate, onLogout }: SidebarProps) {
   const { pathname } = useLocation();
   const active = sectionForPath(pathname);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const user = useDisplayUser();
 
   return (
     <aside
@@ -88,8 +90,8 @@ export function Sidebar({ className, onNavigate, onLogout }: SidebarProps) {
             <Link to="/MedPerfilMiPerfil" onClick={onNavigate} className="flex min-w-0 flex-1 items-center gap-3">
               <img src={avatar} alt="" className="size-10 shrink-0 rounded-full object-cover" />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5 whitespace-nowrap leading-[normal]">
-                <p className="truncate font-jakarta text-[13px] font-bold text-white">{CURRENT_USER.name}</p>
-                <p className="truncate font-jakarta text-[11px] font-medium text-muted">{CURRENT_USER.role}</p>
+                <p className="truncate font-jakarta text-[13px] font-bold text-white">{user.name}</p>
+                <p className="truncate font-jakarta text-[11px] font-medium text-muted">{user.role}</p>
               </div>
             </Link>
             <button

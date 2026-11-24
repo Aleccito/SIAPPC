@@ -1,6 +1,7 @@
 // Pantalla "med/paciente/notas-soap-nueva" (Figma node 29:1881) — generada desde el diseño original de Figma.
 // Paso 3: S/O/A/P son campos reales. "Guardar borrador" pide al menos una sección; "Guardar y firmar"
 // pide las cuatro (10 a 2000 caracteres) y confirma antes de firmar (REVISION.md, paso 3, punto 1).
+// Guarda con POST /soap/notes (o PUT + /sign si sigue un borrador) para el paciente de la URL.
 import imgAvatar2Png from '../../assets/avatar-2.png';
 import imgHeaderRowFrame from '../../assets/header-row-frame.svg';
 import imgHeaderRowFrame2 from '../../assets/header-row-frame-2.svg';
@@ -9,7 +10,13 @@ import imgWave from '../../assets/wave.svg';
 import imgWave2 from '../../assets/wave-2.svg';
 import imgWave3 from '../../assets/wave-3.svg';
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { createSoapNote, signSoapNote } from '../../api/clinical';
+import { ApiError, request } from '../../api/http';
+import { useMonitoredBeds, useSoapNote, useSoapNotes } from '../../api/queries';
+import { getSignosExtra, useExtra } from '../../api/sinBackend';
+import type { SoapNote as ApiSoapNote } from '../../api/types/clinical';
 import {
   BackButton,
   Badge,
@@ -23,18 +30,23 @@ import {
   Modal,
   PatientLayout,
   TextArea,
+  useDisplayUser,
+  usePatient,
   useToast,
   useValidation,
+  type PatientView,
 } from '../../components';
-import { nowLabel, saveSoapNote, SOAP_HISTORY_PATH, soapNotes } from '../../data/soap';
+import { SOAP_HISTORY_PATH } from '../../data/soap';
+import { fmtAgo, fmtDateTime, staffName } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
+import { usePatientNavigate } from '../../lib/patientLink';
 import { checkText } from '../../lib/validate';
 
 const SIGNALS = [
-  { label: 'ECG II', value: '134', unit: 'bpm', color: 'text-[#22c55e]', wave: imgWave, icon: imgHeaderRowFrame, iconNextToLabel: true, border: 'border border-white' },
-  { label: 'SpO2', value: '89', unit: '%', color: 'text-[#06b6d4]', wave: imgWave2, icon: imgHeaderRowFrame2, border: 'border-l-[3px] border-white' },
-  { label: 'PA', value: '140/90', unit: 'mmHg', color: 'text-[#eab308]', wave: imgWave3, icon: imgHeaderRowFrame2, border: 'border-l-[3px] border-white' },
-];
+  { key: 'hr', label: 'ECG II', unit: 'bpm', color: 'text-[#22c55e]', wave: imgWave, icon: imgHeaderRowFrame, iconNextToLabel: true, border: 'border border-white' },
+  { key: 'spo2', label: 'SpO2', unit: '%', color: 'text-[#06b6d4]', wave: imgWave2, icon: imgHeaderRowFrame2, iconNextToLabel: false, border: 'border-l-[3px] border-white' },
+  { key: 'pa', label: 'PA', unit: 'mmHg', color: 'text-[#eab308]', wave: imgWave3, icon: imgHeaderRowFrame2, iconNextToLabel: false, border: 'border-l-[3px] border-white' },
+] as const;
 
 type Key = 's' | 'o' | 'a' | 'p';
 
@@ -48,15 +60,36 @@ const FIELDS: Array<{ key: Key; letter: string; label: string; badge: string; pl
 const CardHeading = ({ children }: { children: string }) => <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">{children}</h2>;
 
 export default function MedPacienteNotasSoapNueva() {
-  const navigate = useNavigate();
-  const toast = useToast();
+  const patient = usePatient();
+  const v = patient.view;
   const [params] = useSearchParams();
-  // "Editar Nota" de un borrador llega con ?nota=índice y sigue escribiendo esa nota.
-  const draft = (() => {
-    const n = soapNotes()[Number(params.get('nota'))];
-    return params.has('nota') && n && !n.done ? n : null;
-  })();
-  const initial = { s: draft?.note.s ?? '', o: draft?.note.o ?? '', a: draft?.note.a ?? '', p: draft?.note.p ?? '' };
+  // "Editar Nota" de un borrador llega con ?nota=<id> y sigue escribiendo esa nota.
+  const noteId = params.get('nota') ?? undefined;
+  const draftQuery = useSoapNote(noteId);
+  const draft = draftQuery.data && draftQuery.data.status === 'borrador' ? draftQuery.data : null;
+  return (
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${v?.name ?? '…'} > Notas SOAP > Nueva`} title="Nueva Nota SOAP" tab="notas" actions={<BackButton />}>
+      {/* La key reinicia el formulario cuando llega el borrador. */}
+      {v && (!noteId || !draftQuery.isPending) && <NuevaNota key={draft?.id ?? 'nueva'} v={v} draft={draft} />}
+    </PatientLayout>
+  );
+}
+
+function NuevaNota({ v, draft }: { v: PatientView; draft: ApiSoapNote | null }) {
+  const navigate = usePatientNavigate();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const me = useDisplayUser();
+  const [saving, setSaving] = useState(false);
+  const beds = useMonitoredBeds();
+  const vitals = beds.data?.find((b) => b.patientId === v.id)?.vitals;
+  const signos = useExtra('signos', v.cedula, getSignosExtra);
+  const notes = useSoapNotes(v.id);
+  const last = notes.data?.find((n) => n.id !== draft?.id);
+  const value = (key: (typeof SIGNALS)[number]['key']) =>
+    key === 'pa' ? (signos.data ? `${signos.data.pa.sis}/${signos.data.pa.dia}` : '—') : String(vitals?.[key] ?? '—');
+
+  const initial = { s: draft?.subjective ?? '', o: draft?.objective ?? '', a: draft?.assessment ?? '', p: draft?.plan ?? '' };
   const [text, setText] = useState<Record<Key, string>>(initial);
   const [mode, setMode] = useState<'draft' | 'sign'>('draft');
   const [confirmSign, setConfirmSign] = useState(false);
@@ -88,19 +121,27 @@ export default function MedPacienteNotasSoapNueva() {
     return true;
   };
 
-  const store = (done: boolean) => {
-    const note = { s: text.s.trim(), o: text.o.trim(), a: text.a.trim(), p: text.p.trim() };
-    saveSoapNote({
-      id: draft?.id ?? `nueva-${Date.now()}`,
-      date: nowLabel(),
-      doctor: 'Dr. Carlos Méndez',
-      done,
-      ref: draft?.ref ?? `RP-UCI-${String(Math.floor(Date.now() / 1000) % 1000).padStart(3, '0')}`,
-      summary: note.s || note.o || note.a || note.p,
-      note,
-    });
-    toast(done ? 'Nota firmada' : 'Borrador guardado');
-    navigate(SOAP_HISTORY_PATH);
+  const store = async (done: boolean) => {
+    if (saving) return;
+    setSaving(true);
+    const body = { subjective: text.s.trim(), objective: text.o.trim(), assessment: text.a.trim(), plan: text.p.trim() };
+    try {
+      if (draft) {
+        // Seguir un borrador: PUT con las cuatro secciones y, si se firma, POST /sign.
+        await request<ApiSoapNote>(`/soap/notes/${draft.id}`, { method: 'PUT', body: JSON.stringify(body) });
+        if (done) await signSoapNote(draft.id);
+      } else {
+        await createSoapNote({ patientId: Number(v.id), ...body, sign: done });
+      }
+      await queryClient.invalidateQueries({ queryKey: ['soapNotes', v.id] });
+      if (draft) await queryClient.invalidateQueries({ queryKey: ['soapNote', draft.id] });
+      toast(done ? 'Nota firmada' : 'Borrador guardado');
+      navigate(SOAP_HISTORY_PATH);
+    } catch (e) {
+      toast(e instanceof ApiError && e.status === 403 ? 'Su rol no puede escribir notas SOAP' : 'No se pudo guardar la nota. Intente de nuevo.', 'info');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Salir con texto escrito pregunta antes de descartarlo.
@@ -110,15 +151,10 @@ export default function MedPacienteNotasSoapNueva() {
   };
 
   return (
-    <PatientLayout
-      breadcrumb="SIAPPC > Pacientes > María González > Notas SOAP > Nueva"
-      title="Nueva Nota SOAP"
-      tab="notas"
-      actions={<BackButton />}
-    >
+    <>
       <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
         <Card className="flex w-full min-w-0 flex-col gap-[14px] xl:w-[580px] xl:shrink-0">
-          <CardHeading>Monitor de Cama - Cama 03</CardHeading>
+          <CardHeading>{`Monitor de Cama - Cama ${v.bed ?? '—'}`}</CardHeading>
           {SIGNALS.map((s) => (
             <div key={s.label} className={cn('flex w-full flex-col gap-[10px] rounded-[10px] bg-[#0b1220] p-3', s.border)}>
               <div className="flex w-full items-center justify-between leading-[normal]">
@@ -127,7 +163,7 @@ export default function MedPacienteNotasSoapNueva() {
                   {s.iconNextToLabel && <img className="size-3.5" alt="" src={s.icon} />}
                 </div>
                 <div className={cn('flex items-baseline gap-1.5', s.color)}>
-                  <p className="font-jakarta text-[22px] font-extrabold">{s.value}</p>
+                  <p className="font-jakarta text-[22px] font-extrabold">{value(s.key)}</p>
                   <p className="font-jakarta text-[12px] font-bold">{s.unit}</p>
                   {!s.iconNextToLabel && <img className="size-3.5 self-center" alt="" src={s.icon} />}
                 </div>
@@ -143,21 +179,21 @@ export default function MedPacienteNotasSoapNueva() {
           <Card className="flex w-full flex-col gap-[14px]">
             <div className="flex w-full items-center justify-between gap-3">
               <CardHeading>Última Nota SOAP</CardHeading>
-              <Badge tone="neutral" size="sm">24 Oct 2025, 08:15</Badge>
+              {last && <Badge tone="neutral" size="sm">{fmtDateTime(last.at)}</Badge>}
             </div>
             <div className="flex items-center gap-2">
               <img className="size-6 rounded-full object-cover" alt="" src={imgAvatar2Png} />
-              <p className="font-jakarta text-[13px] font-semibold leading-[normal] text-muted">Dr. Carlos Méndez</p>
+              <p className="font-jakarta text-[13px] font-semibold leading-[normal] text-muted">{last ? staffName(last.authorName) : 'Sin notas previas'}</p>
             </div>
             <Divider />
             <div className="flex w-full flex-col gap-2">
               {[
-                ['S', 'bg-primary-soft text-primary', 'Disnea progresiva y dificultad para respirar en reposo.'],
-                ['O', 'bg-warning-soft text-[#eab308]', 'FC 134, SpO2 89%, estertores bilaterales.'],
-              ].map(([letter, badge, text]) => (
+                ['S', 'bg-primary-soft text-primary', last?.subjective ?? '—'],
+                ['O', 'bg-warning-soft text-[#eab308]', last?.objective ?? '—'],
+              ].map(([letter, badge, line]) => (
                 <div key={letter} className="flex w-full max-w-[344px] items-center gap-1.5">
                   <span className={cn('rounded px-1.5 py-0.5 font-jakarta text-[11px] font-extrabold leading-[normal]', badge)}>{letter}</span>
-                  <p className="min-w-0 flex-1 truncate font-jakarta text-[13px] font-normal leading-[normal] text-ink">{text}</p>
+                  <p className="min-w-0 flex-1 truncate font-jakarta text-[13px] font-normal leading-[normal] text-ink">{line}</p>
                 </div>
               ))}
             </div>
@@ -172,7 +208,11 @@ export default function MedPacienteNotasSoapNueva() {
             <Divider />
             <div className="flex w-full items-center justify-between gap-3 text-[13px] leading-[normal]">
               <p className="font-jakarta font-normal text-muted">ID del dispositivo</p>
-              <p className="font-jakarta font-bold text-ink">RPi-UCI-003</p>
+              <p className="font-jakarta font-bold text-ink">{v.assigned?.device ?? '—'}</p>
+            </div>
+            <div className="flex w-full items-center justify-between gap-3 text-[13px] leading-[normal]">
+              <p className="font-jakarta font-normal text-muted">Última lectura</p>
+              <p className="font-jakarta font-bold text-ink">{fmtAgo(vitals?.at)}</p>
             </div>
           </Card>
         </div>
@@ -203,7 +243,7 @@ export default function MedPacienteNotasSoapNueva() {
                 <TextArea
                   id={`soap-${f.key}`}
                   value={text[f.key]}
-                  onChange={(v) => setText((t) => ({ ...t, [f.key]: v }))}
+                  onChange={(val) => setText((t) => ({ ...t, [f.key]: val }))}
                   onBlur={() => form.touch(f.key)}
                   placeholder={f.placeholder}
                   placeholderTone="muted"
@@ -222,7 +262,7 @@ export default function MedPacienteNotasSoapNueva() {
           <Button variant="secondary" onClick={close}>
             Cancelar
           </Button>
-          <Button variant="secondary" onClick={() => check('draft') && store(false)}>
+          <Button variant="secondary" onClick={() => check('draft') && void store(false)}>
             Guardar borrador
           </Button>
           <Button onClick={() => check('sign') && setConfirmSign(true)}>Guardar y firmar</Button>
@@ -236,10 +276,10 @@ export default function MedPacienteNotasSoapNueva() {
         onCancel={() => setConfirmSign(false)}
         onConfirm={() => {
           setConfirmSign(false);
-          store(true);
+          void store(true);
         }}
       >
-        Se firmará como Dr. Carlos Méndez. Una vez firmada, la nota no se puede editar.
+        {`Se firmará como ${me.name}. Una vez firmada, la nota no se puede editar.`}
       </ConfirmDialog>
       <ConfirmDialog
         open={confirmDiscard}
@@ -252,6 +292,6 @@ export default function MedPacienteNotasSoapNueva() {
       >
         Se perderá lo que escribió en esta nota.
       </ConfirmDialog>
-    </PatientLayout>
+    </>
   );
 }

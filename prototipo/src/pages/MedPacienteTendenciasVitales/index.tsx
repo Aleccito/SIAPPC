@@ -1,96 +1,133 @@
 // Pantalla "med/paciente/tendencias-vitales" (Figma node 140:6) — generada desde el diseño original de Figma.
+// El último punto de cada gráfica es el valor de ahora (FC y SpO2 del seed; PA y temperatura inventadas);
+// los anteriores salen de src/api/sinBackend.ts (getTendencias): el seed solo trae 40 min de lecturas y
+// el backend no tiene histórico agregado (CONEXION-BACKEND.md, pedido 9).
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
 import imgArrowLeft4 from '../../assets/arrow-left-4.svg';
 import imgChartCanvasEllipse from '../../assets/chart-canvas-ellipse.svg';
 import imgChartCanvasEllipse2 from '../../assets/chart-canvas-ellipse-2.svg';
 import imgChartCanvasEllipse3 from '../../assets/chart-canvas-ellipse-3.svg';
-import { Card, PatientLayout } from '../../components';
+import { getTendencias, useExtra, type PuntoTendencia } from '../../api/sinBackend';
+import { AppLink, Card, PatientLayout, usePatient, type PatientView } from '../../components';
+import { vitalTone } from '../../lib/alerts';
 import { cn } from '../../lib/cn';
 import { TrendChart, type TrendSeries } from './TrendChart';
 
 const RANGES = ['6h', '12h', '24h', '48h', '7d'];
-/** Marcas del eje X de cada rango (los puntos de las gráficas siguen siendo los de Figma). */
-const AXIS: Record<string, string[]> = {
-  '6h': ['02:00', '03:00', '04:00', '05:00', '06:00', '07:00'],
-  '12h': ['20:00', '22:00', '00:00', '02:00', '04:00', '06:00'],
-  '24h': ['08:00', '12:00', '16:00', '20:00', '00:00', '04:00'],
-  '48h': ['Lun 08:00', 'Lun 16:00', 'Mar 00:00', 'Mar 08:00', 'Mar 16:00', 'Mié 00:00'],
-  '7d': ['18 Oct', '19 Oct', '20 Oct', '21 Oct', '22 Oct', '23 Oct'],
-};
+const HOURS: Record<string, number> = { '6h': 6, '12h': 12, '24h': 24, '48h': 48, '7d': 168 };
 const RANGE_TEXT: Record<string, string> = { '6h': '6 horas', '12h': '12 horas', '24h': '24 horas', '48h': '48 horas', '7d': '7 días' };
 const X = [20, 114, 209, 303, 398, 492];
-const line = (ys: number[]): Array<[number, number]> => ys.map((y, i) => [X[i], y]);
+const H = 110;
 
-const BLUE = { color: '#2563EB', marker: imgChartCanvasEllipse };
+const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const pad = (n: number) => String(n).padStart(2, '0');
+/** Marca del eje X según el rango: "06:00", "Lun 08:00" o "18 Nov". */
+function axisLabel(at: number, range: string): string {
+  const d = new Date(at);
+  if (range === '7d') return `${pad(d.getDate())} ${MONTHS[d.getMonth()]}`;
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return range === '48h' ? `${DAYS[d.getDay()]} ${time}` : time;
+}
 
-const CHARTS: Array<{
+type ChartDef = {
   title: string;
-  status: string;
-  danger?: boolean;
-  value: string;
   unit: string;
-  series: TrendSeries[];
+  /** Escala vertical de la gráfica. */
+  lo: number;
+  hi: number;
+  /** Límites dibujados (los umbrales de alerta del backend, y los de PA/temperatura de la pantalla de umbrales). */
   limits: number[];
-  limitLabel?: { text: string; y: number };
-  tooltip?: { text: string; y: number };
-}> = [
+  keys: Array<keyof Omit<PuntoTendencia, 'at'>>;
+  tone: (p: PuntoTendencia) => 'danger' | 'warning' | 'normal';
+  status: (p: PuntoTendencia, tone: 'danger' | 'warning' | 'normal') => string;
+  value: (p: PuntoTendencia) => string;
+};
+
+const CHARTS: ChartDef[] = [
   {
     title: 'FC (Frecuencia Cardíaca)',
-    status: 'Alerta Taquicardia',
-    danger: true,
-    value: '112',
     unit: 'bpm',
-    series: [{ ...BLUE, points: line([95, 86, 47, 15, 37, 43]) }],
-    limits: [26],
-    limitLabel: { text: 'Límite: 120', y: 14 },
-    tooltip: { text: '112', y: 13 },
+    lo: 30,
+    hi: 170,
+    limits: [120],
+    keys: ['hr'],
+    tone: (p) => vitalTone('hr', p.hr),
+    status: (p, t) => (t === 'normal' ? 'En rango' : p.hr > 100 ? `${t === 'danger' ? 'Alerta' : 'Advertencia'} Taquicardia` : `${t === 'danger' ? 'Alerta' : 'Advertencia'} Bradicardia`),
+    value: (p) => String(p.hr),
   },
   {
     title: 'SpO2 (Saturación de Oxígeno)',
-    status: 'Advertencia Desaturación',
-    value: '93',
     unit: '%',
-    series: [{ ...BLUE, points: line([15, 38, 61, 95, 84, 72]) }],
-    limits: [84],
-    limitLabel: { text: 'Límite: 92', y: 72 },
-    tooltip: { text: '93', y: 42 },
+    lo: 75,
+    hi: 100,
+    limits: [90],
+    keys: ['spo2'],
+    tone: (p) => vitalTone('spo2', p.spo2),
+    status: (_, t) => (t === 'danger' ? 'Alerta Desaturación' : t === 'warning' ? 'Advertencia Desaturación' : 'En rango'),
+    value: (p) => String(p.spo2),
   },
   {
     title: 'PA (Presión Arterial)',
-    status: 'PA Elevada',
-    value: '145/92',
     unit: 'mmHg',
-    series: [
-      { color: '#06B6D4', marker: imgChartCanvasEllipse2, points: line([46, 42, 38, 28, 34, 36]).map(([x, y]) => [x + 1, y]) },
-      { color: '#8B5CF6', marker: imgChartCanvasEllipse3, points: line([86, 84, 80, 76, 77, 78]).map(([x, y]) => [x + 1, y]) },
-    ],
-    limits: [23, 71],
+    lo: 30,
+    hi: 190,
+    limits: [160, 90],
+    keys: ['sis', 'dia'],
+    tone: (p) => vitalTone('pa', p.sis),
+    status: (p, t) => (t === 'normal' ? 'En rango' : p.sis < 100 ? 'Hipotensión' : 'PA Elevada'),
+    value: (p) => `${p.sis}/${p.dia}`,
   },
   {
     title: 'Temperatura',
-    status: 'Estado Febril',
-    value: '37.8',
     unit: '°C',
-    series: [{ ...BLUE, points: line([95, 84, 63, 15, 26, 31]) }],
-    limits: [20],
-    limitLabel: { text: 'Límite: 38', y: 8 },
-    tooltip: { text: '37.8', y: 1 },
+    lo: 35,
+    hi: 40,
+    limits: [38],
+    keys: ['temp'],
+    tone: (p) => vitalTone('temp', p.temp),
+    status: (p, t) => (t === 'danger' ? (p.temp < 36 ? 'Hipotermia' : 'Estado Febril') : t === 'warning' ? 'Febrícula' : 'Afebril'),
+    value: (p) => p.temp.toFixed(1),
   },
 ];
 
+const SERIES_STYLE = [
+  { color: '#2563EB', marker: imgChartCanvasEllipse },
+  { color: '#8B5CF6', marker: imgChartCanvasEllipse3 },
+];
+const PA_STYLE = [
+  { color: '#06B6D4', marker: imgChartCanvasEllipse2 },
+  { color: '#8B5CF6', marker: imgChartCanvasEllipse3 },
+];
+
 export default function MedPacienteTendenciasVitales() {
+  const { view } = usePatient();
+  return (
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Tendencias`} title="Tendencias de Signos Vitales" tab="monitoreo">
+      {view && <Tendencias v={view} />}
+    </PatientLayout>
+  );
+}
+
+function Tendencias({ v }: { v: PatientView }) {
   const [range, setRange] = useState('24h');
+  const hours = HOURS[range];
+  const data = useExtra(`tendencias-${range}`, v.cedula, (c) => getTendencias(c, hours));
+  const points = data.data ?? [];
+  const last = points.at(-1) ?? null;
+  // Marcas del eje: los 6 instantes del rango, aunque el paciente no hubiera llegado todavía.
+  const axis = X.map((_, i) => axisLabel(Date.now() - ((5 - i) / 5) * hours * 3_600_000, range));
+  const y = (c: ChartDef, value: number) => Math.round(8 + (1 - (value - c.lo) / (c.hi - c.lo)) * (H - 16));
 
   return (
-    <PatientLayout breadcrumb="SIAPPC > Pacientes > María González > Tendencias" title="Tendencias de Signos Vitales" tab="monitoreo">
+    <>
       <div className="flex w-full flex-wrap items-center justify-between gap-3">
-        <Link to="/MedPacienteMonitoreoDetallado" className="flex items-center gap-2 font-jakarta text-[14px] font-bold leading-[normal] text-primary hover:underline">
+        <AppLink to="/MedPacienteMonitoreoDetallado" className="flex items-center gap-2 font-jakarta text-[14px] font-bold leading-[normal] text-primary hover:underline">
           <img className="size-4" alt="" src={imgArrowLeft4} />
           Volver a Monitoreo en Vivo
-        </Link>
+        </AppLink>
         <div className="flex gap-1 rounded-lg border border-line bg-white p-1" role="group" aria-label="Rango de tiempo">
           {RANGES.map((r) => (
             <button
@@ -110,30 +147,52 @@ export default function MedPacienteTendenciasVitales() {
       </div>
 
       <div className="grid w-full grid-cols-1 gap-5 lg:grid-cols-2">
-        {CHARTS.map((c) => (
-          <Card key={c.title} className="flex min-w-0 flex-col gap-4">
-            <div className="flex w-full flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-col gap-0.5 leading-[normal]">
-                <h2 className="font-jakarta text-[14px] font-bold text-muted">{c.title}</h2>
-                <div className="flex items-center gap-1.5">
-                  <img className="size-2" alt="" src={c.danger ? imgAlertTextEllipse2 : imgAlertTextEllipse} />
-                  <p className={cn('font-jakarta text-[12px] font-semibold', c.danger ? 'text-danger' : 'text-warning')}>{c.status}</p>
+        {CHARTS.map((c) => {
+          const tone = last ? c.tone(last) : 'normal';
+          const styles = c.keys.length > 1 ? PA_STYLE : SERIES_STYLE;
+          const series: TrendSeries[] = c.keys.map((k, n) => ({
+            ...styles[n],
+            points: points.flatMap((p, i) => (p ? [[X[i], y(c, p[k])] as [number, number]] : [])),
+          }));
+          const limitY = c.limits.map((l) => y(c, l));
+          const lastY = last ? y(c, last[c.keys[0]]) : 0;
+          return (
+            <Card key={c.title} className="flex min-w-0 flex-col gap-4">
+              <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col gap-0.5 leading-[normal]">
+                  <h2 className="font-jakarta text-[14px] font-bold text-muted">{c.title}</h2>
+                  <div className="flex items-center gap-1.5">
+                    {tone === 'normal' ? (
+                      <span className="size-2 rounded-full bg-success" aria-hidden="true" />
+                    ) : (
+                      <img className="size-2" alt="" src={tone === 'danger' ? imgAlertTextEllipse2 : imgAlertTextEllipse} />
+                    )}
+                    <p className={cn('font-jakarta text-[12px] font-semibold', tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-success')}>
+                      {last ? c.status(last, tone) : '—'}
+                    </p>
+                  </div>
                 </div>
+                <p className="flex items-baseline gap-1 whitespace-nowrap leading-[normal]">
+                  <span className={cn('font-jakarta text-[28px] font-extrabold', tone === 'danger' ? 'text-danger' : 'text-ink')}>{last ? c.value(last) : '—'}</span>
+                  <span className="font-jakarta text-[14px] font-semibold text-muted">{c.unit}</span>
+                </p>
               </div>
-              <p className="flex items-baseline gap-1 whitespace-nowrap leading-[normal]">
-                <span className={cn('font-jakarta text-[28px] font-extrabold', c.danger ? 'text-danger' : 'text-ink')}>{c.value}</span>
-                <span className="font-jakarta text-[14px] font-semibold text-muted">{c.unit}</span>
-              </p>
-            </div>
-            <TrendChart label={`Tendencia de ${c.title} en ${RANGE_TEXT[range]}`} series={c.series} limits={c.limits} limitLabel={c.limitLabel} tooltip={c.tooltip} />
-            <div className="flex w-full justify-between font-jakarta text-[10px] font-normal leading-[normal] text-subtle">
-              {AXIS[range].map((h) => (
-                <span key={h}>{h}</span>
-              ))}
-            </div>
-          </Card>
-        ))}
+              <TrendChart
+                label={`Tendencia de ${c.title} en ${RANGE_TEXT[range]}`}
+                series={series}
+                limits={limitY}
+                limitLabel={c.keys.length === 1 ? { text: `Límite: ${c.limits[0]}`, y: Math.max(0, limitY[0] - 12) } : undefined}
+                tooltip={last && c.keys.length === 1 ? { text: c.value(last), y: Math.max(1, lastY - 14) } : undefined}
+              />
+              <div className="flex w-full justify-between font-jakarta text-[10px] font-normal leading-[normal] text-subtle">
+                {axis.map((h, i) => (
+                  <span key={`${h}-${i}`}>{h}</span>
+                ))}
+              </div>
+            </Card>
+          );
+        })}
       </div>
-    </PatientLayout>
+    </>
   );
 }

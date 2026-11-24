@@ -1,4 +1,8 @@
 // Pantalla "med/alertas/centro" (Figma node 48:7) — generada desde el diseño original de Figma.
+// Las alertas del seed de los pacientes asignados (GET /sensors/alerts), agrupadas por cama, signo y
+// severidad: el seed trae una por minuto mientras el signo sigue fuera de rango (REVISION-IA.md, D5).
+// El historial muestra las que el seed trae como `reconocida`. Atender y silenciar no existen en el
+// backend (CONEXION-BACKEND.md, pedido 2): duran lo que la visita.
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import imgBell10 from '../../assets/bell-10.svg';
@@ -7,56 +11,38 @@ import imgBell9 from '../../assets/bell-9.svg';
 import imgDropdownBadgeEllipse from '../../assets/dropdown-badge-ellipse.svg';
 import imgDropdownBadgeEllipse2 from '../../assets/dropdown-badge-ellipse-2.svg';
 import imgLiveIndicatorEllipse from '../../assets/live-indicator-ellipse.svg';
+import { useAlerts } from '../../api/queries';
 import { AppLayout, Badge, Button, EmptyState, IconCalendar, KpiCard, rowLinkClass, Select, Table, useRowLink, useToast } from '../../components';
-import { CONFIRM_PATH, type AttendedState, type ConfirmState } from '../../data/alerts';
+import { alertInfoFrom, attendedAlerts, CONFIRM_PATH, type AttendedState, type ConfirmState } from '../../data/alerts';
+import { usePatientRows, type PatientRow } from '../../data/patients';
+import { alertTitle, alertValueText, type AlertGroup } from '../../lib/alerts';
+import { fmtAgo, fmtDate, fmtTime, SEVERITY_LABEL } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
+import { patientPath } from '../../lib/patientLink';
 
-type Severity = 'Crítica' | 'Alta' | 'Media';
 type AlertStatus = 'activa' | 'silenciada' | 'atendida';
 
-type Alert = {
-  id: string;
-  patient: string;
-  icon: string;
-  stripe: string;
-  severity: Severity;
-  event: string;
-  eventColor: string;
-  time: string;
-  owner: string;
-  ownerColor?: string;
-  attending?: boolean;
-  /** Cuenta en "Pendientes de Atención". */
-  pending?: boolean;
-  highlight?: 'danger' | 'selected';
-};
+/** Una tarjeta: un grupo de alertas de un paciente. */
+type Alert = { group: AlertGroup; patient: PatientRow };
 
-const ALERTS: Alert[] = [
-  { id: 'C-03', patient: 'María González', icon: imgBell9, stripe: 'bg-danger', severity: 'Crítica', event: 'SpO2 Crítico — 84% en ventilador mecánico', eventColor: 'text-danger', time: 'Hace 1 min', owner: 'Dr. Roberto Silva (Asignado)', highlight: 'danger' },
-  { id: 'C-09', patient: 'Francisco Díaz', icon: imgBell10, stripe: 'bg-warning', severity: 'Alta', event: 'FC Elevada — Taquicardia de 145 lpm detectada', eventColor: 'text-[#d97706]', time: 'Hace 3 min', owner: 'Atendiendo', ownerColor: 'text-[#d97706]', attending: true, highlight: 'selected' },
-  { id: 'C-01', patient: 'Ricardo Gómez', icon: imgBell10, stripe: 'bg-warning', severity: 'Alta', event: 'Temperatura Elevada — 39.1°C persistente', eventColor: 'text-muted', time: 'Hace 8 min', owner: 'Dra. Ana Gómez', pending: true },
-  { id: 'C-06', patient: 'Javier Mendoza', icon: imgBell10, stripe: 'bg-warning', severity: 'Alta', event: 'Presión Arterial Límite — 148/92 mmHg', eventColor: 'text-muted', time: 'Hace 12 min', owner: 'Dr. Roberto Silva', pending: true },
-  { id: 'C-11', patient: 'Sofía Martínez', icon: imgBell11, stripe: 'bg-success', severity: 'Media', event: 'Desconexión de Sonda Vesical detectada', eventColor: 'text-muted', time: 'Hace 15 min', owner: 'Enf. Lucía Fernández', pending: true },
-];
-
-type HistoryRow = [string, string, string, string, string, string];
-
-const HISTORY: HistoryRow[] = [
-  ['08:15', imgLiveIndicatorEllipse, 'Andrés Castro', 'SpO2 Recuperado', 'Enf. Carlos M.', '1.5 min'],
-  ['08:02', imgDropdownBadgeEllipse, 'Elena Rodríguez', 'FC Muy Alta', 'Dr. R. Silva', '2.1 min'],
-  ['07:45', imgDropdownBadgeEllipse2, 'Gabriela Ruiz', 'Ritmo Inestable', 'Dr. C. Méndez', '3.2 min'],
-  ['07:30', imgDropdownBadgeEllipse2, 'Lucía Fernández', 'Fiebre 38.9°C', 'Enf. Carlos M.', '4.0 min'],
-  ['07:12', imgDropdownBadgeEllipse, 'Javier Mendoza', 'SpO2 Crítico', 'Dr. R. Silva', '1.8 min'],
-  ['06:50', imgDropdownBadgeEllipse2, 'Elena Rodríguez', 'Presión Baja', 'Dra. A. Gómez', '2.5 min'],
-];
+const SEVERITY_STYLE = {
+  critica: { icon: imgBell9, stripe: 'bg-danger', event: 'text-danger', box: 'bg-danger-soft' },
+  alta: { icon: imgBell10, stripe: 'bg-warning', event: 'text-[#d97706]', box: 'bg-white' },
+  media: { icon: imgBell11, stripe: 'bg-success', event: 'text-muted', box: 'bg-white' },
+  baja: { icon: imgBell11, stripe: 'bg-success', event: 'text-muted', box: 'bg-white' },
+} as const;
 
 const SEVERITIES = ['Todas', 'Crítica', 'Alta', 'Media'];
 const STATES = ['Activas', 'Silenciadas', 'Atendidas', 'Todas'];
+const today = new Date();
+const yesterday = new Date(Date.now() - 86_400_000);
 const DATES = [
-  { value: 'hoy', label: 'Hoy, 24 Oct 2025' },
-  { value: 'ayer', label: 'Ayer, 23 Oct 2025' },
+  { value: 'hoy', label: `Hoy, ${fmtDate(today.toISOString())}` },
+  { value: 'ayer', label: `Ayer, ${fmtDate(yesterday.toISOString())}` },
   { value: '7d', label: 'Últimos 7 días' },
 ];
+// Punto de la severidad en el historial (los de Figma).
+const HISTORY_DOT = { critica: imgDropdownBadgeEllipse, alta: imgDropdownBadgeEllipse2, media: imgLiveIndicatorEllipse, baja: imgLiveIndicatorEllipse } as const;
 
 const SELF = '/MedAlertasCentro';
 
@@ -67,8 +53,14 @@ export default function MedAlertasCentro() {
   const rowLink = useRowLink();
   const attendedId = (location.state as AttendedState | null)?.attendedId;
 
-  // Estado de cada alerta; si se vuelve de la confirmación, esa alerta ya llega atendida.
-  const [status, setStatus] = useState<Record<string, AlertStatus>>(() => (attendedId ? { [attendedId]: 'atendida' } : {}));
+  // Estado de cada grupo; si se vuelve de la confirmación, ese grupo ya llega atendido.
+  const [status, setStatus] = useState<Record<string, AlertStatus>>(() =>
+    Object.fromEntries([...attendedAlerts, ...(attendedId ? [attendedId] : [])].map((id) => [id, 'atendida' as AlertStatus])),
+  );
+  // Con las atendidas en esta visita, para poder filtrar "Atendidas".
+  const { rows, isPending } = usePatientRows({ includeAttended: true });
+  const raw = useAlerts({ limit: 500 });
+  const ALERTS: Alert[] = rows.flatMap((patient) => patient.alertGroups.map((group) => ({ group, patient })));
   const [severity, setSeverity] = useState('Todas');
   const [stateFilter, setStateFilter] = useState('Activas');
   const [date, setDate] = useState('hoy');
@@ -78,10 +70,10 @@ export default function MedAlertasCentro() {
     if (attendedId) navigate(SELF, { replace: true, state: null });
   }, [attendedId, navigate]);
 
-  const statusOf = (a: Alert): AlertStatus => status[a.id] ?? 'activa';
+  const statusOf = (a: Alert): AlertStatus => status[a.group.key] ?? 'activa';
   const visible = date === 'ayer' ? [] : ALERTS.filter((a) => {
     const st = statusOf(a);
-    if (severity !== 'Todas' && a.severity !== severity) return false;
+    if (severity !== 'Todas' && SEVERITY_LABEL[a.group.severity] !== severity) return false;
     if (stateFilter === 'Activas') return st !== 'atendida';
     if (stateFilter === 'Silenciadas') return st === 'silenciada';
     if (stateFilter === 'Atendidas') return st === 'atendida';
@@ -89,23 +81,36 @@ export default function MedAlertasCentro() {
   });
 
   const attended = ALERTS.filter((a) => statusOf(a) === 'atendida');
+  // Historial: lo atendido en esta visita y las alertas que el seed trae como reconocidas.
+  type HistoryRow = { key: string; time: string; dot: string; patient: PatientRow; event: string; by: string; resp: string };
+  const acknowledged: HistoryRow[] = (raw.data ?? [])
+    .filter((a) => a.status === 'reconocida')
+    .slice(0, 6)
+    .flatMap((a) => {
+      const patient = rows.find((r) => r.device === a.device);
+      return patient
+        ? [{ key: a.id, time: fmtTime(a.at), dot: HISTORY_DOT[a.severity], patient, event: `${alertTitle(a.variable, a.severity, a.value)} (${a.value})`, by: 'Reconocida en el monitor', resp: '—' }]
+        : [];
+    });
   const history: HistoryRow[] =
-    date === 'ayer' ? [] : [...attended.map((a): HistoryRow => ['Ahora', imgLiveIndicatorEllipse, a.patient, a.event.split(' — ')[0], 'Dr. C. Méndez', '—']), ...HISTORY];
+    date === 'ayer'
+      ? []
+      : [
+          ...attended.map((a): HistoryRow => ({ key: a.group.key, time: 'Ahora', dot: imgLiveIndicatorEllipse, patient: a.patient, event: alertTitle(a.group.variable, a.group.severity, a.group.latest.value), by: 'Dr. C. Méndez', resp: '—' })),
+          ...acknowledged,
+        ];
 
   const activeCount = ALERTS.length - attended.length;
-  const pendingCount = ALERTS.filter((a) => a.pending && statusOf(a) === 'activa').length;
+  const pendingCount = ALERTS.filter((a) => a.group.open > 0 && statusOf(a) === 'activa').length;
 
   const toggleMute = (a: Alert) => {
     const muted = statusOf(a) === 'silenciada';
-    setStatus((s) => ({ ...s, [a.id]: muted ? 'activa' : 'silenciada' }));
-    toast(muted ? `Alerta de ${a.patient} reactivada` : `Alerta de ${a.patient} silenciada 15 min`, muted ? 'info' : 'success');
+    setStatus((s) => ({ ...s, [a.group.key]: muted ? 'activa' : 'silenciada' }));
+    toast(muted ? `Alerta de ${a.patient.name} reactivada` : `Alerta de ${a.patient.name} silenciada 15 min`, muted ? 'info' : 'success');
   };
 
   const attend = (a: Alert) => {
-    const state: ConfirmState = {
-      from: SELF,
-      alert: { id: a.id, patient: a.patient, bed: `UCI Cama ${a.id}`, title: `Alerta ${a.severity} — ${a.event}`, detail: `Activada ${a.time.toLowerCase()}` },
-    };
+    const state: ConfirmState = { from: SELF, alert: alertInfoFrom(a.group, { cedula: a.patient.document, name: a.patient.name, bed: a.patient.bed }) };
     navigate(CONFIRM_PATH, { state });
   };
 
@@ -132,7 +137,8 @@ export default function MedAlertasCentro() {
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
           <KpiCard label="Alertas Activas" value={String(activeCount)} tone="danger" badge="Acción Urgente" />
           <KpiCard label="Pendientes de Atención" value={String(pendingCount)} tone="warning" badge="En Cola" />
-          <KpiCard label="Tiempo Resp. Promedio" value="2.3" unit="min" tone="success" badge="Bajo el límite" />
+          {/* El backend no registra cuándo se atiende una alerta (CONEXION-BACKEND.md, pedido 2). */}
+          <KpiCard label="Tiempo Resp. Promedio" value="—" tone="success" badge="Sin registro" />
         </div>
 
         <div className="flex w-full flex-1 flex-col items-start gap-6 xl:flex-row">
@@ -141,34 +147,30 @@ export default function MedAlertasCentro() {
             <div className="flex w-full flex-col gap-3">
               {visible.length === 0 && (
                 <div className="rounded-xl border border-line bg-white">
-                  <EmptyState onReset={resetFilters} />
+                  <EmptyState message={isPending ? 'Cargando alertas…' : undefined} onReset={resetFilters} />
                 </div>
               )}
               {visible.map((a) => {
                 const st = statusOf(a);
+                const s = SEVERITY_STYLE[a.group.severity];
+                const g = a.group;
                 return (
-                  <article
-                    key={a.id}
-                    className={cn(
-                      'flex w-full items-stretch overflow-hidden rounded-xl transition-opacity',
-                      a.highlight === 'selected' ? 'border-2 border-primary bg-primary-soft' : 'border border-line',
-                      a.highlight === 'danger' ? 'bg-danger-soft' : a.highlight !== 'selected' && 'bg-white',
-                      st !== 'activa' && 'opacity-60',
-                    )}
-                  >
-                    <div className={cn('w-1.5 shrink-0', a.stripe)} />
+                  <article key={g.key} className={cn('flex w-full items-stretch overflow-hidden rounded-xl border border-line transition-opacity', s.box, st !== 'activa' && 'opacity-60')}>
+                    <div className={cn('w-1.5 shrink-0', s.stripe)} />
                     <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 flex-col gap-1.5 leading-[normal]">
                         <div className="flex items-center gap-2">
-                          <img className="size-3.5 shrink-0" alt="" src={a.icon} />
-                          <p className="font-jakarta text-[15px] font-extrabold text-ink">
-                            {a.id} {a.patient}
-                          </p>
+                          <img className="size-3.5 shrink-0" alt="" src={s.icon} />
+                          <p className="font-jakarta text-[15px] font-extrabold text-ink">{`${a.patient.bed ?? '—'} ${a.patient.name}`}</p>
                         </div>
-                        <p className={cn('font-jakarta text-[13px] font-semibold', a.eventColor)}>{a.event}</p>
+                        <p className={cn('font-jakarta text-[13px] font-semibold', s.event)}>
+                          {`${alertTitle(g.variable, g.severity, g.latest.value)} — ${alertValueText(g.variable, g.latest.value)}`}
+                        </p>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
-                          <p className="font-jakarta font-medium text-subtle">{a.time}</p>
-                          <p className={cn('font-jakarta font-semibold', a.ownerColor ?? 'text-primary')}>{a.owner}</p>
+                          <p className="font-jakarta font-medium text-subtle">
+                            {`${fmtAgo(g.latest.at).replace(/^h/, 'H')} · ${g.count} ${g.count === 1 ? 'aviso' : 'avisos'} desde las ${fmtTime(g.since)}`}
+                          </p>
+                          <p className="font-jakarta font-semibold text-primary">Dr. Carlos Méndez (Asignado)</p>
                         </div>
                       </div>
                       <div className="flex shrink-0 gap-2">
@@ -179,13 +181,7 @@ export default function MedAlertasCentro() {
                             <Button variant="secondary" onClick={() => toggleMute(a)}>
                               {st === 'silenciada' ? 'Reactivar' : 'Silenciar'}
                             </Button>
-                            {a.attending ? (
-                              <Button variant="warning" onClick={() => attend(a)}>
-                                Atendiendo
-                              </Button>
-                            ) : (
-                              <Button onClick={() => attend(a)}>Atender</Button>
-                            )}
+                            <Button onClick={() => attend(a)}>Atender</Button>
                           </>
                         )}
                       </div>
@@ -208,17 +204,17 @@ export default function MedAlertasCentro() {
                   <p className="w-[60px] shrink-0 text-right">RESP.</p>
                 </div>
                 {history.length === 0 && <EmptyState message="Sin alertas resueltas en este periodo." onReset={resetFilters} />}
-                {history.map(([time, dot, patient, event, by, resp], i) => (
+                {history.map(({ key, time, dot, patient: p, event, by, resp }, i) => (
                   <div
-                    key={`${time}-${patient}`}
-                    {...rowLink('/MedPacienteResumen')}
-                    aria-label={`Ver a ${patient}`}
+                    key={key}
+                    {...rowLink(patientPath('/MedPacienteResumen', p.document))}
+                    aria-label={`Ver a ${p.name}`}
                     className={cn('flex w-full items-start gap-3 border-b border-line p-3 last:border-b-0', i % 2 ? 'bg-surface' : 'bg-white', rowLinkClass)}
                   >
                     <p className="w-[45px] shrink-0 font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{time}</p>
-                    <div className="flex w-[125px] shrink-0 items-center gap-1.5">
-                      <img className="size-1.5 shrink-0" alt="" src={dot} />
-                      <p className="truncate font-jakarta text-[13px] font-bold leading-[normal] text-ink">{patient}</p>
+                    <div className="flex w-[125px] shrink-0 items-start gap-1.5">
+                      <img className="mt-[5px] size-1.5 shrink-0" alt="" src={dot} />
+                      <p className="min-w-0 font-jakarta text-[13px] font-bold leading-[normal] text-ink">{p.name}</p>
                     </div>
                     <div className="flex min-w-[110px] flex-1 flex-col gap-0.5 leading-[normal]">
                       <p className="font-jakarta text-[12px] font-semibold text-ink">{event}</p>

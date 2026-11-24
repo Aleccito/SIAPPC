@@ -1,46 +1,31 @@
 // Pantalla "med/turno/resumen-recibido" (Figma node 245:729) — generada desde el diseño original de Figma.
+// Los pacientes asignados, sus signos y alertas salen de src/api/; lo que se dijo de cada uno al entregar
+// el turno, de src/api/sinBackend.ts (la entrega de turno no existe en el backend). Las alergias de
+// "Indicaciones importantes" son las del seed.
 import { useState, type SyntheticEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getTurno } from '../../api/sinBackend';
 import { AppLayout, Badge, Button, Card, IconCheck, rowLinkClass, SearchBox, Table, useRowLink, useToast } from '../../components';
+import { usePatientRows } from '../../data/patients';
+import { alertTitle } from '../../lib/alerts';
+import { fmtDate, fmtTime } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
-
-const PATIENTS: Array<{ name: string; hc: string; status: string; tone: 'danger' | 'warning'; bed: string; vitals: string; events: string; pending: string; urgent?: boolean }> = [
-  { name: 'María González', hc: 'PT-8821', status: 'Crítico', tone: 'danger', bed: 'UCI Cama D3', vitals: 'FC:112 SpO2:89% PA:85/50', events: 'Desaturación 03:00, ajuste FiO2 exitoso', pending: 'TAC control urgente', urgent: true },
-  { name: 'Juan García', hc: 'PT-3991', status: 'Atención', tone: 'warning', bed: 'UCI Cama C5', vitals: 'FC:88 SpO2:94% PA:110/70', events: 'Glasgow mejoró 9→11, estable toda la noche', pending: 'Evaluar retiro sedación' },
-  { name: 'Carlos Rodríguez', hc: 'PT-1102', status: 'Crítico', tone: 'danger', bed: 'UCI Cama D1', vitals: 'FC:105 SpO2:91% PA:95/55', events: 'Ingreso 02:15, politrauma, estabilizado', pending: 'Completar nota ingreso' },
-];
-
-const ALERTS = [
-  ['02:15 hrs', 'bg-danger', 'Ingreso paciente politrauma Rodríguez - estabilización inmediata requerida'],
-  ['03:00 hrs', 'bg-danger', 'Desaturación crítica González (SpO2: 84%) - Intervención: ajuste FiO2 a 50%'],
-  ['04:20 hrs', 'bg-warning', 'FC elevada García (102 bpm) - Autoresuelta en 15 min'],
-  ['05:30 hrs', 'bg-success', 'Laboratorios de control procesados - sin valores críticos'],
-];
-
-const TASKS = [
-  'TAC control urgente - María González',
-  'Evaluar retiro de sedación - Juan García',
-  'Completar nota de ingreso - Carlos Rodríguez',
-  'Revisión de laboratorios de control (4 pacientes)',
-  'Contactar familiar González (actualización estado)',
-];
-
-const INDICATIONS = [
-  'González: NO reducir FiO2 sin gasometría previa',
-  'García: Suspender propofol solo si GCS ≥ 12 sostenido por 2h',
-  'Rodríguez: Pendiente consentimiento quirúrgico',
-];
+import { patientPath } from '../../lib/patientLink';
 
 const stop = (e: SyntheticEvent) => e.stopPropagation();
+const surname = (name: string) => name.split(/\s+/)[1] ?? name;
 
-const CardHeading = ({ children }: { children: string }) => (
-  <h2 className="font-jakarta text-[15px] font-bold leading-[normal] text-ink">{children}</h2>
-);
+const CardHeading = ({ children }: { children: string }) => <h2 className="font-jakarta text-[15px] font-bold leading-[normal] text-ink">{children}</h2>;
+
+const DOT = { critica: 'bg-danger', alta: 'bg-warning', media: 'bg-success', baja: 'bg-success' } as const;
 
 export default function MedTurnoResumenRecibido() {
   const rowLink = useRowLink();
   const toast = useToast();
   const [done, setDone] = useState<Set<string>>(new Set());
   const [read, setRead] = useState(false);
+  const { rows, groups } = usePatientRows();
+  const turno = useQuery({ queryKey: ['sinBackend', 'turno'], queryFn: getTurno });
   const toggle = (t: string) =>
     setDone((s) => {
       const next = new Set(s);
@@ -49,12 +34,26 @@ export default function MedTurnoResumenRecibido() {
       return next;
     });
 
+  const said = (cedula: string) => turno.data?.find((t) => t.cedula === cedula);
+  // Las 4 alertas (agrupadas) más recientes del turno.
+  const alerts = [...groups].sort((a, b) => b.latest.at.localeCompare(a.latest.at)).slice(0, 4);
+  const tasks = rows.flatMap((r) => {
+    const t = said(r.document);
+    return t && t.tono !== 'success' ? [`${t.pendiente} - ${r.name}`] : [];
+  });
+  const indications = rows.flatMap((r) => (said(r.document)?.alergias ?? []).map((a) => `${surname(r.name)}: alergia a ${a.toLowerCase()} — no indicar ni usar.`));
+  const critical = rows.filter((r) => r.state === 'critico');
+  const notes = critical.length
+    ? `Turno con ${critical.length} pacientes críticos. ${critical
+        .slice(0, 3)
+        .map((r) => `${surname(r.name)}: ${(said(r.document)?.novedad ?? '').replace(/\.$/, '')}.`)
+        .join(' ')}`
+    : 'Turno sin pacientes críticos.';
+  const handedAt = new Date();
+  handedAt.setHours(6, 55, 0, 0);
+
   return (
-    <AppLayout
-      breadcrumb="SIAPPC > Turno > Resumen Recibido"
-      title="Entrega de Turno"
-      actions={<SearchBox to="/MedBusquedaGlobal" placeholder="Buscar paciente, HC..." width={280} />}
-    >
+    <AppLayout breadcrumb="SIAPPC > Turno > Resumen Recibido" title="Entrega de Turno" actions={<SearchBox to="/MedBusquedaGlobal" placeholder="Buscar paciente, HC..." width={280} />}>
       <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-5 p-4 md:p-8">
         <div className="flex w-full flex-col gap-3">
           <p className="font-jakarta text-[11px] font-medium leading-[normal] text-muted">SIAPPC &gt; Dashboard &gt; Resumen de Turno</p>
@@ -67,8 +66,8 @@ export default function MedTurnoResumenRecibido() {
             </div>
             <div className="flex flex-col gap-0.5 text-[12px] leading-[normal] sm:items-end">
               <p className="font-jakarta font-semibold text-ink">Turno Nocturno 23:00-07:00</p>
-              <p className="font-jakarta font-normal text-muted">Fecha: 14 Ago 2026, 06:55 hrs</p>
-              <p className="font-jakarta font-normal text-muted">3 pacientes incluidos</p>
+              <p className="font-jakarta font-normal text-muted">{`Fecha: ${fmtDate(handedAt.toISOString())}, 06:55 hrs`}</p>
+              <p className="font-jakarta font-normal text-muted">{`${rows.length} pacientes incluidos`}</p>
             </div>
           </div>
           <p className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">Entregado por: Dra. Laura Sánchez - Médico de Guardia Nocturna</p>
@@ -79,7 +78,7 @@ export default function MedTurnoResumenRecibido() {
             <Card className="flex w-full flex-col gap-[14px]">
               <div className="flex w-full items-center justify-between gap-3">
                 <CardHeading>Pacientes Incluidos en la Entrega</CardHeading>
-                <Badge tone="neutral">3 pacientes</Badge>
+                <Badge tone="neutral">{`${rows.length} pacientes`}</Badge>
               </div>
               <div className="w-full overflow-hidden rounded-lg border border-line">
                 <Table minWidth={1350}>
@@ -92,29 +91,33 @@ export default function MedTurnoResumenRecibido() {
                     <p className="w-[220px] shrink-0">Pendientes</p>
                     <p className="w-[120px] shrink-0">Acción</p>
                   </div>
-                  {PATIENTS.map((p) => (
-                    <div
-                      key={p.hc}
-                      {...rowLink('/MedPacienteResumen')}
-                      aria-label={`Ver a ${p.name}`}
-                      className={cn('flex w-full items-center border-b border-line p-3 font-jakarta text-[13px] leading-[normal] text-ink last:border-b-0', rowLinkClass)}
-                    >
-                      <div className="flex w-[220px] shrink-0 flex-col gap-0.5">
-                        <p className="font-bold">{p.name}</p>
-                        <p className="text-[11px] font-normal text-muted">HC: {p.hc}</p>
+                  {rows.map((p) => {
+                    const t = said(p.document);
+                    const to = patientPath('/MedPacienteResumen', p.document);
+                    return (
+                      <div
+                        key={p.id}
+                        {...rowLink(to)}
+                        aria-label={`Ver a ${p.name}`}
+                        className={cn('flex w-full items-center border-b border-line p-3 font-jakarta text-[13px] leading-[normal] text-ink last:border-b-0', rowLinkClass)}
+                      >
+                        <div className="flex w-[220px] shrink-0 flex-col gap-0.5">
+                          <p className="font-bold">{p.name}</p>
+                          <p className="text-[11px] font-normal text-muted">HC: {p.document}</p>
+                        </div>
+                        <div className="w-[110px] shrink-0">
+                          <Badge tone={p.tone}>{p.stateLabel}</Badge>
+                        </div>
+                        <p className="w-[180px] shrink-0">{`${p.unit ?? ''} Cama ${p.bed ?? '—'}`}</p>
+                        <p className="w-[220px] shrink-0">{`FC:${p.vitals.hr ?? '—'} SpO2:${p.vitals.spo2 ?? '—'}%${p.signos ? ` PA:${p.signos.pa.sis}/${p.signos.pa.dia}` : ''}`}</p>
+                        <p className="w-[260px] shrink-0 pr-3">{t?.novedad ?? '—'}</p>
+                        <p className={`w-[220px] shrink-0 ${t?.tono === 'danger' ? 'font-semibold text-primary' : ''}`}>{t?.pendiente ?? '—'}</p>
+                        <div className="w-[120px] shrink-0" onClick={stop} onKeyDown={stop}>
+                          <Button to={to}>Ver Paciente</Button>
+                        </div>
                       </div>
-                      <div className="w-[110px] shrink-0">
-                        <Badge tone={p.tone}>{p.status}</Badge>
-                      </div>
-                      <p className="w-[180px] shrink-0">{p.bed}</p>
-                      <p className="w-[220px] shrink-0">{p.vitals}</p>
-                      <p className="w-[260px] shrink-0 pr-3">{p.events}</p>
-                      <p className={`w-[220px] shrink-0 ${p.urgent ? 'font-semibold text-primary' : ''}`}>{p.pending}</p>
-                      <div className="w-[120px] shrink-0" onClick={stop} onKeyDown={stop}>
-                        <Button to="/MedPacienteResumen">Ver Paciente</Button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </Table>
               </div>
             </Card>
@@ -122,18 +125,21 @@ export default function MedTurnoResumenRecibido() {
             <Card className="flex w-full flex-col gap-[14px]">
               <div className="flex w-full items-center justify-between gap-3">
                 <CardHeading>Alertas del Turno Anterior</CardHeading>
-                <Badge tone="neutral">4 alertas</Badge>
+                <Badge tone="neutral">{`${alerts.length} alertas`}</Badge>
               </div>
               <ul className="flex w-full flex-col gap-3">
-                {ALERTS.map(([time, dot, text]) => (
-                  <li key={time} className="flex w-full items-start gap-3">
-                    <p className="w-20 shrink-0 font-jakarta text-[13px] font-bold leading-[normal] text-primary">{time}</p>
-                    <div className="flex min-w-0 flex-1 items-center gap-[10px]">
-                      <span className={`size-[10px] shrink-0 rounded-full ${dot}`} />
-                      <p className="min-w-0 flex-1 font-jakarta text-[13px] font-normal leading-[normal] text-ink">{text}</p>
-                    </div>
-                  </li>
-                ))}
+                {alerts.map((g) => {
+                  const p = rows.find((r) => r.device === g.device);
+                  return (
+                    <li key={g.key} className="flex w-full items-start gap-3">
+                      <p className="w-20 shrink-0 font-jakarta text-[13px] font-bold leading-[normal] text-primary">{`${fmtTime(g.latest.at)} hrs`}</p>
+                      <div className="flex min-w-0 flex-1 items-center gap-[10px]">
+                        <span className={`size-[10px] shrink-0 rounded-full ${DOT[g.severity]}`} />
+                        <p className="min-w-0 flex-1 font-jakarta text-[13px] font-normal leading-[normal] text-ink">{`${alertTitle(g.variable, g.severity, g.latest.value)} ${p ? surname(p.name) : ''} (${g.latest.value}) - ${g.count} avisos`}</p>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </Card>
           </div>
@@ -142,17 +148,12 @@ export default function MedTurnoResumenRecibido() {
             <Card className="flex w-full flex-col gap-[14px]">
               <CardHeading>Pendientes para Este Turno</CardHeading>
               <ul className="flex w-full flex-col gap-[10px]">
-                {TASKS.map((t) => {
+                {tasks.map((t) => {
                   const checked = done.has(t);
                   return (
                     <li key={t}>
                       <button type="button" role="checkbox" aria-checked={checked} onClick={() => toggle(t)} className="flex w-full items-center gap-[10px] text-left">
-                        <span
-                          className={cn(
-                            'flex size-[18px] shrink-0 items-center justify-center rounded border-2 text-white',
-                            checked ? 'border-primary bg-primary' : 'border-muted',
-                          )}
-                        >
+                        <span className={cn('flex size-[18px] shrink-0 items-center justify-center rounded border-2 text-white', checked ? 'border-primary bg-primary' : 'border-muted')}>
                           {checked && <IconCheck size={10} />}
                         </span>
                         <span className={cn('min-w-0 flex-1 font-jakarta text-[13px] font-normal leading-[normal]', checked ? 'text-muted line-through' : 'text-ink')}>{t}</span>
@@ -165,7 +166,7 @@ export default function MedTurnoResumenRecibido() {
 
             <div className="flex w-full flex-col gap-3 rounded-xl border border-[#fde68a] bg-[#fffbeb] p-5">
               <CardHeading>Indicaciones Importantes</CardHeading>
-              {INDICATIONS.map((t) => (
+              {indications.map((t) => (
                 <div key={t} className="flex w-full items-start gap-[10px]">
                   <span className="mt-[6px] size-2 shrink-0 rounded bg-warning" />
                   <p className="min-w-0 flex-1 font-jakarta text-[13px] font-normal leading-[1.5] text-[#92400e]">{t}</p>
@@ -175,9 +176,7 @@ export default function MedTurnoResumenRecibido() {
 
             <Card className="flex w-full flex-col gap-3">
               <CardHeading>Notas del Turno Anterior</CardHeading>
-              <p className="font-jakarta text-[13px] font-normal leading-[1.5] text-muted">
-                Noche con un ingreso nuevo y un episodio de desaturación resuelto. González fue el caso más delicado - responde bien al ajuste. García muestra mejoría neurológica sostenida. Rodríguez estable post-estabilización.
-              </p>
+              <p className="font-jakarta text-[13px] font-normal leading-[1.5] text-muted">{notes}</p>
             </Card>
 
             <div className="flex w-full flex-col gap-[10px]">

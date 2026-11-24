@@ -1,59 +1,91 @@
 // Pantalla "med/turno/entrega-handoff" (Figma node 137:356) — generada desde el diseño original de Figma.
+// Los pacientes asignados con alertas (los de entrega directa) y el resumen salen de src/api/; lo que se
+// dice de cada uno y el borrador, de src/api/sinBackend.ts (la entrega de turno no existe en el backend).
 import { Fragment, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getBorradorEntrega, getTurno, saveBorradorEntrega } from '../../api/sinBackend';
 import { useNavigate } from 'react-router-dom';
 import imgInfo from '../../assets/info.svg';
 import imgRecAvatarPng from '../../assets/rec-avatar.png';
 import { AppLayout, Badge, Button, Card, ConfirmDialog, Divider, focusFirst, IconFileText, rowLinkClass, Table, Tabs, TextArea, useRowLink, useToast, useValidation } from '../../components';
+import { usePatientRows } from '../../data/patients';
 import { cn } from '../../lib/cn';
+import { patientPath } from '../../lib/patientLink';
 import { checkText } from '../../lib/validate';
 import type { HandoffState } from '../MedTurnoHistorial';
-
-/** Notas de Figma. El borrador guardado se conserva mientras no se recargue la página. */
-const FIGMA_NOTES =
-  'Se entrega guardia con 7 pacientes. Cama 3 (María González) se mantiene con soporte vasopresor ajustado. Se sugiere evaluar diuresis acumulada en turno vespertino y valorar retiro de sedación progresivo si PAM se mantiene estable.';
-let savedDraft: string | null = null;
 
 const TURNO_TABS = [
   { id: 'nueva', label: 'Nueva Entrega', to: '/MedTurnoEntregaHandoff' },
   { id: 'historial', label: 'Historial de Entregas', to: '/MedTurnoHistorial' },
 ];
 
-type Tone = 'danger' | 'info' | 'success';
-const CHIP: Record<Tone | 'warning', string> = {
+const CHIP = {
   danger: 'bg-danger-soft text-danger',
   info: 'bg-primary-soft text-primary',
   success: 'bg-success-soft text-success',
   warning: 'bg-[#fffbeb] text-warning',
-};
+} as const;
 
-const PATIENTS: Array<{ bed: string; name: string; status: string; tone: Tone; news: string; pending: string; pendingTone: keyof typeof CHIP }> = [
-  { bed: 'C-02', name: 'Mercedes García', status: 'Crítico', tone: 'danger', news: 'Disminución leve de SatO2 temporal', pending: 'Chequear gasometría 16:00', pendingTone: 'warning' },
-  { bed: 'C-03', name: 'María González', status: 'Crítico', tone: 'danger', news: 'Inestabilidad hemodinámica, noradrenalina ↑', pending: 'Ajustar dosis PAM > 65', pendingTone: 'danger' },
-  { bed: 'C-05', name: 'Juan Pérez', status: 'Monitoreo', tone: 'info', news: 'Extubación exitosa 09:15 AM', pending: 'Monitorear patrón resp.', pendingTone: 'success' },
-  { bed: 'C-09', name: 'Francisco Díaz', status: 'Crítico', tone: 'danger', news: 'Taquicardia persistente', pending: 'Revisar ECG continuo', pendingTone: 'danger' },
-  { bed: 'C-11', name: 'Sofía Martínez', status: 'Estable', tone: 'success', news: 'Sonda vesical reinstalada', pending: 'Control de diuresis cada 2h', pendingTone: 'success' },
-];
-
-const SUMMARY = [
-  ['7 pacientes a cargo', 'text-ink'],
-  ['2 críticos', 'text-danger'],
-  ['3 en monitoreo', 'text-primary'],
-  ['2 estables', 'text-success'],
-  ['4 tareas pendientes', 'text-warning'],
-];
+/** Pone en minúscula la primera letra de una frase, pero no la de una sigla (FC, SpO2, TC). */
+const lowerFirst = (s: string) => (/^\p{Lu}\p{Ll}*(?![\p{L}\d])/u.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 export default function MedTurnoEntregaHandoff() {
+  const { rows } = usePatientRows();
+  const turno = useQuery({ queryKey: ['sinBackend', 'turno'], queryFn: getTurno });
+  const draft = useQuery({ queryKey: ['sinBackend', 'entrega-borrador'], queryFn: getBorradorEntrega });
+  // Entrega directa: los que tienen alertas (críticos y en atención); los estables solo cuentan.
+  const direct = rows.filter((r) => r.state !== 'estable');
+  const count = (s: string) => rows.filter((r) => r.state === s).length;
+  const pendingTasks = (turno.data ?? []).filter((t) => t.tono !== 'success').length;
+  const summary: Array<[string, string]> = [
+    [`${rows.length} pacientes a cargo`, 'text-ink'],
+    [`${count('critico')} críticos`, 'text-danger'],
+    [`${count('atencion')} en atención`, 'text-primary'],
+    [`${count('estable')} estables`, 'text-success'],
+    [`${pendingTasks} tareas pendientes`, 'text-warning'],
+  ];
+  // Notas sugeridas: un renglón por cada paciente de entrega directa.
+  const suggested = rows.length
+    ? [
+        `Se entrega guardia con ${rows.length} pacientes.`,
+        ...direct.slice(0, 3).map((r) => {
+          const t = turno.data?.find((x) => x.cedula === r.document);
+          return t ? `Cama ${r.bed} (${r.name}): ${lowerFirst(t.novedad)}; pendiente ${lowerFirst(t.pendiente)}.` : '';
+        }),
+      ]
+        .filter(Boolean)
+        .join(' ')
+    : '';
+  const ready = rows.length > 0 && turno.isSuccess && draft.isSuccess;
+  return ready ? <Entrega key="entrega" rows={direct} total={rows.length} summary={summary} turno={turno.data ?? []} initialNotes={draft.data ?? suggested} /> : <Entrega rows={[]} total={0} summary={summary} turno={[]} initialNotes="" loading />;
+}
+
+function Entrega({
+  rows,
+  total,
+  summary,
+  turno,
+  initialNotes,
+  loading,
+}: {
+  rows: ReturnType<typeof usePatientRows>['rows'];
+  total: number;
+  summary: Array<[string, string]>;
+  turno: Awaited<ReturnType<typeof getTurno>>;
+  initialNotes: string;
+  loading?: boolean;
+}) {
   const rowLink = useRowLink();
   const toast = useToast();
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [notes, setNotes] = useState(() => savedDraft ?? FIGMA_NOTES);
+  const [notes, setNotes] = useState(initialNotes);
   // Las notas son obligatorias para confirmar (20 a 2000 caracteres); el borrador guarda lo que haya.
   const form = useValidation({
     'entrega-notas': () => checkText(notes, { required: true, min: 20, max: 2000, requiredMessage: 'Escriba las notas de entrega' }),
   });
-  const saveDraft = () => {
-    savedDraft = notes;
+  const saveDraft = async () => {
+    await saveBorradorEntrega(notes);
     toast('Borrador guardado');
   };
   const askConfirm = () => {
@@ -92,7 +124,7 @@ export default function MedTurnoEntregaHandoff() {
       <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-5 p-4 md:p-8 xl:flex-row">
         <div className="flex w-full min-w-0 flex-col gap-5 xl:max-w-[740px] xl:flex-1">
           <Card padding="sm" className="flex w-full flex-wrap items-center gap-3">
-            {SUMMARY.map(([label, color], i) => (
+            {summary.map(([label, color], i) => (
               <Fragment key={label}>
                 {i > 0 && <span className="h-4 w-px bg-line" aria-hidden="true" />}
                 <p className={`whitespace-nowrap font-jakarta text-[14px] font-bold leading-[normal] ${color}`}>{label}</p>
@@ -111,22 +143,28 @@ export default function MedTurnoEntregaHandoff() {
                 <p className="w-[220px] shrink-0">NOVEDADES DEL TURNO</p>
                 <p className="min-w-0 flex-1">PENDIENTES</p>
               </div>
-              {PATIENTS.map((p) => (
-                <div
-                  key={p.bed}
-                  {...rowLink('/MedPacienteResumen')}
-                  aria-label={`Ver a ${p.name}, cama ${p.bed}`}
-                  className={cn('flex w-full items-center gap-2 border-b border-line p-[10px] leading-[normal]', rowLinkClass)}
-                >
-                  <p className="w-[60px] shrink-0 font-jakarta text-[13px] font-bold text-ink">{p.bed}</p>
-                  <p className="w-[130px] shrink-0 truncate font-jakarta text-[13px] font-semibold text-ink">{p.name}</p>
-                  <Badge tone={p.tone} size="sm" className="w-[90px] justify-center">
-                    {p.status}
-                  </Badge>
-                  <p className="w-[220px] shrink-0 font-jakarta text-[12px] font-normal leading-[1.35] text-muted">{p.news}</p>
-                  <p className={`min-w-[120px] flex-1 rounded-md px-2 py-0.5 font-jakarta text-[11px] font-semibold leading-[1.35] ${CHIP[p.pendingTone]}`}>{p.pending}</p>
-                </div>
-              ))}
+              {loading && <p className="p-[10px] font-jakarta text-[13px] text-muted">Cargando pacientes…</p>}
+              {rows.map((p) => {
+                const t = turno.find((x) => x.cedula === p.document);
+                return (
+                  <div
+                    key={p.id}
+                    {...rowLink(patientPath('/MedPacienteResumen', p.document))}
+                    aria-label={`Ver a ${p.name}, cama ${p.bed}`}
+                    className={cn('flex w-full items-center gap-2 border-b border-line p-[10px] leading-[normal]', rowLinkClass)}
+                  >
+                    <p className="w-[60px] shrink-0 font-jakarta text-[13px] font-bold text-ink">{p.bed}</p>
+                    <p className="w-[130px] shrink-0 font-jakarta text-[13px] font-semibold leading-[1.35] text-ink">
+                      {p.name}
+                    </p>
+                    <Badge tone={p.state === 'critico' ? 'danger' : 'info'} size="sm" className="w-[90px] justify-center">
+                      {p.stateLabel}
+                    </Badge>
+                    <p className="w-[220px] shrink-0 font-jakarta text-[12px] font-normal leading-[1.35] text-muted">{t?.novedad ?? '—'}</p>
+                    <p className={`min-w-[120px] flex-1 rounded-md px-2 py-0.5 font-jakarta text-[11px] font-semibold leading-[1.35] ${CHIP[t?.tono ?? 'success']}`}>{t?.pendiente ?? '—'}</p>
+                  </div>
+                );
+              })}
             </Table>
           </Card>
 
@@ -149,7 +187,7 @@ export default function MedTurnoEntregaHandoff() {
               error={form.show('entrega-notas')}
             />
             <div className="flex w-full flex-wrap justify-end gap-3">
-              <Button variant="secondary" onClick={saveDraft}>
+              <Button variant="secondary" onClick={() => void saveDraft()}>
                 Guardar Borrador
               </Button>
               <Button variant="success" onClick={askConfirm}>
@@ -187,7 +225,7 @@ export default function MedTurnoEntregaHandoff() {
         onCancel={() => setConfirmOpen(false)}
         onConfirm={confirm}
       >
-        Se entregarán 7 pacientes a la Dra. Ana Gómez (Turno Vespertino, 15:00 - 23:00). Recibirá una notificación para revisar y firmar la entrega.
+        {`Se entregarán ${total} pacientes a la Dra. Ana Gómez (Turno Vespertino, 15:00 - 23:00). Recibirá una notificación para revisar y firmar la entrega.`}
       </ConfirmDialog>
     </AppLayout>
   );

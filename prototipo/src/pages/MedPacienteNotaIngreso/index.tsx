@@ -1,34 +1,20 @@
 // Pantalla "med/paciente/nota-ingreso" (Figma node 183:603) — generada desde el diseño original de Figma.
 // Paso 3: motivo, padecimiento y plan terapéutico se editan con validación. Los datos de admisión son de
 // solo lectura porque los registra Admisión (REVISION.md, paso 3, punto 6).
+// Admisión y diagnósticos salen del ingreso y del expediente; motivo, padecimiento, plan y pronóstico no
+// existen en el backend (src/api/sinBackend.ts, nota de ingreso).
+import { useQueryClient } from '@tanstack/react-query';
+import { getNotaIngreso, saveNotaIngreso, useExtra, type NotaIngreso } from '../../api/sinBackend';
 import imgBulletItemEllipse from '../../assets/bullet-item-ellipse.svg';
 import imgOptBuenoEllipse from '../../assets/opt-bueno-ellipse.svg';
 import imgOptReservadoEllipse from '../../assets/opt-reservado-ellipse.svg';
 import { useRef, useState } from 'react';
-import { BackButton, Badge, Button, Card, FieldError, focusFirst, InfoField, PatientLayout, Table, TextArea, useToast, useValidation } from '../../components';
+import { BackButton, Badge, Button, Card, FieldError, focusFirst, InfoField, PatientLayout, Table, TextArea, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
+import { fmtDateTime, staffName } from '../../lib/clinical';
 import { checkText } from '../../lib/validate';
 import { cn } from '../../lib/cn';
 
-const ADMISSION = [
-  ['Fecha y Hora de Ingreso', '15 Oct 2025 08:30'],
-  ['Servicio', 'UCI'],
-  ['Cama Asignada', 'C-03'],
-  ['Médico Responsable', 'Dr. Carlos Méndez'],
-];
-
-const DIAGNOSES: Array<[string, string, 'Definitivo' | 'Presuntivo']> = [
-  ['I50.9', 'Insuficiencia Cardíaca Congestiva', 'Definitivo'],
-  ['J81', 'Edema Pulmonar', 'Presuntivo'],
-  ['I10', 'Hipertensión Arterial', 'Definitivo'],
-];
-
-const PLAN = [
-  'Furosemida 40mg IV c/8h',
-  'Oxígeno por mascarilla 5L/min',
-  'Monitoreo hemodinámico continuo',
-  'Restricción hídrica estricta 1500ml/día',
-  'Ecocardiograma urgente en cama',
-];
+const TYPE_LABEL: Record<string, string> = { definitivo: 'Definitivo', presuntivo: 'Presuntivo', diferencial: 'Diferencial' };
 
 // Cada pronóstico se marca con su color (Reservado es el que muestra Figma).
 const PROGNOSIS = [
@@ -37,23 +23,35 @@ const PROGNOSIS = [
   { label: 'Grave', text: 'Alto riesgo de complicaciones inminentes', box: 'border-danger bg-[rgba(239,68,68,0.06)]', ring: 'border-danger' },
 ];
 
-const FIGMA_MOTIVO = 'Disnea progresiva y dificultad para respirar en reposo de 48 horas de evolución';
-const FIGMA_PADECIMIENTO =
-  'Paciente femenina de 67 años con antecedente de Insuficiencia Cardíaca Congestiva (ICC) que presenta disnea progresiva de 48 horas de evolución, exacerbada en decúbito (ortopnea) y acompañada de tos seca no productiva. Al ingreso se documenta taquipnea, desaturación y signos clínicos compatibles con sobrecarga hídrica aguda / edema agudo de pulmón.';
-
-// Lo guardado se conserva mientras no se recargue la página (sin backend).
-let saved: { motivo: string; padecimiento: string; plan: Array<{ id: number; text: string }>; prognosis: string } | null = null;
-
 const blockLabel = 'font-jakarta text-[12px] font-bold uppercase leading-[normal] text-muted';
 
 const CardHeading = ({ children }: { children: string }) => <h2 className="font-jakarta text-[15px] font-bold leading-[normal] text-ink">{children}</h2>;
 
 export default function MedPacienteNotaIngreso() {
+  const { view } = usePatient();
+  const nota = useExtra('ingreso', view?.cedula, getNotaIngreso);
+  return (
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Nota de Ingreso`} title="Nota de Ingreso" tab="historia" actions={<BackButton />}>
+      {view && nota.data && <NotaIngresoForm key={view.cedula} v={view} nota={nota.data} />}
+    </PatientLayout>
+  );
+}
+
+function NotaIngresoForm({ v, nota }: { v: PatientView; nota: NotaIngreso }) {
   const toast = useToast();
-  const [prognosis, setPrognosis] = useState(() => saved?.prognosis ?? 'Reservado');
-  const [motivo, setMotivo] = useState(() => saved?.motivo ?? FIGMA_MOTIVO);
-  const [padecimiento, setPadecimiento] = useState(() => saved?.padecimiento ?? FIGMA_PADECIMIENTO);
-  const [plan, setPlan] = useState(() => saved?.plan ?? PLAN.map((text, i) => ({ id: i, text })));
+  const queryClient = useQueryClient();
+  const { can } = useSession();
+  const [prognosis, setPrognosis] = useState<string>(nota.pronostico);
+  const [motivo, setMotivo] = useState(nota.motivo);
+  const [padecimiento, setPadecimiento] = useState(nota.padecimiento);
+  const [plan, setPlan] = useState(() => nota.plan.map((text, i) => ({ id: i, text })));
+  const admission: Array<[string, string]> = [
+    ['Fecha y Hora de Ingreso', fmtDateTime(v.assigned?.admittedAt ?? v.patient.arrivedAt)],
+    ['Servicio', v.assigned?.unit ?? '—'],
+    ['Cama Asignada', v.bed ?? '—'],
+    ['Médico Responsable', staffName('Carlos Méndez')],
+  ];
+  const diagnoses = (v.expediente?.diagnosticos ?? []).filter((d) => d.status === 'activo');
   const nextId = useRef(plan.length);
   const form = useValidation({
     'ingreso-motivo': () => checkText(motivo, { required: true, min: 10, max: 300, requiredMessage: 'Escriba el motivo de ingreso' }),
@@ -72,7 +70,7 @@ export default function MedPacienteNotaIngreso() {
     setPlan((all) => [...all, { id, text: '' }]);
     requestAnimationFrame(() => document.getElementById(`ingreso-plan-${id}`)?.focus());
   };
-  const save = () => {
+  const save = async () => {
     form.markAll();
     const bad = (Object.keys(form.errors) as Array<keyof typeof form.errors>).find((k) => form.errors[k]);
     if (bad) {
@@ -80,22 +78,23 @@ export default function MedPacienteNotaIngreso() {
       focusFirst([bad === 'ingreso-plan' ? (badPlanId !== undefined ? `ingreso-plan-${badPlanId}` : 'ingreso-plan-agregar') : bad]);
       return;
     }
-    saved = { motivo, padecimiento, plan: plan.filter((p) => p.text.trim()), prognosis };
+    await saveNotaIngreso(v.cedula, {
+      motivo: motivo.trim(),
+      padecimiento: padecimiento.trim(),
+      plan: plan.map((p) => p.text.trim()).filter(Boolean),
+      pronostico: prognosis as NotaIngreso['pronostico'],
+    });
+    await queryClient.invalidateQueries({ queryKey: ['sinBackend', 'ingreso', v.cedula] });
     toast('Nota de ingreso guardada');
   };
 
   return (
-    <PatientLayout
-      breadcrumb="SIAPPC > Pacientes > María González > Historia Clínica > Nota de Ingreso"
-      title="Nota de Ingreso"
-      tab="historia"
-      actions={<BackButton />}
-    >
+    <>
       <div className="flex w-full flex-col gap-4">
         <Card className="flex w-full flex-col gap-4">
           <CardHeading>Datos de Admisión</CardHeading>
           <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {ADMISSION.map(([label, value]) => (
+            {admission.map(([label, value]) => (
               <InfoField key={label} label={label}>
                 {value}
               </InfoField>
@@ -145,9 +144,11 @@ export default function MedPacienteNotaIngreso() {
         <Card className="flex w-full flex-col gap-4">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <CardHeading>Diagnósticos de Ingreso</CardHeading>
-            <Button variant="soft" size="sm" to="/MedPacienteRegistroDiagnostico">
-              + Agregar Diagnóstico
-            </Button>
+            {can('historia_clinica', 'crear') && (
+              <Button variant="soft" size="sm" to="/MedPacienteRegistroDiagnostico">
+                + Agregar Diagnóstico
+              </Button>
+            )}
           </div>
           <div className="w-full overflow-hidden rounded-lg border border-line bg-white">
             <Table minWidth={420}>
@@ -156,12 +157,12 @@ export default function MedPacienteNotaIngreso() {
                 <p className="min-w-0 flex-1">DESCRIPCIÓN</p>
                 <p className="w-[120px] shrink-0">TIPO</p>
               </div>
-              {DIAGNOSES.map(([code, description, type]) => (
-                <div key={code} className="flex w-full items-center gap-3 border-b border-line p-3 font-jakarta text-[13px] leading-[normal] last:border-b-0">
-                  <p className="w-[100px] shrink-0 font-bold text-ink">{code}</p>
-                  <p className="min-w-0 flex-1 font-medium text-ink">{description}</p>
+              {diagnoses.map((d) => (
+                <div key={d.id} className="flex w-full items-center gap-3 border-b border-line p-3 font-jakarta text-[13px] leading-[normal] last:border-b-0">
+                  <p className="w-[100px] shrink-0 font-bold text-ink">{String(d.code ?? '—')}</p>
+                  <p className="min-w-0 flex-1 font-medium text-ink">{String(d.description)}</p>
                   <div className="w-[120px] shrink-0">
-                    <Badge tone={type === 'Definitivo' ? 'success' : 'warning'}>{type}</Badge>
+                    <Badge tone={d.type === 'definitivo' ? 'success' : d.type === 'diferencial' ? 'info' : 'warning'}>{TYPE_LABEL[String(d.type)] ?? String(d.type)}</Badge>
                   </div>
                 </div>
               ))}
@@ -234,11 +235,11 @@ export default function MedPacienteNotaIngreso() {
         </div>
 
         <div className="flex w-full justify-end">
-          <Button size="lg" onClick={save}>
+          <Button size="lg" onClick={() => void save()}>
             Guardar Nota de Ingreso
           </Button>
         </div>
       </div>
-    </PatientLayout>
+    </>
   );
 }

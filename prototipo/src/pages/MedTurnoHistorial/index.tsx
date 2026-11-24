@@ -85,7 +85,7 @@ export default function MedTurnoHistorial() {
   const { state } = useLocation() as { state: HandoffState | null };
   // Una entrega recién confirmada aparece primero y queda pendiente de lectura.
   const [rows] = useState<Row[]>(() =>
-    state?.handedOff ? [row('14 Ago 2026, 14:50', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 7, 0, 'Pendiente'), ...ROWS] : ROWS,
+    state?.handedOff ? [row('14 Ago 2026, 14:50', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 8, 0, 'Pendiente'), ...ROWS] : ROWS,
   );
   const [range, setRange] = useState('7');
   const [shift, setShift] = useState(SHIFT_OPTIONS[0]);

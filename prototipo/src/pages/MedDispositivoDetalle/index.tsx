@@ -74,7 +74,7 @@ export default function MedDispositivoDetalle() {
             <Button variant="secondary" onClick={() => setFaultOpen(true)} disabled={reported}>
               {reported ? 'Falla reportada' : 'Reportar falla'}
             </Button>
-            {!free && <Button to="/MedPacienteResumen">Ver paciente</Button>}
+            {!free && device.cedula && <Button to={`/MedPacienteResumen?paciente=${device.cedula}`}>Ver paciente</Button>}
           </div>
         </Card>
 
@@ -84,7 +84,7 @@ export default function MedDispositivoDetalle() {
             <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
               <InfoField label="Modelo">{device.model}</InfoField>
               <InfoField label="Número de serie">{device.serial}</InfoField>
-              <InfoField label="Cama">{device.bed} · UCI Adultos</InfoField>
+              <InfoField label="Cama">{`${device.bed} · ${device.unit ?? '—'}`}</InfoField>
               <InfoField label="Paciente">{free ? '—' : device.patient}</InfoField>
               <InfoField label="Firmware">{firmwareOf(device)}</InfoField>
               <InfoField label="Última conexión">{lastSeenOf(device)}</InfoField>

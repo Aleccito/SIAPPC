@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '../../lib/cn';
+import { useWithPatient } from '../../lib/patientLink';
 import { ScrollShadows, useScrollEdges } from './ScrollShadows';
 
 export type TabItem = {
@@ -41,6 +42,7 @@ const styles = {
 export function Tabs({ items, active, onChange, variant = 'underline', className }: TabsProps) {
   const s = styles[variant];
   const [ref, edges] = useScrollEdges<HTMLDivElement>();
+  const keepPatient = useWithPatient();
 
   useEffect(() => {
     const list = ref.current;
@@ -59,7 +61,7 @@ export function Tabs({ items, active, onChange, variant = 'underline', className
         const isActive = item.id === active;
         const classes = cn('shrink-0 whitespace-nowrap font-jakarta leading-[normal] transition-colors', s.item, isActive ? s.active : s.idle);
         return item.to ? (
-          <Link key={item.id} to={item.to} role="tab" aria-selected={isActive} className={classes}>
+          <Link key={item.id} to={keepPatient(item.to)} role="tab" aria-selected={isActive} className={classes}>
             {item.label}
           </Link>
         ) : (

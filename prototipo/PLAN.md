@@ -5,15 +5,20 @@ Documento de traspaso para seguir el trabajo en Claude Code. Léelo completo ant
 ## Qué es
 
 `prototipo/` contiene las **35 pantallas de la página MEDICO** y las **4 de la página LOGIN** del Figma de
-SIAPPC, convertidas a React a partir del código que genera Figma (codegen). Es un **prototipo visual con datos de ejemplo
-escritos en las pantallas**; no se conecta al backend.
+SIAPPC, convertidas a React a partir del código que genera Figma (codegen). Es una **segunda app**, aparte de
+`frontend/`: las pantallas piden sus datos a `src/api/` (copias de los servicios de `frontend/`), y un simulador en el
+navegador responde con los **8 pacientes de `backend/db/seed-demo.sql`**. Hoy no se conecta al backend; el interruptor
+para hacerlo está listo (`.env.example`, `CONEXION-BACKEND.md`).
 
 - Stack: React 19, Vite 7, Tailwind CSS 3.4, react-router-dom 6, TypeScript.
 - Una carpeta por pantalla: `src/pages/<Nombre>/index.tsx`. Rutas en `src/App.tsx` (`/` abre el `Login`).
   Además de las de Figma hay una pantalla nueva del paso 2 (`MedDispositivoDetalle`).
 - Roles (README de la raíz, "5. Entrar"): el prototipo es la aplicación del **médico**. Lo que es de Admisión
   (registrar pacientes, asignar camas, egresos) o de enfermería no aparece; ver `REVISION.md`, parte 2.1.
-- Datos de ejemplo que comparten varias pantallas en `src/data/`; utilidades en `src/lib/`.
+- Datos: `src/api/` (servicios, tipos, hooks de React Query en `queries.ts`, permisos por rol en `permisos.ts`);
+  el simulador en `src/api/mock/` (rutas como las del backend, sesión, retrasos) con un archivo por paciente en
+  `src/api/mock/seed/`; lo que el backend aún no tiene, en `src/api/sinBackend.ts`. `src/data/` adapta esos datos a
+  las pantallas; utilidades en `src/lib/` (`patientLink.ts`: el paciente en la URL; `clinical.ts`: fechas y estados).
 - Componentes compartidos en `src/components/` (se importan desde `src/components/index.ts`). Ver "Componentes" abajo.
 - Íconos e imágenes exportados de Figma en `src/assets/`.
 - Fuentes (Google Fonts en `index.html`): Plus Jakarta Sans (`font-jakarta`), Inter (`font-inter`), Geist (`font-geist`), definidas en `tailwind.config.js`.
@@ -59,7 +64,8 @@ escritos en las pantallas**; no se conecta al backend.
      `MedTurno*` → Reportes; Notificaciones, Búsqueda, Ayuda y Perfil no marcan ninguna.
    - Barra superior de 72 px en todas (el Dashboard tenía una de 56 px sin título; ahora es "Dashboard Principal").
      Las pantallas del paciente llevan "Volver" a la derecha.
-   - Cabecera del paciente única: María González · Crítico · Cama C-03 · ID PT-8821.
+   - Cabecera del paciente única: María González · Crítico · Cama C-03 · ID PT-8821 (desde el paso 4, el paciente
+     de la URL).
    - Texto en Plus Jakarta Sans (Figma mezclaba Geist e Inter en algunas pantallas).
    - Contenido con 32 px de margen en todas (algunas tenían 16 o 24).
    - Se corrigieron errores del código generado: textos que eran imágenes (Reportes), signos vitales encimados y
@@ -76,7 +82,7 @@ escritos en las pantallas**; no se conecta al backend.
      `Menu`, `ToastProvider`/`useToast`, `ConfirmDialog`, `ModalHeader`, `DocumentPreview`, `EmptyState`,
      `useRowLink`/`rowButton` (filas tocables), `AssignBedModal` (se quitó en la revisión) y `UploadDocumentModal`. `Modal` se cierra con X,
      Escape o el fondo; `BackButton` acepta `to`.
-   - Un solo paciente de ejemplo: todo expediente abre las pantallas de María González. Se agregaron datos de ejemplo
+   - Un solo paciente de ejemplo (hasta el paso 4): todo expediente abre las pantallas de María González. Se agregaron datos de ejemplo
      solo donde la paginación o los filtros los necesitan (12 monitores, 12 pacientes, 18 reportes, 24 entregas…).
    - El estado es local y se pierde al recargar; lo que cruza de pantalla viaja en la navegación (alerta atendida,
      entrega de turno confirmada, diagnóstico registrado, nota SOAP elegida con `?nota=`, monitor con `?cama=`).
@@ -126,7 +132,21 @@ escritos en las pantallas**; no se conecta al backend.
      la dibuja `AppLayout` (en celular cierra el menú antes) y el cierre vive en `useLogout()`. Verificado con capturas
      a 1440, 1024 y 390 (`docs/revision-ia/`), pruebas de Cancelar, Escape y confirmar, y las 40 pantallas iguales a
      1440.
-   - **PR 2 — Los 8 pacientes de `backend/db/seed-demo.sql` y la capa `src/api/`** con el simulador.
+   - ~~**PR 2 — Los 8 pacientes del seed y la capa `src/api/`.**~~ **Hecho (rama `feature/prototipo-pacientes-ia`).**
+     Detalle y desviaciones en `REVISION-IA.md`, sección 9:
+     - Ya no hay María González ni datos escritos en las pantallas: todo sale de `src/api/` con los 8 pacientes del
+       seed (DEMO-0001…0008) tal cual; lo inventado lleva "no viene del seed" en el código.
+     - El paciente va en la URL (`?paciente=DEMO-0005`) y sobrevive a recargar; sin él se abre DEMO-0002 y una
+       cédula que no existe muestra "Paciente no encontrado". Iniciales en lugar de foto; "Atención" en vez de
+       "Monitoreo"; selector de unidad (`?unidad=`) en la central de monitoreo; alertas agrupadas.
+     - Sesión por rol: el simulador entra solo como el médico; tras cerrar sesión las pantallas mandan al Login
+       (también con Atrás). Con `enfermero@institucion.org` no se ve "Nueva Nota SOAP".
+     - Lo escrito (notas SOAP, diagnósticos, umbrales, borradores) se guarda en la pestaña del navegador
+       (`sessionStorage`) y sobrevive a recargar. `?retraso=0` quita las esperas simuladas; `?sesion=vencida` prueba
+       el 401.
+     - Verificado: `npm run build`; capturas a 1440 comparadas con la línea base (cambia el contenido, no la
+       estructura); revisión automática a 1440, 1024, 768 y 390; pruebas automáticas de las 8 fichas en sus 18
+       pantallas, recarga, cédula inexistente, listas con los 8, cerrar sesión y entrar como enfermero.
    - **PR 3 — Módulos de IA** (consulta libre y análisis automático).
 5. **Conectar con el backend.** Plan en `CONEXION-BACKEND.md`: el prototipo sigue como segunda app, aparte de
    `frontend/`, y se conecta por grupos de rutas.

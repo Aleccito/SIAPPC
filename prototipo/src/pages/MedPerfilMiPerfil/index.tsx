@@ -9,7 +9,7 @@ const PRO_INFO = [
   ['Especialidad principal', 'Medicina Crítica y Terapia Intensiva'],
   ['Cédula Profesional', 'DE-882194-X'],
   ['Años de experiencia', '15 años'],
-  ['Unidad asignada', 'Unidad de Cuidados Intensivos (UCI) - Cama 01 a 12'],
+  ['Unidad asignada', 'Unidad de Cuidados Intensivos (UCI) - Camas UCI-01 a UCI-06'],
   ['Turno asignado', 'Matutino (07:00 AM - 15:00 PM)'],
 ];
 

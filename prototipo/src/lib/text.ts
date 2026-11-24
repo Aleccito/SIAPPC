@@ -1,4 +1,4 @@
-/** Texto sin tildes y en minúsculas, para comparar búsquedas ("González" = "gonzalez"). */
+/** Texto sin tildes y en minúsculas, para comparar búsquedas ("Núñez" = "nunez"). */
 export const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /** true si `query` (sin tildes ni mayúsculas) aparece en alguno de los textos. Vacío = todo coincide. */

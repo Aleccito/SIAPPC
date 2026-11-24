@@ -7,6 +7,10 @@
 > **Actualizado con la revisión de acceso y roles** (rama `feature/prototipo-login-revision`, ver `REVISION.md`):
 > pantallas de acceso nuevas, se quitó lo que no le corresponde al médico (marcado **[R1]**…**[R7]**) y se
 > unificaron botones y paginación (**[C1]**…**[C8]**). Esas filas dicen cómo quedaron después de la revisión.
+>
+> **Actualizado con el paso 4, PR 2** (`REVISION-IA.md`, sección 9): los datos ya no son los de Figma sino los 8
+> pacientes del seed, y cada fila o tarjeta abre el expediente de **su** paciente. Lo que cambió por eso está en la
+> sección "Paso 4 — datos del seed" al final; las filas de arriba siguen describiendo el paso 2.
 
 Objetivo: que en `prototipo/` no quede nada que se pueda tocar y no haga nada. Cada elemento hace una de estas cosas:
 
@@ -22,11 +26,11 @@ Columna **Antes**: ✅ ya funcionaba · ⚠️ hacía algo pero incompleto · �
 
 ## Criterios generales
 
-- **Un solo paciente de ejemplo.** Todo lo que abre un expediente (de cualquier paciente) lleva a las pantallas de
-  María González, que son las únicas que existen en Figma.
-- **Datos de ejemplo extra** solo donde hacen falta para que funcionen la paginación y los filtros (ej. "Mostrando 5
-  de 12" necesita 12 pacientes). Se agregan con el mismo formato que los de Figma.
-- **El estado es local**: se pierde al recargar. Lo que cruza de pantalla (ej. confirmar una alerta y volver al
+- ~~**Un solo paciente de ejemplo.** Todo lo que abre un expediente (de cualquier paciente) lleva a las pantallas de
+  María González, que son las únicas que existen en Figma.~~ Desde el paso 4: el paciente de cada fila, en la URL.
+- ~~**Datos de ejemplo extra** solo donde hacen falta para que funcionen la paginación y los filtros (ej. "Mostrando 5
+  de 12" necesita 12 pacientes).~~ Desde el paso 4 la paginación muestra lo que hay (8 pacientes: "5 de 8").
+- **El estado es local**: se pierde al recargar (desde el paso 4, lo guardado sobrevive a recargar la pestaña). Lo que cruza de pantalla (ej. confirmar una alerta y volver al
   Centro de Alertas con esa alerta atendida) viaja en la navegación, sin backend.
 - **Si un filtro deja la lista vacía**, se muestra "Sin resultados con estos filtros" y un botón "Quitar filtros".
 - **Campos de texto de formularios** (notas, textareas, Mín/Máx, fechas) quedan para el **paso 3**. Los
@@ -55,7 +59,8 @@ Columna **Antes**: ✅ ya funcionaba · ⚠️ hacía algo pero incompleto · �
 | `Input` (ajustado) | 38 px de alto, igual que las listas de formulario. |
 
 Datos de ejemplo que comparten varias pantallas: `src/data/alerts.ts` (alerta que viaja a la confirmación y de
-vuelta), `src/data/devices.ts` (12 monitores) y `src/data/soap.ts` (5 notas SOAP). Búsqueda sin tildes ni
+vuelta), `src/data/devices.ts` (12 monitores; desde el paso 4, los 8 del seed) y `src/data/soap.ts` (5 notas SOAP;
+desde el paso 4, rutas y formato: las notas vienen de `src/api/soapNote.ts`). Búsqueda sin tildes ni
 mayúsculas: `src/lib/text.ts`.
 
 ---
@@ -476,3 +481,29 @@ Tarjetas de indicadores (salvo las del Dashboard), badges de estado, gráficas y
 (Estable / Monitoreo / Crítico), tarjetas de la línea de tiempo de hospitalizaciones, "Última nota SOAP" y
 "Dispositivo IoT" del Resumen, filas de tablas clínicas (antecedentes, diagnósticos, medicamentos, estudios,
 resumen métrico de la comparativa) y "Diagnósticos previos". No tienen apariencia de botón (no cambian el cursor).
+
+## Paso 4 — datos del seed (PR 2)
+
+Los elementos hacen lo mismo que en el paso 2; cambia **a quién** y **con qué datos**. Todo sale de `src/api/` (el
+simulador responde con los 8 pacientes de `backend/db/seed-demo.sql`).
+
+| Dónde | Elemento | Ahora |
+|---|---|---|
+| Todas las del expediente | Pestañas, botones y enlaces | **Pantalla** del mismo paciente: el enlace conserva `?paciente=`. Recargar no lo pierde. |
+| Cabecera del paciente | "Nueva Nota SOAP" | Solo con permiso de crear notas SOAP: enfermería no lo ve. |
+| Cabecera del paciente | "Generar Reporte" | **Aviso** con el nombre del paciente. |
+| Menú lateral | "Cerrar sesión" | Además de lo del PR 1: POST `/auth/logout`, borra la sesión y los datos en caché; Atrás o un enlace directo vuelven al Login. |
+| Dashboard | Filas, "Requiere tu atención", tendencias | **Pantalla**: el expediente de ese paciente. KPIs calculados; unidad "Todas" por defecto (con "UCI" se verían 5 de 8). |
+| Centro de Alertas | Tarjetas | Una por paciente, variable y gravedad (alertas agrupadas, D5). "Atender" abre la confirmación de **esa** alerta. |
+| Confirmación de Atención | Datos de la alerta | La alerta desde la que se llegó; si se entra directo, la primera alerta activa sin atender. |
+| Búsqueda Global | Buscador | GET `/search` con las reglas del backend (mínimo 2 letras); abre con "Batista" (paciente, nota y documento); acepta `?q=`. "Ver Nota" abre esa nota. |
+| Central de Monitoreo | Selector "Unidad" | **Opciones**: UCI / Trauma / Piso 3 (`?unidad=`). Cada tarjeta o fila lleva al Resumen de su paciente; la cama libre dice "Disponible". |
+| Comparativa | "Paciente A" / "Paciente B" | **Opciones**: los pacientes asignados; signos, tendencias, alertas, última nota y medicamentos de cada uno. |
+| Mis Pacientes | Filtros y paginación | Unidad sale de los datos; Estado: Crítico / Atención / Estable; 5 por página, **2 páginas** (sin relleno). |
+| Dispositivos | Tabla y paginación | Los 8 monitores del seed, 8 por página (1 página). "Ver Detalle" abre el monitor de esa cama. |
+| Reportes | Tabla y "Generar Nuevo Reporte" | Un reporte de ejemplo por paciente (8, 5 por página); la lista de pacientes del modal son los 8. |
+| Entrega de Turno | Filas, notas y "Guardar Borrador" | Entrega directa = pacientes con alertas; notas sugeridas con lo de cada uno; el borrador sobrevive a recargar. |
+| Historial de Entregas | Paginación | Se quedan las 24 entregas de ejemplo: son registros de turno (3 por día), no pacientes. |
+| Resumen de Turno Recibido | "Ver Paciente" y filas | Los 8 pacientes; pendientes y alergias salen de cada uno. |
+| Notificaciones | Lista y "Marcar como leídas" | Avisos de alertas del simulador más avisos inventados (el seed no trae notificaciones); lo leído se recuerda. |
+| Formularios del expediente | "Guardar", "Firmar", "Registrar" | Van al simulador (POST/PUT/PATCH como el backend) y se ven en las otras pantallas: notas SOAP, diagnósticos, antecedentes, documentos, umbrales, exploración, nota de ingreso, interrogatorio, indicaciones. |

@@ -2,7 +2,8 @@
 
 > **Estado: aprobada ("Aprobar todo").** Se hace en tres PRs (sección 8).
 > - **PR 1, cerrar sesión: hecho** (sección 6, con las capturas del después).
-> - PR 2 (pacientes y `src/api/`) y PR 3 (IA): pendientes.
+> - **PR 2, los 8 pacientes y la capa `src/api/`: hecho** (sección 9, con lo que cambió respecto de lo aprobado).
+> - PR 3 (IA): pendiente.
 >
 > El plan para conectar con el backend real está aparte, en `CONEXION-BACKEND.md`.
 
@@ -344,8 +345,9 @@ cuenta regresiva de "Reenviar").
 
 | Archivo | Cambio | ¿Afecta a la sección del administrador? |
 |---|---|---|
-| `src/App.tsx` | 1 ruta nueva (`/MedAsistenteIa`) | No |
-| `src/main.tsx` | Proveedores: datos (React Query), sesión y panel de IA | Sí, para bien: también podrá usar `src/api/` |
+| `src/App.tsx` | 1 ruta nueva (`/MedAsistenteIa`, PR 3) | No |
+| `src/main.tsx` | Proveedores: datos (React Query) y, en el PR 3, panel de IA | Sí, para bien: también podrá usar `src/api/` |
+| `src/App.tsx` | `SessionProvider` alrededor de las rutas (PR 2) | Sí: sus pantallas también piden sesión; `/Login` y la recuperación quedan públicas |
 | `src/components/layout/nav.ts` | 1 entrada ("Asistente IA") con permiso; `CURRENT_USER` se queda como respaldo | Mínimo: el tipo `NavItem` gana un campo opcional |
 | `src/components/layout/Sidebar.tsx` | Filtra por permiso; usuario de la sesión; "Cerrar sesión" avisa a `AppLayout` | Sí, si usa el mismo menú |
 | `src/components/layout/AppLayout.tsx` | Diálogo de cerrar sesión y panel de IA | Sí (arreglo de cerrar sesión) |
@@ -400,3 +402,70 @@ Cada PR cierra con: `npm run build`; capturas a 1440 comparadas con la línea ba
 Al final: `PLAN.md` (8 pacientes, capa `src/api/`, paso "IA", el prototipo como segunda app, siguiente paso = conectar
 según `CONEXION-BACKEND.md`), `BOTONES.md`, `LEEME.md` (hoy dice que `/` abre el Centro de Alertas y que no hay backend),
 este archivo y `CONEXION-BACKEND.md`.
+
+---
+
+## 9. PR 2 — hecho
+
+Rama `feature/prototipo-pacientes-ia`. Las pantallas del médico, la de Detalle de Monitor y el Login piden sus datos
+a `src/api/`; ninguna tiene ya pacientes escritos ni a María González.
+
+**Cómo quedó**
+
+- `src/api/`: copias de los servicios y tipos de `frontend/` (cada archivo lo dice al inicio), `http.ts` con el
+  interruptor de `mode.ts`, hooks de React Query en `queries.ts` y la matriz de permisos del seed en `permisos.ts`.
+- `src/api/mock/`: el simulador. `router.ts` responde las mismas rutas, códigos y reglas que el backend (401 sin sesión,
+  403 según el rol, 404, 409 al editar una nota firmada, 400 en la búsqueda con menos de 2 letras); `db.ts` arma el
+  estado a partir de `seed/` (un archivo por paciente: `delSeed` tal cual del seed e `inventado`, marcado "no viene del
+  seed"); lo que se escribe queda en `sessionStorage`.
+- `src/api/sinBackend.ts`: lo que el backend todavía no tiene (PA y temperatura, nota de ingreso, interrogatorio,
+  indicaciones no farmacológicas, entrega de turno, tendencias de más de 40 min, umbrales, avisos), siempre simulado
+  aunque se conecte el backend. `CONEXION-BACKEND.md` dice qué tabla o ruta lo reemplazaría.
+- Paciente en la URL (`src/lib/patientLink.ts`): `Button`, `Tabs`, `useRowLink` y `AppLink` agregan `?paciente=` a
+  todo enlace del expediente. Sesión en `src/components/auth/session.tsx`.
+- `vite.config.ts` trae el proxy de `/api` y `.env.example` el interruptor; en modo mock (lo publicado) no se usan.
+
+**Diferencias con lo aprobado o con Figma**
+
+1. **Paginación sin relleno.** Mis Pacientes: 5 por página, 2 páginas. Dispositivos: 8 por página (el tamaño de
+   Figma), 1 página. Reportes: un reporte de ejemplo por paciente (8), 5 por página. El Historial de Entregas conserva
+   sus 24 entregas: son registros de turno (3 por día), no pacientes.
+2. **Dashboard con unidad "Todas" por defecto.** Figma muestra "UCI"; con UCI se verían 5 de 8 y faltarían el de
+   Trauma y los 2 de Piso 3.
+3. **Enfermería ve a los 8 en el simulador.** `/dashboard/assigned-patients` del backend usa la asignación del médico;
+   el simulador se la da también al enfermero para que sus pantallas no queden vacías (comentado en `router.ts`). Con
+   el backend real, el médico de prueba tiene 15 asignados (el seed trae 18 pacientes; el prototipo usa los 8 pedidos).
+4. **Notificaciones inventadas.** El seed no trae ninguna: se arman a partir de las alertas (una por monitor, signo y
+   gravedad) más asignaciones, laboratorio, imagen, recordatorio de borradores y sistema.
+5. **Resumen del paciente: "Modelo" en lugar de "Señal"** en la tarjeta del dispositivo (el seed no trae la señal).
+   El trazo de ECG es el de Figma (una línea, como en la línea base).
+6. **Registro de diagnóstico vacío** con los tipos del enum `TipoDiagnostico` del backend (presuntivo, definitivo,
+   diferencial); la gravedad y los hallazgos se guardan en `notas`, que es lo que el backend acepta.
+7. **Exploración física con las 4 técnicas del backend** (inspección, palpación, percusión, auscultación) en todas las
+   regiones; DEMO-0004 y DEMO-0006 no tienen exploración y lo dice un aviso.
+8. **Login responde 400 con campos vacíos** (como el backend) y cualquier otra combinación entra; `?sesion=vencida`
+   prueba el 401.
+9. **"Tiempo resp. promedio" muestra "—"**: las alertas reconocidas del seed no traen cuándo se reconocieron
+   (`resolvedAt` vacío), así que no hay de dónde calcularlo.
+10. **La central de monitoreo en Grid usa un solo componente de tarjeta** (`src/components/monitor/BedCards.tsx`) en
+    lugar de las 12 tarjetas copiadas de Figma; se ven igual.
+11. **Glasgow pendiente** se muestra "GCS: —" (con la explicación al pasar el cursor) para que no se corte la columna.
+12. **Imágenes de Figma que ya no se usan:** 36 más (fotos de pacientes, íconos de las tarjetas copiadas), que se
+    suman a 207 que ya estaban sin uso desde el paso 1. Se dejan en `src/assets/` porque la rama del administrador
+    podría usarlas; se pueden borrar cuando se una.
+
+**Verificación**
+
+- `npm run build` y `tsc` pasan; no queda "María" ni "González" en `src/`.
+- Capturas a 1440 de las 40 rutas comparadas con la línea base del PR 1: cambia el contenido, no la estructura.
+  Revisión automática a 1440, 1024, 768 y 390: sin desplazamiento de lado ni textos cortados o partidos de más
+  (se arreglaron camas "UCI-01" en dos renglones, nombres largos cortados y siglas en minúscula en la entrega de turno).
+- Pruebas automáticas (Edge sin ventana): las 8 fichas en sus 18 pantallas (nombre visible, nada "Cargando", ningún
+  "undefined"/"NaN", todos los enlaces con su `?paciente=`, sin errores en consola); recargar conserva al paciente;
+  sin `?paciente=` abre DEMO-0002; DEMO-9999 → "Paciente no encontrado"; Mis Pacientes 5 + 3; Dashboard 8; monitoreo
+  por unidad (UCI, Trauma, Piso 3); alertas solo del seed; búsqueda "Batista" → paciente, nota y documento; turno con
+  los 8; 8 monitores; cerrar sesión → Login con aviso, Atrás y enlace directo se quedan en Login; entrar como
+  enfermero vuelve a la ficha pedida, sin "Nueva Nota SOAP".
+- **Aviso para la sección del administrador:** `src/data/devices.ts` conserva sus exportaciones (`Device` gana `cedula`
+  y `unit` opcionales); el contenido son los 8 monitores del seed. Sus pantallas quedan detrás de la sesión: el
+  simulador entra como el médico y con `admin@institucion.org` como administrador (permisos de `permisos.ts`).

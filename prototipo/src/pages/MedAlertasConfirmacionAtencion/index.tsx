@@ -1,14 +1,19 @@
 // Pantalla "med/alertas/confirmacion-atencion" (Figma node 245:631) — generada desde el diseño original de Figma.
 // Muestra la alerta desde la que se llegó (Centro de Alertas, Dashboard o Resumen del
-// paciente); si se entra directo, la de Figma. "Acción tomada" es obligatoria (10 a 500 caracteres) y las
+// paciente); si se entra directo, la alerta crítica más reciente de los pacientes asignados. "Acción tomada"
+// es obligatoria (10 a 500 caracteres) y las
 // notas, opcionales (hasta 500) (REVISION.md, paso 3, punto 2).
 // La ventana se dibuja sobre la pantalla de origen, no sobre el fondo de ejemplo de Figma
 // ("Centro de Control de Alertas"), para que se vea de dónde se vino (REVISION.md, C8).
+// El backend no tiene "atender una alerta" (CONEXION-BACKEND.md, pedido 2): la atención se registra en
+// esta visita y la alerta se oculta de las listas hasta recargar.
 import { useState, type ComponentType } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import imgBell4 from '../../assets/bell-4.svg';
+import { useAlerts, useAssignedPatients } from '../../api/queries';
 import { Button, CloseButton, focusFirst, Modal, Select, TextArea, useToast, useValidation } from '../../components';
-import { DEFAULT_ALERT, type AttendedState, type ConfirmState } from '../../data/alerts';
+import { alertInfoFrom, attendedAlerts, type AlertInfo, type AttendedState, type ConfirmState } from '../../data/alerts';
+import { groupAlerts } from '../../lib/alerts';
 import { checkText } from '../../lib/validate';
 import MedAlertasCentro from '../MedAlertasCentro';
 import MedDashboardPrincipal from '../MedDashboardPrincipal';
@@ -23,12 +28,24 @@ const BACKGROUND: Record<string, ComponentType> = {
 
 const CLASSIFICATIONS = ['Alerta verdadera atendida', 'Falsa alarma', 'Artefacto técnico', 'Escalada a otro servicio'];
 
+/** Sin alerta en la navegación (entrada directa): la crítica más reciente de los pacientes asignados. */
+function useDefaultAlert(enabled: boolean): AlertInfo | null {
+  const alerts = useAlerts({ limit: 500 }, enabled);
+  const patients = useAssignedPatients();
+  if (!enabled || !alerts.data || !patients.data) return null;
+  const group = groupAlerts(alerts.data).find((g) => !attendedAlerts.has(g.key));
+  const p = group && patients.data.find((x) => x.device === group.device);
+  return group && p ? alertInfoFrom(group, { cedula: p.document, name: p.name, bed: p.bed }) : null;
+}
+
 export default function MedAlertasConfirmacionAtencion() {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
   const incoming = location.state as ConfirmState | null;
-  const alert = incoming?.alert ?? DEFAULT_ALERT;
+  const fallback = useDefaultAlert(!incoming);
+  const alert: AlertInfo = incoming?.alert ??
+    fallback ?? { id: '', patient: 'Cargando…', bed: '', title: 'Cargando la alerta…', detail: '' };
   const from = incoming?.from ?? '/MedAlertasCentro';
   const [classification, setClassification] = useState(CLASSIFICATIONS[0]);
   const [action, setAction] = useState('');
@@ -47,12 +64,13 @@ export default function MedAlertasConfirmacionAtencion() {
       focusFirst([bad]);
       return;
     }
+    attendedAlerts.add(alert.id);
     toast(`Atención registrada · ${alert.patient}`);
     const state: AttendedState = { attendedId: alert.id };
     navigate(from, { state });
   };
 
-  const Background = BACKGROUND[from] ?? MedAlertasCentro;
+  const Background = BACKGROUND[from.split('?')[0]] ?? MedAlertasCentro;
 
   return (
     <>

@@ -1,5 +1,8 @@
 // Pantalla "med/paciente/monitoreo-detallado" (Figma node 6:267) — generada desde el diseño original de Figma.
-import { Link } from 'react-router-dom';
+// FC, SpO2 y FR: últimas lecturas del seed (GET /monitoring/beds); alertas agrupadas del equipo.
+// PA, temperatura y los paneles de la derecha no existen en el backend (src/api/sinBackend.ts).
+import { useAlerts, useMonitoredBeds } from '../../api/queries';
+import { getMonitoreoExtra, getSignosExtra, useExtra } from '../../api/sinBackend';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
 import imgAlertTriangle3 from '../../assets/alert-triangle-3.svg';
 import imgBpWave from '../../assets/bp-wave.svg';
@@ -7,81 +10,14 @@ import imgEcgWave from '../../assets/ecg-wave.svg';
 import imgHeaderRowFrame from '../../assets/header-row-frame.svg';
 import imgSpo2Wave from '../../assets/spo2-wave.svg';
 import imgTempWave from '../../assets/temp-wave.svg';
-import { BackButton, Badge, Card, Divider, PatientLayout } from '../../components';
+import { AppLink, BackButton, Badge, Card, Divider, PatientLayout, usePatient, type PatientView } from '../../components';
+import { alertTitle, groupAlerts, vitalTone } from '../../lib/alerts';
+import { fmtAgo } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 
 type Signal = { label: string; value: string; unit: string; color: string; wave: string; alert?: boolean; ecg?: boolean; full?: boolean };
 
-const SIGNALS: Signal[] = [
-  { label: 'ECG II', value: '134', unit: 'bpm', color: 'text-[#22c55e]', wave: imgEcgWave, ecg: true, full: true },
-  { label: 'Temp', value: '38.5', unit: '°C', color: 'text-white', wave: imgTempWave, alert: true },
-  { label: 'SpO2', value: '89', unit: '%', color: 'text-[#06b6d4]', wave: imgSpo2Wave, alert: true },
-  { label: 'PA', value: '140/90', unit: 'mmHg', color: 'text-[#eab308]', wave: imgBpWave, alert: true },
-  { label: 'FR', value: '24', unit: 'rpm', color: 'text-[#eab308]', wave: imgBpWave, full: true },
-];
-
-const ALERTS = [
-  ['SpO2 < 90%', 'Hace 5 min'],
-  ['FC > 130 bpm', 'Hace 12 min'],
-  ['Lactato elevado 4.2 mmol/L', 'Última medición'],
-];
-
 type Tile = { label: string; value: string; note?: string; danger?: boolean; wide?: boolean };
-
-const SECTIONS: Array<{ title: string; cols: 2 | 3; tiles: Tile[] }> = [
-  {
-    title: 'Estado Neurológico',
-    cols: 2,
-    tiles: [
-      { label: 'Glasgow', value: '8/15', note: 'O2 V3 M3' },
-      { label: 'Pupilas', value: 'Isocóricas reactivas 3mm' },
-      { label: 'Nivel de conciencia', value: 'Sedado', wide: true },
-    ],
-  },
-  {
-    title: 'Estado Respiratorio',
-    cols: 2,
-    tiles: [
-      { label: 'Ventilación mecánica', value: 'Sí (modo SIMV)' },
-      { label: 'PEEP', value: '8 cmH2O' },
-      { label: 'FiO2', value: '60%' },
-      { label: 'EtCO2', value: '38 mmHg' },
-    ],
-  },
-  {
-    title: 'Balance Hídrico y Renal',
-    cols: 2,
-    tiles: [
-      { label: 'Diuresis última hora', value: '45 mL/h' },
-      { label: 'Balance acumulado', value: '+850 mL' },
-      { label: 'Cristaloides', value: '2500 mL' },
-      { label: 'Hemoderivados', value: '2 UGRE' },
-    ],
-  },
-  {
-    title: 'Laboratorios Recientes',
-    cols: 3,
-    tiles: [
-      { label: 'Hb', value: '9.2 g/dL' },
-      { label: 'Hto', value: '28%' },
-      { label: 'Lactato', value: '4.2 mmol/L', danger: true },
-      { label: 'K+', value: '4.1 mEq/L' },
-      { label: 'Glucosa', value: '142 mg/dL' },
-      { label: 'Creatinina', value: '1.3 mg/dL' },
-      { label: 'INR', value: '1.4' },
-      { label: 'Plaquetas', value: '145,000' },
-    ],
-  },
-  {
-    title: 'Perfusión y Hemodinamia',
-    cols: 2,
-    tiles: [
-      { label: 'PAM', value: '68 mmHg' },
-      { label: 'Llenado capilar', value: '3 seg' },
-      { label: 'Norepinefrina', value: '0.15 mcg/kg/min', wide: true },
-    ],
-  },
-];
 
 const SideTitle = ({ children }: { children: string }) => <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">{children}</h2>;
 
@@ -104,14 +40,88 @@ function StatTile({ tile, cols }: { tile: Tile; cols: 2 | 3 }) {
 }
 
 export default function MedPacienteMonitoreoDetallado() {
+  const { view } = usePatient();
   return (
-    <PatientLayout breadcrumb="SIAPPC > Pacientes > María González > Monitoreo" title="Monitoreo Detallado" tab="monitoreo" actions={<BackButton />}>
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Monitoreo`} title="Monitoreo Detallado" tab="monitoreo" actions={<BackButton />}>
+      {view && <Monitoreo v={view} />}
+    </PatientLayout>
+  );
+}
+
+function Monitoreo({ v }: { v: PatientView }) {
+  const device = v.assigned?.device ?? undefined;
+  const bed = useMonitoredBeds().data?.find((b) => b.patientId === v.id);
+  const vitals = bed?.vitals;
+  const signos = useExtra('signos', v.cedula, getSignosExtra).data;
+  const extra = useExtra('monitoreo', v.cedula, getMonitoreoExtra).data;
+  const alerts = useAlerts({ device, limit: 500 }, !!device);
+  const groups = groupAlerts(alerts.data ?? []);
+  const out = (tone: string) => tone !== 'normal';
+
+  const signals: Signal[] = [
+    { label: 'ECG II', value: String(vitals?.hr ?? '—'), unit: 'bpm', color: 'text-[#22c55e]', wave: imgEcgWave, ecg: true, full: true, alert: out(vitalTone('hr', vitals?.hr)) },
+    { label: 'Temp', value: signos ? signos.temp.toFixed(1) : '—', unit: '°C', color: 'text-white', wave: imgTempWave, alert: out(vitalTone('temp', signos?.temp)) },
+    { label: 'SpO2', value: String(vitals?.spo2 ?? '—'), unit: '%', color: 'text-[#06b6d4]', wave: imgSpo2Wave, alert: out(vitalTone('spo2', vitals?.spo2)) },
+    { label: 'PA', value: signos ? `${signos.pa.sis}/${signos.pa.dia}` : '—', unit: 'mmHg', color: 'text-[#eab308]', wave: imgBpWave, alert: out(vitalTone('pa', signos?.pa.sis)) },
+    { label: 'FR', value: String(vitals?.resp ?? '—'), unit: 'rpm', color: 'text-[#eab308]', wave: imgBpWave, full: true, alert: out(vitalTone('resp', vitals?.resp)) },
+  ];
+
+  const glasgow = v.assigned?.glasgow;
+  const sections: Array<{ title: string; cols: 2 | 3; tiles: Tile[] }> = extra
+    ? [
+        {
+          title: 'Estado Neurológico',
+          cols: 2,
+          tiles: [
+            { label: 'Glasgow', value: glasgow ? `${glasgow}/15` : 'Pendiente', note: glasgow ? extra.glasgowDetalle : 'Sin exploración física' },
+            { label: 'Pupilas', value: extra.pupilas },
+            { label: 'Nivel de conciencia', value: extra.conciencia, wide: true },
+          ],
+        },
+        {
+          title: 'Estado Respiratorio',
+          cols: 2,
+          tiles: [
+            { label: 'Ventilación mecánica', value: extra.ventilacion },
+            { label: 'PEEP', value: extra.peep },
+            { label: 'FiO2', value: extra.fio2 },
+            { label: 'EtCO2', value: extra.etco2 },
+          ],
+        },
+        {
+          title: 'Balance Hídrico y Renal',
+          cols: 2,
+          tiles: [
+            { label: 'Diuresis última hora', value: extra.diuresis },
+            { label: 'Balance acumulado', value: extra.balance },
+            { label: 'Cristaloides', value: extra.cristaloides },
+            { label: 'Hemoderivados', value: extra.hemoderivados },
+          ],
+        },
+        {
+          title: 'Laboratorios Recientes',
+          cols: 3,
+          tiles: extra.laboratorios.map(([label, value, danger]) => ({ label, value, danger })),
+        },
+        {
+          title: 'Perfusión y Hemodinamia',
+          cols: 2,
+          tiles: [
+            { label: 'PAM', value: signos ? `${signos.pam} mmHg` : '—', danger: (signos?.pam ?? 99) < 65 },
+            { label: 'Llenado capilar', value: extra.llenadoCapilar },
+            { label: extra.vasoactivo[0], value: extra.vasoactivo[1], wide: true },
+          ],
+        },
+      ]
+    : [];
+
+  return (
       <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
         {/* El monitor lleva a las tendencias de signos vitales */}
-        <Link to="/MedPacienteTendenciasVitales" className="w-full min-w-0 xl:max-w-[707px] xl:flex-1" aria-label="Ver tendencias de signos vitales">
+        <AppLink to="/MedPacienteTendenciasVitales" className="w-full min-w-0 xl:max-w-[707px] xl:flex-1" aria-label="Ver tendencias de signos vitales">
           <div className="flex w-full flex-col gap-[14px] rounded-xl border border-white bg-white p-4 drop-shadow-[0px_8px_10px_rgba(0,0,0,0.25)] sm:p-5">
-            <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-black">Monitor de Cama - Cama 03</h2>
-            {SIGNALS.map((s) => (
+            <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-black">{`Monitor de Cama - Cama ${v.bed ?? '—'}`}</h2>
+            {signals.map((s) => (
               <div key={s.label} className={cn('flex w-full flex-col gap-[10px] rounded-[10px] bg-[#0b1220] p-3', s.full ? 'border border-white' : 'border-l-[3px] border-white')}>
                 <div className="flex w-full items-center justify-between leading-[normal]">
                   <div className="flex items-center gap-2">
@@ -130,29 +140,30 @@ export default function MedPacienteMonitoreoDetallado() {
               </div>
             ))}
           </div>
-        </Link>
+        </AppLink>
 
         <div className="flex w-full min-w-0 flex-col gap-4 xl:w-[443px] xl:shrink-0">
           <Card raised className="flex w-full flex-col gap-[14px]">
             <div className="flex w-full items-center justify-between gap-3">
               <SideTitle>Alertas Activas</SideTitle>
-              <Badge tone="danger" size="sm">3</Badge>
+              <Badge tone={groups.length ? 'danger' : 'neutral'} size="sm">{groups.length}</Badge>
             </div>
             <Divider />
             <ul className="flex w-full flex-col gap-3">
-              {ALERTS.map(([title, when]) => (
-                <li key={title} className="flex w-full items-center gap-[10px]">
+              {groups.map((g) => (
+                <li key={g.key} className="flex w-full items-center gap-[10px]">
                   <img className="size-2 shrink-0" alt="" src={imgAlertTextEllipse2} />
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[normal]">
-                    <p className="font-jakarta text-[13px] font-bold text-ink">{title}</p>
-                    <p className="font-jakarta text-[11px] font-normal text-muted">{when}</p>
+                    <p className="font-jakarta text-[13px] font-bold text-ink">{alertTitle(g.variable, g.severity, g.latest.value)}</p>
+                    <p className="font-jakarta text-[11px] font-normal text-muted">{`${g.count} ${g.count === 1 ? 'aviso' : 'avisos'} · el último ${fmtAgo(g.latest.at)}`}</p>
                   </div>
                 </li>
               ))}
+              {groups.length === 0 && <li className="font-jakarta text-[13px] text-muted">{alerts.isPending ? 'Cargando…' : 'Sin alertas activas.'}</li>}
             </ul>
           </Card>
 
-          {SECTIONS.map((section) => (
+          {sections.map((section) => (
             <Card key={section.title} raised className="flex w-full flex-col gap-3">
               <SideTitle>{section.title}</SideTitle>
               <Divider />
@@ -166,9 +177,9 @@ export default function MedPacienteMonitoreoDetallado() {
                   <p className="font-jakarta text-[11px] font-bold uppercase text-muted">Última gasometría</p>
                   <div className="grid w-full grid-cols-3 gap-3">
                     {[
-                      ['pH', '7.32'],
-                      ['PaO2', '85'],
-                      ['PaCO2', '42'],
+                      ['pH', extra?.gasometria.ph ?? '—'],
+                      ['PaO2', extra?.gasometria.pao2 ?? '—'],
+                      ['PaCO2', extra?.gasometria.paco2 ?? '—'],
                     ].map(([label, value]) => (
                       <div key={label} className="flex flex-col gap-0.5">
                         <p className="font-jakarta text-[11px] font-normal text-muted">{label}</p>
@@ -182,6 +193,5 @@ export default function MedPacienteMonitoreoDetallado() {
           ))}
         </div>
       </div>
-    </PatientLayout>
   );
 }

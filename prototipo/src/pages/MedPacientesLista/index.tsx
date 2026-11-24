@@ -1,72 +1,38 @@
 // Pantalla "med/pacientes/lista" (Figma node 45:79) — generada desde el diseño original de Figma.
+// Los pacientes asignados (GET /dashboard/assigned-patients) con sus alertas agrupadas; las camas libres
+// salen de la central (GET /monitoring/beds). Temperatura: src/api/sinBackend.ts.
 import { useState, type SyntheticEvent } from 'react';
+import { useMonitoredBeds } from '../../api/queries';
 import { Link } from 'react-router-dom';
 import imgAlertTriangle from '../../assets/alert-triangle.svg';
-import imgArrowLeft from '../../assets/arrow-left.svg';
 import imgArrowRight from '../../assets/arrow-right.svg';
 import imgArrowUpRight from '../../assets/arrow-up-right.svg';
 import imgCalendar from '../../assets/calendar.svg';
-import imgCheck from '../../assets/check.svg';
 import imgChevronDown from '../../assets/chevron-down.svg';
 import imgMoreHorizontal from '../../assets/more-horizontal.svg';
 import imgSearch from '../../assets/search.svg';
 import imgStateIndicator from '../../assets/state-indicator.svg';
 import imgStateIndicator2 from '../../assets/state-indicator-2.svg';
 import { AppLayout, Badge, Card, ConfirmDialog, Divider, EmptyState, KpiCard, Menu, Pagination, rowLinkClass, Select, Table, useRowLink, useToast } from '../../components';
+import { usePatientRows, type PatientRow as Patient } from '../../data/patients';
+import { alertTitle } from '../../lib/alerts';
+import { fmtAgo, initials, STATE_ORDER } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
+import { patientPath } from '../../lib/patientLink';
 import { matches } from '../../lib/text';
 
-type Status = 'CRÍTICO' | 'MONITOREO' | 'ESTABLE';
-type Unit = 'UCI' | 'Urgencias' | 'Hospitalización';
-
-type Patient = {
-  initials: string;
-  name: string;
-  meta: string;
-  status: Status;
-  transfer: [string, string];
-  bed: string;
-  hr: string;
-  spo2: string;
-  temp: string;
-  unit: Unit;
-  /** Días desde el ingreso (para "Rango de Admisión"). */
-  admittedDaysAgo: number;
-  selected?: boolean;
+/** Tipo de ingreso del backend (`ingreso.tipo`) en la columna "Traslado UCI". */
+const TRANSFER: Record<string, [string, string]> = {
+  urgencia: [imgAlertTriangle, 'Urgencia'],
+  programado: [imgArrowRight, 'Ingreso'],
+  traslado: [imgArrowUpRight, 'Traslado'],
 };
 
-const STATUS_TONE = { CRÍTICO: 'danger', MONITOREO: 'warning', ESTABLE: 'success' } as const;
-const STATUS_RANK: Record<Status, number> = { CRÍTICO: 0, MONITOREO: 1, ESTABLE: 2 };
-
-const PATIENTS: Patient[] = [
-  { initials: 'ER', name: 'Elena Rodríguez', meta: 'PT-8821 • 64 años', status: 'CRÍTICO', transfer: [imgArrowRight, 'Ingreso'], bed: 'Cama C-03', hr: '112', spo2: '89', temp: '38.2°', unit: 'UCI', admittedDaysAgo: 0 },
-  { initials: 'JM', name: 'Javier Mendoza', meta: 'PT-8822 • 45 años', status: 'MONITOREO', transfer: [imgArrowLeft, 'Salida'], bed: 'Cama C-07', hr: '88', spo2: '96', temp: '37.1°', unit: 'UCI', admittedDaysAgo: 2, selected: true },
-  { initials: 'SM', name: 'Sofía Martínez', meta: 'PT-8823 • 29 años', status: 'ESTABLE', transfer: [imgCheck, 'Alta'], bed: 'Cama C-02', hr: '72', spo2: '99', temp: '36.6°', unit: 'UCI', admittedDaysAgo: 5 },
-  { initials: 'RG', name: 'Ricardo Gómez', meta: 'PT-8824 • 72 años', status: 'CRÍTICO', transfer: [imgAlertTriangle, 'Urgente'], bed: 'Cama C-01', hr: '105', spo2: '91', temp: '37.8°', unit: 'UCI', admittedDaysAgo: 1 },
-  { initials: 'LF', name: 'Lucía Fernández', meta: 'PT-8825 • 53 años', status: 'ESTABLE', transfer: [imgArrowUpRight, 'Traslado'], bed: 'Cama C-05', hr: '68', spo2: '98', temp: '36.8°', unit: 'UCI', admittedDaysAgo: 12 },
-  // Agregados para las páginas 2 y 3 y para los filtros (datos de ejemplo).
-  { initials: 'AR', name: 'Alberto Ruiz', meta: 'PT-8826 • 45 años', status: 'ESTABLE', transfer: [imgArrowRight, 'Ingreso'], bed: 'Cama C-04', hr: '72', spo2: '97', temp: '36.8°', unit: 'UCI', admittedDaysAgo: 3 },
-  { initials: 'FD', name: 'Francisco Díaz', meta: 'PT-8827 • 81 años', status: 'CRÍTICO', transfer: [imgAlertTriangle, 'Urgente'], bed: 'Cama C-06', hr: '130', spo2: '88', temp: '38.5°', unit: 'UCI', admittedDaysAgo: 1 },
-  { initials: 'AM', name: 'Ana Morales', meta: 'PT-8828 • 35 años', status: 'MONITOREO', transfer: [imgArrowRight, 'Ingreso'], bed: 'Cama U-02', hr: '98', spo2: '95', temp: '37.4°', unit: 'Urgencias', admittedDaysAgo: 0 },
-  { initials: 'AC', name: 'Andrés Castro', meta: 'PT-8829 • 52 años', status: 'MONITOREO', transfer: [imgArrowUpRight, 'Traslado'], bed: 'Cama U-04', hr: '92', spo2: '94', temp: '37.0°', unit: 'Urgencias', admittedDaysAgo: 0 },
-  { initials: 'TH', name: 'Tomás Herrera', meta: 'PT-8830 • 53 años', status: 'ESTABLE', transfer: [imgArrowRight, 'Ingreso'], bed: 'Cama H-08', hr: '76', spo2: '97', temp: '36.7°', unit: 'Hospitalización', admittedDaysAgo: 8 },
-  { initials: 'VC', name: 'Valeria Castillo', meta: 'PT-8831 • 41 años', status: 'ESTABLE', transfer: [imgCheck, 'Alta'], bed: 'Cama H-12', hr: '70', spo2: '98', temp: '36.5°', unit: 'Hospitalización', admittedDaysAgo: 20 },
-  { initials: 'DT', name: 'Diego Torres', meta: 'PT-8832 • 39 años', status: 'MONITOREO', transfer: [imgArrowLeft, 'Salida'], bed: 'Cama C-08', hr: '101', spo2: '93', temp: '37.6°', unit: 'UCI', admittedDaysAgo: 4 },
-];
-
-const ALERTS: Array<[string, string, string, string]> = [
-  [imgStateIndicator, 'Caída severa de SpO2 < 89%', 'Cama 03', 'Hace 2 min'],
-  [imgStateIndicator, 'Taquicardia ventricular detectada', 'Cama 06', 'Hace 5 min'],
-  [imgStateIndicator2, 'Fiebre alta registrada 39.1°C', 'Cama 06', 'Hace 12 min'],
-  [imgStateIndicator2, 'Presión arterial en límites (140/90)', 'Cama 02', 'Hace 20 min'],
-];
-
-const UNIT_OPTIONS = ['Todas', 'UCI', 'Urgencias', 'Hospitalización'];
 const STATUS_OPTIONS = [
   { value: 'Todos', label: 'Todos' },
-  { value: 'CRÍTICO', label: 'Crítico' },
-  { value: 'MONITOREO', label: 'Monitoreo' },
-  { value: 'ESTABLE', label: 'Estable' },
+  { value: 'critico', label: 'Crítico' },
+  { value: 'atencion', label: 'Atención' },
+  { value: 'estable', label: 'Estable' },
 ];
 const RANGE_OPTIONS = [
   { value: '-1', label: 'Cualquier fecha' },
@@ -81,43 +47,42 @@ const SORT_OPTIONS = [
   { value: 'name', label: 'Por nombre' },
 ];
 
+/** Filas por página: las de Figma. */
 const PAGE_SIZE = 5;
-const COLS = 'grid grid-cols-[200px_100px_110px_85px_70px_70px_70px_minmax(30px,1fr)] items-center gap-3';
+const COLS = 'grid grid-cols-[210px_100px_110px_75px_70px_70px_70px_minmax(30px,1fr)] items-center gap-3';
 const stop = (e: SyntheticEvent) => e.stopPropagation();
 const icon = (src: string) => <img className="size-3.5 shrink-0" alt="" src={src} />;
 
 function PatientRow({ p, onDischarge }: { p: Patient; onDischarge: (p: Patient) => void }) {
   const rowLink = useRowLink();
-  const crit = p.status === 'CRÍTICO';
+  const crit = p.state === 'critico';
+  const transfer = TRANSFER[p.admissionType ?? ''] ?? [imgArrowRight, 'Ingreso'];
   return (
     <div
-      {...rowLink('/MedPacienteResumen')}
+      {...rowLink(patientPath('/MedPacienteResumen', p.document))}
       aria-label={`Ver a ${p.name}`}
-      className={cn(
-        COLS,
-        'p-4',
-        p.selected ? 'relative cursor-pointer border-b border-line bg-primary-soft outline-none' : cn('border-b border-line bg-white last:border-b-0', rowLinkClass),
-      )}
+      className={cn(COLS, 'p-4', 'border-b border-line bg-white last:border-b-0', rowLinkClass)}
     >
-      {p.selected && <span className="absolute inset-y-0 left-0 w-[3px] bg-primary" />}
       <div className="flex items-center gap-[10px]">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-line font-jakarta text-[12px] font-extrabold leading-[normal] text-ink">{p.initials}</span>
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-line font-jakarta text-[12px] font-extrabold leading-[normal] text-ink">{initials(p.name)}</span>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[normal]">
-          <p className="truncate font-jakarta text-[14px] font-bold text-ink">{p.name}</p>
-          <p className="font-jakarta text-[12px] font-normal text-muted">{p.meta}</p>
+          <p className="truncate font-jakarta text-[14px] font-bold text-ink" title={p.name}>
+            {p.name}
+          </p>
+          <p className="font-jakarta text-[12px] font-normal text-muted">{`${p.document} • ${p.age ?? '—'} años`}</p>
         </div>
       </div>
       <div>
-        <Badge tone={STATUS_TONE[p.status]} size="sm">{p.status}</Badge>
+        <Badge tone={p.tone} size="sm">{p.stateLabel.toUpperCase()}</Badge>
       </div>
       <div className="flex items-center gap-1.5">
-        <img className="size-3" alt="" src={p.transfer[0]} />
-        <p className="font-jakarta text-[11px] font-bold leading-[normal] text-muted">{p.transfer[1]}</p>
+        <img className="size-3" alt="" src={transfer[0]} />
+        <p className="font-jakarta text-[11px] font-bold leading-[normal] text-muted">{transfer[1]}</p>
       </div>
-      <p className="font-jakarta text-[13px] font-semibold leading-[normal] text-ink">{p.bed}</p>
-      <p className={cn('font-jakarta text-[13px] leading-[normal]', crit ? 'font-extrabold text-danger' : 'font-bold text-ink')}>{p.hr}</p>
-      <p className={cn('font-jakarta text-[13px] leading-[normal]', crit ? 'font-extrabold text-danger' : 'font-bold text-ink')}>{p.spo2}</p>
-      <p className="font-jakarta text-[13px] font-bold leading-[normal] text-ink">{p.temp}</p>
+      <p className="font-jakarta text-[13px] font-semibold leading-[normal] text-ink">{p.bed ?? '—'}</p>
+      <p className={cn('font-jakarta text-[13px] leading-[normal]', crit ? 'font-extrabold text-danger' : 'font-bold text-ink')}>{p.vitals.hr ?? '—'}</p>
+      <p className={cn('font-jakarta text-[13px] leading-[normal]', crit ? 'font-extrabold text-danger' : 'font-bold text-ink')}>{p.vitals.spo2 ?? '—'}</p>
+      <p className="font-jakarta text-[13px] font-bold leading-[normal] text-ink">{p.signos ? `${p.signos.temp.toFixed(1)}°` : '—'}</p>
       {/* El menú no debe activar la fila (los eventos del menú suben por el árbol de React). */}
       <div className="flex justify-end" onClick={stop} onKeyDown={stop}>
         <Menu
@@ -125,9 +90,9 @@ function PatientRow({ p, onDischarge }: { p: Patient; onDischarge: (p: Patient) 
           className="-m-1"
           trigger={<img className="size-[18px]" alt="" src={imgMoreHorizontal} />}
           items={[
-            { label: 'Ver expediente', to: '/MedPacienteResumen' },
-            { label: 'Monitoreo', to: '/MedPacienteMonitoreoDetallado' },
-            { label: 'Nueva nota SOAP', to: '/MedPacienteNotasSoapNueva' },
+            { label: 'Ver expediente', to: patientPath('/MedPacienteResumen', p.document) },
+            { label: 'Monitoreo', to: patientPath('/MedPacienteMonitoreoDetallado', p.document) },
+            { label: 'Nueva nota SOAP', to: patientPath('/MedPacienteNotasSoapNueva', p.document) },
             // El egreso lo hace Admisión; el médico solo indica el alta médica (REVISION.md, R2).
             { label: 'Indicar alta médica', onSelect: () => onDischarge(p) },
           ]}
@@ -153,25 +118,36 @@ export default function MedPacientesLista() {
     setPage(1);
   };
   const days = Number(range);
+  const { rows: patients, groups, isPending } = usePatientRows();
+  const beds = useMonitoredBeds();
+  const unitOptions = ['Todas', ...new Set(patients.map((p) => p.unit).filter((u): u is string => !!u))];
+  // Días desde el ingreso, para "Rango de Admisión".
+  const admittedDaysAgo = (p: Patient) => (Date.now() - Date.parse(p.admittedAt ?? p.arrivedAt)) / 86_400_000;
 
-  const filtered = PATIENTS.filter(
+  const filtered = patients.filter(
     (p) =>
       (unit === 'Todas' || p.unit === unit) &&
-      (status === 'Todos' || p.status === status) &&
-      (days < 0 || p.admittedDaysAgo <= days) &&
-      matches(query, p.name, p.meta),
+      (status === 'Todos' || p.state === status) &&
+      (days < 0 || admittedDaysAgo(p) <= Math.max(days, 1)) &&
+      matches(query, p.name, p.document),
   );
   const sorted =
     sort === 'crit'
-      ? [...filtered].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status])
+      ? [...filtered].sort((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state])
       : sort === 'bed'
-        ? [...filtered].sort((a, b) => a.bed.localeCompare(b.bed))
+        ? [...filtered].sort((a, b) => (a.bed ?? '').localeCompare(b.bed ?? ''))
         : sort === 'name'
           ? [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'es'))
           : filtered;
   const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const current = Math.min(page, pages);
   const rows = sorted.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  const free = (beds.data ?? []).filter((b) => b.bedState === 'disponible').length;
+  // Las 4 alertas (agrupadas) más recientes de los pacientes asignados.
+  const recent = [...groups]
+    .sort((a, b) => b.latest.at.localeCompare(a.latest.at))
+    .slice(0, 4)
+    .map((g) => ({ g, bed: patients.find((p) => p.device === g.device)?.bed ?? '—' }));
   const reset = () => {
     setUnit('Todas');
     setStatus('Todos');
@@ -187,7 +163,7 @@ export default function MedPacientesLista() {
     >
       <div className="flex w-full min-w-0 flex-1 flex-col gap-5 p-4 md:p-8">
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-          <Select variant="stacked" label="Unidad" options={UNIT_OPTIONS} value={unit} onChange={filter(setUnit)} trailingIcon={icon(imgChevronDown)} />
+          <Select variant="stacked" label="Unidad" options={unitOptions} value={unit} onChange={filter(setUnit)} trailingIcon={icon(imgChevronDown)} />
           <Select variant="stacked" label="Estado" options={STATUS_OPTIONS} value={status} onChange={filter(setStatus)} trailingIcon={icon(imgChevronDown)} />
           <Select
             variant="stacked"
@@ -201,10 +177,10 @@ export default function MedPacientesLista() {
         </div>
 
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard label="Pacientes Activos" value="8" note="Cupo: 12 camas" />
-          <KpiCard label="Estado Crítico" value="2" tone="danger" tint="danger" note="Acción inmediata" />
-          <KpiCard label="Alertas Activas" value="5" tone="warning" tint="warning" note="Últimos 15 min" />
-          <KpiCard label="Camas Disponibles" value="4 / 12" note="33% libre" />
+          <KpiCard label="Pacientes Activos" value={isPending ? '—' : String(patients.length)} note={`Cupo: ${beds.data?.length ?? '—'} camas`} />
+          <KpiCard label="Estado Crítico" value={String(patients.filter((p) => p.state === 'critico').length)} tone="danger" tint="danger" note="Acción inmediata" />
+          <KpiCard label="Alertas Activas" value={String(groups.filter((g) => Date.now() - Date.parse(g.latest.at) < 15 * 60_000).length)} tone="warning" tint="warning" note="Últimos 15 min" />
+          <KpiCard label="Camas Disponibles" value={`${free} / ${beds.data?.length ?? '—'}`} note={beds.data?.length ? `${Math.round((free / beds.data.length) * 100)}% libre` : '—'} />
         </div>
 
         <div className="flex w-full flex-1 flex-col items-start gap-6 xl:flex-row">
@@ -240,9 +216,9 @@ export default function MedPacientesLista() {
                   <p className="text-right">•••</p>
                 </div>
                 {rows.map((p) => (
-                  <PatientRow key={p.name} p={p} onDischarge={setDischarge} />
+                  <PatientRow key={p.id} p={p} onDischarge={setDischarge} />
                 ))}
-                {rows.length === 0 && <EmptyState onReset={reset} />}
+                {rows.length === 0 && <EmptyState message={isPending ? 'Cargando pacientes…' : undefined} onReset={reset} />}
               </Table>
             </Card>
             <Pagination summary={`Mostrando ${rows.length} de ${sorted.length} pacientes bajo su cuidado.`} page={current} pages={pages} onChange={setPage} />
@@ -255,20 +231,21 @@ export default function MedPacientesLista() {
             </div>
             <Divider />
             <ul className="flex w-full flex-col gap-3">
-              {ALERTS.map(([img, text, bed, when]) => (
-                <li key={text}>
+              {recent.map(({ g, bed }) => (
+                <li key={g.key}>
                   <Link to="/MedAlertasCentro" className="flex w-full items-start gap-[10px] rounded-md transition-colors hover:bg-surface">
-                    <img className="mt-0.5 h-3.5 w-2 shrink-0" alt="" src={img} />
+                    <img className="mt-0.5 h-3.5 w-2 shrink-0" alt="" src={g.severity === 'critica' ? imgStateIndicator : imgStateIndicator2} />
                     <div className="flex min-w-0 flex-1 flex-col gap-px leading-[normal]">
-                      <p className="font-jakarta text-[12px] font-bold text-ink">{text}</p>
+                      <p className="font-jakarta text-[12px] font-bold text-ink">{`${alertTitle(g.variable, g.severity, g.latest.value)} (${g.latest.value})`}</p>
                       <div className="flex items-center gap-1.5 text-[10px]">
-                        <p className="font-jakarta font-bold text-primary">{bed}</p>
-                        <p className="font-jakarta font-normal text-muted">{when}</p>
+                        <p className="font-jakarta font-bold text-primary">{`Cama ${bed}`}</p>
+                        <p className="font-jakarta font-normal text-muted">{fmtAgo(g.latest.at)}</p>
                       </div>
                     </div>
                   </Link>
                 </li>
               ))}
+              {recent.length === 0 && <li className="font-jakarta text-[12px] text-muted">Sin alertas recientes.</li>}
             </ul>
           </Card>
         </div>

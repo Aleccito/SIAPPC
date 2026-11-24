@@ -1,13 +1,15 @@
 // Lista de notas SOAP + detalle de la nota seleccionada. La usan el historial y el detalle de notas.
+// Las notas son las del paciente de la URL (GET /soap/notes?patientId=…).
 import { useState, type SyntheticEvent } from 'react';
-import { Link } from 'react-router-dom';
 import imgAvatar2Png from '../../assets/avatar-2.png';
 import imgChevronRight from '../../assets/chevron-right.svg';
 import imgChevronRight2 from '../../assets/chevron-right-2.svg';
 import imgIconwrapper15 from '../../assets/iconwrapper-15.svg';
 import imgSliders from '../../assets/sliders.svg';
-import { Badge, Card, Divider, EmptyState, rowButton, Select, SoapSections } from '../../components';
-import { soapDetailPath, soapNotes } from '../../data/soap';
+import { useSoapNotes } from '../../api/queries';
+import { AppLink, Badge, Card, Divider, EmptyState, rowButton, Select, SoapSections, type PatientView } from '../../components';
+import { soapDetailPath, toSoapSections } from '../../data/soap';
+import { fmtDateTime, staffName } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 import { matches } from '../../lib/text';
 
@@ -16,20 +18,20 @@ const stop = (e: SyntheticEvent) => e.stopPropagation();
 
 /**
  * Historial de notas SOAP: tocar una fila la muestra a la derecha; la flecha abre su detalle.
- * Empieza con la nota del 24 Oct seleccionada, como en Figma.
+ * Empieza con la nota más reciente seleccionada.
  */
-export function SoapHistoryView() {
-  const [selected, setSelected] = useState(0);
+export function SoapHistoryView({ v }: { v: PatientView }) {
+  const [selected, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(FILTERS[0]);
-  // Las notas escritas en el prototipo (borradores y firmadas) aparecen primero.
-  const notes = soapNotes();
-  const current = notes[selected] ?? notes[0];
+  const notesQuery = useSoapNotes(v.id);
+  const notes = notesQuery.data ?? [];
+  const current = notes.find((n) => n.id === selected) ?? notes[0];
 
-  const visible = notes.map((n, i) => ({ n, i })).filter(
-    ({ n }) =>
-      (filter === 'Todas' || (filter === 'Completadas') === n.done) &&
-      matches(query, n.date, n.doctor, n.note.s, n.note.o, n.note.a, n.note.p),
+  const visible = notes.filter(
+    (n) =>
+      (filter === 'Todas' || (filter === 'Completadas') === (n.status === 'firmada')) &&
+      matches(query, fmtDateTime(n.at), n.authorName, n.subjective ?? '', n.objective ?? '', n.assessment ?? '', n.plan ?? ''),
   );
 
   return (
@@ -63,39 +65,40 @@ export function SoapHistoryView() {
           </div>
         </div>
         <ul className="flex w-full flex-col gap-[10px]">
-          {visible.map(({ n, i }) => {
-            const isSelected = i === selected;
+          {visible.map((n) => {
+            const isSelected = n.id === current?.id;
+            const done = n.status === 'firmada';
             return (
               <li key={n.id}>
                 <div
-                  {...rowButton(() => setSelected(i))}
+                  {...rowButton(() => setSelected(n.id))}
                   aria-pressed={isSelected}
-                  aria-label={`Nota del ${n.date}, ${n.doctor}`}
+                  aria-label={`Nota del ${fmtDateTime(n.at)}, ${staffName(n.authorName)}`}
                   className={cn(
                     'flex w-full cursor-pointer flex-col gap-3 rounded-[10px] bg-white p-4 text-left outline-none drop-shadow-[0px_2px_3px_rgba(0,0,0,0.02)] transition-colors hover:bg-surface focus-visible:bg-primary-soft sm:flex-row sm:items-center sm:gap-4',
                     isSelected ? 'border-[1.5px] border-primary' : 'border border-line',
                   )}
                 >
                   <div className="flex w-full flex-col gap-1 leading-[normal] sm:w-[150px] sm:shrink-0">
-                    <p className="font-jakarta text-[13px] font-bold text-ink">{n.date}</p>
-                    <p className="truncate font-jakarta text-[12px] font-normal text-muted">{n.doctor}</p>
+                    <p className="font-jakarta text-[13px] font-bold text-ink">{fmtDateTime(n.at)}</p>
+                    <p className="truncate font-jakarta text-[12px] font-normal text-muted">{staffName(n.authorName)}</p>
                   </div>
                   <p className="min-w-0 flex-1 font-jakarta text-[13px] font-normal leading-[1.4] text-ink sm:truncate">
                     <span className="font-bold text-primary">S: </span>
-                    {n.summary}
+                    {n.subjective ?? '—'}
                   </p>
                   <div className="flex items-center gap-4">
-                    <Badge tone={n.done ? 'success' : 'warning'}>{n.done ? 'Completada' : 'En progreso'}</Badge>
-                    <Link
-                      to={soapDetailPath(i)}
+                    <Badge tone={done ? 'success' : 'warning'}>{done ? 'Completada' : 'En progreso'}</Badge>
+                    <AppLink
+                      to={soapDetailPath(n.id)}
                       onClick={stop}
                       onKeyDown={stop}
-                      aria-label={`Abrir el detalle de la nota del ${n.date}`}
+                      aria-label={`Abrir el detalle de la nota del ${fmtDateTime(n.at)}`}
                       title="Ver detalle"
                       className="-m-1 flex shrink-0 rounded p-1 hover:bg-line"
                     >
                       <img className="size-3.5" alt="" src={isSelected ? imgChevronRight : imgChevronRight2} />
-                    </Link>
+                    </AppLink>
                   </div>
                 </div>
               </li>
@@ -103,13 +106,19 @@ export function SoapHistoryView() {
           })}
           {visible.length === 0 && (
             <li>
-              <EmptyState
-                message="Sin notas con esta búsqueda."
-                onReset={() => {
-                  setQuery('');
-                  setFilter(FILTERS[0]);
-                }}
-              />
+              {notesQuery.isPending ? (
+                <p className="p-4 font-jakarta text-[13px] text-muted">Cargando notas…</p>
+              ) : notes.length === 0 ? (
+                <p className="p-4 font-jakarta text-[13px] text-muted">Este paciente todavía no tiene notas SOAP.</p>
+              ) : (
+                <EmptyState
+                  message="Sin notas con esta búsqueda."
+                  onReset={() => {
+                    setQuery('');
+                    setFilter(FILTERS[0]);
+                  }}
+                />
+              )}
             </li>
           )}
         </ul>
@@ -118,14 +127,20 @@ export function SoapHistoryView() {
       <Card raised className="flex w-full min-w-0 flex-col gap-[14px] xl:w-[380px] xl:shrink-0">
         <div className="flex w-full items-center justify-between gap-3">
           <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">Detalle de Nota Seleccionada</h2>
-          <Badge tone="neutral" size="sm">{current.date}</Badge>
+          {current && <Badge tone="neutral" size="sm">{fmtDateTime(current.at)}</Badge>}
         </div>
-        <div className="flex items-center gap-2">
-          <img className="size-6 rounded-full object-cover" alt="" src={imgAvatar2Png} />
-          <p className="font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{current.doctor}</p>
-        </div>
-        <Divider />
-        <SoapSections note={current.note} />
+        {current ? (
+          <>
+            <div className="flex items-center gap-2">
+              <img className="size-6 rounded-full object-cover" alt="" src={imgAvatar2Png} />
+              <p className="font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{staffName(current.authorName)}</p>
+            </div>
+            <Divider />
+            <SoapSections note={toSoapSections(current)} />
+          </>
+        ) : (
+          <p className="font-jakarta text-[13px] text-muted">Sin nota seleccionada.</p>
+        )}
       </Card>
     </div>
   );

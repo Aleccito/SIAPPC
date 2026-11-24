@@ -1,6 +1,10 @@
-// Pantalla "siappc-login" (Figma node 345:1264, página LOGIN). Sin backend: cualquier dato sirve.
+// Pantalla "siappc-login" (Figma node 345:1264, página LOGIN). Entra con POST /auth/login (src/api/auth.ts).
+// En modo mock cualquier dato sirve; las cuentas de backend/db/seed.sql entran con su rol.
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ApiError } from '../../api/http';
+import { API_MODE } from '../../api/mode';
+import { useSession } from '../../components/auth/session';
 import imgEye from '../../assets/login-eye.svg';
 import { AuthButton, AuthCard, AuthDivider, AuthField, AuthLayout, useAuthText } from '../../components';
 
@@ -20,10 +24,39 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { signIn } = useSession();
+  const volver = (useLocation().state as { volver?: string } | null)?.volver;
+
+  const enter = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await signIn({ email, password });
+      // El backend no tiene MFA (CONEXION-BACKEND.md, sección 2): con el backend real se entra directo.
+      if (API_MODE === 'real') navigate(volver ?? '/MedDashboardPrincipal', { replace: true });
+      else navigate('/LoginMfa', { state: { volver } });
+    } catch (e) {
+      const status = e instanceof ApiError ? e.status : 0;
+      setError(
+        status === 400
+          ? 'Escriba su correo y su contraseña.'
+          : status === 401
+            ? 'Correo o contraseña incorrectos.'
+            : status === 429
+              ? 'Demasiados intentos. Espere 15 minutos.'
+              : 'No se pudo entrar. Intente de nuevo.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <AuthLayout>
-      <AuthCard title={t.loginTitle} description={t.loginText} onSubmit={() => navigate('/LoginMfa')}>
+      <AuthCard title={t.loginTitle} description={t.loginText} onSubmit={() => void enter()}>
         <AuthDivider />
         <div className="flex w-full flex-col gap-[18px]">
           <AuthField
@@ -56,6 +89,11 @@ export default function Login() {
             }
           />
         </div>
+        {error && (
+          <p role="alert" className="w-full text-[13px] font-semibold leading-[normal] text-danger">
+            {error}
+          </p>
+        )}
         <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <p className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold text-ink-muted">
             <span className="size-[5px] rounded-full bg-primary" aria-hidden="true" />

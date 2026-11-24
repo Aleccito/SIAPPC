@@ -1,13 +1,13 @@
 import type { KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { usePatientNavigate } from '../../lib/patientLink';
 
 /**
  * Props para que una fila (un `div` con botones adentro) lleve a otra pantalla al
  * tocarla o con Enter, sin anidar enlaces. Los botones de la fila deben detener la
- * propagación (`e.stopPropagation()`).
+ * propagación (`e.stopPropagation()`). Dentro del expediente conserva el paciente.
  */
 export function useRowLink() {
-  const navigate = useNavigate();
+  const navigate = usePatientNavigate();
   return (to: string, state?: unknown) => ({
     role: 'link' as const,
     tabIndex: 0,

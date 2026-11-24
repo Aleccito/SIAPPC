@@ -1,35 +1,22 @@
 // Pantalla "med/paciente/indicaciones-medicas" (Figma node 183:782) — generada desde el diseño original de Figma.
+// Fármacos y soluciones: los medicamentos del expediente (GET/POST /historia/:id/medicamentos).
+// Dieta, cuidados, estudios e interconsultas no existen en el backend (src/api/sinBackend.ts).
 import { useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import imgBulletItemEllipse from '../../assets/bullet-item-ellipse.svg';
 import imgHeart4 from '../../assets/heart-4.svg';
-import { BackButton, Badge, Button, Card, Combobox, FieldError, IconPlus, Modal, ModalHeader, PatientLayout, Select, Table, useToast, useValidation } from '../../components';
+import { ApiError, request } from '../../api/http';
+import { getIndicacionesExtra, useExtra } from '../../api/sinBackend';
+import type { HistoriaEntry } from '../../api/types/clinical';
+import { BackButton, Badge, Button, Card, Combobox, FieldError, IconPlus, Modal, ModalHeader, PatientLayout, Select, Table, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
 import { checkText } from '../../lib/validate';
 
-const SOLUTIONS = [
-  ['Solución Hartmann 1000ml', '125 ml/hr', 'Vía Central'],
-  ['Solución Glucosada 5% 500ml', '80 ml/hr', 'Periférica'],
-];
-
-const MEDS = [
-  ['Furosemida 40mg', 'IV', 'c/8h'],
-  ['Enalapril 10mg', 'VO', 'c/12h'],
-  ['Enoxaparina 60mg', 'SC', 'c/24h'],
-  ['Omeprazol 40mg', 'IV', 'c/24h'],
-];
-
-const CARE = [
-  'Monitoreo de signos vitales cada 4 horas',
-  'Posición semifowler a 45 grados permanente',
-  'Control estricto de balance hídrico (ingresos y egresos)',
-  'Reposo relativo en cama con apoyo asistido',
-];
-
-const STUDIES: Array<[string, string, string, 'warning' | 'info' | 'success']> = [
-  ['BH completa', 'Laboratorio', 'Pendiente', 'warning'],
-  ['Ecocardiograma', 'Imagen', 'Prog. 16 Oct', 'info'],
-  ['Rx Tórax', 'Imagen', 'Realizado 15 Oct', 'success'],
-  ['Gasometría arterial', 'Laboratorio', 'Realizado 15 Oct', 'success'],
-];
+/** Vía del backend ⇄ abreviatura de la pantalla. */
+const ROUTE_SHORT: Record<string, string> = { oral: 'VO', intravenosa: 'IV', subcutanea: 'SC', subcutánea: 'SC', inhalada: 'Inh', intramuscular: 'IM' };
+const ROUTE_API: Record<string, string> = { VO: 'oral', IV: 'intravenosa', SC: 'subcutanea', IM: 'intramuscular' };
+/** "cada 12 h" → "c/12h". */
+const freqShort = (f: unknown) => String(f ?? '—').replace(/^cada (\d+) ?h$/i, 'c/$1h');
+const isSolution = (m: HistoriaEntry) => /^soluci/i.test(String(m.name));
 
 type Kind = 'Solución intravenosa' | 'Medicamento';
 const KINDS: Kind[] = ['Solución intravenosa', 'Medicamento'];
@@ -138,40 +125,69 @@ function OrdersTable({ head, rows, firstWidth }: { head: string[]; rows: string[
 }
 
 export default function MedPacienteIndicacionesMedicas() {
-  const toast = useToast();
-  const [solutions, setSolutions] = useState(SOLUTIONS);
-  const [meds, setMeds] = useState(MEDS);
+  const { view } = usePatient();
+  const { can } = useSession();
   // null = ventana cerrada; si no, el tipo con el que se abre.
   const [modal, setModal] = useState<Kind | null>(null);
-
-  const add = (kind: Kind, row: string[]) => {
-    if (kind === 'Medicamento') setMeds((m) => [...m.filter((x) => x[0] !== row[0]), row]);
-    else setSolutions((s) => [...s.filter((x) => x[0] !== row[0]), row]);
-    setModal(null);
-    toast(`Indicación agregada · ${row[0]}`);
-  };
-
+  const canAdd = can('historia_clinica', 'crear');
   return (
     <PatientLayout
-      breadcrumb="SIAPPC > Pacientes > María González > Indicaciones Médicas"
+      breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Indicaciones Médicas`}
       title="Indicaciones Médicas"
       tab="historia"
       actions={
         <>
           <BackButton />
-          <Button icon={<IconPlus size={14} />} onClick={() => setModal('Solución intravenosa')}>
-            Nueva Indicación
-          </Button>
+          {canAdd && (
+            <Button icon={<IconPlus size={14} />} onClick={() => setModal('Solución intravenosa')}>
+              Nueva Indicación
+            </Button>
+          )}
         </>
       }
     >
+      {view && <Indicaciones v={view} modal={modal} setModal={setModal} canAdd={canAdd} />}
+    </PatientLayout>
+  );
+}
+
+function Indicaciones({ v, modal, setModal, canAdd }: { v: PatientView; modal: Kind | null; setModal: (k: Kind | null) => void; canAdd: boolean }) {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const extra = useExtra('indicaciones', v.cedula, getIndicacionesExtra).data;
+  const active = (v.expediente?.medicamentos ?? []).filter((m) => m.status === 'activo');
+  const solutions = [
+    ...active.filter(isSolution).map((m) => [`${String(m.name)}${m.dose ? ` ${m.dose}` : ''}`, String(m.frequency ?? '—'), ROUTE_SHORT[String(m.route)] === 'IV' ? 'Periférica' : String(m.route ?? '—')]),
+    ...(extra?.soluciones ?? []),
+  ];
+  const meds = active.filter((m) => !isSolution(m)).map((m) => [`${String(m.name)} ${String(m.dose ?? '')}`.trim(), ROUTE_SHORT[String(m.route)] ?? String(m.route ?? '—'), freqShort(m.frequency)]);
+
+  const add = async (kind: Kind, row: string[]) => {
+    const body =
+      kind === 'Medicamento'
+        ? { name: row[0], dose: null, route: ROUTE_API[row[1]] ?? row[1], frequency: row[2], status: 'activo', startedOn: new Date().toISOString().slice(0, 10) }
+        : { name: row[0], dose: null, route: 'intravenosa', frequency: row[1], indication: row[2], status: 'activo', startedOn: new Date().toISOString().slice(0, 10) };
+    try {
+      await request(`/historia/${v.id}/medicamentos`, { method: 'POST', body: JSON.stringify(body) });
+      await queryClient.invalidateQueries({ queryKey: ['expediente', v.id] });
+      setModal(null);
+      toast(`Indicación agregada · ${row[0]}`);
+    } catch (e) {
+      toast(e instanceof ApiError && e.status === 403 ? 'Su rol no puede indicar medicamentos' : 'No se pudo agregar la indicación', 'info');
+    }
+  };
+
+  return (
+    <>
       <div className="flex w-full flex-col gap-4">
         <Card className="flex w-full flex-col gap-[14px]">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <CardHeading>Soluciones Intravenosas</CardHeading>
-            <Button variant="soft" size="sm" onClick={() => setModal('Solución intravenosa')}>
-              + Agregar Solución
-            </Button>
+            {canAdd && (
+              <Button variant="soft" size="sm" onClick={() => setModal('Solución intravenosa')}>
+                + Agregar Solución
+              </Button>
+            )}
           </div>
           <OrdersTable head={['SOLUCIÓN / COMPOSICIÓN', 'INFUSIÓN', 'VÍA']} rows={solutions} firstWidth="flex-1" />
         </Card>
@@ -179,9 +195,11 @@ export default function MedPacienteIndicacionesMedicas() {
         <Card className="flex w-full flex-col gap-[14px]">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <CardHeading>Medicamentos Farmacológicos</CardHeading>
-            <Button variant="soft" size="sm" onClick={() => setModal('Medicamento')}>
-              + Agregar Medicamento
-            </Button>
+            {canAdd && (
+              <Button variant="soft" size="sm" onClick={() => setModal('Medicamento')}>
+                + Agregar Medicamento
+              </Button>
+            )}
           </div>
           <OrdersTable head={['MEDICAMENTO / DOSIS', 'VÍA', 'FRECUENCIA']} rows={meds} firstWidth="flex-1" />
         </Card>
@@ -191,14 +209,20 @@ export default function MedPacienteIndicacionesMedicas() {
             <Card className="flex w-full flex-col gap-3">
               <CardHeading>Dieta e Hidratación</CardHeading>
               <div className="flex flex-wrap items-center gap-3">
-                <span className="rounded-lg bg-primary-soft px-3 py-1.5 font-jakarta text-[13px] font-bold leading-[normal] text-primary">Blanda hiposódica</span>
-                <span className="rounded-lg bg-danger-soft px-3 py-1.5 font-jakarta text-[13px] font-bold leading-[normal] text-danger">Restricción de líquidos: 1500 ml/día</span>
+                {(extra?.dieta ?? []).map((d) => (
+                  <span key={d} className="rounded-lg bg-primary-soft px-3 py-1.5 font-jakarta text-[13px] font-bold leading-[normal] text-primary">
+                    {d}
+                  </span>
+                ))}
+                {extra?.restriccion && (
+                  <span className="rounded-lg bg-danger-soft px-3 py-1.5 font-jakarta text-[13px] font-bold leading-[normal] text-danger">{extra.restriccion}</span>
+                )}
               </div>
             </Card>
             <Card className="flex w-full flex-col gap-3">
               <CardHeading>Cuidados Generales de Enfermería</CardHeading>
               <ul className="flex w-full flex-col gap-[10px]">
-                {CARE.map((c) => (
+                {(extra?.cuidados ?? []).map((c) => (
                   <li key={c} className="flex w-full items-center gap-2">
                     <img className="size-1.5 shrink-0" alt="" src={imgBulletItemEllipse} />
                     <p className="min-w-0 flex-1 font-jakarta text-[13px] font-medium leading-[normal] text-ink">{c}</p>
@@ -218,7 +242,7 @@ export default function MedPacienteIndicacionesMedicas() {
                   <p className="w-[100px] shrink-0">TIPO</p>
                   <p className="w-[110px] shrink-0">ESTADO / FECHA</p>
                 </div>
-                {STUDIES.map(([name, type, status, tone]) => (
+                {(extra?.estudios ?? []).map(([name, type, status, tone]) => (
                   <div key={name} className="flex w-full items-center gap-[10px] border-b border-line px-[10px] py-2 leading-[normal] last:border-b-0">
                     <p className="min-w-[110px] flex-1 font-jakarta text-[12px] font-bold text-ink">{name}</p>
                     <p className="w-[100px] shrink-0 font-jakarta text-[11px] font-medium text-muted">{type}</p>
@@ -232,20 +256,24 @@ export default function MedPacienteIndicacionesMedicas() {
             </Card>
             <Card className="flex w-full flex-col gap-3">
               <CardHeading>Interconsultas</CardHeading>
-              <div className="flex w-full items-center gap-3 rounded-lg border border-line bg-surface p-3">
-                <img className="size-8 shrink-0" alt="" src={imgHeart4} />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[normal]">
-                  <p className="font-jakarta text-[13px] font-bold text-ink">Cardiología</p>
-                  <p className="font-jakarta text-[12px] font-medium text-muted">Valoración para cateterismo programado</p>
+              {extra?.interconsulta ? (
+                <div className="flex w-full items-center gap-3 rounded-lg border border-line bg-surface p-3">
+                  <img className="size-8 shrink-0" alt="" src={imgHeart4} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[normal]">
+                    <p className="font-jakarta text-[13px] font-bold text-ink">{extra.interconsulta.servicio}</p>
+                    <p className="font-jakarta text-[12px] font-medium text-muted">{extra.interconsulta.motivo}</p>
+                  </div>
+                  <Badge tone={extra.interconsulta.estado === 'Urgente' ? 'danger' : 'warning'}>{extra.interconsulta.estado}</Badge>
                 </div>
-                <Badge tone="warning">En espera</Badge>
-              </div>
+              ) : (
+                <p className="font-jakarta text-[13px] font-medium text-muted">Sin interconsultas.</p>
+              )}
             </Card>
           </div>
         </div>
       </div>
       {/* La key reinicia la ventana con el tipo elegido cada vez que se abre. */}
-      <NewOrderModal key={modal ?? 'cerrada'} kind={modal} onClose={() => setModal(null)} onAdd={add} />
-    </PatientLayout>
+      <NewOrderModal key={modal ?? 'cerrada'} kind={modal} onClose={() => setModal(null)} onAdd={(k, r) => void add(k, r)} />
+    </>
   );
 }

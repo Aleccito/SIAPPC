@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { useUnreadCount } from '../../data/notifications';
 import { cn } from '../../lib/cn';
 import { IconBell, IconCalendar, IconMenu } from '../icons';
 
@@ -32,7 +33,7 @@ function Breadcrumb({ children }: { children: ReactNode }) {
   );
 }
 
-export function TopBar({ breadcrumb, title, actions, notifications = 3, onMenuClick, actionsInlineFrom = 'lg' }: TopBarProps) {
+export function TopBar({ breadcrumb, title, actions, notifications, onMenuClick, actionsInlineFrom = 'lg' }: TopBarProps) {
   const xl = actionsInlineFrom === 'xl';
   return (
     <header className="shrink-0 border-b border-line bg-white">
@@ -83,7 +84,10 @@ export function TopBarDate({ children }: { children: ReactNode }) {
   );
 }
 
-export function NotificationBell({ count = 3 }: { count?: number }) {
+/** Campana de la barra superior: sin `count`, muestra las notificaciones sin leer (src/data/notifications.ts). */
+export function NotificationBell({ count: fixed }: { count?: number }) {
+  const live = useUnreadCount();
+  const count = fixed ?? live ?? 0;
   return (
     <Link
       to="/MedNotificacionesCentro"
