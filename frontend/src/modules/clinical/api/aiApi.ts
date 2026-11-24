@@ -3,7 +3,7 @@ import { ApiError, request, send } from '../../../shared/api/http'
 // Espejo de backend/src/services/aiAuto.ts (AnalisisIA).
 export type AiAnalysis = {
   generatedAt: string
-  severity: 'alta' | 'critica'
+  severity: 'alta' | 'critica' | 'solicitado'
   model: string
   ideas: { title: string; rationale: string }[]
 }
@@ -18,8 +18,15 @@ export async function getAiAnalysis(patientId: string): Promise<AiAnalysisRespon
   return request<AiAnalysisResponse>(`/ai/assist/${encodeURIComponent(patientId)}`)
 }
 
+/** Genera ideas a pedido (botón del expediente). Tarda lo que tarde el LLM. */
+export async function generateAiIdeas(patientId: string): Promise<AiAnalysisResponse> {
+  return request<AiAnalysisResponse>(`/ai/assist/${encodeURIComponent(patientId)}/ideas`, {
+    method: 'POST',
+  })
+}
+
 export type AiAssistInput = {
-  patientId?: number
+  patientId: number
   symptoms?: string
   question?: string
 }

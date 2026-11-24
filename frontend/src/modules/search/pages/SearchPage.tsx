@@ -1,3 +1,4 @@
+import type { StringKey } from '../../../shared/i18n/dictionary'
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
@@ -309,7 +310,7 @@ function DocumentCard({
         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
           {document.title}
         </Typography>
-        <Chip size="small" variant="outlined" color="error" label={document.type} />
+        <Chip size="small" variant="outlined" color="error" label={t(`docType.${document.type}` as StringKey)} />
       </Stack>
       <Typography variant="body2" color="text.secondary">
         {t('busqueda.uploadedOn', {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Chip, Paper, Stack, Typography } from '@mui/material'
-import { getAiAnalysis } from '../api/aiApi'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Alert, Box, Button, Chip, Paper, Stack, Typography } from '@mui/material'
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined'
+import { generateAiIdeas, getAiAnalysis } from '../api/aiApi'
 import { ApiError } from '../../../shared/api/http'
 import { suscribirEventos } from '../../../shared/api/alertStream'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
@@ -33,6 +34,12 @@ export function AiIdeasCard({ patientId }: { patientId: string }) {
     retry: (count, err) => !(err instanceof ApiError && err.status === 403) && count < 2,
   })
 
+  // A pedido del médico: ideas cortas aunque el paciente no tenga alertas.
+  const generar = useMutation({
+    mutationFn: () => generateAiIdeas(patientId),
+    onSuccess: (data) => queryClient.setQueryData(['aiAnalysis', patientId], data),
+  })
+
   // Una alerta nueva puede disparar un análisis: se vuelve a preguntar.
   useEffect(() => {
     return suscribirEventos((evento, datos) => {
@@ -62,8 +69,8 @@ export function AiIdeasCard({ patientId }: { patientId: string }) {
             <Chip
               size="small"
               variant="outlined"
-              color={analysis.severity === 'critica' ? 'error' : 'warning'}
-              label={t(analysis.severity === 'critica' ? 'aiIdeas.severity.critica' : 'aiIdeas.severity.alta')}
+              color={analysis.severity === 'critica' ? 'error' : analysis.severity === 'alta' ? 'warning' : 'default'}
+              label={t(`aiIdeas.severity.${analysis.severity}`)}
             />
             <Typography variant="body2" color="text.secondary">
               <span title={new Date(analysis.generatedAt).toLocaleString(locale)}>
@@ -75,9 +82,26 @@ export function AiIdeasCard({ patientId }: { patientId: string }) {
             )}
           </>
         )}
+        <Box sx={{ flexGrow: 1 }} />
+        <Button
+          size="small"
+          startIcon={<AutoAwesomeOutlinedIcon />}
+          onClick={() => generar.mutate()}
+          disabled={generar.isPending}
+        >
+          {t(generar.isPending ? 'aiIdeas.generating' : analysis ? 'aiIdeas.refresh' : 'aiIdeas.generate')}
+        </Button>
       </Stack>
 
-      <LoadingBar loading={query.isPending} />
+      <LoadingBar loading={query.isPending || generar.isPending} />
+
+      {generar.isError && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          {generar.error instanceof ApiError && generar.error.status === 429
+            ? t('aiConsult.rateLimited')
+            : t('aiConsult.unavailable')}
+        </Alert>
+      )}
 
       {query.isError && (
         <Typography variant="body2" color="text.secondary">

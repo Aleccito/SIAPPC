@@ -29,19 +29,22 @@ import { extraerIdeas, ideaSchema } from "./aiParse.ts";
 export { debeDisparar, type Severidad };
 
 // Subir al cambiar AUTO_SYSTEM: viaja con cada análisis para comparar resultados.
-export const PROMPT_VERSION = "auto-v1";
+export const PROMPT_VERSION = "auto-v2";
 
 // AJUSTAR: el usuario afina aquí qué debe/no debe generar la IA.
 const AUTO_SYSTEM = `Eres un asistente de apoyo a la decisión clínica. Hablas con un médico.
-El paciente acaba de generar una alerta de severidad alta o crítica en su monitoreo.
-Con SOLO los datos que se te dan, propón entre 2 y 4 hipótesis de qué podría tener el paciente, de más a menos probable.
+Con SOLO los datos que se te dan, propón entre 2 y 3 hipótesis de qué podría tener el paciente, de más a menos probable.
+Sé puntual y directo: el médico lo lee de un vistazo.
+- "title": máximo 6 palabras.
+- "rationale": máximo 15 palabras, citando el dato que lo sostiene (p. ej. "SpO2 86 %, FR 28").
 No inventes datos. ${DATOS_NO_INSTRUCCIONES}
 Responde ÚNICAMENTE con JSON válido, en español, con esta forma:
-{"ideas":[{"title":"hipótesis breve","rationale":"justificación breve basada en los datos"}]}`;
+{"ideas":[{"title":"hipótesis breve","rationale":"dato que lo sostiene"}]}`;
 
 const analisisSchema = z.object({
   generatedAt: z.string(),
-  severity: z.enum(["alta", "critica"]),
+  // `solicitado`: lo pidió el médico desde el expediente, sin alerta de por medio.
+  severity: z.enum(["alta", "critica", "solicitado"]),
   model: z.string(),
   // Opcional: los análisis guardados antes de existir el campo no lo traen.
   promptVersion: z.string().optional(),
@@ -154,17 +157,34 @@ async function pedirIdeas(context: string): Promise<AnalisisIA["ideas"] | null> 
   return extraerIdeas(texto);
 }
 
-async function analizar(patientId: number, hospitalId: number, severity: Severidad): Promise<void> {
+async function analizar(patientId: number, hospitalId: number, severity: AnalisisIA["severity"]): Promise<AnalisisIA> {
   const context = await patientContext(patientId, hospitalId);
   const ideas = (await pedirIdeas(context)) ?? (await pedirIdeas(context));
   if (!ideas) throw new Error("JSON inválido del LLM");
-  await guardar(patientId, {
+  const valor: AnalisisIA = {
     generatedAt: new Date().toISOString(),
     severity,
     model: env.llm.model,
     promptVersion: PROMPT_VERSION,
     ideas,
-  });
+  };
+  await guardar(patientId, valor);
+  return valor;
+}
+
+const enCurso = new Map<number, Promise<AnalisisIA>>();
+
+/**
+ * Análisis a pedido del médico (botón del expediente). Si ya hay uno en curso
+ * para ese paciente se reutiliza la misma promesa: dos clics no hacen dos
+ * consultas al LLM. Lanza si el LLM falla o no devuelve JSON válido.
+ */
+export function generarAnalisisIA(patientId: number, hospitalId: number): Promise<AnalisisIA> {
+  const previo = enCurso.get(patientId);
+  if (previo) return previo;
+  const promesa = analizar(patientId, hospitalId, "solicitado").finally(() => enCurso.delete(patientId));
+  enCurso.set(patientId, promesa);
+  return promesa;
 }
 
 async function guardar(patientId: number, valor: AnalisisIA): Promise<void> {
