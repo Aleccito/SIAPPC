@@ -26,13 +26,11 @@ Reglas:
 - Prioriza banderas rojas y causas que amenazan la vida.
 - No eres fuente definitiva: el médico tratante decide.
 - ${DATOS_NO_INSTRUCCIONES}
-- Si la consulta es una pregunta puntual (edad, alergias, un valor, un dato del expediente), respóndela directa y brevemente con los datos dados, sin el formato de abajo.
-Formato para consultas clínicas abiertas (Markdown, en español):
-1. **Banderas rojas** (si hay)
-2. **Diagnósticos diferenciales** (más probable → menos, con breve justificación)
-3. **Estudios sugeridos**
-4. **Opciones de manejo / tratamiento** (con precauciones por alergias, interacciones, comorbilidades)
-5. **Datos faltantes que cambiarían la conducta**`;
+Cómo responder (Markdown, en español):
+- Responde SOLO lo que se pregunta. Si piden estudios, da solo estudios; si piden un dato, solo ese dato. No agregues secciones que no se pidieron.
+- Sé breve y directo: viñetas cortas, una línea por punto, con el motivo en pocas palabras (p. ej. "Troponina: descartar SCA").
+- Solo si la consulta es abierta (p. ej. "¿qué tiene?", "analiza al paciente"), usa: **Banderas rojas**, **Diferenciales**, **Estudios**, **Manejo**, **Datos faltantes**, cada una con 2–4 viñetas.
+- Si hay una bandera roja relevante para lo preguntado, menciónala en una línea al inicio.`;
 
 const prompt = ChatPromptTemplate.fromMessages([
   ["system", SYSTEM],
