@@ -119,7 +119,17 @@ escritos en las pantallas**; no se conecta al backend.
      "+ Agregar indicación"); el CIE-10 elegido ya no se corta a 390 px.
    - Verificado: `npm run build`; capturas a 1440 comparadas con las de antes del paso; pruebas automáticas de cada
      formulario (errores, rangos, Mín < Máx, búsqueda CIE-10, borrador y firma de la nota SOAP).
-4. **Backend.** No se hace en el prototipo: se hace en `frontend/`, según lo que se decida en el paso 0.
+4. **Pacientes del seed, capa `src/api/` e IA.** *En curso.* Propuesta aprobada en `REVISION-IA.md`, en tres PRs:
+   - ~~**PR 1 — Cerrar sesión.**~~ **Hecho (rama `feature/prototipo-cerrar-sesion`).** El diálogo no se veía a 1440
+     ni a 1024 (quedaba dentro del menú `sticky` y la pantalla lo tapaba). Ahora `Modal` se dibuja en `body` (portal),
+     hay una escala de capas en `tailwind.config.js` (`z-drawer`, `z-modal`, `z-popover`, `z-toast`), la confirmación
+     la dibuja `AppLayout` (en celular cierra el menú antes) y el cierre vive en `useLogout()`. Verificado con capturas
+     a 1440, 1024 y 390 (`docs/revision-ia/`), pruebas de Cancelar, Escape y confirmar, y las 40 pantallas iguales a
+     1440.
+   - **PR 2 — Los 8 pacientes de `backend/db/seed-demo.sql` y la capa `src/api/`** con el simulador.
+   - **PR 3 — Módulos de IA** (consulta libre y análisis automático).
+5. **Conectar con el backend.** Plan en `CONEXION-BACKEND.md`: el prototipo sigue como segunda app, aparte de
+   `frontend/`, y se conecta por grupos de rutas.
 
 ## Componentes (`src/components/`)
 
@@ -140,7 +150,8 @@ escritos en las pantallas**; no se conecta al backend.
 | `useValidation`, `FieldError`, `focusFirst`, `errorProps` | Errores de formulario: cuándo mostrarlos, mensaje bajo el campo, foco en el primero y atributos de accesibilidad. |
 | `Select` | Lista desplegable con `options`/`value`/`onChange`. Variantes con el dibujo de cada filtro de Figma: `field`, `stacked`, `chip`, `soft`, `button`, `input`, `input-plain`, `compact`. |
 | `Popover`, `Menu` | Panel flotante (no lo cortan las tablas con desplazamiento) y menú de acciones "•••". |
-| `Modal`, `ModalHeader`, `CloseButton`, `ConfirmDialog`, `DocumentPreview` | Ventanas emergentes (se cierran con X, Escape o el fondo; la X es `CloseButton` en todas), confirmación corta y vista previa de documentos. |
+| `Modal`, `ModalHeader`, `CloseButton`, `ConfirmDialog`, `DocumentPreview` | Ventanas emergentes (se dibujan en `body` y se cierran con X, Escape o el fondo; la X es `CloseButton` en todas), confirmación corta y vista previa de documentos. |
+| `useLogout`, `LogoutDialog` | Cierre de sesión en un solo lugar y su confirmación (la dibuja `AppLayout`). |
 | `ToastProvider`, `useToast` | Avisos cortos que sobreviven al cambio de pantalla. |
 | `EmptyState` | "Sin resultados con estos filtros" + Quitar filtros. |
 | `useRowLink`, `rowButton`, `rowLinkClass` | Filas de tabla que llevan a otra pantalla o abren algo (mouse y Enter). |

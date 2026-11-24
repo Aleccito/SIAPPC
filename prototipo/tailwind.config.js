@@ -26,6 +26,15 @@ module.exports = {
 			width: {
 				sidebar: '240px',
 			},
+			// Capas que flotan sobre la pantalla, de abajo arriba. Todas se dibujan en `body`
+			// (portal), así que el número vale para toda la página y no solo dentro de un contenedor.
+			// La lista desplegable va sobre la ventana porque se abre desde dentro de ella.
+			zIndex: {
+				drawer: '50', // menú lateral en pantallas angostas
+				modal: '55', // ventanas y confirmaciones
+				popover: '60', // listas desplegables y menús
+				toast: '70', // avisos cortos
+			},
 		},
 	},
 	plugins: [],

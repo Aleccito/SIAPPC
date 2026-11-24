@@ -68,7 +68,7 @@ mayúsculas: `src/lib/text.ts`.
 | Menú lateral: logo "SIAPPC" | ❌ | **Pantalla**: Dashboard. |
 | Menú lateral: "?" (ayuda) | ✅ Ayuda y Soporte | Se queda igual. |
 | Menú lateral: tarjeta del médico | ✅ Mi Perfil | Se queda igual. |
-| Menú lateral: ícono de cerrar sesión | ⚠️ está dentro del enlace al perfil, lleva a Mi Perfil | **Modal**: botón aparte → "¿Cerrar sesión?" → **Aviso** "Sesión cerrada" y lleva al **Login**. |
+| Menú lateral: ícono de cerrar sesión | ⚠️ está dentro del enlace al perfil, lleva a Mi Perfil | **Modal**: botón aparte → "¿Cerrar sesión?" → **Aviso** "Sesión cerrada" y lleva al **Login**. La confirmación se ve sobre toda la pantalla (antes, a 1024 px o más, quedaba tapada); en celular se cierra el menú antes de abrirla (`REVISION-IA.md`, sección 6). |
 | Barra superior: ☰ | ✅ abre el menú en pantallas angostas | Se queda igual. |
 | Barra superior: campana | ✅ Centro de Notificaciones | Se queda igual. |
 | Buscadores de la barra que llevan a Búsqueda (Confirmación de alerta, Dashboard, Comparativa, Turno historial, Resumen recibido) | ✅ llevan a Búsqueda Global | Se quedan igual. |
