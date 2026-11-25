@@ -22,6 +22,28 @@ export type AlertGroup = {
 const SEVERITY_RANK: Record<AlertSeverity, number> = { critica: 0, alta: 1, media: 2, baja: 3 };
 
 /** Agrupa (las alertas vienen de la más reciente a la más vieja, como GET /sensors/alerts). */
+/**
+ * Los umbrales con los que el backend crea las alertas (backend/src/services/mqttIngest.ts, evaluateAlert). Son
+ * iguales para todos los pacientes; por paciente depende del pedido 8. Los muestra Umbrales de Alarma.
+ */
+export const UMBRALES_SISTEMA: Array<{ signo: string; nombre: string; alta: string | null; critica: string | null; nota: string }> = [
+  { signo: 'hr', nombre: 'Frecuencia cardíaca', alta: '< 50 o > 120 lpm', critica: '< 40 o > 140 lpm', nota: 'Del monitor (ECG).' },
+  { signo: 'spo2', nombre: 'Saturación de oxígeno', alta: '< 90 %', critica: '< 85 %', nota: 'Del oxímetro.' },
+  { signo: 'resp', nombre: 'Frecuencia respiratoria', alta: '< 8 o > 30 rpm', critica: null, nota: 'Estimada del pletismógrafo: no llega a crítica.' },
+  { signo: 'temp', nombre: 'Temperatura', alta: null, critica: null, nota: 'Se registra, pero el sistema todavía no alerta por temperatura.' },
+  { signo: 'pa', nombre: 'Presión arterial', alta: null, critica: null, nota: 'El monitor no la mide todavía.' },
+];
+
+/**
+ * Cuánto dura "activa" una alerta sin un aviso nuevo (REVISION-MEDICO.md, 3.3). El backend no deja atender ni resolver
+ * alertas (pedido 2) y crea una por lectura fuera de rango (pedido 28): sin esta ventana, una alerta de hace horas
+ * se veía como de ahora.
+ */
+export const VIGENCIA_ALERTA_MIN = 30;
+
+/** Activa: su último aviso es de los últimos `VIGENCIA_ALERTA_MIN` minutos. */
+export const esActiva = (g: AlertGroup, ahora = Date.now()) => ahora - Date.parse(g.latest.at) <= VIGENCIA_ALERTA_MIN * 60_000;
+
 export function groupAlerts(alerts: SensorAlert[], { includeResolved = false } = {}): AlertGroup[] {
   const groups = new Map<string, AlertGroup>();
   for (const a of alerts) {

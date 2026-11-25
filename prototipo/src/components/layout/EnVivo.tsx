@@ -10,6 +10,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { suscribirEventos } from '../../api/alertStream';
 import type { AssignedPatient } from '../../api/types/dashboard';
 import { useSession } from '../auth/session';
+import { leerPreferencias, sonarAlerta } from '../../lib/preferencias';
 import { useToast } from '../ui/Toast';
 
 type Estado = 'conectando' | 'abierto' | 'cortado';
@@ -54,13 +55,19 @@ export function useEnVivo() {
         cambiar('abierto');
         refrescar('alerts', 'assignedPatients', 'monitoredBeds');
         const a = datos as { patientId?: string | null; patientName?: string | null; device?: string; message?: string | null; severity?: string } | null;
-        if (a?.severity !== 'critica') return;
+        // Qué se avisa lo decide la persona en Mi Perfil (src/lib/preferencias.ts).
+        const prefs = leerPreferencias();
+        const critica = a?.severity === 'critica';
+        if (!a || !(critica ? prefs.criticas || prefs.sonido : a.severity === 'alta' && prefs.altas)) return;
         const mios = queryClient.getQueryData<AssignedPatient[]>(['assignedPatients']);
         if (mios && !mios.some((p) => p.id === String(a.patientId))) return;
         const clave = String(a.patientId ?? a.device);
         if (Date.now() - (ultimoToast.get(clave) ?? 0) < TOAST_CADA_MS) return;
         ultimoToast.set(clave, Date.now());
-        toast(`Alerta crítica: ${a.patientName ?? a.device ?? 'paciente'} — ${a.message ?? 'fuera de rango'}`, 'danger');
+        if (critica && prefs.sonido) sonarAlerta();
+        if (critica ? prefs.criticas : prefs.altas) {
+          toast(`${critica ? 'Alerta crítica' : 'Alerta'}: ${a?.patientName ?? a?.device ?? 'paciente'} — ${a?.message ?? 'fuera de rango'}`, critica ? 'danger' : 'info');
+        }
       }
     });
     return () => {

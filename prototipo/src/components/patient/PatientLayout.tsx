@@ -45,6 +45,8 @@ export function ContentLoading() {
 export function PatientLayout({ tab, children, className, ...topBar }: PatientLayoutProps) {
   const patient = usePatient();
   const forbidden = patient.status === 'error' && patient.error instanceof ApiError && patient.error.status === 403;
+  // 429: el backend limita las consultas por minuto (pedido 33); no es un error del paciente.
+  const limite = patient.status === 'error' && patient.error instanceof ApiError && patient.error.status === 429;
   return (
     <AppLayout {...topBar}>
       <div className={cn('flex w-full min-w-0 flex-1 flex-col gap-5 p-4 md:p-8', className)}>
@@ -52,8 +54,14 @@ export function PatientLayout({ tab, children, className, ...topBar }: PatientLa
           <PatientProblem title="Paciente no encontrado" text={`No hay ningún paciente con la cédula ${patient.cedula}.`} />
         ) : patient.status === 'error' ? (
           <PatientProblem
-            title={forbidden ? 'Sin permiso' : 'No se pudo cargar el paciente'}
-            text={forbidden ? 'Su rol no tiene permiso para ver este expediente.' : 'Intente de nuevo en unos segundos.'}
+            title={forbidden ? 'Sin permiso' : limite ? 'Demasiadas consultas seguidas' : 'No se pudo cargar el paciente'}
+            text={
+              forbidden
+                ? 'Su rol no tiene permiso para ver este expediente.'
+                : limite
+                  ? 'El sistema limita las consultas por minuto. Espere unos segundos y vuelva a intentarlo.'
+                  : 'Intente de nuevo en unos segundos.'
+            }
           />
         ) : (
           <>

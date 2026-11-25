@@ -1,5 +1,8 @@
 // Pantalla "med-turno-historial" (Figma node 259:15) — generada desde el diseño original de Figma.
 import { useEffect, useState, type SyntheticEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getEntregas, type Entrega } from '../../api/sinBackend';
+import { fmtDateTime } from '../../lib/clinical';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout, Badge, Button, Card, EmptyState, Pagination, rowLinkClass, SearchBox, Select, Table, Tabs, useRowLink } from '../../components';
 import { cn } from '../../lib/cn';
@@ -16,59 +19,20 @@ const SUMMARY_PATH = '/MedTurnoResumenRecibido';
 export type HandoffState = { handedOff: true };
 
 type Status = 'Leído' | 'Pendiente';
-type Row = { date: string; shift: string; from: string; to: string; pax: string; status: Status; daysAgo: number };
+type Row = { id: string; date: string; shift: string; from: string; to: string; pax: string; status: Status; daysAgo: number };
 
-const M = 'Matutino (07:00 - 15:00)';
-const V = 'Vespertino (15:00 - 23:00)';
-const N = 'Nocturno (23:00 - 07:00)';
-
-const row = (date: string, shift: string, from: string, to: string, pax: number, daysAgo: number, status: Status = 'Leído'): Row => ({
-  date,
-  shift,
-  from,
-  to,
-  pax: `${pax} pax`,
-  status,
-  daysAgo,
+// SIMULADO: las entregas son las registradas en este navegador con "Confirmar entrega" (sinBackend.ts). Antes eran
+// 31 filas fijas de julio y agosto de 2026. El backend no tiene entregas de turno (CONEXION-BACKEND.md, pedido 11).
+const aFila = (e: Entrega): Row => ({
+  id: e.id,
+  date: fmtDateTime(e.at),
+  shift: e.turno,
+  from: e.entrego,
+  to: 'Sin asignar',
+  pax: `${e.pacientes.length} pax`,
+  status: e.leida ? 'Leído' : 'Pendiente',
+  daysAgo: Math.floor((Date.now() - Date.parse(e.at)) / 86_400_000),
 });
-
-// Las 6 primeras son las de Figma; el resto son de ejemplo. Las 24 primeras caen en los
-// últimos 7 días ("Mostrando 1-6 de 24"); las demás solo aparecen con "Últimos 30 días".
-const ROWS: Row[] = [
-  row('14 Ago 2026, 06:55', N, 'Dra. Laura Sánchez', 'Dr. Carlos Méndez', 3, 0),
-  row('13 Ago 2026, 22:50', V, 'Dra. Ana Gómez', 'Dra. Laura Sánchez', 7, 1),
-  row('13 Ago 2026, 14:45', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 7, 1, 'Pendiente'),
-  row('13 Ago 2026, 06:50', N, 'Dr. Roberto Silva', 'Dr. Carlos Méndez', 4, 1),
-  row('12 Ago 2026, 22:45', V, 'Dra. Ana Gómez', 'Dr. Roberto Silva', 6, 2),
-  row('12 Ago 2026, 14:55', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 6, 2),
-  row('12 Ago 2026, 06:50', N, 'Dra. Laura Sánchez', 'Dr. Carlos Méndez', 5, 2),
-  row('11 Ago 2026, 22:50', V, 'Dra. Ana Gómez', 'Dra. Laura Sánchez', 6, 3),
-  row('11 Ago 2026, 14:50', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 6, 3),
-  row('11 Ago 2026, 06:55', N, 'Dr. Roberto Silva', 'Dr. Carlos Méndez', 5, 3),
-  row('10 Ago 2026, 22:45', V, 'Dra. Ana Gómez', 'Dr. Roberto Silva', 7, 4),
-  row('10 Ago 2026, 19:30', V, 'Dr. Luis Herrera', 'Dra. Ana Gómez', 7, 4),
-  row('10 Ago 2026, 14:50', M, 'Dr. Carlos Méndez', 'Dr. Luis Herrera', 7, 4),
-  row('10 Ago 2026, 06:50', N, 'Dra. Laura Sánchez', 'Dr. Carlos Méndez', 6, 4),
-  row('09 Ago 2026, 22:50', V, 'Dra. Ana Gómez', 'Dra. Laura Sánchez', 6, 5),
-  row('09 Ago 2026, 14:55', M, 'Dra. Carmen Vega', 'Dra. Ana Gómez', 5, 5),
-  row('09 Ago 2026, 11:20', M, 'Dr. Carlos Méndez', 'Dra. Carmen Vega', 5, 5),
-  row('09 Ago 2026, 06:50', N, 'Dr. Roberto Silva', 'Dr. Carlos Méndez', 5, 5),
-  row('08 Ago 2026, 22:45', V, 'Dra. Ana Gómez', 'Dr. Roberto Silva', 6, 6),
-  row('08 Ago 2026, 14:50', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 6, 6),
-  row('08 Ago 2026, 06:55', N, 'Dra. Laura Sánchez', 'Dr. Carlos Méndez', 4, 6),
-  row('07 Ago 2026, 22:50', V, 'Dra. Ana Gómez', 'Dra. Laura Sánchez', 5, 7),
-  row('07 Ago 2026, 14:45', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 5, 7),
-  row('07 Ago 2026, 06:50', N, 'Dr. Roberto Silva', 'Dr. Carlos Méndez', 4, 7),
-  row('03 Ago 2026, 22:50', V, 'Dra. Ana Gómez', 'Dr. Roberto Silva', 6, 11),
-  row('03 Ago 2026, 14:50', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 6, 11),
-  row('03 Ago 2026, 06:55', N, 'Dra. Laura Sánchez', 'Dr. Carlos Méndez', 5, 11),
-  row('28 Jul 2026, 22:45', V, 'Dra. Ana Gómez', 'Dra. Laura Sánchez', 7, 17),
-  row('28 Jul 2026, 14:55', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 7, 17),
-  row('28 Jul 2026, 06:50', N, 'Dr. Roberto Silva', 'Dr. Carlos Méndez', 6, 17),
-  row('22 Jul 2026, 22:50', V, 'Dra. Ana Gómez', 'Dr. Roberto Silva', 5, 23),
-  row('22 Jul 2026, 14:50', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 5, 23),
-  row('22 Jul 2026, 06:55', N, 'Dra. Laura Sánchez', 'Dr. Carlos Méndez', 4, 23),
-];
 
 const DATE_OPTIONS = [
   { value: '0', label: 'Hoy' },
@@ -84,9 +48,8 @@ export default function MedTurnoHistorial() {
   const navigate = useNavigate();
   const { state } = useLocation() as { state: HandoffState | null };
   // Una entrega recién confirmada aparece primero y queda pendiente de lectura.
-  const [rows] = useState<Row[]>(() =>
-    state?.handedOff ? [row('14 Ago 2026, 14:50', M, 'Dr. Carlos Méndez', 'Dra. Ana Gómez', 8, 0, 'Pendiente'), ...ROWS] : ROWS,
-  );
+  const entregas = useQuery({ queryKey: ['sinBackend', 'entregas'], queryFn: getEntregas });
+  const rows = (entregas.data ?? []).map(aFila);
   const [range, setRange] = useState('7');
   const [shift, setShift] = useState(SHIFT_OPTIONS[0]);
   const [page, setPage] = useState(1);
@@ -122,7 +85,7 @@ export default function MedTurnoHistorial() {
               <Select label="Fecha:" options={DATE_OPTIONS} value={range} onChange={pick(setRange)} />
               <Select label="Turno:" options={SHIFT_OPTIONS} value={shift} onChange={pick(setShift)} />
             </div>
-            <p className="font-jakarta text-[13px] font-medium leading-[normal] text-muted">Mostrando registros auditados de la UCI</p>
+            <p className="font-jakarta text-[13px] font-medium leading-[normal] text-muted">Entregas registradas en este navegador</p>
           </div>
 
           <div className="w-full overflow-hidden rounded-lg border border-line">
@@ -138,8 +101,8 @@ export default function MedTurnoHistorial() {
               </div>
               {shown.map((r) => (
                 <div
-                  key={r.date}
-                  {...rowLink(SUMMARY_PATH)}
+                  key={r.id}
+                  {...rowLink(`${SUMMARY_PATH}?entrega=${r.id}`)}
                   aria-label={`Ver resumen de la entrega del ${r.date}`}
                   className={cn('flex w-full items-center gap-2 border-b border-line p-[14px] font-jakarta text-[13px] leading-[normal] last:border-b-0', rowLinkClass)}
                 >
@@ -156,7 +119,7 @@ export default function MedTurnoHistorial() {
                     </Badge>
                   </div>
                   <div className="flex min-w-[68px] flex-1 justify-end" onClick={stop} onKeyDown={stop}>
-                    <Button variant="outline" size="sm" to={SUMMARY_PATH}>
+                    <Button variant="outline" size="sm" to={`${SUMMARY_PATH}?entrega=${r.id}`}>
                       Ver Resumen
                     </Button>
                   </div>
@@ -164,6 +127,7 @@ export default function MedTurnoHistorial() {
               ))}
               {shown.length === 0 && (
                 <EmptyState
+                  message={entregas.isPending ? 'Cargando…' : rows.length ? undefined : 'Todavía no hay entregas registradas. Se registran desde «Nueva Entrega».'}
                   onReset={() => {
                     setRange('7');
                     setShift(SHIFT_OPTIONS[0]);

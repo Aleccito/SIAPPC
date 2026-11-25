@@ -1,0 +1,176 @@
+[
+ {
+  "paso": "Entrar con el código",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "path": "/MedDashboardPrincipal"
+  },
+  "captura": "01-entrar-con-el-c-digo.png"
+ },
+ {
+  "paso": "Dashboard",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "atencion": "Requiere tu atención ahora\nEvaluación\n\nhace 18 h\n\nLasso: evaluación primaria pendiente (sin exploración física desde el ingreso)\n\nUCI-05\n\nFC Alta\n\nhace 4 min\n\nLasso: FC > 120 lpm — Taquicardia (121 lp"
+  },
+  "captura": "02-dashboard.png"
+ },
+ {
+  "paso": "Pendientes de evaluación (Dashboard)",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "url": "/MedPacientesLista?filtro=evaluacion",
+   "filasAExploracion": 0
+  },
+  "captura": "03-pendientes-de-evaluaci-n-dashboard-.png"
+ },
+ {
+  "paso": "Su turno: resumen recibido",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "titulo": "Entrega de Turno"
+  },
+  "captura": "04-su-turno-resumen-recibido.png"
+ },
+ {
+  "paso": "Atender una alerta (Centro de alertas)",
+  "ok": true,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "05-atender-una-alerta-centro-de-alertas-.png"
+ },
+ {
+  "paso": "Confirmar la atención",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "aviso": "Atención registrada en este equipo · Teodoro Lasso Mejía",
+   "path": "/MedAlertasCentro"
+  },
+  "captura": "06-confirmar-la-atenci-n.png"
+ },
+ {
+  "paso": "Abrir un paciente crítico desde el Dashboard",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "url": "/MedPacienteResumen?paciente=DEMO-0002"
+  },
+  "captura": "07-abrir-un-paciente-cr-tico-desde-el-dashb.png"
+ },
+ {
+  "paso": "Monitoreo detallado (signos en vivo)",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "alertas": "Alertas Activas\n1\n\nSpO2 < 90% — Saturación baja\n\n75 avisos · el último hace 4 min\n\n›\nAnteriores sin atender (3)\n· sin avisos en 30 min\nEstado Neurológico\n\nGLASG",
+   "anteriores": true,
+   "glasgow": false,
+   "imagenesFijas": 0
+  },
+  "captura": "08-monitoreo-detallado-signos-en-vivo-.png"
+ },
+ {
+  "paso": "Tendencias 24 h",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "puntos": 1,
+   "lineas": [
+    65,
+    1,
+    65,
+    1,
+    65,
+    1,
+    65,
+    1,
+    65,
+    1
+   ]
+  },
+  "captura": "09-tendencias-24-h.png"
+ },
+ {
+  "paso": "Tendencias 6 h",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "puntos": 1,
+   "lineas": [
+    114,
+    1,
+    114,
+    1,
+    114,
+    1,
+    114,
+    1,
+    114,
+    1
+   ]
+  },
+  "captura": "10-tendencias-6-h.png"
+ },
+ {
+  "paso": "Hoja del paciente (Generar Reporte)",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "imprimir": true,
+   "texto": "Hoja del paciente\nImprimir o guardar en PDF\n\nSIAPPC · HOJA DEL PACIENTE\n\nIleana Montenegro Sáez\n\nCédula DEMO-0002 · 55 años · Femenino · Sangre A+ · Cama UCI-02"
+  },
+  "captura": "11-hoja-del-paciente-generar-reporte-.png"
+ },
+ {
+  "paso": "Escribir una nota SOAP",
+  "ok": true,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "12-escribir-una-nota-soap.png"
+ },
+ {
+  "paso": "Firmar la nota",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "aviso": "Nota firmada"
+  },
+  "captura": "13-firmar-la-nota.png"
+ },
+ {
+  "paso": "Pedir ayuda a la IA (panel del paciente)",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "disponible": true,
+   "respuesta": "Del paciente Ileana Montenegro Sáez: ¿Cuáles son los diagnósticos diferenciales más probables?\n\nPensando… 0:00\n\nEl modelo local tarda entre 30 s y 1,5 min."
+  },
+  "captura": "14-pedir-ayuda-a-la-ia-panel-del-paciente-.png"
+ },
+ {
+  "paso": "Entregar el turno",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "aviso": "Entrega registrada (en este navegador: el sistema todavía no avisa al turno que recibe)"
+  },
+  "captura": "15-entregar-el-turno.png"
+ },
+ {
+  "paso": "Historial y resumen de la entrega",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "filas": 1,
+   "encabezado": "Turno Recibido\nEn revisión\n\nTurno Nocturno (23:00 - 07:00)\n\nEntregado el 25 Nov 2026, 03:59\n\n0 pacientes incluidos\n\nEntregado por: Dr. Carlos Méndez (registrado"
+  },
+  "captura": "16-historial-y-resumen-de-la-entrega.png"
+ }
+]

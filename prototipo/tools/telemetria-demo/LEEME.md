@@ -55,6 +55,26 @@ docker run --rm --network siappc_default --env-file .env \
   siappc-telemetria-demo node publicador.mjs --alerta DEMO-DEV-06
 ```
 
+### Historia para las tendencias
+
+Recién levantado, el monitor no tiene lecturas viejas y las tendencias de 24 h muestran un solo punto. `--historia`
+manda las lecturas de ese tiempo hacia atrás, con su fecha pasada, cada `PASO_HISTORIA_MIN` minutos (5). Se carga
+**una sola vez**, junto con `--una-vez`, para que el servicio normal no la repita en cada reinicio:
+
+```bash
+docker run --rm --network siappc_default --env-file .env \
+  -v "$PWD/infra/mosquitto/certs/ca.crt:/certs/ca.crt:ro" \
+  siappc-telemetria-demo node publicador.mjs --historia 24h --una-vez
+```
+
+- Acepta horas o minutos: `24h`, `6h`, `90m`. Con 15 equipos y 24 h son unas 17.000 lecturas y tarda un par de
+  minutos.
+- El backend las guarda como atrasadas (más de 60 s): no manda avisos en vivo por ellas.
+- **Quedan dentro de los umbrales a propósito.** El backend fecha cada alerta cuando la guarda y no con la hora de la
+  lectura (pedido 34 de CONEXION-BACKEND.md): una lectura fuera de rango de hace 20 h aparecería como una alerta de
+  ahora. Por eso la historia de los críticos se ve más tranquila que su presente.
+- Correrla dos veces duplica la historia (con otras horas): no hace falta repetirla mientras la base no se borre.
+
 No es un servicio del Compose a propósito: el Compose no es parte del prototipo (pedido 32 de CONEXION-BACKEND.md).
 
 ## Opciones
@@ -65,6 +85,7 @@ No es un servicio del Compose a propósito: el Compose no es parte del prototipo
 | `ONDA` | `1` | `0` para no mandar la onda del ECG. |
 | `ONDA_HZ` | `125` | Muestras por segundo de la onda (10 a 250). |
 | `EQUIPOS` | todos | Lista separada por comas, por ejemplo `DEMO-DEV-01,DEMO-DEV-06`. |
+| `PASO_HISTORIA_MIN` | `5` | Minutos entre lecturas de la historia de `--historia`. |
 | `MQTT_HOST`, `MQTT_PORT`, `MQTT_CA_FILE` | `mosquitto`, `8883`, `/certs/ca.crt` | Dónde está el broker. |
 
 Se pasan con `-e`, por ejemplo `-e PERIODO_S=60`.

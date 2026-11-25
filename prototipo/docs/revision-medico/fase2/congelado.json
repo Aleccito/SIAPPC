@@ -1,0 +1,291 @@
+[
+ {
+  "pantalla": "MedDashboardPrincipal",
+  "numeros": 26,
+  "cambiaron": 10,
+  "iguales": [
+   "Pacientes Asignados: 16",
+   "Alertas Críticas: 5",
+   "Pendientes Evaluación: 16",
+   "GCS: —: TRIAGE: T1"
+  ],
+  "ejemplos": [
+   "Ruiz Cardoza, Anselmo: FC: 107↑ SpO2: 89%↓ → FC: 103↑ SpO2: 95%",
+   "Ruiz Cardoza, Anselmo: PA: 145/85 (Elevada) → PA: 109/68",
+   "Vallejo Pinto, Darío: PA: 89/58 (Hipotensión) → FC: 108↑ SpO2: 96%",
+   "GCS: —: TRIAGE: T1 → PA: 88/55 (Hipotensión)",
+   "Orozco Arce, Yamileth: FC: 56↓ SpO2: 94%↓ → TRIAGE: T1",
+   "ATENCIÓN: 235235 → FC: 105↑ SpO2: 90%↓",
+   "ATENCIÓN: C-01 → PA: 150/86 (Elevada)",
+   "ATENCIÓN: FC: 76.2 SpO2: 90.9%↓ → TRIAGE: T1"
+  ],
+  "graficas": 4,
+  "graficasIguales": 0,
+  "lienzos": 0,
+  "lienzosIguales": 0
+ },
+ {
+  "pantalla": "MedMonitoreoGridUci",
+  "numeros": 31,
+  "cambiaron": 23,
+  "iguales": [
+   "Estable: 5 pacientes en UCI",
+   "PA: PAM: 107 mmHg",
+   "TEMP: 38.0",
+   "bpm: 54",
+   "PA: PAM: 70 mmHg",
+   "TEMP: 36.3",
+   "SpO₂: 96",
+   "TEMP: 36.8"
+  ],
+  "ejemplos": [
+   "bpm: 110 → 115",
+   "SpO₂: 93 → 89",
+   "mmHg: 92/55 → 88/54",
+   "PA: PAM: 67 mmHg → PAM: 65 mmHg",
+   "rpm: 25 → 27",
+   "TEMP: 39.1 → 39.0",
+   "bpm: 113 → 117",
+   "SpO₂: 92 → 91"
+  ],
+  "graficas": 5,
+  "graficasIguales": 1,
+  "lienzos": 0,
+  "lienzosIguales": 0
+ },
+ {
+  "pantalla": "MedMonitoreoListaUci",
+  "numeros": 33,
+  "cambiaron": 21,
+  "iguales": [
+   "Estable: 5 pacientes en UCI",
+   "FC: SpO2",
+   "FC: SpO2",
+   "TEMP: 39.0",
+   "FC: SpO2",
+   "FC: SpO2",
+   "TEMP: 38.0",
+   "bpm: 54",
+   "FC: SpO2",
+   "FC: SpO2",
+   "TEMP: 36.8",
+   "FC: SpO2"
+  ],
+  "ejemplos": [
+   "bpm: 115 → 121",
+   "FC: 89 → 92",
+   "mmHg: 88/53 → 94/54",
+   "rpm: 27 → 25",
+   "bpm: 117 → 111",
+   "FC: 91 → 89",
+   "mmHg: 99/61 → 98/60",
+   "TEMP: 37.5 → 37.7"
+  ],
+  "graficas": 0,
+  "graficasIguales": 0,
+  "lienzos": 0,
+  "lienzosIguales": 0
+ },
+ {
+  "pantalla": "MedMonitoreoComparativa",
+  "numeros": 31,
+  "cambiaron": 23,
+  "iguales": [
+   "Paciente A: Teodoro Lasso Mejía: Últimas 4h",
+   "Paciente A: Teodoro Lasso Mejía: 12h",
+   "Paciente A: Teodoro Lasso Mejía: 24h",
+   "FC (LPM): SpO2 (%)",
+   "TL: Frecuencia Cardíaca (Últimas 4h)",
+   "En rango: Saturación Oxígeno (SpO2%)"
+  ],
+  "ejemplos": [
+   "FC (LPM): 111 ↑ → 102 ↑",
+   "FC (LPM): 95% → 93% ↓",
+   "PA (mmHg): 107/71 → 110/69",
+   "Temp: 36.8°C → 36.9°C",
+   "TL: Rango: 103 - 111 bpm → Rango: 110 - 110 bpm",
+   "FC (LPM): SpO2 (%) → 113 ↑",
+   "FC (LPM): 91% ↓ → SpO2 (%)",
+   "PA (mmHg): 94/54 → 92% ↓"
+  ],
+  "graficas": 8,
+  "graficasIguales": 0,
+  "lienzos": 0,
+  "lienzosIguales": 0
+ },
+ {
+  "pantalla": "MedPacientesLista",
+  "numeros": 31,
+  "cambiaron": 17,
+  "iguales": [
+   "Pacientes Activos: 16",
+   "Pacientes Activos: Cupo: 51 camas",
+   "Acción inmediata: 5",
+   "Alertas Activas: Últimos 30 min",
+   "Camas Disponibles: 35 / 51",
+   "Camas Disponibles: 69% libre",
+   "PACIENTE: SPO2 (%)",
+   "DV: 115",
+   "YO: 36.5°",
+   "Anterior: 1",
+   "Anterior: 2",
+   "Anterior: 3",
+   "Anterior: 4",
+   "?: FC > 120 lpm — Taquicardia (121)"
+  ],
+  "ejemplos": [
+   "Alertas Activas: 7 → 8",
+   "TL: 102 → 113",
+   "TL: 93 → 95",
+   "TL: 36.7° → 36.8°",
+   "DV: 94 → 93",
+   "DV: 36.0° → 36.3°",
+   "IM: 112 → 116",
+   "IM: 88 → 93"
+  ],
+  "graficas": 0,
+  "graficasIguales": 0,
+  "lienzos": 0,
+  "lienzosIguales": 0
+ },
+ {
+  "pantalla": "MedPacienteResumen?paciente=DEMO-0002",
+  "numeros": 19,
+  "cambiaron": 12,
+  "iguales": [
+   "lpm: 112",
+   "FC (Frecuencia Cardíaca): SpO2 (Oxígeno)"
+  ],
+  "ejemplos": [
+   "FC (Frecuencia Cardíaca): 93 → 91",
+   "mmHg: 97/61 → 102/63",
+   "Temp (Temperatura): 37.8 → 37.7",
+   "rpm: 25 → 27",
+   "Disparado por alerta alta: Modelo: hf.co/Mungert/medgemma-4b-it-GGU → Dolor torácico y falta de aire súbita 5 ",
+   "Alertas Activas: 2 → FC y SpO2 del monitor; sin cambios en la",
+   "Atender: FC > 120 lpm — Taquicardia → 2",
+   "Atender: Ritmo actual 121 lpm. 11 avisos, el últi → FC > 120 lpm — Taquicardia"
+  ],
+  "graficas": 6,
+  "graficasIguales": 6,
+  "lienzos": 1,
+  "lienzosIguales": 0
+ },
+ {
+  "pantalla": "MedPacienteMonitoreoDetallado?paciente=DEMO-0002",
+  "numeros": 36,
+  "cambiaron": 9,
+  "iguales": [
+   "ECG II: SpO2",
+   "ECG II: 91",
+   "Tromboembolia pulmonar: Dolor torácico y falta de aire súbita 5 ",
+   "Alertas Activas: 2",
+   "Alertas Activas: FC > 120 lpm — Taquicardia",
+   "Alertas Activas: SpO2 < 90% — Saturación baja",
+   "Alertas Activas: · sin avisos en 30 min",
+   "?: SpO2 < 85% — Desaturación crítica",
+   "?: FR > 30 rpm — Taquipnea",
+   "Pupilas: Isocóricas reactivas 3mm",
+   "Ventilación mecánica: No (reservorio 15 L)",
+   "Ventilación mecánica: FiO2",
+   "Ventilación mecánica: EtCO2",
+   "pH: 7.48",
+   "pH: PaO2",
+   "pH: 51",
+   "pH: PaCO2",
+   "pH: 29",
+   "DÍMERO D: 4 757 ng/mL",
+   "TROPONINA I: 0.09 ng/mL",
+   "BNP: 402 pg/mL",
+   "HB: 10.9 g/dL",
+   "DÍMERO D: 4.0 mEq/L",
+   "CREATININA: 0.8 mg/dL",
+   "INR: 1.1",
+   "PLAQUETAS: 203,128",
+   "Llenado capilar: 3 seg"
+  ],
+  "ejemplos": [
+   "bpm: 112 → 113",
+   "Temp: 37.7 → 37.6",
+   "mmHg: 102/63 → 97/63",
+   "rpm: 27 → 26",
+   "Ventilación mecánica: 62% → 60%",
+   "Diuresis última hora: 47 mL/h → 48 mL/h",
+   "Balance acumulado: +593 mL → +590 mL",
+   "Cristaloides: 966 mL → 975 mL"
+  ],
+  "graficas": 10,
+  "graficasIguales": 5,
+  "lienzos": 1,
+  "lienzosIguales": 0
+ },
+ {
+  "pantalla": "MedPacienteTendenciasVitales?paciente=DEMO-0002",
+  "numeros": 16,
+  "cambiaron": 7,
+  "iguales": [
+   "IM: 6h",
+   "IM: 12h",
+   "IM: 24h",
+   "IM: 48h",
+   "IM: 7d",
+   "FC (Frecuencia Cardíaca): Límite: 120",
+   "Advertencia Desaturación: SpO2 (Saturación de Oxígeno)",
+   "Advertencia Desaturación: Límite: 90",
+   "Temperatura: Límite: 38"
+  ],
+  "ejemplos": [
+   "bpm: 111 → 113",
+   "FC (Frecuencia Cardíaca): 111 → 113",
+   "Advertencia Desaturación: 91 → 90",
+   "Advertencia Desaturación: 91 → 90",
+   "mmHg: 102/63 → 96/63",
+   "Temperatura: 37.7 → 37.6",
+   "Temperatura: 37.7 → 37.6"
+  ],
+  "graficas": 8,
+  "graficasIguales": 3,
+  "lienzos": 0,
+  "lienzosIguales": 0
+ },
+ {
+  "pantalla": "MedPacienteMonitoreoDetallado?paciente=DEMO-0009",
+  "numeros": 28,
+  "cambiaron": 9,
+  "iguales": [
+   "ECG II: SpO2",
+   "ECG II: 92",
+   "Alertas Activas: 0",
+   "Alertas Activas: · sin avisos en 30 min",
+   "?: SpO2 < 90% — Saturación baja",
+   "Pupilas: Isocóricas reactivas 3mm",
+   "Ventilación mecánica: No (puntas nasales 2 L)",
+   "Ventilación mecánica: FiO2",
+   "Ventilación mecánica: EtCO2",
+   "pH: 7.40",
+   "pH: PaO2",
+   "pH: 93",
+   "pH: PaCO2",
+   "pH: 40",
+   "BNP: 1260 pg/mL",
+   "CREATININA: 1.5 mg/dL",
+   "BNP: 4.2 mEq/L",
+   "HB: 12.3 g/dL",
+   "Llenado capilar: 2 seg"
+  ],
+  "ejemplos": [
+   "bpm: 99 → 95",
+   "Temp: 36.9 → 36.6",
+   "mmHg: 147/86 → 148/88",
+   "rpm: 24 → 22",
+   "Ventilación mecánica: 27% → 28%",
+   "Diuresis última hora: 60 mL/h → 66 mL/h",
+   "Balance acumulado: +346 mL → +339 mL",
+   "Cristaloides: 1005 mL → 1009 mL"
+  ],
+  "graficas": 8,
+  "graficasIguales": 3,
+  "lienzos": 1,
+  "lienzosIguales": 0
+ }
+]

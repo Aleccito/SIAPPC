@@ -12,7 +12,6 @@ import imgChevronDown from '../../assets/chevron-down.svg';
 import imgRadioOptionEllipse from '../../assets/radio-option-ellipse.svg';
 import imgRadioOptionEllipse2 from '../../assets/radio-option-ellipse-2.svg';
 import imgSearch3 from '../../assets/search-3.svg';
-import imgUploadCloud from '../../assets/upload-cloud.svg';
 import {
   BackButton,
   Badge,
@@ -27,7 +26,6 @@ import {
   rowButton,
   Select,
   TextArea,
-  UploadDocumentModal,
   usePatient,
   useToast,
   useValidation,
@@ -165,8 +163,6 @@ function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | und
   const [code, setCode] = useState(String(editing?.code ?? ''));
   const [cieSearch, setCieSearch] = useState<{ text: string; seq: number } | null>(null);
   const [severity, setSeverity] = useState(previous.severity);
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [files, setFiles] = useState<string[]>([]);
   const [description, setDescription] = useState(previous.description);
   const [date, setDate] = useState(String(editing?.diagnosedOn ?? todayIso()));
   const [notes, setNotes] = useState(previous.plan);
@@ -287,28 +283,8 @@ function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | und
             />
           </Field>
 
-          <Field label="Estudios Adjuntos (Rayos X, Labs, ECG)">
-            <div
-              {...rowButton(() => setUploadOpen(true))}
-              aria-label="Subir estudios adjuntos"
-              className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line bg-surface p-4 text-center outline-none transition-colors hover:bg-primary-soft focus-visible:border-primary"
-            >
-              <img className="size-6" alt="" src={imgUploadCloud} />
-              <p className="font-jakarta text-[13px] font-bold leading-[normal] text-primary">Haga clic para subir archivos o arrástrelos aquí</p>
-              <p className="font-jakarta text-[11px] font-normal leading-[normal] text-subtle">PDF, PNG, JPG hasta 10MB</p>
-            </div>
-            {files.length > 0 && (
-              <ul className="flex flex-wrap gap-2">
-                {files.map((f) => (
-                  <li key={f}>
-                    <Badge tone="info" size="sm">
-                      {f}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Field>
+          {/* "Estudios adjuntos" se quitó: el archivo no se guardaba en ningún lado (REVISION-MEDICO.md, 6). Los
+              documentos se suben en Documentos clínicos. */}
 
           <div className="flex w-full flex-wrap justify-end gap-3 pt-3">
             <Button variant="secondary" size="lg" onClick={() => navigate(-1)}>
@@ -347,15 +323,6 @@ function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | und
         <AiIdeasCard variant="cie10" patientId={v.id} cedula={v.cedula} onSearchCie10={(title) => setCieSearch({ text: cie10Query(title), seq: Date.now() })} />
         </div>
       </div>
-      <UploadDocumentModal
-        open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        onUpload={({ name }) => {
-          setUploadOpen(false);
-          setFiles((f) => (f.includes(name) ? f : [...f, name]));
-          toast(`Archivo adjuntado · ${name}`);
-        }}
-      />
     </>
   );
 }

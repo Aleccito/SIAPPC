@@ -1,0 +1,222 @@
+### DEMO-0002 · ¿Gravedad de este paciente?
+Tipo: gravedad · Temas: vitales, alertas, exploracion, antecedentes, notas
+Largo: 2167 caracteres
+Edad: 55 años · Sexo: femenino · Grupo sanguíneo: A+
+Motivo de consulta: Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera · Estado: en atención
+Alergias activas: ninguna registrada
+Medicamentos activos: Enoxaparina 40 mg subcutánea cada 24 h; Paracetamol 1 g oral cada 8 h
+Diagnósticos activos: Fractura de cuello de fémur [S72.0] (definitivo); Tromboembolia pulmonar [I26.9] (presuntivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Antecedentes: quirurgico: Osteosíntesis de cadera derecha hace 5 días; habito: Tabaquismo, 10 cigarrillos al día
+Signos vitales del monitor (último valor): FC 118 lpm (hace menos de 1 min; últimas 6 h entre 105 y 120); SpO2 90 % (hace menos de 1 min; últimas 6 h entre 88 y 93); FR 24 rpm (hace menos de 1 min; últimas 6 h entre 23 y 29); Temperatura 37.5 °C (hace menos de 1 min; últimas 6 h entre 37.3 y 37.9)
+Puntajes calculados por el sistema: NEWS2 parcial 7 (riesgo alto, algún parámetro en 3; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: alta (puede ser mayor: el puntaje es parcial).
+Alertas de las últimas 6 h por tipo: SpO2 baja (alta): 39 veces, la última hace 1 min («SpO2 89% bajo»). Abiertas sin atender: 92 (10 de los últimos 30 min; las demás son anteriores).
+Exploración física: sin registros
+Nota SOAP (hace 4 h, firmada): S: Recorrido del médico 2026-11-25T04:17: refiere menos disnea. | O: FC y SpO2 del monitor; sin cambios en la exploración. | A: Sospecha de TEP en estudio, hemodinámicamente estable. | P: Angio-TC hoy; continuar oxígeno y anticoagulación.
+Nota SOAP (hace 13 h, firmada): S: Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cadera. | O: FC 112, SpO2 89 % aire ambiente, FR 26. Pantorrilla izquierda edematizada. | A: Sospecha alta de tromboembolia pulmonar posoperatoria. | P: Angio-TC de tórax, dímero D, oxígeno a SpO2 > 92 %, valorar anticoagulación según riesgo de sangrado.
+
+### DEMO-0002 · ¿Cuáles son los diagnósticos diferenciales más probables?
+Tipo: diferenciales · Temas: diagnosticos, vitales, alertas, exploracion, antecedentes, notas
+Largo: 2219 caracteres
+Edad: 55 años · Sexo: femenino · Grupo sanguíneo: A+
+Motivo de consulta: Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera · Estado: en atención
+Alergias activas: ninguna registrada
+Medicamentos activos: Enoxaparina 40 mg subcutánea cada 24 h; Paracetamol 1 g oral cada 8 h
+Diagnósticos activos: Fractura de cuello de fémur [S72.0] (definitivo); Tromboembolia pulmonar [I26.9] (presuntivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Antecedentes: quirurgico: Osteosíntesis de cadera derecha hace 5 días; habito: Tabaquismo, 10 cigarrillos al día
+Diagnósticos resueltos o descartados: sin registros
+Signos vitales del monitor (último valor): FC 118 lpm (hace menos de 1 min; últimas 6 h entre 105 y 120); SpO2 90 % (hace menos de 1 min; últimas 6 h entre 88 y 93); FR 24 rpm (hace menos de 1 min; últimas 6 h entre 23 y 29); Temperatura 37.5 °C (hace menos de 1 min; últimas 6 h entre 37.3 y 37.9)
+Puntajes calculados por el sistema: NEWS2 parcial 7 (riesgo alto, algún parámetro en 3; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: alta (puede ser mayor: el puntaje es parcial).
+Alertas de las últimas 6 h por tipo: SpO2 baja (alta): 39 veces, la última hace 1 min («SpO2 89% bajo»). Abiertas sin atender: 92 (10 de los últimos 30 min; las demás son anteriores).
+Exploración física: sin registros
+Nota SOAP (hace 4 h, firmada): S: Recorrido del médico 2026-11-25T04:17: refiere menos disnea. | O: FC y SpO2 del monitor; sin cambios en la exploración. | A: Sospecha de TEP en estudio, hemodinámicamente estable. | P: Angio-TC hoy; continuar oxígeno y anticoagulación.
+Nota SOAP (hace 13 h, firmada): S: Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cadera. | O: FC 112, SpO2 89 % aire ambiente, FR 26. Pantorrilla izquierda edematizada. | A: Sospecha alta de tromboembolia pulmonar posoperatoria. | P: Angio-TC de tórax, dímero D, oxígeno a SpO2 > 92 %, valorar anticoagulación según riesgo de sangrado.
+
+### DEMO-0002 · ¿Cuál sería el manejo inicial recomendado?
+Tipo: manejo · Temas: vitales, alertas, exploracion, antecedentes, notas
+(mismo contexto que arriba)
+
+### DEMO-0002 · ¿Cómo han evolucionado sus signos vitales en las últimas horas?
+Tipo: evolucion · Temas: vitales, evoluciones, serie, alertas, exploracion, antecedentes, notas
+Largo: 2638 caracteres
+Edad: 55 años · Sexo: femenino · Grupo sanguíneo: A+
+Motivo de consulta: Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera · Estado: en atención
+Alergias activas: ninguna registrada
+Medicamentos activos: Enoxaparina 40 mg subcutánea cada 24 h; Paracetamol 1 g oral cada 8 h
+Diagnósticos activos: Fractura de cuello de fémur [S72.0] (definitivo); Tromboembolia pulmonar [I26.9] (presuntivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Antecedentes: quirurgico: Osteosíntesis de cadera derecha hace 5 días; habito: Tabaquismo, 10 cigarrillos al día
+Signos vitales del monitor (último valor): FC 118 lpm (hace menos de 1 min; últimas 6 h entre 105 y 120); SpO2 90 % (hace menos de 1 min; últimas 6 h entre 88 y 93); FR 24 rpm (hace menos de 1 min; últimas 6 h entre 23 y 29); Temperatura 37.5 °C (hace menos de 1 min; últimas 6 h entre 37.3 y 37.9)
+Puntajes calculados por el sistema: NEWS2 parcial 7 (riesgo alto, algún parámetro en 3; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: alta (puede ser mayor: el puntaje es parcial).
+Serie por hora de las últimas 6 h (promedio de cada hora): FC (lpm): hace 6 h 112.9 · hace 5 h 112.9 · hace 4 h 112.4 · última hora 112.9, estable; SpO2 (%): hace 6 h 91 · hace 5 h 90.9 · hace 4 h 90.9 · última hora 90.7, estable; FR (rpm): hace 6 h 25.8 · hace 5 h 26 · hace 4 h 26 · última hora 26, estable; Temperatura (°C): hace 6 h 37.7 · hace 5 h 37.6 · hace 4 h 37.7 · última hora 37.6, estable. Resumen de la serie: sin cambios en 6 h.
+Alertas de las últimas 6 h por tipo: SpO2 baja (alta): 39 veces, la última hace 1 min («SpO2 89% bajo»). Abiertas sin atender: 92 (10 de los últimos 30 min; las demás son anteriores).
+Exploración física: sin registros
+Evoluciones: sin registros
+Nota SOAP (hace 4 h, firmada): S: Recorrido del médico 2026-11-25T04:17: refiere menos disnea. | O: FC y SpO2 del monitor; sin cambios en la exploración. | A: Sospecha de TEP en estudio, hemodinámicamente estable. | P: Angio-TC hoy; continuar oxígeno y anticoagulación.
+Nota SOAP (hace 13 h, firmada): S: Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cadera. | O: FC 112, SpO2 89 % aire ambiente, FR 26. Pantorrilla izquierda edematizada. | A: Sospecha alta de tromboembolia pulmonar posoperatoria. | P: Angio-TC de tórax, dímero D, oxígeno a SpO2 > 92 %, valorar anticoagulación según riesgo de sangrado.
+
+### DEMO-0002 · ¿Cuál es su última saturación?
+Tipo: dato · Temas: vitales
+Largo: 1214 caracteres
+Edad: 55 años · Sexo: femenino · Grupo sanguíneo: A+
+Motivo de consulta: Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera · Estado: en atención
+Alergias activas: ninguna registrada
+Medicamentos activos: Enoxaparina 40 mg subcutánea cada 24 h; Paracetamol 1 g oral cada 8 h
+Diagnósticos activos: Fractura de cuello de fémur [S72.0] (definitivo); Tromboembolia pulmonar [I26.9] (presuntivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Signos vitales del monitor (último valor): FC 118 lpm (hace menos de 1 min; últimas 6 h entre 105 y 120); SpO2 90 % (hace menos de 1 min; últimas 6 h entre 88 y 93); FR 24 rpm (hace menos de 1 min; últimas 6 h entre 23 y 29); Temperatura 37.5 °C (hace menos de 1 min; últimas 6 h entre 37.3 y 37.9)
+Puntajes calculados por el sistema: NEWS2 parcial 7 (riesgo alto, algún parámetro en 3; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: alta (puede ser mayor: el puntaje es parcial).
+
+### DEMO-0002 · ¿Qué dosis de enoxaparina le corresponde?
+Tipo: farmaco · Temas: medicamentos, vitales, alertas, exploracion, antecedentes, notas
+Largo: 2221 caracteres
+Edad: 55 años · Sexo: femenino · Grupo sanguíneo: A+
+Motivo de consulta: Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera · Estado: en atención
+Alergias activas: ninguna registrada
+Medicamentos activos: Enoxaparina 40 mg subcutánea cada 24 h; Paracetamol 1 g oral cada 8 h
+Diagnósticos activos: Fractura de cuello de fémur [S72.0] (definitivo); Tromboembolia pulmonar [I26.9] (presuntivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Antecedentes: quirurgico: Osteosíntesis de cadera derecha hace 5 días; habito: Tabaquismo, 10 cigarrillos al día
+Medicamentos suspendidos o finalizados: sin registros
+Signos vitales del monitor (último valor): FC 118 lpm (hace menos de 1 min; últimas 6 h entre 105 y 120); SpO2 90 % (hace menos de 1 min; últimas 6 h entre 88 y 93); FR 24 rpm (hace menos de 1 min; últimas 6 h entre 23 y 29); Temperatura 37.5 °C (hace menos de 1 min; últimas 6 h entre 37.3 y 37.9)
+Puntajes calculados por el sistema: NEWS2 parcial 7 (riesgo alto, algún parámetro en 3; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: alta (puede ser mayor: el puntaje es parcial).
+Alertas de las últimas 6 h por tipo: SpO2 baja (alta): 39 veces, la última hace 1 min («SpO2 89% bajo»). Abiertas sin atender: 92 (10 de los últimos 30 min; las demás son anteriores).
+Exploración física: sin registros
+Nota SOAP (hace 4 h, firmada): S: Recorrido del médico 2026-11-25T04:17: refiere menos disnea. | O: FC y SpO2 del monitor; sin cambios en la exploración. | A: Sospecha de TEP en estudio, hemodinámicamente estable. | P: Angio-TC hoy; continuar oxígeno y anticoagulación.
+Nota SOAP (hace 13 h, firmada): S: Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cadera. | O: FC 112, SpO2 89 % aire ambiente, FR 26. Pantorrilla izquierda edematizada. | A: Sospecha alta de tromboembolia pulmonar posoperatoria. | P: Angio-TC de tórax, dímero D, oxígeno a SpO2 > 92 %, valorar anticoagulación según riesgo de sangrado.
+
+### DEMO-0009 · ¿Qué tiene este paciente?
+Tipo: analisis · Temas: vitales, alertas, exploracion, antecedentes, notas
+Largo: 1935 caracteres
+Edad: 65 años · Sexo: femenino · Grupo sanguíneo: A+
+Motivo de consulta: Hinchazón de piernas y falta de aire al acostarse · Estado: en atención
+Alergias activas: Yodo (leve: Prurito)
+Medicamentos activos: Furosemida 40 mg intravenosa cada 12 h; Carvedilol 6.25 mg oral cada 12 h; Losartán 50 mg oral cada 24 h
+Diagnósticos activos: Insuficiencia cardíaca, no especificada [I50.9] (presuntivo); Insuficiencia cardíaca [I50.9] (definitivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Antecedentes: personal: Insuficiencia cardíaca con fracción de eyección reducida; personal: Hipertensión arterial
+Signos vitales del monitor (último valor): FC 97 lpm (hace menos de 1 min; últimas 6 h entre 90 y 102); SpO2 92 % (hace menos de 1 min; últimas 6 h entre 89 y 94); FR 23 rpm (hace menos de 1 min; últimas 6 h entre 21 y 25); Temperatura 36.6 °C (hace menos de 1 min; últimas 6 h entre 36.4 y 37)
+Puntajes calculados por el sistema: NEWS2 parcial 5 (riesgo medio; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: moderada (puede ser mayor: el puntaje es parcial).
+Alertas de las últimas 6 h por tipo: SpO2 baja (alta): 1 vez, la última hace 22 min («SpO2 89% bajo»). Abiertas sin atender: 10 (1 de los últimos 30 min; las demás son anteriores).
+Exploración física: sin registros
+Adenda (hace 9 h, firmada): S: - | O: - | A: Adenda: Prueba conexión 1795564281515 | P: -
+Nota SOAP (hace 9 h, firmada): S: Prueba conexión 1795564281515 | O: FC y SpO2 del monitor. | A: Paciente estable, sin cambios. | P: Continuar el manejo indicado.
+Nota SOAP (hace 9 h, borrador): S: Prueba conexión 1795563876807 | O: FC y SpO2 del monitor. | A: Estable. | P: Continuar manejo.
+
+### DEMO-0009 · ¿Qué estudios de laboratorio e imagen solicitarías?
+Tipo: estudios · Temas: documentos, vitales, alertas, exploracion, antecedentes, notas
+Largo: 1990 caracteres
+Edad: 65 años · Sexo: femenino · Grupo sanguíneo: A+
+Motivo de consulta: Hinchazón de piernas y falta de aire al acostarse · Estado: en atención
+Alergias activas: Yodo (leve: Prurito)
+Medicamentos activos: Furosemida 40 mg intravenosa cada 12 h; Carvedilol 6.25 mg oral cada 12 h; Losartán 50 mg oral cada 24 h
+Diagnósticos activos: Insuficiencia cardíaca, no especificada [I50.9] (presuntivo); Insuficiencia cardíaca [I50.9] (definitivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Antecedentes: personal: Insuficiencia cardíaca con fracción de eyección reducida; personal: Hipertensión arterial
+Signos vitales del monitor (último valor): FC 97 lpm (hace menos de 1 min; últimas 6 h entre 90 y 102); SpO2 92 % (hace menos de 1 min; últimas 6 h entre 89 y 94); FR 23 rpm (hace menos de 1 min; últimas 6 h entre 21 y 25); Temperatura 36.6 °C (hace menos de 1 min; últimas 6 h entre 36.4 y 37)
+Puntajes calculados por el sistema: NEWS2 parcial 5 (riesgo medio; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: moderada (puede ser mayor: el puntaje es parcial).
+Alertas de las últimas 6 h por tipo: SpO2 baja (alta): 1 vez, la última hace 22 min («SpO2 89% bajo»). Abiertas sin atender: 10 (1 de los últimos 30 min; las demás son anteriores).
+Exploración física: sin registros
+Documentos (solo título, sin contenido): sin registros
+Adenda (hace 9 h, firmada): S: - | O: - | A: Adenda: Prueba conexión 1795564281515 | P: -
+Nota SOAP (hace 9 h, firmada): S: Prueba conexión 1795564281515 | O: FC y SpO2 del monitor. | A: Paciente estable, sin cambios. | P: Continuar el manejo indicado.
+Nota SOAP (hace 9 h, borrador): S: Prueba conexión 1795563876807 | O: FC y SpO2 del monitor. | A: Estable. | P: Continuar manejo.
+
+### DEMO-0009 · Revisa alergias e interacciones de sus medicamentos activos.
+Tipo: farmaco · Temas: basico, medicamentos, vitales, alertas, exploracion, antecedentes, notas
+Largo: 1989 caracteres
+Edad: 65 años · Sexo: femenino · Grupo sanguíneo: A+
+Motivo de consulta: Hinchazón de piernas y falta de aire al acostarse · Estado: en atención
+Alergias activas: Yodo (leve: Prurito)
+Medicamentos activos: Furosemida 40 mg intravenosa cada 12 h; Carvedilol 6.25 mg oral cada 12 h; Losartán 50 mg oral cada 24 h
+Diagnósticos activos: Insuficiencia cardíaca, no especificada [I50.9] (presuntivo); Insuficiencia cardíaca [I50.9] (definitivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Antecedentes: personal: Insuficiencia cardíaca con fracción de eyección reducida; personal: Hipertensión arterial
+Medicamentos suspendidos o finalizados: sin registros
+Signos vitales del monitor (último valor): FC 97 lpm (hace menos de 1 min; últimas 6 h entre 90 y 102); SpO2 92 % (hace menos de 1 min; últimas 6 h entre 89 y 94); FR 23 rpm (hace menos de 1 min; últimas 6 h entre 21 y 25); Temperatura 36.6 °C (hace menos de 1 min; últimas 6 h entre 36.4 y 37)
+Puntajes calculados por el sistema: NEWS2 parcial 5 (riesgo medio; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: moderada (puede ser mayor: el puntaje es parcial).
+Alertas de las últimas 6 h por tipo: SpO2 baja (alta): 1 vez, la última hace 22 min («SpO2 89% bajo»). Abiertas sin atender: 10 (1 de los últimos 30 min; las demás son anteriores).
+Exploración física: sin registros
+Adenda (hace 9 h, firmada): S: - | O: - | A: Adenda: Prueba conexión 1795564281515 | P: -
+Nota SOAP (hace 9 h, firmada): S: Prueba conexión 1795564281515 | O: FC y SpO2 del monitor. | A: Paciente estable, sin cambios. | P: Continuar el manejo indicado.
+Nota SOAP (hace 9 h, borrador): S: Prueba conexión 1795563876807 | O: FC y SpO2 del monitor. | A: Estable. | P: Continuar manejo.
+
+### DEMO-0009 · Hazme un resumen para entregar el turno.
+Tipo: turno · Temas: serie, vitales, alertas, exploracion, antecedentes, notas, ubicacion, medicamentos
+Largo: 2431 caracteres
+Edad: 65 años · Sexo: femenino · Grupo sanguíneo: A+
+Motivo de consulta: Hinchazón de piernas y falta de aire al acostarse · Estado: en atención
+Alergias activas: Yodo (leve: Prurito)
+Medicamentos activos: Furosemida 40 mg intravenosa cada 12 h; Carvedilol 6.25 mg oral cada 12 h; Losartán 50 mg oral cada 24 h
+Diagnósticos activos: Insuficiencia cardíaca, no especificada [I50.9] (presuntivo); Insuficiencia cardíaca [I50.9] (definitivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Antecedentes: personal: Insuficiencia cardíaca con fracción de eyección reducida; personal: Hipertensión arterial
+Medicamentos suspendidos o finalizados: sin registros
+Signos vitales del monitor (último valor): FC 97 lpm (hace menos de 1 min; últimas 6 h entre 90 y 102); SpO2 92 % (hace menos de 1 min; últimas 6 h entre 89 y 94); FR 23 rpm (hace menos de 1 min; últimas 6 h entre 21 y 25); Temperatura 36.6 °C (hace menos de 1 min; últimas 6 h entre 36.4 y 37)
+Puntajes calculados por el sistema: NEWS2 parcial 5 (riesgo medio; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: moderada (puede ser mayor: el puntaje es parcial).
+Serie por hora de las últimas 6 h (promedio de cada hora): FC (lpm): hace 6 h 95.8 · hace 5 h 96 · hace 4 h 96.1 · última hora 95.9, estable; SpO2 (%): hace 6 h 91.7 · hace 5 h 91.5 · hace 4 h 91.8 · última hora 91.6, estable; FR (rpm): hace 6 h 22.9 · hace 5 h 23.1 · hace 4 h 23 · última hora 23, estable; Temperatura (°C): hace 6 h 36.8 · hace 5 h 36.7 · hace 4 h 36.7 · última hora 36.7, estable. Resumen de la serie: sin cambios en 6 h.
+Alertas de las últimas 6 h por tipo: SpO2 baja (alta): 1 vez, la última hace 22 min («SpO2 89% bajo»). Abiertas sin atender: 10 (1 de los últimos 30 min; las demás son anteriores).
+Exploración física: sin registros
+Adenda (hace 9 h, firmada): S: - | O: - | A: Adenda: Prueba conexión 1795564281515 | P: -
+Nota SOAP (hace 9 h, firmada): S: Prueba conexión 1795564281515 | O: FC y SpO2 del monitor. | A: Paciente estable, sin cambios. | P: Continuar el manejo indicado.
+Nota SOAP (hace 9 h, borrador): S: Prueba conexión 1795563876807 | O: FC y SpO2 del monitor. | A: Estable. | P: Continuar manejo.
+
+### DEMO-0009 · ¿Qué medicamentos tiene indicados?
+Tipo: dato · Temas: medicamentos
+Largo: 652 caracteres
+Edad: 65 años · Sexo: femenino · Grupo sanguíneo: A+
+Motivo de consulta: Hinchazón de piernas y falta de aire al acostarse · Estado: en atención
+Alergias activas: Yodo (leve: Prurito)
+Medicamentos activos: Furosemida 40 mg intravenosa cada 12 h; Carvedilol 6.25 mg oral cada 12 h; Losartán 50 mg oral cada 24 h
+Diagnósticos activos: Insuficiencia cardíaca, no especificada [I50.9] (presuntivo); Insuficiencia cardíaca [I50.9] (definitivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Medicamentos suspendidos o finalizados: sin registros
+
+### DEMO-0011 · ¿Está grave?
+Tipo: gravedad · Temas: vitales, alertas, exploracion, antecedentes, notas
+Largo: 1596 caracteres
+Edad: 52 años · Sexo: femenino · Grupo sanguíneo: AB-
+Motivo de consulta: Postoperatorio de colecistectomía laparoscópica · Estado: en atención
+Alergias activas: Tramadol (leve: Mareo intenso)
+Medicamentos activos: Paracetamol 1 g oral cada 8 h; Cefazolina 1 g intravenosa cada 8 h
+Diagnósticos activos: Colelitiasis [K80.2] (definitivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Antecedentes: quirurgico: Cesárea; ginecoobstetrico: Dos embarazos, dos partos
+Signos vitales del monitor (último valor): FC 83 lpm (hace menos de 1 min; últimas 6 h entre 76 y 84); SpO2 97 % (hace menos de 1 min; últimas 6 h entre 95 y 99); FR 16 rpm (hace menos de 1 min; últimas 6 h entre 14 y 18); Temperatura 37 °C (hace menos de 1 min; últimas 6 h entre 36.9 y 37.5)
+Puntajes calculados por el sistema: NEWS2 parcial 0 (riesgo bajo; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 0 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: baja (puede ser mayor: el puntaje es parcial).
+Alertas de las últimas 6 h por tipo: ninguna. Sin alertas abiertas.
+Exploración física: sin registros
+Nota SOAP (hace 13 h, firmada): S: Posoperatorio inmediato de colecistectomía laparoscópica; dolor leve en heridas. | O: Signos vitales estables, heridas limpias, tolera líquidos. | A: Evolución posoperatoria favorable. | P: Analgesia, progresar dieta, deambulación temprana, alta prevista en 24 h.
+
+### DEMO-0011 · ¿Qué banderas rojas debo vigilar en este paciente?
+Tipo: banderas · Temas: vitales, alertas, exploracion, antecedentes, notas
+(mismo contexto que arriba)
+
+### DEMO-0011 · ¿Puedo darle tramadol para el dolor?
+Tipo: farmaco · Temas: vitales, alertas, exploracion, antecedentes, notas, medicamentos
+Largo: 1650 caracteres
+Edad: 52 años · Sexo: femenino · Grupo sanguíneo: AB-
+Motivo de consulta: Postoperatorio de colecistectomía laparoscópica · Estado: en atención
+Alergias activas: Tramadol (leve: Mareo intenso)
+Medicamentos activos: Paracetamol 1 g oral cada 8 h; Cefazolina 1 g intravenosa cada 8 h
+Diagnósticos activos: Colelitiasis [K80.2] (definitivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+Antecedentes: quirurgico: Cesárea; ginecoobstetrico: Dos embarazos, dos partos
+Medicamentos suspendidos o finalizados: sin registros
+Signos vitales del monitor (último valor): FC 83 lpm (hace menos de 1 min; últimas 6 h entre 76 y 84); SpO2 97 % (hace menos de 1 min; últimas 6 h entre 95 y 99); FR 16 rpm (hace menos de 1 min; últimas 6 h entre 14 y 18); Temperatura 37 °C (hace menos de 1 min; últimas 6 h entre 36.9 y 37.5)
+Puntajes calculados por el sistema: NEWS2 parcial 0 (riesgo bajo; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)); qSOFA 0 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)); índice de shock no calculable (sin PA). Gravedad sugerida por el NEWS2: baja (puede ser mayor: el puntaje es parcial).
+Alertas de las últimas 6 h por tipo: ninguna. Sin alertas abiertas.
+Exploración física: sin registros
+Nota SOAP (hace 13 h, firmada): S: Posoperatorio inmediato de colecistectomía laparoscópica; dolor leve en heridas. | O: Signos vitales estables, heridas limpias, tolera líquidos. | A: Evolución posoperatoria favorable. | P: Analgesia, progresar dieta, deambulación temprana, alta prevista en 24 h.
+
+### DEMO-0011 · ¿Qué alergias tiene?
+Tipo: dato · Temas: basico
+Largo: 497 caracteres
+Edad: 52 años · Sexo: femenino · Grupo sanguíneo: AB-
+Motivo de consulta: Postoperatorio de colecistectomía laparoscópica · Estado: en atención
+Alergias activas: Tramadol (leve: Mareo intenso)
+Medicamentos activos: Paracetamol 1 g oral cada 8 h; Cefazolina 1 g intravenosa cada 8 h
+Diagnósticos activos: Colelitiasis [K80.2] (definitivo)
+Datos que no hay en el expediente: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.
+

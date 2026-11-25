@@ -2,17 +2,17 @@
 // backend le manda al modelo para la pregunta escrita: lo mínimo de seguridad siempre y el resto según de qué
 // trate (mismas reglas: src/lib/aiTemas.ts es copia de backend/src/services/aiTemas.ts).
 import type { ReactNode } from 'react';
-import { useExpediente, useExploracion, usePatients, useSoapNotes } from '../../api/queries';
+import { useAssignments, useExpediente, useExploracion, usePatients, useSoapNotes } from '../../api/queries';
 import type { HistoriaEntry } from '../../api/types/clinical';
 import type { PatientRow } from '../../data/patients';
-import { detectarTemas, type Tema } from '../../lib/aiTemas';
+import { detectarTemas, detectarTipo, temasDelTipo, type Tema, type TipoPregunta } from '../../lib/aiTemas';
 import { fmtAgo } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 
 const LABEL: Record<Exclude<Tema, 'basico'>, string> = {
   equipo: 'Médico a cargo',
   ubicacion: 'Cama e ingreso',
-  vitales: 'Signos vitales y tendencia de 6 h',
+  vitales: 'Signos vitales, rango de 6 h y puntajes NEWS2 y qSOFA',
   alertas: 'Alertas',
   exploracion: 'Exploración física',
   medicamentos: 'Medicamentos suspendidos',
@@ -24,6 +24,21 @@ const LABEL: Record<Exclude<Tema, 'basico'>, string> = {
   notas: 'Notas SOAP',
   citas: 'Próximas citas',
   documentos: 'Documentos (solo el título)',
+  serie: 'Serie por hora de las últimas 6 h',
+};
+
+// Qué forma de respuesta pide la pregunta (backend/src/services/aiTemas.ts, INSTRUCCION).
+const TIPO: Record<TipoPregunta, string> = {
+  dato: 'Un dato: una frase',
+  gravedad: 'Gravedad, con el puntaje NEWS2',
+  analisis: 'Análisis completo por secciones',
+  diferenciales: 'Diagnósticos diferenciales',
+  estudios: 'Solo estudios',
+  manejo: 'Pasos de manejo inicial',
+  farmaco: 'Fármaco: sí, no o con precaución',
+  banderas: 'Banderas rojas del cuadro',
+  evolucion: 'Evolución de los signos',
+  turno: 'Resumen de entrega de turno',
 };
 const ORDER = Object.keys(LABEL) as Array<keyof typeof LABEL>;
 
@@ -44,6 +59,11 @@ export function AiContext({ row, question, className }: { row: PatientRow | unde
   const notes = useSoapNotes(row?.id);
   const explo = useExploracion(row?.id);
   const patient = usePatients().data?.items.find((p) => p.id === row?.id);
+  // Mismas reglas que el backend (routes/ai.ts): los temas que nombra la pregunta más los que pide su tipo.
+  const tipo = detectarTipo(question);
+  const temas = detectarTemas(question);
+  for (const t of temasDelTipo(tipo)) temas.add(t);
+  const equipo = useAssignments(temas.has('equipo') ? row?.id : undefined);
   if (!row) {
     return (
       <div className={cn('flex flex-col gap-2', className)}>
@@ -52,13 +72,16 @@ export function AiContext({ row, question, className }: { row: PatientRow | unde
     );
   }
   const e = exp.data;
-  const temas = detectarTemas(question);
   const extra = ORDER.filter((t) => temas.has(t));
   const left = ORDER.filter((t) => !temas.has(t));
   const value = (t: keyof typeof LABEL): string => {
     switch (t) {
-      case 'equipo':
-        return 'Carlos Méndez (Médico)';
+      case 'equipo': {
+        // Como el backend: en las asignaciones también hay enfermería, que no cuenta como médico a cargo.
+        const medicos = (equipo.data ?? []).filter((a) => /m[eé]dic/i.test(a.role)).map((a) => a.name);
+        if (equipo.isLoading) return 'Cargando…';
+        return medicos.length ? medicos.join('; ') : 'Todavía no tiene un médico asignado';
+      }
       case 'ubicacion':
         return row.bed ? `${row.bed} (${row.unit ?? '—'})` : 'Sin cama asignada';
       case 'vitales':
@@ -87,6 +110,8 @@ export function AiContext({ row, question, className }: { row: PatientRow | unde
         return 'Sin citas próximas';
       case 'documentos':
         return join((e?.documentos ?? []).slice(0, 8).map((d) => String(d.title)));
+      case 'serie':
+        return 'Promedio de cada hora por signo, para ver qué subió o bajó';
     }
   };
   return (
@@ -99,6 +124,7 @@ export function AiContext({ row, question, className }: { row: PatientRow | unde
           <Row label="Motivo de consulta">{row.reason}</Row>
           <Row label="Alergias activas">{join(active(e?.alergias).map((a) => `${a.substance} (${a.severity}${a.reaction ? `: ${a.reaction}` : ''})`)).replace('sin registros', 'ninguna registrada')}</Row>
           <Row label="Medicamentos activos">{join(active(e?.medicamentos).map((m) => [m.name, m.dose, m.route, m.frequency].filter(Boolean).join(' '))).replace('sin registros', 'ninguno registrado')}</Row>
+          <Row label="Datos que no hay">{`${explo.data?.weightKg ? '' : 'peso, '}función renal y laboratorios, presión arterial${explo.data?.glasgow ? '' : ', Glasgow'}`}</Row>
           <Row label="Diagnósticos activos">{join(active(e?.diagnosticos).map((d) => `${d.description}${d.code ? ` [${d.code}]` : ''}`)).replace('sin registros', 'ninguno')}</Row>
         </dl>
       </div>
@@ -106,6 +132,7 @@ export function AiContext({ row, question, className }: { row: PatientRow | unde
         <p className="font-jakarta text-[12px] font-bold uppercase text-muted">Con esta pregunta, además</p>
         {question.trim() ? (
           <dl className="flex flex-col">
+            <Row label="Tipo de respuesta">{TIPO[tipo]}</Row>
             {extra.map((t) => (
               <Row key={t} label={LABEL[t]}>
                 {value(t)}

@@ -6,11 +6,8 @@ import imgChevronDown2 from '../../assets/chevron-down-2.svg';
 import imgChevronDown4 from '../../assets/chevron-down-4.svg';
 import imgClipboard3 from '../../assets/clipboard-3.svg';
 import imgIconAssetBe1a93ac from '../../assets/icon-asset-be1a93ac.svg';
-import imgLiveIndicatorEllipse from '../../assets/live-indicator-ellipse.svg';
-import imgPhone from '../../assets/phone.svg';
 import imgWrench from '../../assets/wrench.svg';
-import { AppLayout, Badge, Button, Card, EmptyState, focusFirst, Modal, ModalHeader, Select, TextArea, useToast, useValidation } from '../../components';
-import { checkText } from '../../lib/validate';
+import { AppLayout, Card, EmptyState } from '../../components';
 import { cn } from '../../lib/cn';
 
 const CATEGORIES = [
@@ -40,12 +37,12 @@ const FAQ = [
   {
     q: '¿Puedo modificar umbrales de un paciente?',
     category: 'Monitoreo y Alertas',
-    a: "Sí. En el Resumen del paciente toque 'Configurar Umbrales' para ajustar los límites mínimo y máximo y la severidad de cada signo vital.",
+    a: "Todavía no: los umbrales son los del sistema, iguales para todos los pacientes. En el Resumen del paciente, 'Ver umbrales' muestra cuáles son.",
   },
   {
     q: '¿Cómo genero un reporte de turno?',
     category: 'Uso del Sistema',
-    a: "Vaya a Reportes y abra 'Reporte de Entrega de Turno', o use 'Generar Reporte' en la pantalla de Entrega de Turno.",
+    a: "En Entrega de Turno, 'Generar Reporte' abre la entrega lista para imprimir o guardar en PDF. La hoja de un paciente sale de 'Generar Reporte' en su ficha o de Reportes.",
   },
   {
     q: '¿Dónde veo el historial de signos vitales?',
@@ -54,17 +51,13 @@ const FAQ = [
   },
 ];
 
-const REASONS = ['Falla de dispositivo', 'Problema de acceso', 'Error en el sistema', 'Otro'];
-const PRIORITIES = ['Alta', 'Media', 'Baja'];
 
+// "Contacto directo" (un teléfono de relleno y una solicitud con folio inventado) y la insignia "Servicios
+// Operativos" se quitaron: el proyecto no tiene un canal de soporte todavía (REVISION-MEDICO.md, 6).
 export default function MedAyudaSoporte() {
-  const toast = useToast();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<Set<string>>(new Set([FAQ[0].q]));
-  const [contactOpen, setContactOpen] = useState(false);
-  const [reason, setReason] = useState(REASONS[0]);
-  const [priority, setPriority] = useState(PRIORITIES[1]);
 
   const q = query.trim().toLowerCase();
   const faq = FAQ.filter((f) => (!category || f.category === category) && (!q || `${f.q} ${f.a}`.toLowerCase().includes(q)));
@@ -77,26 +70,9 @@ export default function MedAyudaSoporte() {
       return next;
     });
 
-  const [message, setMessage] = useState('');
-  // El mensaje es obligatorio: de 10 a 1000 caracteres (REVISION.md, paso 3, punto 8).
-  const form = useValidation({ 'contacto-descripcion': () => checkText(message, { required: true, min: 10, max: 1000, requiredMessage: 'Describa el problema' }) });
-  const closeContact = () => {
-    setContactOpen(false);
-    setMessage('');
-    form.reset();
-  };
-  const sendTicket = () => {
-    form.markAll();
-    if (form.errors['contacto-descripcion']) {
-      focusFirst(['contacto-descripcion']);
-      return;
-    }
-    closeContact();
-    toast('Solicitud enviada · Folio #4821');
-  };
 
   return (
-    <AppLayout breadcrumb="SIAPPC > Ayuda y Soporte" title="Centro de Soporte" actions={<Badge tone="success" dot>Servicios Operativos</Badge>}>
+    <AppLayout breadcrumb="SIAPPC > Ayuda y Soporte" title="Centro de Soporte">
       <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-7 p-4 md:p-8">
         <div className="flex w-full flex-col gap-1.5 leading-[normal]">
           <h2 className="font-jakarta text-[24px] font-extrabold text-ink">Ayuda y Soporte</h2>
@@ -185,52 +161,8 @@ export default function MedAyudaSoporte() {
           </div>
         </section>
 
-        <div className="flex w-full flex-col gap-5 rounded-2xl border border-line bg-white p-6 drop-shadow-[0px_4px_8px_rgba(0,0,0,0.03)] md:flex-row md:items-center md:justify-between">
-          <div className="flex min-w-0 flex-col gap-1">
-            <p className="font-jakarta text-[18px] font-extrabold leading-[normal] text-ink">Contacto directo</p>
-            <p className="font-jakarta text-[14px] font-normal leading-[normal] text-muted">Soporte técnico 24/7 disponible para incidencias clínicas críticas</p>
-            <a href="tel:+528001234567" className="flex items-center gap-2 pt-2 hover:underline">
-              <img className="size-4 shrink-0" alt="" src={imgPhone} />
-              <span className="whitespace-nowrap font-jakarta text-[16px] font-bold leading-[normal] text-primary">+52 800 123 4567</span>
-            </a>
-          </div>
-          <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">
-            <Button size="lg" onClick={() => setContactOpen(true)}>
-              Contactar Soporte Técnico
-            </Button>
-            <div className="flex items-center gap-1.5">
-              <img className="size-1.5" alt="" src={imgLiveIndicatorEllipse} />
-              <p className="font-jakarta text-[12px] font-normal leading-[normal] text-muted">Todos los sistemas operativos</p>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <Modal labelledBy="contacto-titulo" open={contactOpen} onClose={closeContact} width={480} className="gap-4 p-5 shadow-xl sm:p-6">
-        <ModalHeader id="contacto-titulo" title="Contactar Soporte Técnico" onClose={closeContact} />
-        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
-          <Select variant="input" fieldLabel="Motivo" options={REASONS} value={reason} onChange={setReason} />
-          <Select variant="input" fieldLabel="Prioridad" options={PRIORITIES} value={priority} onChange={setPriority} />
-        </div>
-        <TextArea
-          id="contacto-descripcion"
-          label="Descripción"
-          value={message}
-          onChange={setMessage}
-          onBlur={() => form.touch('contacto-descripcion')}
-          placeholder="Describe el problema: qué pantalla, qué hiciste y qué pasó"
-          minHeight={96}
-          maxLength={1000}
-          aria-required
-          error={form.show('contacto-descripcion')}
-        />
-        <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
-          <Button variant="secondary" onClick={closeContact}>
-            Cancelar
-          </Button>
-          <Button onClick={sendTicket}>Enviar solicitud</Button>
-        </div>
-      </Modal>
     </AppLayout>
   );
 }

@@ -3,12 +3,14 @@
 // el turno, de src/api/sinBackend.ts (la entrega de turno no existe en el backend). Las alergias de
 // "Indicaciones importantes" son las del seed.
 import { useState, type SyntheticEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getTurno } from '../../api/sinBackend';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
+import { getEntregas, getTurno, marcarEntregaLeida } from '../../api/sinBackend';
+import { AppLink } from '../../components/ui/AppLink';
 import { AppLayout, Badge, Button, Card, IconCheck, rowLinkClass, SearchBox, Table, useRowLink, useToast } from '../../components';
 import { usePatientRows } from '../../data/patients';
 import { alertTitle } from '../../lib/alerts';
-import { fmtDate, fmtTime } from '../../lib/clinical';
+import { fmtDateTime, fmtTime, turnoDe } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 import { patientPath } from '../../lib/patientLink';
 
@@ -22,10 +24,16 @@ const DOT = { critica: 'bg-danger', alta: 'bg-warning', media: 'bg-success', baj
 export default function MedTurnoResumenRecibido() {
   const rowLink = useRowLink();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const [done, setDone] = useState<Set<string>>(new Set());
-  const [read, setRead] = useState(false);
   const { rows, groups } = usePatientRows();
   const turno = useQuery({ queryKey: ['sinBackend', 'turno'], queryFn: getTurno });
+  // SIMULADO: la entrega elegida en el historial (?entrega=) o la última registrada en este navegador (pedido 11).
+  const [params] = useSearchParams();
+  const entregas = useQuery({ queryKey: ['sinBackend', 'entregas'], queryFn: getEntregas });
+  const entrega = entregas.data?.find((e) => e.id === params.get('entrega')) ?? entregas.data?.[0];
+  const [leidaAhora, setLeidaAhora] = useState(false);
+  const read = leidaAhora || !!entrega?.leida;
   const toggle = (t: string) =>
     setDone((s) => {
       const next = new Set(s);
@@ -37,9 +45,10 @@ export default function MedTurnoResumenRecibido() {
   const said = (cedula: string) => turno.data?.find((t) => t.cedula === cedula);
   // Las 4 alertas (agrupadas) más recientes del turno.
   const alerts = [...groups].sort((a, b) => b.latest.at.localeCompare(a.latest.at)).slice(0, 4);
+  // Cada pendiente con su paciente: se tacha al hacerlo y lleva a su ficha.
   const tasks = rows.flatMap((r) => {
     const t = said(r.document);
-    return t && t.tono !== 'success' ? [`${t.pendiente} - ${r.name}`] : [];
+    return t && t.tono !== 'success' ? [{ texto: `${t.pendiente} - ${r.name}`, cedula: r.document, nombre: r.name }] : [];
   });
   const indications = rows.flatMap((r) => (said(r.document)?.alergias ?? []).map((a) => `${surname(r.name)}: alergia a ${a.toLowerCase()} — no indicar ni usar.`));
   const critical = rows.filter((r) => r.state === 'critico');
@@ -49,8 +58,6 @@ export default function MedTurnoResumenRecibido() {
         .map((r) => `${surname(r.name)}: ${(said(r.document)?.novedad ?? '').replace(/\.$/, '')}.`)
         .join(' ')}`
     : 'Turno sin pacientes críticos.';
-  const handedAt = new Date();
-  handedAt.setHours(6, 55, 0, 0);
 
   return (
     <AppLayout breadcrumb="SIAPPC > Turno > Resumen Recibido" title="Entrega de Turno" actions={<SearchBox to="/MedBusquedaGlobal" placeholder="Buscar paciente, HC..." width={280} />}>
@@ -65,12 +72,16 @@ export default function MedTurnoResumenRecibido() {
               </span>
             </div>
             <div className="flex flex-col gap-0.5 text-[12px] leading-[normal] sm:items-end">
-              <p className="font-jakarta font-semibold text-ink">Turno Nocturno 23:00-07:00</p>
-              <p className="font-jakarta font-normal text-muted">{`Fecha: ${fmtDate(handedAt.toISOString())}, 06:55 hrs`}</p>
-              <p className="font-jakarta font-normal text-muted">{`${rows.length} pacientes incluidos`}</p>
+              <p className="font-jakarta font-semibold text-ink">{entrega ? `Turno ${entrega.turno}` : `Turno ${turnoDe().nombre} (${turnoDe().horas})`}</p>
+              <p className="font-jakarta font-normal text-muted">{entrega ? `Entregado el ${fmtDateTime(entrega.at)}` : 'Sin fecha de entrega'}</p>
+              <p className="font-jakarta font-normal text-muted">{`${entrega?.pacientes.length ?? rows.length} pacientes incluidos`}</p>
             </div>
           </div>
-          <p className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">Entregado por: Dra. Laura Sánchez - Médico de Guardia Nocturna</p>
+          <p className="font-jakarta text-[13px] font-normal leading-[normal] text-muted">
+            {entrega
+              ? `Entregado por: ${entrega.entrego} (registrado en este navegador; el sistema todavía no tiene entrega de turno)`
+              : 'Todavía no hay una entrega registrada en este navegador: se muestra lo que el sistema tiene de cada paciente.'}
+          </p>
         </div>
 
         <div className="flex w-full flex-1 flex-col items-start gap-5 xl:flex-row">
@@ -149,15 +160,18 @@ export default function MedTurnoResumenRecibido() {
               <CardHeading>Pendientes para Este Turno</CardHeading>
               <ul className="flex w-full flex-col gap-[10px]">
                 {tasks.map((t) => {
-                  const checked = done.has(t);
+                  const checked = done.has(t.texto);
                   return (
-                    <li key={t}>
-                      <button type="button" role="checkbox" aria-checked={checked} onClick={() => toggle(t)} className="flex w-full items-center gap-[10px] text-left">
+                    <li key={t.texto} className="flex w-full items-center gap-2">
+                      <button type="button" role="checkbox" aria-checked={checked} onClick={() => toggle(t.texto)} className="flex min-w-0 flex-1 items-center gap-[10px] text-left">
                         <span className={cn('flex size-[18px] shrink-0 items-center justify-center rounded border-2 text-white', checked ? 'border-primary bg-primary' : 'border-muted')}>
                           {checked && <IconCheck size={10} />}
                         </span>
-                        <span className={cn('min-w-0 flex-1 font-jakarta text-[13px] font-normal leading-[normal]', checked ? 'text-muted line-through' : 'text-ink')}>{t}</span>
+                        <span className={cn('min-w-0 flex-1 font-jakarta text-[13px] font-normal leading-[normal]', checked ? 'text-muted line-through' : 'text-ink')}>{t.texto}</span>
                       </button>
+                      <AppLink to={patientPath('/MedPacienteResumen', t.cedula)} className="shrink-0 font-jakarta text-[12px] font-bold text-primary hover:underline" aria-label={`Abrir la ficha de ${t.nombre}`}>
+                        Abrir
+                      </AppLink>
                     </li>
                   );
                 })}
@@ -176,7 +190,7 @@ export default function MedTurnoResumenRecibido() {
 
             <Card className="flex w-full flex-col gap-3">
               <CardHeading>Notas del Turno Anterior</CardHeading>
-              <p className="font-jakarta text-[13px] font-normal leading-[1.5] text-muted">{notes}</p>
+              <p className="font-jakarta text-[13px] font-normal leading-[1.5] text-muted">{entrega?.notas || notes}</p>
             </Card>
 
             <div className="flex w-full flex-col gap-[10px]">
@@ -184,9 +198,13 @@ export default function MedTurnoResumenRecibido() {
                 size="lg"
                 fullWidth
                 disabled={read}
-                onClick={() => {
-                  setRead(true);
-                  toast('Entrega de turno marcada como leída');
+                onClick={async () => {
+                  setLeidaAhora(true);
+                  if (entrega) {
+                    await marcarEntregaLeida(entrega.id);
+                    void queryClient.invalidateQueries({ queryKey: ['sinBackend', 'entregas'] });
+                  }
+                  toast('Entrega marcada como leída (en este navegador)');
                 }}
               >
                 {read ? 'Leído ✓' : 'Marcar como Leído ✓'}

@@ -11,6 +11,10 @@
 > **Actualizado con el paso 4, PR 2** (`REVISION-IA.md`, sección 9): los datos ya no son los de Figma sino los 8
 > pacientes del seed, y cada fila o tarjeta abre el expediente de **su** paciente. Lo que cambió por eso está en la
 > sección "Paso 4 — datos del seed" al final; las filas de arriba siguen describiendo el paso 2.
+>
+> **Actualizado con la revisión del médico** (rama `feature/prototipo-revision-medico`, ver `REVISION-MEDICO.md`): se
+> quitaron los botones que no hacían nada real y otros pasaron a funcionar con datos reales. Está en la sección
+> "Revisión del médico (fase 2)" al final; donde una fila de arriba dice otra cosa, manda esa sección.
 
 Objetivo: que en `prototipo/` no quede nada que se pueda tocar y no haga nada. Cada elemento hace una de estas cosas:
 
@@ -531,3 +535,43 @@ Todo es nuevo (en Figma no hay IA) y solo lo ve quien tiene `asistente_ia` y no 
 | Nota SOAP | "Insertar en Evaluación (A)" / "Insertar en Plan (P)" / "Descartar" | **Estado**: agrega el texto al final de la sección o descarta la sugerencia. |
 | Nota SOAP | Casilla "Revisé el texto sugerido por la IA" | **Estado**: sin marcarla, "Firmar" queda desactivado (solo si la nota tiene texto de la IA). |
 | Dashboard | "La IA propuso N hipótesis · hace X" | **Pantalla**: Resumen de ese paciente. |
+
+## Revisión del médico (fase 2)
+
+Lo que cambió con la revisión del médico (`REVISION-MEDICO.md`, secciones 3 y 6). Donde una fila de arriba dice otra
+cosa, manda esta tabla. Lo que no está aquí (navegación, pestañas, filtros, paginación, ventanas, notas,
+diagnósticos, exploración, notificaciones y búsqueda) sigue igual.
+
+| Dónde | Elemento | Antes | Ahora |
+|---|---|---|---|
+| Cabecera del paciente (18 fichas) | "Generar Reporte" | Aviso "Reporte de X generado"; no generaba nada | **Modal**: hoja del paciente con datos reales (identificación, diagnósticos, alergias, medicamentos, últimos signos, alertas activas, Glasgow y última nota). "Imprimir" abre la impresión del navegador (imprimir o guardar en PDF). Con `?imprimir=1` se abre sola. |
+| Nueva Nota SOAP | "Nueva Nota SOAP" de la cabecera | Nada: ya se estaba ahí | **Se quitó** en esa pantalla. |
+| Dashboard | Tarjeta "Pendientes Evaluación" | Filtraba la tabla sin que se notara | **Pantalla**: Mis Pacientes filtrado por "Pendientes de evaluación" (`?filtro=evaluacion`). Cada fila abre la Exploración física. Las cuatro tarjetas son enlaces. |
+| Dashboard, Centro de alertas, Resumen, Monitoreo detallado, Mis Pacientes | Alertas "activas" | Todas las abiertas, aunque fueran de hace días | Activas son las de los **últimos 30 min**. Las más viejas van plegadas en "Anteriores sin atender" (**Estado**: desplegar). El indicador "Alertas activas" del Centro cuenta con la misma regla. |
+| Centro de alertas | Quién atiende | "Dr. Carlos Méndez" fijo | El nombre de quien usa la sesión. |
+| Monitoreo detallado, Dashboard (celda GCS), tarjetas de cama | Glasgow "Pendiente" o "—" | Texto | **Pantalla**: "Registrar exploración" abre la Exploración física de ese paciente. Solo aparece con permiso de editar la historia clínica. |
+| Monitoreo detallado, Nueva Nota SOAP | Curvas del monitor | Imágenes fijas (líneas en diagonal) | Las lecturas reales del monitor de los últimos 30 min. La PA sigue simulada (pedido 10). |
+| Tendencias | 6h / 12h / 24h / 48h / 7d | Cambiaban las horas del eje | Eje de tiempo real con las lecturas del monitor del rango. Dicen desde qué hora hay lecturas y qué es simulado. |
+| Comparativa | "Exportar" | Aviso "Comparativa exportada (PDF)" | Impresión del navegador con la comparativa. |
+| Comparativa | "+ Agregar Paciente" | Aviso "admite 2 pacientes" | **Se quitó**. |
+| Entrega de turno | "Generar Reporte" | Aviso "Reporte de turno generado" | Impresión del navegador con la entrega. |
+| Entrega de turno | Tarjeta del receptor | "Dra. Ana Gómez" (inventada) | "Quién entrega", con la persona de la sesión, y una nota: el sistema todavía no avisa al turno que recibe (pedido 11). |
+| Entrega de turno | "Confirmar Entrega de Turno" | Aviso "se notificó a la Dra. Ana Gómez" | Guarda la entrega en este navegador (fecha, turno, quién entrega, todos los pacientes a cargo y notas) y lleva al Historial con el **Aviso** "Entrega registrada (en este navegador…)". Mientras cargan los pacientes, el botón espera. |
+| Entrega de turno | Pestaña "Nueva Entrega" | — | Se queda: es la pestaña activa. El recorrido automático la contó como "nada" porque ya se está ahí. |
+| Entrega de turno | Título y etiqueta del turno | Fijos | Salen de la hora: Matutino 07–15, Vespertino 15–23, Nocturno. |
+| Historial de entregas | Tabla | 8 filas fijas de agosto de 2026 | Las entregas guardadas. Cada fila abre su resumen (`?entrega=`). Sin entregas, lo dice. |
+| Resumen de turno recibido | Encabezado | Fijo | La entrega elegida, o la última: turno, fecha y quién entregó. Si no hay ninguna, lo explica. |
+| Resumen de turno recibido | Pendientes | Casillas sin destino | Siguen siendo casillas (**Estado**: marcar). Cada pendiente tiene además "Abrir" (**Pantalla**: la ficha de su paciente). El recorrido automático contaba la casilla como "nada". |
+| Resumen de turno recibido | "Marcar como leído" | Aviso | Marca la entrega como leída en este navegador + **Aviso** "(en este navegador)". |
+| Reportes | Historial, vista previa, descarga, pendientes, "Entregar", "Generar Nuevo Reporte", "Configurar y Generar" | Archivos y avisos inventados | **Se quitaron**: el backend no tiene reportes clínicos (pedido 14). Quedan "Hoja del paciente" (**Opciones**: los pacientes que no están de alta; abre su hoja imprimible) y los Informes del Sistema. |
+| Documentos clínicos | "Descargar" | Aviso "Descargando…" | **Se quitó**: el backend no guarda el archivo (pedido 15). "Ver" y "Subir documento" se quedan. |
+| Registro de diagnóstico | "Estudios adjuntos" (zona para subir) | Aviso "Archivo adjuntado" | **Se quitó**: no se guardaba en ningún lado. |
+| Configurar umbrales | Listas, interruptores, Mín / Máx, "Restablecer", "Guardar" | Guardaba en el navegador sin cambiar cuándo suena una alerta | **Solo lectura**: los umbrales reales del sistema, que son los mismos para todos los pacientes, hasta el pedido 8. En el Resumen el enlace se llama "Ver umbrales". |
+| Detalle de monitor | "Solicitar calibración", "Reportar falla" | Avisos que no llegaban a nadie | **Se quitaron** (pedido 18). "Ver paciente" se queda. |
+| Ayuda y soporte | Tarjeta "Contacto directo" (teléfono +52 800…, "Contactar Soporte Técnico") y etiqueta "Servicios Operativos" | Teléfono y folio inventados | **Se quitaron**: el proyecto no tiene correo ni teléfono de soporte. Las preguntas frecuentes de umbrales y turno dicen cómo funciona hoy. |
+| Mi Perfil | Interruptores de notificaciones | 5, sin efecto | 3 que funcionan y se guardan en este navegador: aviso en pantalla de las alertas críticas, aviso de las altas y sonido con las críticas. Se quitaron "Nuevas asignaciones" y "Reportes de turno semanales", que no existían. |
+| Mi Perfil | "Cambiar Contraseña", "Configurar MFA" | Desactivados con el login real | Con el backend **se quitaron**, y un texto dice que los gestiona el administrador (pedido 17). En modo mock siguen. |
+| Mis Pacientes | "Indicar alta médica" | Aviso; no quedaba en ningún lado | Crea un borrador de nota SOAP con el alta en el plan (POST `/soap/notes`) y lo abre para revisarlo y firmarlo. El egreso sigue siendo de Admisión. |
+| Confirmación de atención, Interrogatorio, Nota de ingreso | "Confirmar" / "Guardar" | Aviso | Igual, y el aviso dice "en este equipo" o "en este navegador" (pedidos 2 y 11 a 13). |
+| Asistente IA y panel | Preguntas rápidas | 5 | 7: se agregan "Gravedad" y "Entrega de turno". Cada una manda un texto que el backend reconoce como su tipo de respuesta (`REVISION-IA-RESPUESTAS.md`). |
+| Asistente IA | "Lo que verá la IA" | Médico a cargo fijo ("Carlos Méndez") | El médico a cargo real. Dice además el tipo de respuesta que se pide y los datos que no hay en el expediente. |

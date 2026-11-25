@@ -21,7 +21,7 @@ import { delayFor, wait } from './mock/delay';
 import type { Inventado } from './mock/seed/tipos';
 import { listPatients } from './patients';
 import { listReadings } from './sensors';
-import { monitoreoVivo, perfilGenerado, signosVivos, vivo, type Contexto } from './simulacion';
+import { monitoreoVivo, perfilGenerado, signosVivos, vivo, type Contexto, type MonitoreoVivo } from './simulacion';
 import type { Expediente } from './types/clinical';
 import type { AssignedPatient } from './types/dashboard';
 import type { Patient } from './types/patients';
@@ -196,7 +196,7 @@ export const saveSignosIngreso = (cedula: string, signos: SignosIngreso) => pedi
 
 // --- Monitoreo detallado: neurológico, respiratorio, balance, laboratorios, perfusión -------------
 
-export type MonitoreoExtra = Inventado['monitoreo'];
+export type MonitoreoExtra = MonitoreoVivo;
 /** Los paneles del caso, con sus números moviéndose poco a poco (simulacion.ts, `monitoreoVivo`). */
 export const getMonitoreoExtra = (cedula: string) =>
   pedir(async (): Promise<MonitoreoExtra | null> => {
@@ -250,6 +250,28 @@ export const getTurno = () =>
     return filas.filter((f): f is TurnoPaciente => f !== null);
   }, 'lista');
 export const getBorradorEntrega = () => pedir(() => guardado<string>('entrega:borrador') ?? null);
+
+/** Una entrega de turno registrada en el prototipo (SIMULADO: el backend no tiene entregas, pedido 11). */
+export type Entrega = {
+  id: string;
+  at: string;
+  turno: string;
+  entrego: string;
+  pacientes: Array<{ cedula: string; nombre: string; cama: string | null; novedad: string; pendiente: string }>;
+  notas: string;
+  leida: boolean;
+};
+/** Las entregas registradas en esta pestaña, de la más reciente a la más vieja. */
+export const getEntregas = () => pedir((): Entrega[] => [...(guardado<Entrega[]>('entregas') ?? [])].sort((a, b) => b.at.localeCompare(a.at)), 'lista');
+export const guardarEntrega = (e: Omit<Entrega, 'id' | 'leida'>) =>
+  pedir((): Entrega => {
+    const nueva: Entrega = { ...e, id: `E-${Date.now()}`, leida: false };
+    guardar('entregas', [nueva, ...(guardado<Entrega[]>('entregas') ?? [])]);
+    guardar('entrega:borrador', null);
+    return nueva;
+  }, 'escritura');
+export const marcarEntregaLeida = (id: string) =>
+  pedir(() => guardar('entregas', (guardado<Entrega[]>('entregas') ?? []).map((e) => (e.id === id ? { ...e, leida: true } : e))), 'escritura');
 export const saveBorradorEntrega = (texto: string) => pedir(() => guardar('entrega:borrador', texto), 'escritura');
 
 // --- Notificaciones que no son alertas (el backend solo tiene `alertaCritica` y `alertaTemprana`) ---
@@ -373,32 +395,117 @@ export const getTendencias = async (cedula: string, horas: number, device?: stri
 
 type Valores = { hr: number; spo2: number; resp: number; sis: number; dia: number; temp: number };
 
+/**
+ * Los signos simulados del paciente en el instante `t`: van de los de ingreso a los de ahora, con la misma deriva que
+ * el resto de las pantallas (en t = ahora, el valor que muestran). null antes de que llegara.
+ */
+function valoresSimulados(p: Perfil, cedula: string, t: number, ahora: number): Valores | null {
+  if (t < p.llegada) return null;
+  const ing = p.signosIngreso;
+  const [sisIng, diaIng] = (ing?.ta ?? `${p.pa.sis + 8}/${p.pa.dia + 6}`).split('/').map(Number);
+  const inicio: Valores = { hr: ing?.fc ?? p.actuales.hr, spo2: ing?.spo2 ?? p.actuales.spo2, resp: ing?.fr ?? p.actuales.resp, sis: sisIng, dia: diaIng, temp: ing?.temp ?? p.temp };
+  const fin: Valores = { ...p.actuales, sis: p.pa.sis, dia: p.pa.dia, temp: p.temp };
+  const avance = Math.max(0, Math.min(1, (t - p.llegada) / Math.max(1, ahora - p.llegada)));
+  const curva = (k: keyof Valores) => inicio[k] + (fin[k] - inicio[k]) * avance ** 1.5;
+  const s = signosVivos(cedula, { pa: { sis: curva('sis'), dia: curva('dia') }, temp: curva('temp') }, t);
+  return {
+    hr: Math.round(vivo(curva('hr'), 4, `${cedula}:hr`, 7, t)),
+    spo2: Math.min(100, Math.round(vivo(curva('spo2'), 1, `${cedula}:spo2`, 13, t))),
+    resp: Math.round(vivo(curva('resp'), 1.5, `${cedula}:resp`, 9, t)),
+    sis: s.pa.sis,
+    dia: s.pa.dia,
+    temp: s.temp,
+  };
+}
+
 const tendenciaSimulada = (cedula: string, horas: number) =>
   pedir(async (): Promise<Array<PuntoTendencia | null>> => {
     const p = await perfil(cedula);
     if (!p) return Array.from({ length: 6 }, () => null);
-    const ing = p.signosIngreso;
-    const [sisIng, diaIng] = (ing?.ta ?? `${p.pa.sis + 8}/${p.pa.dia + 6}`).split('/').map(Number);
-    const inicio: Valores = { hr: ing?.fc ?? p.actuales.hr, spo2: ing?.spo2 ?? p.actuales.spo2, resp: ing?.fr ?? p.actuales.resp, sis: sisIng, dia: diaIng, temp: ing?.temp ?? p.temp };
-    const fin: Valores = { ...p.actuales, sis: p.pa.sis, dia: p.pa.dia, temp: p.temp };
     const ahora = Date.now();
     return Array.from({ length: 6 }, (_, i) => {
       const t = ahora - ((5 - i) / 5) * horas * HORA;
-      if (t < p.llegada) return null;
-      const avance = Math.max(0, Math.min(1, (t - p.llegada) / Math.max(1, ahora - p.llegada)));
-      const curva = (k: keyof Valores) => inicio[k] + (fin[k] - inicio[k]) * avance ** 1.5;
-      // Lo mismo que getSignosExtra en ese instante: en t = ahora, el valor que muestran las demás pantallas.
-      const s = signosVivos(cedula, { pa: { sis: curva('sis'), dia: curva('dia') }, temp: curva('temp') }, t);
-      return {
-        at: new Date(t).toISOString(),
-        hr: Math.round(vivo(curva('hr'), 4, `${cedula}:hr`, 7, t)),
-        spo2: Math.min(100, Math.round(vivo(curva('spo2'), 1, `${cedula}:spo2`, 13, t))),
-        resp: Math.round(vivo(curva('resp'), 1.5, `${cedula}:resp`, 9, t)),
-        sis: s.pa.sis,
-        dia: s.pa.dia,
-        temp: s.temp,
-      };
+      const v = valoresSimulados(p, cedula, t, ahora);
+      return v ? { ...v, at: new Date(t).toISOString() } : null;
     });
+  });
+
+// --- Serie de lecturas en su hora real (Tendencias y las curvas del monitor de cama) -------------------
+
+export type Signo = 'hr' | 'spo2' | 'resp' | 'temp' | 'sis' | 'dia';
+/** Cada punto es [instante en ms, valor]. */
+export type Serie = {
+  desde: number;
+  hasta: number;
+  series: Record<Signo, Array<[number, number]>>;
+  /** Qué series son lecturas del monitor (el resto, simuladas). */
+  reales: Signo[];
+  /** El último valor de cada signo (lo que va en la cabecera). */
+  ultimo: Partial<Record<Signo, number>>;
+};
+
+/** Como mucho `max` puntos: promedia por tramos de tiempo iguales (una gráfica no necesita más). */
+function reducir(puntos: Array<[number, number]>, desde: number, hasta: number, max: number, decimales: number): Array<[number, number]> {
+  if (puntos.length <= max) return puntos;
+  const ancho = (hasta - desde) / max;
+  const tramos = new Map<number, [number, number, number]>();
+  for (const [t, v] of puntos) {
+    const k = Math.min(max - 1, Math.floor((t - desde) / ancho));
+    const a = tramos.get(k) ?? [0, 0, 0];
+    tramos.set(k, [a[0] + t, a[1] + v, a[2] + 1]);
+  }
+  const f = 10 ** decimales;
+  return [...tramos.values()].map(([st, sv, n]) => [st / n, Math.round((sv / n) * f) / f] as [number, number]).sort((x, y) => x[0] - y[0]);
+}
+
+/**
+ * Las últimas `horas` de cada signo con su hora real.
+ * - Con el backend: FC, SpO2, FR y temperatura son las lecturas del equipo (`GET /sensors/readings`, hasta 500 por
+ *   signo y sin filtro de fecha: con lecturas cada 30 s alcanzan unas 4 h, pedido 9). La temperatura, simulada si el
+ *   monitor no la manda.
+ * - La PA siempre es simulada (pedido 10), en los mismos instantes que la FC o, sin lecturas, cada pocos minutos.
+ * - Sin backend: todo simulado.
+ */
+export const getSerie = (cedula: string, horas: number, device?: string | null) =>
+  pedir(async (): Promise<Serie | null> => {
+    const p = await perfil(cedula);
+    if (!p) return null;
+    const hasta = Date.now();
+    const desde = hasta - horas * HORA;
+    const MAX = horas <= 1 ? 90 : 240;
+    const series: Serie['series'] = { hr: [], spo2: [], resp: [], temp: [], sis: [], dia: [] };
+    const reales: Signo[] = [];
+    if (API_MODE !== 'mock' && goesToBackend('/sensors/readings') && device) {
+      const limite = horas <= 1 ? 150 : 500;
+      const vars = ['hr', 'spo2', 'resp', 'temp'] as const;
+      const lecturas = await Promise.all(vars.map((variable) => listReadings({ device, variable, limit: limite }).catch((): SensorReading[] => [])));
+      vars.forEach((k, i) => {
+        const pts = lecturas[i]
+          .map((l) => [Date.parse(l.at), l.value] as [number, number])
+          .filter(([t]) => t >= desde && t <= hasta + 60_000)
+          .sort((x, y) => x[0] - y[0]);
+        if (pts.length) {
+          series[k] = reducir(pts, desde, hasta, MAX, k === 'temp' ? 1 : 0);
+          reales.push(k);
+        }
+      });
+    }
+    // Instantes de lo simulado: los de la FC real o, si no hay, unos 60 repartidos en el rango.
+    const paso = (hasta - desde) / 60;
+    const instantes = series.hr.length >= 2 ? series.hr.map(([t]) => t) : Array.from({ length: 61 }, (_, i) => desde + i * paso);
+    for (const t of instantes) {
+      const v = valoresSimulados(p, cedula, t, hasta);
+      if (!v) continue;
+      series.sis.push([t, v.sis]);
+      series.dia.push([t, v.dia]);
+      for (const k of ['hr', 'spo2', 'resp', 'temp'] as const) if (!reales.includes(k)) series[k].push([t, v[k]]);
+    }
+    const ultimo: Serie['ultimo'] = {};
+    for (const k of Object.keys(series) as Signo[]) {
+      const u = series[k].at(-1);
+      if (u) ultimo[k] = u[1];
+    }
+    return { desde, hasta, series, reales, ultimo };
   });
 
 // --- Umbrales por paciente (hoy son fijos para todos en backend/src/services/mqttIngest.ts) ---------
@@ -414,11 +521,14 @@ export const saveUmbrales = (cedula: string, umbrales: Umbrales) => pedir(() => 
 export const useSignosTodos = () => useQuery({ queryKey: ['sinBackend', 'signosTodos'], queryFn: getSignosExtraTodos, refetchInterval: VIVO_MS });
 
 /**
- * Lo que cambia con el tiempo y se vuelve a pedir solo: signos y paneles cada 15 s (casi siempre sin red: la deriva se
- * calcula aquí), tendencias cada 60 s (con el backend son 4 consultas de lecturas). Lo que se edita en pantalla
- * (notas, indicaciones), no.
+ * Lo que cambia con el tiempo y se vuelve a pedir solo:
+ * - signos, paneles y las curvas del monitor de cama (`curva-…`), cada 15 s, al ritmo del monitor;
+ * - la serie de Tendencias (`serie-…`), cada 30 s;
+ * - las minigráficas de la Comparativa (`tendencias-…`), cada 60 s.
+ * Con el backend cada serie son 4 consultas de lecturas. Lo que se edita en pantalla (notas, indicaciones), no.
  */
-const cadaCuanto = (nombre: string) => (/^(signos|monitoreo)$/.test(nombre) ? VIVO_MS : nombre.startsWith('tendencias-') ? 60_000 : false);
+const cadaCuanto = (nombre: string) =>
+  /^(signos|monitoreo)$/.test(nombre) || nombre.startsWith('curva-') ? VIVO_MS : nombre.startsWith('serie-') ? 30_000 : nombre.startsWith('tendencias-') ? 60_000 : false;
 
 /** React Query para estas funciones: `useExtra('monitoreo', cedula, getMonitoreoExtra)`. */
 export function useExtra<T>(nombre: string, cedula: string | undefined, fn: (cedula: string) => Promise<T>) {

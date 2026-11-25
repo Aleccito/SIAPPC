@@ -9,16 +9,15 @@ import imgAvatar2Png from '../../assets/avatar-2.png';
 import imgHeaderRowFrame from '../../assets/header-row-frame.svg';
 import imgHeaderRowFrame2 from '../../assets/header-row-frame-2.svg';
 import imgModalHeaderFrame from '../../assets/modal-header-frame.svg';
-import imgWave from '../../assets/wave.svg';
-import imgWave2 from '../../assets/wave-2.svg';
-import imgWave3 from '../../assets/wave-3.svg';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { createSoapNote, signSoapNote } from '../../api/clinical';
 import { ApiError, request } from '../../api/http';
 import { useMonitoredBeds, useSoapNote, useSoapNotes } from '../../api/queries';
-import { getSignosExtra, useExtra } from '../../api/sinBackend';
+import { getSerie, getSignosExtra, useExtra, type Signo } from '../../api/sinBackend';
+import { CurvaSigno } from '../../components/monitor/CurvaSigno';
+import { EcgLive } from '../../components/monitor/EcgLive';
 import type { SoapNote as ApiSoapNote } from '../../api/types/clinical';
 import {
   aiTextUsed,
@@ -54,9 +53,9 @@ import { usePatientNavigate } from '../../lib/patientLink';
 import { checkText } from '../../lib/validate';
 
 const SIGNALS = [
-  { key: 'hr', label: 'ECG II', unit: 'bpm', color: 'text-[#22c55e]', wave: imgWave, icon: imgHeaderRowFrame, iconNextToLabel: true, border: 'border border-white' },
-  { key: 'spo2', label: 'SpO2', unit: '%', color: 'text-[#06b6d4]', wave: imgWave2, icon: imgHeaderRowFrame2, iconNextToLabel: false, border: 'border-l-[3px] border-white' },
-  { key: 'pa', label: 'PA', unit: 'mmHg', color: 'text-[#eab308]', wave: imgWave3, icon: imgHeaderRowFrame2, iconNextToLabel: false, border: 'border-l-[3px] border-white' },
+  { key: 'hr', label: 'ECG II', unit: 'bpm', color: 'text-[#22c55e]', curva: ['hr'], minimo: 20, icon: imgHeaderRowFrame, iconNextToLabel: true, border: 'border border-white' },
+  { key: 'spo2', label: 'SpO2', unit: '%', color: 'text-[#06b6d4]', curva: ['spo2'], minimo: 6, icon: imgHeaderRowFrame2, iconNextToLabel: false, border: 'border-l-[3px] border-white' },
+  { key: 'pa', label: 'PA', unit: 'mmHg', color: 'text-[#eab308]', curva: ['sis', 'dia'], minimo: 30, icon: imgHeaderRowFrame2, iconNextToLabel: false, border: 'border-l-[3px] border-white' },
 ] as const;
 
 type Key = 's' | 'o' | 'a' | 'p';
@@ -95,8 +94,9 @@ function NuevaNota({ v, draft }: { v: PatientView; draft: ApiSoapNote | null }) 
   const beds = useMonitoredBeds();
   const vitals = beds.data?.find((b) => b.patientId === v.id)?.vitals;
   const signos = useExtra('signos', v.cedula, getSignosExtra);
+  const curva = useExtra('curva-30m', v.cedula, (c) => getSerie(c, 0.5, v.assigned?.device));
   const notes = useSoapNotes(v.id);
-  const last = notes.data?.find((n) => n.id !== draft?.id);
+  const last = notes.data?.find((n) => n.id !== draft?.id && n.parentId === null);
   const value = (key: (typeof SIGNALS)[number]['key']) =>
     key === 'pa' ? (signos.data ? `${signos.data.pa.sis}/${signos.data.pa.dia}` : '—') : String(vitals?.[key] ?? '—');
 
@@ -199,8 +199,19 @@ function NuevaNota({ v, draft }: { v: PatientView; draft: ApiSoapNote | null }) 
                   {!s.iconNextToLabel && <img className="size-3.5 self-center" alt="" src={s.icon} />}
                 </div>
               </div>
+              {/* El ECG es la onda real del equipo; SpO2 y PA, la curva de los últimos 30 min (la PA, simulada). */}
               <div className="relative h-14 w-full overflow-hidden rounded-lg bg-[#0b1220]">
-                <img className="absolute left-0 top-[10px] h-9 w-[380px] max-w-full object-fill" alt="" src={s.wave} />
+                {s.key === 'hr' ? (
+                  <EcgLive device={v.assigned?.device ?? beds.data?.find((b) => b.patientId === v.id)?.device} />
+                ) : (
+                  <div className={cn('absolute inset-1', s.color)}>
+                    <CurvaSigno
+                      label={`${s.label}: últimos 30 minutos`}
+                      minimo={s.minimo}
+                      curvas={s.curva.map((k, i) => ({ puntos: curva.data?.series[k as Signo] ?? [], opacidad: i ? 0.6 : 1 }))}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           ))}

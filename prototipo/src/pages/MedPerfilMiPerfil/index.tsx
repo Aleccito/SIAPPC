@@ -5,6 +5,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAssignedPatients } from '../../api/queries';
 import { REAL_AUTH } from '../../api/mode';
+import { guardarPreferencias, leerPreferencias, sonarAlerta, type Preferencias } from '../../lib/preferencias';
 import { fmtDateTime, initials } from '../../lib/clinical';
 import imgSwitchTrack from '../../assets/switch-track.svg';
 import imgSwitchTrack2 from '../../assets/switch-track-2.svg';
@@ -12,12 +13,12 @@ import { AppLayout, Badge, Button, Card, CardTitle, Divider, focusFirst, Input, 
 import { checkNewPassword } from '../../lib/validate';
 
 
-const TOGGLES: Array<[string, boolean]> = [
-  ['Alertas críticas en tiempo real', true],
-  ['Alertas de prioridad alta', true],
-  ['Nuevas asignaciones de pacientes', true],
-  ['Reportes de turno semanales', false],
-  ['Sonido y vibración de alerta médica', true],
+// Preferencias de avisos de este navegador (src/lib/preferencias.ts): las usa el aviso de alertas en vivo. Se quitaron
+// "Nuevas asignaciones" y "Reportes de turno semanales": no había nada detrás (REVISION-MEDICO.md, 6).
+const PREFERENCIAS: Array<[keyof Preferencias, string]> = [
+  ['criticas', 'Aviso en pantalla de alertas críticas'],
+  ['altas', 'Aviso en pantalla de alertas de prioridad alta'],
+  ['sonido', 'Sonido con las alertas críticas'],
 ];
 
 const QR_SIZE = 21;
@@ -70,7 +71,7 @@ export default function MedPerfilMiPerfil() {
     ['Correo institucional', user?.email ?? '—'],
     ['Teléfono', user?.phone ?? 'No registrado'],
   ];
-  const [toggles, setToggles] = useState(TOGGLES.map(([, on]) => on));
+  const [prefs, setPrefs] = useState(leerPreferencias);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [mfaOpen, setMfaOpen] = useState(false);
@@ -95,9 +96,12 @@ export default function MedPerfilMiPerfil() {
     mfaForm.reset();
   };
 
-  const flip = (i: number) => {
-    setToggles((t) => t.map((on, j) => (j === i ? !on : on)));
-    toast('Preferencia guardada');
+  const flip = (clave: keyof Preferencias) => {
+    const nuevas = { ...prefs, [clave]: !prefs[clave] };
+    setPrefs(nuevas);
+    guardarPreferencias(nuevas);
+    if (clave === 'sonido' && nuevas.sonido) sonarAlerta();
+    toast('Preferencia guardada en este navegador');
   };
 
   const savePassword = (e: FormEvent) => {
@@ -173,28 +177,26 @@ export default function MedPerfilMiPerfil() {
                 <p className="font-jakarta text-[14px] font-semibold text-ink">Autenticación y Seguridad</p>
                 <p className="font-jakarta text-[12px] font-normal text-muted">
                   {REAL_AUTH
-                    ? 'Cambiar la contraseña y la verificación en dos pasos estarán disponibles cuando el sistema lo permita.'
+                    ? 'La contraseña y la verificación en dos pasos las gestiona el administrador: el sistema todavía no permite cambiarlas desde aquí.'
                     : `${passwordChanged ? 'Contraseña cambiada hoy.' : 'Contraseña sin cambios.'} ${
                         mfaActive ? 'MFA activo: tu cuenta pide un código al iniciar sesión.' : 'El acceso MFA añade protección crítica.'
                       }`}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-[10px]">
-                <Button variant="secondary" disabled={REAL_AUTH} title={REAL_AUTH ? 'Disponible cuando el sistema lo permita' : undefined} onClick={() => setPasswordOpen(true)}>
-                  Cambiar Contraseña
-                </Button>
-                {REAL_AUTH ? (
-                  <Button disabled title="Disponible cuando el sistema lo permita">
-                    Configurar MFA
+              {!REAL_AUTH && (
+                <div className="flex flex-wrap items-center gap-[10px]">
+                  <Button variant="secondary" onClick={() => setPasswordOpen(true)}>
+                    Cambiar Contraseña
                   </Button>
-                ) : mfaActive ? (
-                  <Badge tone="success" dot>
-                    MFA activo
-                  </Badge>
-                ) : (
-                  <Button onClick={() => setMfaOpen(true)}>Configurar MFA</Button>
-                )}
-              </div>
+                  {mfaActive ? (
+                    <Badge tone="success" dot>
+                      MFA activo
+                    </Badge>
+                  ) : (
+                    <Button onClick={() => setMfaOpen(true)}>Configurar MFA</Button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="w-full border-t border-line pt-[10px]">
               <p className="font-jakarta text-[11px] font-normal leading-[normal] text-muted">
@@ -209,20 +211,20 @@ export default function MedPerfilMiPerfil() {
             <CardTitle>Preferencias de Notificaciones</CardTitle>
             <Divider />
             <div className="flex w-full flex-col gap-1">
-              {TOGGLES.map(([label], i) => (
-                <div key={label} className="flex w-full items-center justify-between gap-4 py-2">
-                  <p id={`pref-${i}`} className="font-jakarta text-[14px] font-medium leading-[normal] text-ink">
+              {PREFERENCIAS.map(([clave, label]) => (
+                <div key={clave} className="flex w-full items-center justify-between gap-4 py-2">
+                  <p id={`pref-${clave}`} className="font-jakarta text-[14px] font-medium leading-[normal] text-ink">
                     {label}
                   </p>
                   <button
                     type="button"
                     role="switch"
-                    aria-checked={toggles[i]}
-                    aria-labelledby={`pref-${i}`}
-                    onClick={() => flip(i)}
+                    aria-checked={prefs[clave]}
+                    aria-labelledby={`pref-${clave}`}
+                    onClick={() => flip(clave)}
                     className="flex shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
-                    <img className="h-5 w-9" alt="" src={toggles[i] ? imgSwitchTrack : imgSwitchTrack2} />
+                    <img className="h-5 w-9" alt="" src={prefs[clave] ? imgSwitchTrack : imgSwitchTrack2} />
                   </button>
                 </div>
               ))}

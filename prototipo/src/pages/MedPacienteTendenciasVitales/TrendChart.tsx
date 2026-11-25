@@ -12,8 +12,8 @@ type TrendChartProps = {
   /** Alturas (px dentro del lienzo) de las líneas de límite. */
   limits: number[];
   limitLabel?: { text: string; y: number };
-  /** Último valor, en la esquina derecha. */
-  tooltip?: { text: string; y: number };
+  /** Último valor, junto a la última lectura (x en el lienzo; sin x, en la esquina derecha). */
+  tooltip?: { text: string; y: number; x?: number };
   label: string;
 };
 
@@ -34,7 +34,7 @@ export function TrendChart({ series, limits, limitLabel, tooltip, label }: Trend
         </p>
       )}
       {tooltip && (
-        <span className="absolute rounded bg-primary px-1.5 py-0.5 font-jakarta text-[10px] font-bold leading-[normal] text-white" style={{ left: chartX(452, W), top: tooltip.y }}>
+        <span className="absolute rounded bg-primary px-1.5 py-0.5 font-jakarta text-[10px] font-bold leading-[normal] text-white" style={{ left: chartX(tooltip.x ?? 452, W), top: tooltip.y }}>
           {tooltip.text}
         </span>
       )}

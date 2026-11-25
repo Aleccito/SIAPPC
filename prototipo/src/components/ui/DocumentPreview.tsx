@@ -8,7 +8,8 @@ type DocumentPreviewProps = {
   /** Datos de la cabecera de la hoja (Paciente, Tipo, Fecha…). */
   meta: Array<[string, string]>;
   onClose: () => void;
-  onDownload: () => void;
+  /** Sin esto no hay botón de descarga (los documentos clínicos no guardan el archivo, pedido 15). */
+  onDownload?: () => void;
 };
 
 const LINES = ['w-full', 'w-11/12', 'w-full', 'w-4/5', 'w-full', 'w-2/3'];
@@ -46,7 +47,7 @@ export function DocumentPreview({ open, title, meta, onClose, onDownload }: Docu
         <Button variant="secondary" onClick={onClose}>
           Cerrar
         </Button>
-        <Button onClick={onDownload}>Descargar</Button>
+        {onDownload && <Button onClick={onDownload}>Descargar</Button>}
       </div>
     </Modal>
   );

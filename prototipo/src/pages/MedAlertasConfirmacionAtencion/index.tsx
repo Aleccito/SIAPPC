@@ -67,7 +67,8 @@ export default function MedAlertasConfirmacionAtencion() {
       return;
     }
     attendedAlerts.add(alert.id);
-    toast(`Atención registrada · ${alert.patient}`);
+    // Solo en este equipo: el backend todavía no deja atender una alerta (pedido 2).
+    toast(`Atención registrada en este equipo · ${alert.patient}`);
     const state: AttendedState = { attendedId: alert.id };
     navigate(from, { state });
   };

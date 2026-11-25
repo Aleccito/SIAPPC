@@ -16,9 +16,14 @@
 //   ONDA=1         0 para no mandar la onda del ECG
 //   ONDA_HZ=125    muestras por segundo de la onda (10 a 250)
 //   EQUIPOS=       lista separada por comas para mandar solo algunos (vacío: todos los de casos.json)
-// Argumento --una-vez: manda una lectura de cada signo de cada equipo y termina (para probar).
+// Argumento --una-vez: manda una lectura de cada signo de cada equipo y termina (para probar). Con --historia, antes
+// manda la historia: es la forma de cargarla una sola vez (LEEME.md).
 // Argumento --alerta <equipo>: manda UNA lectura de FC de 150 lpm (alerta crítica) de ese equipo y termina; sirve para
 // mostrar en vivo el aviso, la campana y la lista de alertas sin esperar a que un caso cruce su umbral.
+// Argumento --historia 24h (o 6h, 90m…): antes de empezar, manda las lecturas de ese tiempo hacia atrás con su fecha
+// pasada, cada PASO_HISTORIA_MIN minutos (5), para que las tendencias tengan historia. El backend las guarda como
+// atrasadas, sin avisos en vivo. Se mantienen dentro de los umbrales a propósito: el backend fecha la alerta al
+// guardarla y no con la hora de la lectura (pedido 34), así que una alerta de hace 20 h aparecería como de ahora.
 import { readFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
 import mqtt from 'mqtt';
@@ -36,6 +41,18 @@ if (iAlerta >= 0 && !ALERTA) {
   console.error('Falta el equipo: --alerta DEMO-DEV-06');
   process.exit(1);
 }
+const iHistoria = process.argv.indexOf('--historia');
+/** Milisegundos de historia a rellenar ("24h", "90m"), o 0. */
+const HISTORIA_MS = (() => {
+  if (iHistoria < 0) return 0;
+  const m = /^(\d+)\s*(h|m)$/i.exec(process.argv[iHistoria + 1] ?? '');
+  if (!m) {
+    console.error('Uso: --historia 24h (horas con h, minutos con m)');
+    process.exit(1);
+  }
+  return Number(m[1]) * (m[2].toLowerCase() === 'h' ? 3_600_000 : 60_000);
+})();
+const PASO_HISTORIA_MS = Math.max(1, Number(env.PASO_HISTORIA_MIN || 5)) * 60_000;
 
 if (!env.MQTT_USER || !env.MQTT_PASSWORD) {
   console.error('Faltan MQTT_USER y MQTT_PASSWORD (las del .env de la raíz: docker run --env-file .env ...).');
@@ -72,11 +89,16 @@ function deriva(clave, periodoMin, t = Date.now()) {
 
 /** Cuánto tarda cada signo en oscilar (minutos): la FC se mueve más rápido que la temperatura. */
 const PERIODO_MIN = { hr: 12, spo2: 16, resp: 10, temp: 40 };
-/** Ruido de una lectura a otra, para que no sea una curva perfecta. */
-const RUIDO = { hr: 1.2, spo2: 0.4, resp: 0.6, temp: 0.04 };
+/**
+ * Ruido de una lectura a otra, para que no sea una curva perfecta. La temperatura y la SpO2 llevan lo suficiente para
+ * que el número se mueva entre lecturas (con menos, el redondeo lo dejaba igual varios minutos).
+ */
+const RUIDO = { hr: 1.2, spo2: 1, resp: 0.6, temp: 0.1 };
+/** Para la historia: dentro de los umbrales de backend/src/services/mqttIngest.ts, para no crear alertas. */
+const SIN_ALERTA = { hr: [52, 118], spo2: [90, 100], resp: [9, 29], temp: [30, 43] };
 
-function valor(codigo, variable, [centro, amplitud]) {
-  const v = centro + amplitud * deriva(`${codigo}:${variable}`, PERIODO_MIN[variable]) + (Math.random() - 0.5) * 2 * RUIDO[variable];
+function valor(codigo, variable, [centro, amplitud], t = Date.now()) {
+  const v = centro + amplitud * deriva(`${codigo}:${variable}`, PERIODO_MIN[variable], t) + (Math.random() - 0.5) * 2 * RUIDO[variable];
   if (variable === 'temp') return Math.round(v * 10) / 10;
   if (variable === 'spo2') return Math.min(100, Math.round(v));
   return Math.max(0, Math.round(v));
@@ -150,6 +172,26 @@ async function estado(status) {
   await Promise.all(casos.map(([device]) => publicar(`siappc/${device}/status`, { device, status }, { qos: 1, retain: true })));
 }
 
+/** Las lecturas de las últimas `HISTORIA_MS`, con su fecha pasada, dentro de los umbrales. */
+async function historia() {
+  const fin = Date.now() - 2 * 60_000;
+  const inicio = fin - HISTORIA_MS;
+  let n = 0;
+  for (let t = inicio; t <= fin; t += PASO_HISTORIA_MS) {
+    for (const [device, caso] of casos) {
+      for (const variable of ['hr', 'spo2', 'resp', 'temp']) {
+        if (!caso[variable]) continue;
+        const [lo, hi] = SIN_ALERTA[variable];
+        const value = Math.min(hi, Math.max(lo, valor(device, variable, caso[variable], t)));
+        const ts = t / 1000;
+        await publicar(`siappc/${device}/telemetry`, { device, variable, value, unit: UNIDADES[variable], ts, hash: huella(device, variable, ts, value) }, { qos: 1 });
+        n++;
+      }
+    }
+  }
+  console.log(`Historia: ${n} lecturas de las últimas ${Math.round(HISTORIA_MS / 3_600_000)} h, cada ${PASO_HISTORIA_MS / 60_000} min.`);
+}
+
 async function ronda() {
   const resumen = [];
   for (const [device, caso] of casos) {
@@ -188,6 +230,8 @@ client.on('connect', async () => {
     }
     await estado('online');
     if (UNA_VEZ) {
+      // Con --historia: rellena la historia una sola vez y termina, sin repetirla en cada reinicio del servicio.
+      if (HISTORIA_MS) await historia();
       await ronda();
       if (ONDA) onda();
       client.end(false, () => process.exit(0));
@@ -195,6 +239,7 @@ client.on('connect', async () => {
     }
     if (primera) {
       primera = false;
+      if (HISTORIA_MS) await historia();
       await ronda();
       timers.push(setInterval(() => ronda().catch((e) => console.error('No se pudo publicar:', e.message)), PERIODO_S * 1000));
       if (ONDA) timers.push(setInterval(onda, 1000));

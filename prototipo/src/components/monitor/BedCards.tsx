@@ -1,6 +1,8 @@
 // Piezas de la central de monitoreo (Grid y Lista): selector de unidad, resumen de la unidad y la
 // tarjeta de cama de Figma (node 45:984) dibujada a partir de una cama de GET /monitoring/beds.
+import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { RegistrarExploracion } from '../patient/RegistrarExploracion';
 import imgActivity10 from '../../assets/activity-10.svg';
 import imgActivity8 from '../../assets/activity-8.svg';
 import imgActivity9 from '../../assets/activity-9.svg';
@@ -21,7 +23,7 @@ import imgThermometer3 from '../../assets/thermometer-3.svg';
 import imgWind2 from '../../assets/wind-2.svg';
 import imgWind3 from '../../assets/wind-3.svg';
 import imgWind5 from '../../assets/wind-5.svg';
-import { useMonitoredBeds, usePatients } from '../../api/queries';
+import { useExpediente, useMonitoredBeds, usePatients } from '../../api/queries';
 import { useSignosTodos, type SignosExtra } from '../../api/sinBackend';
 import type { MonitoredBed } from '../../api/types/monitoring';
 import { vitalTone } from '../../lib/alerts';
@@ -93,7 +95,7 @@ const shortName = (name: string) => {
 
 const gcsTone = (g: number | null) => (g === null ? 'normal' : g <= 8 ? 'danger' : g <= 13 ? 'warning' : 'normal');
 
-function Vital({ kind, label, value, unit, note, tone, big }: { kind: keyof typeof TONE_ICON; label: string; value: string; unit: string; note?: string; tone: 'normal' | 'warning' | 'danger'; big?: boolean }) {
+function Vital({ kind, label, value, unit, note, tone, big, action }: { kind: keyof typeof TONE_ICON; label: string; value: string; unit: string; note?: string; tone: 'normal' | 'warning' | 'danger'; big?: boolean; action?: ReactNode }) {
   return (
     <div className="flex min-w-px flex-1 flex-col items-start gap-1">
       <div className="flex w-full items-center gap-1.5">
@@ -106,24 +108,57 @@ function Vital({ kind, label, value, unit, note, tone, big }: { kind: keyof type
         <span className="font-medium text-[12px] text-muted">{unit}</span>
       </p>
       {note && <p className="font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{note}</p>}
+      {action}
     </div>
   );
 }
 
+/** Segundos de ECG que caben en el recuadro de la tarjeta (como un monitor a 25 mm/s en ese ancho). */
+const VENTANA_TARJETA_S = 5;
+const ANCHO = 400;
+
+/** Un latido: P, QRS y T con la forma fija; lo que cambia con la FC es el espacio entre latidos. */
+const latido = (x: number, ancho: number) => {
+  const k = Math.min(1, ancho / 46);
+  const p = (dx: number, y: number) => `${(x + dx * k).toFixed(1)},${y}`;
+  return [p(0, 22), p(8, 22), p(11, 19), p(14, 22), p(18, 22), p(20, 26), p(23, 6), p(26, 34), p(28, 22), p(34, 22), p(38, 17), p(43, 22), `${(x + ancho).toFixed(1)},22`].join(' ');
+};
+
 /**
- * Trazo de ECG que se repite (en Figma eran segmentos sueltos); toma el color del estado de la cama.
+ * Trazo de ECG de la tarjeta de cama; toma el color del estado de la cama.
  * SIMULADO: en la central no es la onda del equipo (sería una conexión por cama, y el navegador abre 6 por host;
- * pedido 29 de CONEXION-BACKEND.md). Corre a la FC real de la cama: un latido cada 60/FC segundos. Sin FC, plano.
+ * pedido 29 de CONEXION-BACKEND.md). Respeta la FC real de la cama: en el recuadro caben los latidos de
+ * `VENTANA_TARJETA_S` segundos (54 lpm → unos 4, 113 lpm → unos 9) y avanza un latido cada 60/FC segundos. Con
+ * fibrilación auricular (`irregular`), los intervalos varían. Sin FC, plano.
  */
-export function EcgTrace({ color, className, hr }: { color: string; className?: string; hr?: number | null }) {
-  const beat = (x: number) => `${x},22 ${x + 8},22 ${x + 11},19 ${x + 14},22 ${x + 18},22 ${x + 20},26 ${x + 23},6 ${x + 26},34 ${x + 28},22 ${x + 34},22 ${x + 38},17 ${x + 43},22 ${x + 50},22`;
-  const points = hr === null ? '0,22 450,22' : Array.from({ length: 9 }, (_, i) => beat(i * 50)).join(' ');
+export function EcgTrace({ color, className, hr, irregular = false }: { color: string; className?: string; hr?: number | null; irregular?: boolean }) {
   const quieto = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (!hr) {
+    return (
+      <svg viewBox={`0 0 ${ANCHO} 44`} preserveAspectRatio="none" className={cn('h-full w-full', className)} aria-hidden="true">
+        <polyline points={`0,22 ${ANCHO},22`} fill="none" stroke={color} strokeWidth={1.6} opacity={0.45} />
+      </svg>
+    );
+  }
+  const fc = Math.max(30, Math.min(220, hr));
+  const paso = ANCHO / ((fc / 60) * VENTANA_TARJETA_S);
+  // Un patrón de intervalos: uno solo en ritmo sinusal; en FA, 7 distintos (siempre los mismos, no cambian en cada
+  // render) que promedian la FC. Se repite hasta cubrir el recuadro y un patrón más, para desplazarse sin saltos.
+  const patron = irregular ? [0.78, 1.24, 0.92, 1.31, 0.7, 1.08, 0.97].map((f) => paso * f) : [paso];
+  const ciclo = patron.reduce((a, b) => a + b, 0);
+  const puntos: string[] = [];
+  for (let x = 0, i = 0; x < ANCHO + ciclo + paso; i++) {
+    const ancho = patron[i % patron.length];
+    puntos.push(latido(x, ancho));
+    x += ancho;
+  }
+  // Se desplaza un patrón completo en lo que tardan esos latidos a esa FC.
+  const segundos = (ciclo / paso) * (60 / fc);
   return (
-    <svg viewBox="0 0 400 44" preserveAspectRatio="xMinYMid slice" className={cn('h-full w-full', className)} aria-hidden="true">
+    <svg viewBox={`0 0 ${ANCHO} 44`} preserveAspectRatio="none" className={cn('h-full w-full', className)} aria-hidden="true">
       <g>
-        <polyline points={points} fill="none" stroke={color} strokeWidth={1.6} strokeLinejoin="round" opacity={hr === null ? 0.45 : 1} />
-        {hr && !quieto && <animateTransform attributeName="transform" type="translate" from="0 0" to="-50 0" dur={`${(60 / Math.max(30, hr)).toFixed(2)}s`} repeatCount="indefinite" />}
+        <polyline points={puntos.join(' ')} fill="none" stroke={color} strokeWidth={1.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        {!quieto && <animateTransform attributeName="transform" type="translate" from="0 0" to={`${(-ciclo).toFixed(1)} 0`} dur={`${segundos.toFixed(2)}s`} repeatCount="indefinite" />}
       </g>
     </svg>
   );
@@ -131,6 +166,9 @@ export function EcgTrace({ color, className, hr }: { color: string; className?: 
 
 export function BedCard({ b }: { b: BedView }) {
   const rowLink = useRowLink();
+  // Fibrilación auricular entre los diagnósticos activos: el trazo va con intervalos irregulares.
+  const expediente = useExpediente(b.patientId ?? undefined);
+  const fa = !!expediente.data?.diagnosticos.some((d) => d.status === 'activo' && /fibrilaci[oó]n auricular|^I48/i.test(`${d.description ?? ''} ${d.code ?? ''}`));
   // Sin el expediente (el administrativo), la tarjeta se mira pero no abre nada.
   const opens = useSession().can('historia_clinica', 'ver');
   if (!b.state || !b.patientName || !b.cedula) {
@@ -182,10 +220,17 @@ export function BedCard({ b }: { b: BedView }) {
         <div className="flex w-full items-start justify-between">
           <Vital kind="resp" label="FR" value={String(resp ?? '—')} unit="rpm" tone={vitalTone('resp', resp)} />
           <Vital kind="temp" label="TEMP" value={b.signos ? b.signos.temp.toFixed(1) : '—'} unit="°C" tone={vitalTone('temp', b.signos?.temp)} />
-          <Vital kind="gcs" label="GCS" value={b.glasgow !== null ? String(b.glasgow) : '—'} unit="pts" tone={gcsTone(b.glasgow)} />
+          <Vital
+            kind="gcs"
+            label="GCS"
+            value={b.glasgow !== null ? String(b.glasgow) : '—'}
+            unit="pts"
+            tone={gcsTone(b.glasgow)}
+            action={b.glasgow === null && opens ? <RegistrarExploracion cedula={b.cedula} texto="Registrar" className="text-[11px] text-[#60a5fa]" /> : undefined}
+          />
         </div>
         <div className="flex h-11 w-full overflow-clip rounded-lg border border-[#1f2937] bg-[#0b1220]">
-          <EcgTrace color={style.ecg} hr={hr} />
+          <EcgTrace color={style.ecg} hr={hr} irregular={fa} />
         </div>
       </div>
     </div>

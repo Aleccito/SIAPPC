@@ -29,20 +29,33 @@ export function deriva(clave: string, periodoMin: number, t = Date.now()): numbe
 export const vivo = (base: number, amplitud: number, clave: string, periodoMin: number, t?: number) => base + amplitud * deriva(clave, periodoMin, t);
 
 /**
- * El primer número de un texto ("32%", "+2100 mL", "18.5 ×10³/µL", "118,000"), movido ±`relativa` con el tiempo;
- * conserva los decimales, el signo y el formato. Un texto sin números se queda igual.
+ * El primer número de un texto ("32%", "+2100 mL", "18.5 ×10³/µL", "118,000", "4 850 ng/mL"), movido ±`relativa`
+ * con el tiempo; conserva los decimales, el signo, el separador de miles (coma o espacio) y el formato. Un texto sin
+ * números se queda igual.
  */
 export function vivoTexto(texto: string, clave: string, relativa: number, periodoMin: number, t?: number): string {
-  const m = /([+-]?)(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)/.exec(texto);
+  const m = /([+-]?)(\d{1,3}(?:[ ,]\d{3})+|\d+(?:\.\d+)?)/.exec(texto);
   if (!m) return texto;
   const [entero, signo, num] = m;
-  const miles = num.includes(',');
-  const valor = Number(num.replace(/,/g, ''));
-  const decimales = miles ? 0 : (num.split('.')[1] ?? '').length;
+  const separador = num.includes(',') ? ',' : num.includes(' ') ? ' ' : null;
+  const valor = Number(num.replace(/[ ,]/g, ''));
+  const decimales = separador ? 0 : (num.split('.')[1] ?? '').length;
   const nuevo = Math.max(0, vivo(valor, Math.abs(valor) * relativa, clave, periodoMin, t));
   let texto2 = nuevo.toFixed(decimales);
-  if (miles) texto2 = Math.round(nuevo).toLocaleString('en-US');
+  if (separador) texto2 = Math.round(nuevo).toLocaleString('en-US').replace(/,/g, separador);
   return texto.slice(0, m.index) + signo + texto2 + texto.slice(m.index + entero.length);
+}
+
+/**
+ * Un resultado de laboratorio simulado. No se mueve de a poco como un monitor: cambia solo cuando "llega" un resultado
+ * nuevo, cada 60 a 120 minutos según el estudio y el paciente, y se sabe a qué hora llegó (REVISION-MEDICO.md, 4).
+ */
+export function resultadoLab(texto: string, clave: string, relativa: number, t = Date.now()): { texto: string; at: number } {
+  const h = hashTexto(clave);
+  const periodo = (60 + (h % 61)) * MIN;
+  const desfase = (h >>> 8) % periodo;
+  const at = Math.floor((t - desfase) / periodo) * periodo + desfase;
+  return { texto: vivoTexto(texto, clave, relativa, 6 * 60, at), at };
 }
 
 // --- Signos simulados vivos (PA y temperatura) ---------------------------------------------------------------
@@ -57,18 +70,37 @@ export function signosVivos(cedula: string, base: SignosBase, t?: number) {
   return { pa: { sis, dia }, temp, pam: Math.round((sis + 2 * dia) / 3) };
 }
 
-/** Los paneles del monitoreo detallado, con sus números moviéndose: lo respiratorio y la diuresis, rápido; los laboratorios, despacio. */
-export function monitoreoVivo(m: Inventado['monitoreo'], cedula: string, t?: number): Inventado['monitoreo'] {
+/** Los paneles del monitoreo con la hora de cada resultado: el 4.º elemento de cada laboratorio y `gasometriaAt`. */
+export type MonitoreoVivo = Omit<Inventado['monitoreo'], 'laboratorios'> & {
+  laboratorios: Array<[string, string, boolean, number]>;
+  gasometriaAt: number;
+};
+
+/**
+ * Los paneles del monitoreo detallado con sus números al día: lo que se mide en la cama (FiO2, EtCO2, diuresis,
+ * balance, llenado capilar) se mueve de a poco; los laboratorios y la gasometría son resultados: cambian solo cuando
+ * llega uno nuevo y dicen a qué hora llegó.
+ */
+export function monitoreoVivo(m: Inventado['monitoreo'], cedula: string, t = Date.now()): MonitoreoVivo {
   const v = (texto: string, nombre: string, rel: number, periodo: number) => vivoTexto(texto, `${cedula}:${nombre}`, rel, periodo, t);
+  const gas = resultadoLab('', `${cedula}:gasometria`, 0, t).at;
   return {
     ...m,
     fio2: v(m.fio2, 'fio2', 0.05, 15),
     etco2: v(m.etco2, 'etco2', 0.06, 10),
-    gasometria: { ph: v(m.gasometria.ph, 'ph', 0.004, 40), pao2: v(m.gasometria.pao2, 'pao2', 0.06, 30), paco2: v(m.gasometria.paco2, 'paco2', 0.06, 30) },
+    gasometria: {
+      ph: vivoTexto(m.gasometria.ph, `${cedula}:ph`, 0.004, 6 * 60, gas),
+      pao2: vivoTexto(m.gasometria.pao2, `${cedula}:pao2`, 0.06, 6 * 60, gas),
+      paco2: vivoTexto(m.gasometria.paco2, `${cedula}:paco2`, 0.06, 6 * 60, gas),
+    },
+    gasometriaAt: gas,
     diuresis: v(m.diuresis, 'diuresis', 0.15, 20),
     balance: v(m.balance, 'balance', 0.05, 45),
     cristaloides: v(m.cristaloides, 'cristaloides', 0.04, 60),
-    laboratorios: m.laboratorios.map(([nombre, valor, alterado]) => [nombre, v(valor, `lab:${nombre}`, 0.04, 90), alterado] as [string, string, boolean]),
+    laboratorios: m.laboratorios.map(([nombre, valor, alterado]) => {
+      const r = resultadoLab(valor, `${cedula}:lab:${nombre}`, 0.06, t);
+      return [nombre, r.texto, alterado, r.at] as [string, string, boolean, number];
+    }),
     llenadoCapilar: v(m.llenadoCapilar, 'llenado', 0.12, 20),
   };
 }

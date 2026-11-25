@@ -73,7 +73,6 @@ function Documentos({ v }: { v: PatientView }) {
   const [preview, setPreview] = useState<Doc | null>(null);
   const docs = (v.expediente?.documentos ?? []).map(toDoc);
   const shown = docs.filter((d) => filter === 'Todos' || d.type === filter);
-  const download = (title: string) => toast(`Descargando ${title}`, 'info');
 
   const upload = async (type: DocumentType, name: string) => {
     try {
@@ -131,9 +130,6 @@ function Documentos({ v }: { v: PatientView }) {
                   <Button variant="secondary" size="sm" onClick={() => setPreview(d)}>
                     Ver
                   </Button>
-                  <Button variant="secondary" size="sm" onClick={() => download(d.title)}>
-                    Descargar
-                  </Button>
                 </div>
               </Card>
             </li>
@@ -186,7 +182,6 @@ function Documentos({ v }: { v: PatientView }) {
             : []
         }
         onClose={() => setPreview(null)}
-        onDownload={() => preview && download(preview.title)}
       />
     </>
   );

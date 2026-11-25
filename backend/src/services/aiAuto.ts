@@ -10,6 +10,9 @@
 // - Enfriamiento por paciente (AI_AUTO_COOLDOWN_SECONDS), salvo que la
 //   severidad escale de `alta` a `critica`.
 // - Una sola consulta al LLM a la vez y, como mucho, un pendiente por paciente.
+// - Las consultas del médico van primero: mientras haya una en curso el
+//   análisis espera, y si empieza una mientras analiza, se corta y vuelve a la
+//   cola (lib/clinicalAi.ts, `prioridad`).
 // - Nunca bloquea ni hace fallar la ingesta: todo es fire-and-forget.
 //
 // Con varias instancias del backend, el enfriamiento local filtra el grueso y
@@ -20,26 +23,18 @@
 import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-import { DATOS_NO_INSTRUCCIONES, llm, patientContext } from "../lib/clinicalAi.ts";
+import { llm, patientContext, prioridad } from "../lib/clinicalAi.ts";
 import { redis } from "../lib/redis.ts";
 import { env } from "../env.ts";
 import { debeDisparar, type Severidad } from "./aiCooldown.ts";
 import { extraerIdeas, ideaSchema } from "./aiParse.ts";
+// El prompt vive en aiTemas.ts, pieza pura, para poder probarlo sin base ni LLM.
+import { PROMPT_IDEAS as AUTO_SYSTEM } from "./aiTemas.ts";
 
 export { debeDisparar, type Severidad };
 
-// Subir al cambiar AUTO_SYSTEM: viaja con cada análisis para comparar resultados.
-export const PROMPT_VERSION = "auto-v2";
-
-// AJUSTAR: el usuario afina aquí qué debe/no debe generar la IA.
-const AUTO_SYSTEM = `Eres un asistente de apoyo a la decisión clínica. Hablas con un médico.
-Con SOLO los datos que se te dan, propón entre 2 y 3 hipótesis de qué podría tener el paciente, de más a menos probable.
-Sé puntual y directo: el médico lo lee de un vistazo.
-- "title": máximo 6 palabras.
-- "rationale": máximo 15 palabras, citando el dato que lo sostiene (p. ej. "SpO2 86 %, FR 28").
-No inventes datos. ${DATOS_NO_INSTRUCCIONES}
-Responde ÚNICAMENTE con JSON válido, en español, con esta forma:
-{"ideas":[{"title":"hipótesis breve","rationale":"dato que lo sostiene"}]}`;
+// Subir al cambiar AUTO_SYSTEM (PROMPT_IDEAS de aiTemas.ts): viaja con cada análisis para comparar resultados.
+export const PROMPT_VERSION = "auto-v3";
 
 const analisisSchema = z.object({
   generatedAt: z.string(),
@@ -55,7 +50,12 @@ export type AnalisisIA = z.infer<typeof analisisSchema>;
 
 const NAMESPACE = "siappc-ai:auto:";
 const ultimoDisparo = new Map<number, { at: number; severity: Severidad }>();
-const pendientes = new Map<number, { hospitalId: number; severity: Severidad }>();
+// `cortes`: cuántas veces lo interrumpió una consulta del médico.
+const pendientes = new Map<number, { hospitalId: number; severity: Severidad; cortes?: number }>();
+/** Después de tantos cortes seguidos se deja: la próxima alerta lo vuelve a pedir. */
+const MAX_CORTES = 5;
+/** Cuánto esperar después de la última consulta del médico antes de usar el modelo. */
+const CALMA_MS = 20_000;
 const memoria = new Map<number, { valor: AnalisisIA; expira: number }>();
 let corriendo = false;
 
@@ -106,21 +106,36 @@ async function drenar(logger: FastifyBaseLogger): Promise<void> {
   try {
     for (const [patientId, job] of pendientes) {
       pendientes.delete(patientId);
+      // El modelo atiende de a uno: primero las consultas del médico, y una calma por si sigue preguntando.
+      await prioridad.esperarLibre(500, 10 * 60_000, CALMA_MS);
       const candado = `${NAMESPACE}lock:${patientId}:${job.severity}`;
+      const control = new AbortController();
+      const dejarDeEscuchar = prioridad.alEmpezar(() => control.abort());
       try {
         if (!(await tomarCandado(candado))) {
           logger.info({ patientId }, "ai_auto: otra instancia ya lo analiza");
           continue;
         }
-        await analizar(patientId, job.hospitalId, job.severity);
+        await analizar(patientId, job.hospitalId, job.severity, control.signal);
         logger.info({ patientId, severity: job.severity }, "ai_auto: análisis guardado");
       } catch (err: unknown) {
+        await soltarCandado(candado);
+        const cortes = (job.cortes ?? 0) + 1;
+        if (control.signal.aborted && cortes <= MAX_CORTES) {
+          // Lo cortó una consulta del médico: vuelve al final de la cola y se
+          // retoma cuando el modelo quede libre. Si entretanto llegó otra
+          // alerta del paciente, queda la nueva.
+          if (!pendientes.has(patientId)) pendientes.set(patientId, { ...job, cortes });
+          logger.info({ patientId }, "ai_auto: en pausa por una consulta del médico");
+          continue;
+        }
         // Sin marca de disparo: la próxima alerta del paciente reintenta en
         // vez de esperar todo el enfriamiento sin análisis.
         ultimoDisparo.delete(patientId);
-        await soltarCandado(candado);
         // Sin contenido clínico en el log: solo el tipo de error.
         logger.error({ patientId, reason: err instanceof Error ? err.name : "desconocido" }, "ai_auto: análisis fallido");
+      } finally {
+        dejarDeEscuchar();
       }
     }
   } finally {
@@ -149,17 +164,22 @@ async function soltarCandado(clave: string): Promise<void> {
 
 const parser = new StringOutputParser();
 
-async function pedirIdeas(context: string): Promise<AnalisisIA["ideas"] | null> {
+async function pedirIdeas(context: string, signal?: AbortSignal): Promise<AnalisisIA["ideas"] | null> {
   const texto = await llm.pipe(parser).invoke([
     ["system", AUTO_SYSTEM],
     ["human", `CONTEXTO DEL PACIENTE:\n<datos_paciente>\n${context}\n</datos_paciente>`],
-  ]);
+  ], { signal });
   return extraerIdeas(texto);
 }
 
-async function analizar(patientId: number, hospitalId: number, severity: AnalisisIA["severity"]): Promise<AnalisisIA> {
+async function analizar(
+  patientId: number,
+  hospitalId: number,
+  severity: AnalisisIA["severity"],
+  signal?: AbortSignal,
+): Promise<AnalisisIA> {
   const context = await patientContext(patientId, hospitalId);
-  const ideas = (await pedirIdeas(context)) ?? (await pedirIdeas(context));
+  const ideas = (await pedirIdeas(context, signal)) ?? (await pedirIdeas(context, signal));
   if (!ideas) throw new Error("JSON inválido del LLM");
   const valor: AnalisisIA = {
     generatedAt: new Date().toISOString(),

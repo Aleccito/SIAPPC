@@ -1,0 +1,191 @@
+[
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "gravedad",
+  "pregunta": "¿Gravedad de este paciente?",
+  "primer_trozo_s": 38.5,
+  "total_s": 72.8,
+  "palabras": 188,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Banderas rojas:**\n\n*   **Tromboembolia pulmonar (TEP) posoperatoria:** La sospecha clínica, la disminución del SpO2 y el edema en la pierna izquierda son altamente sugestivos.\n*   **Hipoxia persistente:** El SpO2 de 92% es preocupante, especialmente en un paciente con antecedentes de tabaquismo y cirugía reciente.\n\n**Diferenciales:**\n\n*   **Dolor torácico:** Puede ser relacionado con la TEP o con el dolor postoperatorio de cadera.\n*   **Disnea:** Podría ser causada por la TEP, neumonía (especialmente en pacientes con tabaquismo), o simplemente disnea de esfuerzo.\n\n**Estudios:**\n\n*   Angio-TC de tórax: Para confirmar o descartar TEP.\n*   Dímero D: Para evaluar el riesgo de trombosis venosa profunda y TEP.\n*   Electrocardiograma (ECG): Para descartar isquemia miocárdica, que podría confundirse con dolor torácico.\n\n**Manejo:**\n\n*   Oxígeno suplementario: Para mantener SpO2 > 92%.\n*   Monitoreo continuo de signos vitales y saturación de oxígeno.\n*   Considerar anticoagulación según el riesgo de sangrado.\n*   Evaluar la necesidad de trombolisis o embolectomía si la TEP es confirmada y grave.\n\n**Datos faltantes:**\n\n*   No se menciona el resultado del angio-TC de tórax ni del dímero D.\n*   No se indica el estado actual de la paciente (inService, en observación, etc.).\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "diferenciales",
+  "pregunta": "¿Cuáles son los diagnósticos diferenciales más probables?",
+  "primer_trozo_s": 49.8,
+  "total_s": 61.8,
+  "palabras": 44,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Banderas rojas:** Tromboembolia pulmonar (TEP) posoperatoria.\n\n**Diferenciales:**\n\n*   Tromboembolia pulmonar (TEP) posoperatoria.\n*   Neumotórax espontáneo.\n*   Insuficiencia cardíaca congestiva.\n*   Pericarditis constrictiva.\n\n**Estudios:**\n\n*   Angio-TC de tórax.\n*   Dímero D.\n*   Oxígeno a SpO2 > 92 %.\n*   Valorar anticoagulación según riesgo de sangrado."
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "manejo",
+  "pregunta": "¿Cuál sería el manejo inicial recomendado?",
+  "primer_trozo_s": 11.7,
+  "total_s": 41.2,
+  "palabras": 160,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Banderas rojas:**\n\n*   Hipoxemia persistente (SpO2 < 92%) a pesar de la administración de oxígeno.\n*   Sospecha alta de tromboembolia pulmonar posoperatoria.\n\n**Diferenciales:**\n\n*   Posible causa alternativa para el dolor torácico y la disnea: neumonía, pericarditis, etc. (aunque menos probable dada la reciente cirugía).\n*   Complicaciones postoperatorias de la artroplastia de cadera.\n\n**Estudios:**\n\n*   Angio-TC de tórax con contraste para confirmar o descartar tromboembolia pulmonar.\n*   Dímero D (D-dimer) para evaluar el riesgo de trombosis.\n*   Electrocardiograma (ECG) para descartar isquemia miocárdica.\n\n**Manejo:**\n\n*   Administración de oxígeno suplementario para mantener SpO2 > 92%.\n*   Monitorización continua de signos vitales, incluyendo saturación de oxígeno y frecuencia cardíaca.\n*   Considerar la posibilidad de realizar una ecografía de las venas profundas (EVUS) si hay alta sospecha clínica de trombosis venosa profunda (TVP).\n*   Evaluar el riesgo de sangrado antes de iniciar o continuar con la anticoagulación.\n*   Si se confirma tromboembolia pulmonar, iniciar tratamiento con heparina de bajo peso molecular (HBPM) o warfarina.\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "evolucion",
+  "pregunta": "¿Cómo han evolucionado sus signos vitales en las últimas horas?",
+  "primer_trozo_s": 4.9,
+  "total_s": 10.8,
+  "palabras": 19,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Banderas rojas:**\n\n*   **Spo2:** 92% (mínimo 88%) - Hipoxia.\n*   **Frecuencia cardíaca:** 119 lpm (rango de 106-120) - Taquicardia.\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "dato",
+  "pregunta": "¿Cuál es su última saturación?",
+  "primer_trozo_s": 4.3,
+  "total_s": 5.5,
+  "palabras": 9,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "La saturación de oxígeno del paciente es de 92%.\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "dosis",
+  "pregunta": "¿Qué dosis de enoxaparina le corresponde?",
+  "primer_trozo_s": 12.6,
+  "total_s": 28.8,
+  "palabras": 79,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "El médico a cargo es Dr. Pérez.\n\n**Banderas rojas:**\n\n*   Tromboembolia pulmonar (TEP) posoperatoria sospechosa.\n*   Hipoxia (SpO2 89% bajo).\n\n**Diferenciales:**\n\n*   Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera.\n*   Edema en la pierna izquierda.\n\n**Estudios:**\n\n*   Angio-TC de tórax.\n*   Dímero D.\n*   Oxígeno a SpO2 > 92 %.\n\n**Manejo:**\n\n*   Valorar anticoagulación según riesgo de sangrado.\n\nLa dosis de enoxaparina que le corresponde es de 40 mg subcutánea cada 24 horas.\n"
+ },
+ {
+  "cedula": "DEMO-0009",
+  "tipo": "que_tiene",
+  "pregunta": "¿Qué tiene este paciente?",
+  "primer_trozo_s": 16.1,
+  "total_s": 53.9,
+  "palabras": 205,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Banderas rojas:**\n\n*   **SpO2 bajo:** El paciente presenta hipoxia con SpO2 entre 88% y 92%.\n*   **Insuficiencia cardíaca:** El paciente tiene diagnóstico de insuficiencia cardíaca.\n*   **Alergia a Yodo:** El paciente es alérgico a yodo, lo que podría complicar el manejo en caso de necesidad de radiología o contraste.\n\n**Diferenciales:**\n\n*   **Causas de la hipoxia:** Evaluar causas de hipoxia (ej: neumonía, edema pulmonar, embolia pulmonar).\n*   **Exacerbación de la insuficiencia cardíaca:** Considerar si la hipoxia y la hinchazón de piernas son signos de exacerbación de la insuficiencia cardíaca.\n\n**Estudios:**\n\n*   **Gasometría arterial:** Para evaluar la causa de la hipoxia (ej: hipoxemia, hipercapnia).\n*   **Electrocardiograma (ECG):** Evaluar arritmias o isquemia miocárdica.\n*   **Radiografía de tórax:** Evaluar edema pulmonar o neumonía.\n*   **Troponina:** Descartar infarto agudo de miocardio.\n\n**Manejo:**\n\n*   **Oxigenoterapia:** Administrar oxígeno para mantener SpO2 > 90%.\n*   **Monitorización continua:** Continuar monitorizando la frecuencia cardíaca, la presión arterial y el saturación de oxígeno.\n*   **Evaluación del estado hemodinámico:** Evaluar si hay signos de insuficiencia cardíaca (ej: edema, ascitis).\n*   **Considerar diuréticos:** Si hay evidencia de sobrecarga de volumen, considerar diuréticos intravenosos.\n\n**Datos faltantes:**\n\n*   No se dispone de datos sobre el peso del paciente.\n*   No se dispone de datos sobre la función renal del paciente.\n"
+ },
+ {
+  "cedula": "DEMO-0009",
+  "tipo": "estudios",
+  "pregunta": "¿Qué estudios de laboratorio e imagen solicitarías?",
+  "primer_trozo_s": 12.9,
+  "total_s": 19.2,
+  "palabras": 26,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Banderas rojas:**\n\n*   SpO2 91% (bajo)\n\n**Estudios:**\n\n*   Troponina\n*   ECG\n*   Radiografía de tórax\n*   Ecocardiograma\n*   Análisis de sangre: electrolitos, función renal, hemograma completo.\n"
+ },
+ {
+  "cedula": "DEMO-0009",
+  "tipo": "interacciones",
+  "pregunta": "Revisa alergias e interacciones de sus medicamentos activos.",
+  "primer_trozo_s": 13,
+  "total_s": 33.4,
+  "palabras": 103,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Alergias:** Yodo (leve: prurito).\n\n**Medicamentos activos:**\n\n*   Furosemida: Diurético, puede causar hipovolemia y desequilibrios electrolíticos. Interacción con losartán (disminuye la eficacia del losartán).\n*   Carvedilol: Beta-bloqueante, puede causar hipotensión y bradicardia.\n*   Losartán: Inhibidor de la ECA, puede aumentar el riesgo de hiperpotasemia, especialmente en pacientes con insuficiencia renal o que toman diuréticos ahorradores de potasio.\n\n**Consideraciones:**\n\n*   El uso concomitante de furosemida y losartán requiere monitorización cuidadosa de electrolitos (especialmente potasio) y función renal.\n*   La carvedilol debe usarse con precaución en pacientes con insuficiencia cardíaca, ya que puede empeorar la disfunción ventricular izquierda.\n\n**Banderas rojas:**\n\n*   Hipoxemia persistente (SpO2 < 90%).\n"
+ },
+ {
+  "cedula": "DEMO-0009",
+  "tipo": "turno",
+  "pregunta": "Hazme un resumen para entregar el turno.",
+  "primer_trozo_s": 47.8,
+  "total_s": 74.8,
+  "palabras": 138,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Banderas rojas:**\n\n*   SpO2 91% (bajo)\n*   FC 100 lpm (elevado)\n*   Historia de insuficiencia cardíaca\n\n**Diferenciales:**\n\n*   Insuficiencia cardíaca aguda vs. exacerbación crónica\n*   Hipoxia por otras causas (ej: neumonía, embolia pulmonar)\n*   Problemas de circulación periférica\n\n**Estudios:**\n\n*   ECG (evaluar arritmias y isquemia)\n*   Gasometría arterial (evaluar hipoxemia y acidosis)\n*   Troponina (descartar infarto agudo de miocardio)\n*   Evaluación de la función renal (evaluar efectos de furosemida)\n\n**Manejo:**\n\n*   Optimizar diuresis con ajuste de furosemida según respuesta.\n*   Considerar oxígeno suplementario para mantener SpO2 > 90%.\n*   Monitorizar signos vitales y estado hemodinámico.\n*   Evaluar la necesidad de soporte inotrópico si hay evidencia de insuficiencia cardíaca severa.\n*   Investigar la causa subyacente de la exacerbación (ej: infección, cambios en el estilo de vida).\n\n**Datos faltantes:**\n\n*   Peso\n*   Historia familiar de enfermedad cardiovascular\n*   Medicación actual\n"
+ },
+ {
+  "cedula": "DEMO-0009",
+  "tipo": "dato",
+  "pregunta": "¿Qué medicamentos tiene indicados?",
+  "primer_trozo_s": 38.5,
+  "total_s": 39.9,
+  "palabras": 8,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "El paciente está tomando furosemida, carvedilol y losartán.\n"
+ },
+ {
+  "cedula": "DEMO-0011",
+  "tipo": "gravedad",
+  "pregunta": "¿Está grave?",
+  "primer_trozo_s": 9.2,
+  "total_s": 37.8,
+  "palabras": 166,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Banderas rojas:**\n\n*   El paciente está en postoperatorio inmediato de colecistectomía laparoscópica.\n*   El paciente refiere dolor leve en heridas.\n*   El paciente tiene alergia a Tramadol.\n*   El paciente está tomando Paracetamol y Cefazolina.\n\n**Diferenciales:**\n\n*   Complicaciones postoperatorias de colecistectomía (perforación, infección).\n*   Reacción alérgica a los medicamentos.\n*   Dolor posquirúrgico.\n\n**Estudios:**\n\n*   Análisis de sangre: Hemograma completo, bioquímica básica (electrolitos, función renal, glucosa), coagulación.\n*   Radiografía de tórax: descartar complicaciones pulmonares.\n*   Evaluación del dolor: Escala visual analógica (EVA) para evaluar la intensidad del dolor y monitorizar la respuesta a los analgésicos.\n\n**Manejo:**\n\n*   Monitorización continua de signos vitales.\n*   Control del dolor con analgesia adecuada, considerando la alergia al Tramadol.\n*   Evaluación de la herida quirúrgica para detectar signos de infección o complicaciones.\n*   Educación del paciente sobre manejo posoperatorio y signos de alarma.\n\n**Datos faltantes:**\n\n*   No se encuentra información sobre el estado de la herida quirúrgica en el contexto proporcionado.\n*   No se menciona si el paciente ha recibido analgesia adicional.\n"
+ },
+ {
+  "cedula": "DEMO-0011",
+  "tipo": "banderas",
+  "pregunta": "¿Qué banderas rojas debo vigilar en este paciente?",
+  "primer_trozo_s": 6.8,
+  "total_s": 13.6,
+  "palabras": 36,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Banderas rojas:**\n\n*   **Tramadol:** Alergia conocida, riesgo de mareos intensos.\n*   **Cefazolina:** Uso intravenoso, posible toxicidad renal (especialmente en pacientes con insuficiencia renal preexistente).\n*   **Dolor:** Control adecuado del dolor es crucial para la recuperación postoperatoria.\n"
+ },
+ {
+  "cedula": "DEMO-0011",
+  "tipo": "farmaco",
+  "pregunta": "¿Puedo darle tramadol para el dolor?",
+  "primer_trozo_s": 0.5,
+  "total_s": 6.7,
+  "palabras": 36,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "El médico a cargo es Dr. Pérez.\n\n**Banderas rojas:** Alergia conocida al tramadol.\n\n**Manejo:** No administrar tramadol debido a la alergia activa reportada. Considerar alternativas analgésicas como paracetamol o opioides no-tramadol, evaluando su tolerancia y respuesta.\n"
+ },
+ {
+  "cedula": "DEMO-0011",
+  "tipo": "dato",
+  "pregunta": "¿Qué alergias tiene?",
+  "primer_trozo_s": 0.8,
+  "total_s": 2.5,
+  "palabras": 14,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "La paciente presenta una alergia activa a Tramadol, con reacción leve de mareo intenso.\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "ideas",
+  "pregunta": "(ideas a pedido)",
+  "total_s": 28.4,
+  "status": 200,
+  "respuesta": "[{\"title\":\"Tromboembolia pulmonar (TEP)\",\"rationale\":\"SpO2 86%, FR 28, dolor torácico y falta de aire súbita post-quirúrgica, sospecha alta en la nota SOAP.\"},{\"title\":\"Insuficiencia cardíaca congestiva\",\"rationale\":\"Edema en la pantorrilla izquierda, FR 26, disnea. El dolor torácico podría ser pleurítico por edema pulmonar.\"}]"
+ },
+ {
+  "cedula": "DEMO-0009",
+  "tipo": "ideas",
+  "pregunta": "(ideas a pedido)",
+  "total_s": 48,
+  "status": 200,
+  "respuesta": "[{\"title\":\"Descompensación de la insuficiencia cardíaca\",\"rationale\":\"SpO2 86 % y FR 28, con historial de insuficiencia cardíaca.\"},{\"title\":\"Insuficiencia cardíaca aguda\",\"rationale\":\"Hinchazón de piernas, falta de aire al acostarse, SpO2 bajo (89-92%) y taquicardia.\"}]"
+ },
+ {
+  "cedula": "DEMO-0011",
+  "tipo": "ideas",
+  "pregunta": "(ideas a pedido)",
+  "total_s": 15.6,
+  "status": 200,
+  "respuesta": "[{\"title\":\"Disminución del gasto cardíaco\",\"rationale\":\"SpO2 97 %, FR 16 rpm (estables)\"},{\"title\":\"Deshidratación leve\",\"rationale\":\"Evolución posoperatoria favorable, tolera líquidos.\"}]"
+ }
+]

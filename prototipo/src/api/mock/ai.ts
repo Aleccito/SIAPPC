@@ -9,7 +9,7 @@
 //   sin-analisis (ningún análisis automático). ?retraso=0 quita las esperas.
 // El texto clínico es inventado (mock/iaRespuestas.ts); los datos del paciente salen del simulador (seed).
 import type { AiAnalysis } from '../ai';
-import { detectarTemas, TEMAS_CLINICOS } from '../../lib/aiTemas';
+import { detectarTemas, detectarTipo, TEMAS_CLINICOS } from '../../lib/aiTemas';
 import { mockFlags } from './flags';
 import { wait } from './delay';
 import * as db from './db';
@@ -159,6 +159,29 @@ export function responder(i: number, pregunta: string): string {
   const temas = detectarTemas(pregunta);
   const pedidas = PIDE.filter(([, , re]) => re.test(q));
   const conAlertas = severidadAuto(i) !== null;
+  // Gravedad y entrega de turno tienen su propio formato, como en el backend (services/aiTemas.ts, INSTRUCCION).
+  const tipo = detectarTipo(pregunta);
+  if (tipo === 'gravedad') {
+    const sev = severidadAuto(i);
+    const nivel = sev === 'critica' ? 'alta' : sev === 'alta' ? 'moderada' : 'baja';
+    return [
+      `**Gravedad: ${nivel}** · NEWS2 parcial (sin presión arterial ni oxígeno suplementario)`,
+      `- ${signos(i)}`,
+      sev ? `- Alertas ${sev === 'critica' ? 'críticas' : 'altas'} abiertas: ${minus(alertasAbiertas(i)[0]?.message ?? 'fuera de rango')}` : '- Sin alertas abiertas',
+      `- Falta para afinarla: ${minus(k.faltantes[0] ?? 'presión arterial')}`,
+    ].join('\n');
+  }
+  if (tipo === 'turno') {
+    const dx = activos(i, 'diagnosticos').map((d) => String(d.description));
+    const meds = activos(i, 'medicamentos').map((m) => String(m.name));
+    return [
+      `- **Situación:** ${dx[0] ?? minus(db.DEMOS[i].delSeed.motivo)}${severidadAuto(i) ? `, con alertas ${severidadAuto(i) === 'critica' ? 'críticas' : 'altas'} abiertas` : ', estable'}`,
+      `- **Cambios recientes:** ${signos(i)}`,
+      `- **Tratamiento actual:** ${lista(meds) || 'sin medicamentos activos'}`,
+      `- **Pendientes:** ${minus(k.estudios[0] ?? 'sin pendientes registrados')}`,
+      `- **Datos que faltan:** ${minus(k.faltantes[0] ?? 'ninguno')}`,
+    ].join('\n');
+  }
   const banderaPrimero = (claves: string[]) => (conAlertas && !claves.includes('banderas') ? `**Bandera roja:** ${minus(k.banderas[0])}\n\n` : '');
 
   // Una pregunta que no toca ningún tema (detectarTemas le da todo lo clínico) también es abierta.

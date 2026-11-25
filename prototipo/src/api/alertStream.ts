@@ -1,6 +1,7 @@
 // Copia de frontend/src/shared/api/alertStream.ts. Diferencias: `apiFetch` en vez de `fetch('/api/…')`, para que en modo mock lo
 // atienda el simulador, y dos eventos propios del prototipo, `_abierto` y `_cortado` (no vienen del servidor), para
-// que la barra superior diga "Sin conexión en vivo" mientras se reintenta (src/components/layout/EnVivo.tsx).
+// que la barra superior diga "Sin conexión en vivo" mientras se reintenta (src/components/layout/EnVivo.tsx), y la
+// espera ante un 429 (`esperaTras429`): reintentar cada 3 s contra el límite de peticiones solo gastaba más cupo.
 import { apiFetch, getToken } from './http'
 
 // Una sola conexión SSE para toda la aplicación, con varios oyentes.
@@ -19,6 +20,19 @@ import { apiFetch, getToken } from './http'
 /** Espera antes de reconectar. Ni tan corta que martillee, ni tanta que se pierda una alerta. */
 const REINTENTO_MS = 3000
 
+/** Tope de la espera creciente ante un 429. */
+const ESPERA_MAXIMA_MS = 60_000
+
+/**
+ * Cuánto esperar después de un 429: lo que diga `Retry-After` (segundos) o, sin la cabecera, el doble de la espera
+ * anterior, sin pasar de un minuto. La usan este flujo y la onda del ECG (components/monitor/EcgLive.tsx).
+ */
+export function esperaTras429(respuesta: Response, anteriorMs: number): number {
+  const cabecera = Number(respuesta.headers.get('Retry-After'))
+  if (Number.isFinite(cabecera) && cabecera > 0) return Math.min(ESPERA_MAXIMA_MS, cabecera * 1000)
+  return Math.min(ESPERA_MAXIMA_MS, Math.max(REINTENTO_MS, anteriorMs) * 2)
+}
+
 type Oyente = (evento: string, datos: unknown) => void
 
 const oyentes = new Set<Oyente>()
@@ -28,6 +42,7 @@ const oyentes = new Set<Oyente>()
 let control: AbortController | null = null
 let reintento: ReturnType<typeof setTimeout> | undefined
 let corriendo = false
+let espera = REINTENTO_MS
 
 function repartir(evento: string, datos: unknown): void {
   // Copia del conjunto: un oyente que se da de baja dentro de su propia
@@ -72,7 +87,12 @@ async function escuchar(): Promise<void> {
       corriendo = false
       return
     }
+    if (respuesta.status === 429) {
+      espera = esperaTras429(respuesta, espera)
+      throw new Error('429')
+    }
     if (!respuesta.ok || !respuesta.body) throw new Error(String(respuesta.status))
+    espera = REINTENTO_MS
     repartir('_abierto', null)
 
     const lector = respuesta.body.getReader()
@@ -100,7 +120,7 @@ async function escuchar(): Promise<void> {
     return
   }
   repartir('_cortado', null)
-  reintento = setTimeout(() => void escuchar(), REINTENTO_MS)
+  reintento = setTimeout(() => void escuchar(), espera)
 }
 
 /**
