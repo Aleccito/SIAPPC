@@ -7,10 +7,10 @@ import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
 import imgAvatar2Png from '../../assets/avatar-2.png';
 import imgCpuIcon from '../../assets/cpu-icon.svg';
 import imgLiveIndicatorEllipse from '../../assets/live-indicator-ellipse.svg';
-import imgWaveLine from '../../assets/wave-line.svg';
 import { useAlerts, useAssignments, useDeviceStatus, useMonitoredBeds, useSoapNotes } from '../../api/queries';
 import { getDatosExtra, getSignosExtra, useExtra } from '../../api/sinBackend';
 import { AiIdeasCard, AppLink, BackButton, Badge, Button, Card, Divider, PatientLayout, SoapSections, usePatient, type PatientView } from '../../components';
+import { EcgLive } from '../../components/monitor/EcgLive';
 import { alertInfoFrom, attendedAlerts, CONFIRM_PATH, type AttendedState, type ConfirmState } from '../../data/alerts';
 import { toSoapSections } from '../../data/soap';
 import { alertTitle, alertValueText, groupAlerts, vitalTone } from '../../lib/alerts';
@@ -146,8 +146,9 @@ function Resumen({ v }: { v: PatientView }) {
               <p className="text-[11px] uppercase text-subtle">ECG II</p>
               <p className="text-[12px] text-[#22c55e]">Filtro: Activo</p>
             </div>
+            {/* La onda real del equipo (GET /monitoring/:device/waveform); sin equipo o sin lotes: "Sin señal de ECG". */}
             <div className="relative h-[60px] w-full overflow-hidden">
-              <img className="absolute inset-x-0 top-3 h-9 w-full object-fill" alt="" src={imgWaveLine} />
+              <EcgLive device={device ?? monitored?.device} />
             </div>
           </div>
 

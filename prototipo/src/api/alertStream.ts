@@ -1,4 +1,6 @@
-// Copia de frontend/src/shared/api/alertStream.ts. Única diferencia: `apiFetch` en vez de `fetch('/api/…')`, para que en modo mock lo atienda el simulador.
+// Copia de frontend/src/shared/api/alertStream.ts. Diferencias: `apiFetch` en vez de `fetch('/api/…')`, para que en modo mock lo
+// atienda el simulador, y dos eventos propios del prototipo, `_abierto` y `_cortado` (no vienen del servidor), para
+// que la barra superior diga "Sin conexión en vivo" mientras se reintenta (src/components/layout/EnVivo.tsx).
 import { apiFetch, getToken } from './http'
 
 // Una sola conexión SSE para toda la aplicación, con varios oyentes.
@@ -71,6 +73,7 @@ async function escuchar(): Promise<void> {
       return
     }
     if (!respuesta.ok || !respuesta.body) throw new Error(String(respuesta.status))
+    repartir('_abierto', null)
 
     const lector = respuesta.body.getReader()
     const decodificador = new TextDecoder()
@@ -96,6 +99,7 @@ async function escuchar(): Promise<void> {
     corriendo = false
     return
   }
+  repartir('_cortado', null)
   reintento = setTimeout(() => void escuchar(), REINTENTO_MS)
 }
 

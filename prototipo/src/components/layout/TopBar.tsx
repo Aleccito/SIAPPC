@@ -4,6 +4,7 @@ import { useUnreadCount } from '../../data/notifications';
 import { useSession } from '../auth/session';
 import { cn } from '../../lib/cn';
 import { IconBell, IconCalendar, IconMenu } from '../icons';
+import { EnVivoAviso } from './EnVivo';
 
 export type TopBarProps = {
   /** Ruta de navegación, ej. "SIAPPC > Alertas". */
@@ -69,6 +70,7 @@ export function TopBar({ breadcrumb, title, actions, notifications, onMenuClick,
             {actions}
           </div>
         )}
+        <EnVivoAviso />
         <NotificationBell count={notifications} />
       </div>
     </header>
@@ -105,7 +107,7 @@ function Bell({ fixed }: { fixed?: number }) {
       <IconBell size={18} />
       {count > 0 && (
         <span className="absolute -right-[3px] -top-[3px] flex h-4 min-w-4 items-center justify-center rounded-lg bg-danger px-[3px] font-geist text-[10px] font-extrabold leading-[normal] text-white">
-          {count}
+          {count > 99 ? '99+' : count}
         </span>
       )}
     </Link>

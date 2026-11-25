@@ -1,9 +1,9 @@
 # Conectar el prototipo con el backend real — plan
 
-> **Estado: plan de ejecución para aprobar (sección 9).** La base ya está en el código (PRs 2 y 3 de
-> `REVISION-IA.md`): `src/api/` (con `ai.ts`, copia del `aiApi.ts` de los PRs #54–#58), el interruptor
-> `VITE_API_MODE` (`src/api/mode.ts`, `.env.example`) y el proxy de `/api` en `vite.config.ts`. La conexión se hace en
-> **3 PRs** (sección 6); hasta terminarlos lo publicado en https://prototipo.melo-coton.uk usa el modo `mixto`.
+> **Estado: conectado.** La conexión quedó en **2 PRs**: el 1 (acceso y tablero, sección 10) y los 2 y 3 juntos
+> (pacientes, expediente, tiempo real y lo demás, sección 11). Lo publicado en https://prototipo.melo-coton.uk usa
+> `VITE_API_MODE=real`: todo va al backend salvo lo que el backend todavía no tiene, que sigue simulado en
+> `src/api/sinBackend.ts` (sección 11.2). El modo `mock` se conserva para trabajar sin backend (`npm run dev`).
 
 Fuentes: `backend/src/routes/*.ts`, `backend/src/plugins/auth.ts`, `backend/prisma/schema.prisma`,
 `backend/db/seed.sql`, `docker-compose.yml` y, en `frontend/`, `src/shared/api/http.ts`, `src/modules/registry.ts`,
@@ -266,15 +266,14 @@ Se agrega en el paso de IA (`REVISION-IA.md`, D7), así que la conexión no lo e
 
 ## 6. Orden de los PRs
 
-Tres PRs, uno a la vez, cada uno en su rama desde `dev`. Cada uno pasa a real sus grupos con el modo `mixto`
-(`VITE_API_REAL`); lo demás sigue en el simulador hasta que le toque, así lo publicado no se rompe en el medio. El
-detalle (qué entra, qué queda simulado, cómo se prueba) está en la sección 9.
+El plan eran tres PRs; **el 2 y el 3 se juntaron en uno** (el último). El PR 1 pasó a real sus grupos con el modo
+`mixto` (`VITE_API_REAL`); el PR 2+3 pasa todo con `VITE_API_MODE=real`. El detalle de cada uno está en las
+secciones 10 y 11.
 
 | # | Rama | Grupos que pasan a real | Lo principal |
 |---|---|---|---|
 | 1 | `feature/prototipo-conexion-1` | `auth`, `dashboard/assigned-patients`, `sensors` | nginx con `/api`, modo en el build, login real con el código `000000`, sesión, menú por rol, Mi Perfil, Dashboard real; arreglo del ícono de notificaciones |
-| 2 | `feature/prototipo-conexion-2` | + `patients`, `historia`, `soap`, `search` | Las fichas con todas sus pestañas, altas reales, notas SOAP (borrador, firma, adenda, la enfermera solo lee), búsqueda |
-| 3 | `feature/prototipo-conexion-3` | todo: `VITE_API_MODE=real` | Monitoreo y onda ECG, alertas en vivo, campana, dispositivos, reportes, IA real |
+| 2 y 3 | `feature/prototipo-conexion-2` | todo: `VITE_API_MODE=real` | Las fichas de todos los pacientes asignados con sus 18 pestañas, altas reales, notas SOAP (borrador, firma, adenda, la enfermera solo lee), búsqueda; monitoreo y onda ECG, alertas en vivo, campana, dispositivos, reportes, IA real; publicador de demo; lo simulado, vivo |
 
 **Administración queda fuera** (`/users`, `/roles`, `/permissions`, `/audit`): la conecta quien hace la sección
 `Admin*`, en su rama.
@@ -319,6 +318,8 @@ detalle (qué entra, qué queda simulado, cómo se prueba) está en la sección 
 20. Marca `asistidaPorIa` en la nota SOAP, para auditar qué notas usaron texto de la IA.
 21. Flujo SSE de signos vitales, para no repreguntar cada 15 s.
 22. Buscar pacientes también por diagnóstico en `/search`.
+
+Los pedidos 23 a 27 salieron del PR 1 (sección 9.5) y los 28 a 33 del PR 2+3 (sección 11.6).
 
 ---
 
@@ -731,3 +732,160 @@ Rama `feature/prototipo-conexion-1`. Lo publicado queda en `mixto` con `auth,das
   - Abrir un paciente más allá de los 8 da "Paciente no encontrado" hasta el PR 2.
 - **Ojo con las pruebas:** el backend permite 5 logins por IP y correo cada 15 min, contando también los buenos
   (pedido 27). Repetir las pruebas reales seguidas bloquea la cuenta 15 minutos.
+
+---
+
+## 11. PRs 2 y 3 — pacientes, expediente, tiempo real y lo demás (un solo PR)
+
+Rama `feature/prototipo-conexion-2`, creada desde `feature/prototipo-conexion-1`. Los PRs 2 y 3 de la sección 6 van
+juntos. Lo publicado queda en `VITE_API_MODE=real`: el servicio `prototipo` de `docker-compose.yml` lo trae por
+defecto (`PROTOTIPO_API_MODE`, con `PROTOTIPO_API_REAL` vacío). Todo va al backend salvo lo de
+`src/api/sinBackend.ts`, que sigue simulado. El modo `mock` se conserva: `npm run dev` sin `.env.local`.
+
+### 11.1 Qué quedó real
+
+| Área | Del backend | Cómo se ve |
+|---|---|---|
+| Pacientes y expediente | `/patients`, `/historia/:id` (y `cambios`, `observaciones`), `/exploracion` | Todos los pacientes que la base le asigna a la persona (16 en la base de demo, no solo los 8), con sus 18 pestañas |
+| Altas | `POST/PATCH /historia/:id/<categoría>` | Diagnósticos, antecedentes, alergias, medicamentos, documentos (la ficha; el archivo no, pedido 15) |
+| Notas SOAP | `/soap/notes` | Borrador, seguir el borrador, firmar; una nota firmada no se edita (el backend responde 409) y se corrige con una **adenda** (nueva en el detalle, `POST /soap/notes/:id/addendum`). La enfermera solo lee |
+| Búsqueda | `/search` | Pacientes, notas y documentos |
+| Monitoreo | `/monitoring/beds` | La central por unidad (UCI, Trauma, Admisión y Piso 3 en la base de demo), con las unidades que trae la respuesta |
+| Onda del ECG | SSE `/monitoring/:device/waveform` | En Resumen y en Monitoreo detallado (`components/monitor/EcgLive.tsx`), con "Sin señal de ECG" si en 5 s no llega nada |
+| Alertas en vivo | SSE `/alerts/stream`, `/sensors/alerts` | `components/layout/EnVivo.tsx`: una alerta nueva refresca alertas, pacientes y camas sin esperar; una crítica de un paciente a cargo muestra un aviso (uno por paciente por minuto); "Sin conexión en vivo" junto a la campana si el flujo se corta |
+| Campana y bandeja | `/notifications` | Solo las reales; las de otro tipo (asignación, laboratorio…) quedan para el modo mock |
+| Dispositivos | `/dashboard/devices` | Los 16 equipos (los 15 de demo y la Raspberry `RPI-01`), con la cama de `/monitoring/beds` y las señales de las lecturas recientes |
+| Reportes | `/reports`, `/reports/actividad-clinica.csv` | Pestaña nueva "Informes del Sistema": la bitácora del ETL y la descarga del CSV por rango de fechas |
+| IA | `/ai/assist/stream`, `/ai/assist/:id`, `/ai/assist/:id/ideas` | El modelo real (`LLM_URL`). Enfermería: 403. Con el modelo apagado: 503, "no está disponible" y Reintentar |
+
+### 11.2 Qué sigue simulado, y vivo
+
+Lo que el backend no tiene sigue en `src/api/sinBackend.ts`, marcado `SIMULADO` en el código. Ya no son números fijos:
+
+- **Cambia con el tiempo** (`src/api/simulacion.ts`). PA, temperatura, tendencias y los paneles del monitoreo detallado
+  (neurológico, respiratorio, balance, laboratorios, perfusión) oscilan despacio alrededor del valor de cada caso.
+  - Es una suma de senos con fases propias de cada paciente y signo, sin azar: dos pantallas abiertas dicen lo mismo.
+  - Los periodos van de minutos (PA, diuresis) a horas (laboratorios).
+  - Las pantallas lo vuelven a pedir cada 15 s.
+  - El último punto de las tendencias es el valor que muestran las demás pantallas.
+- **La temperatura es la del monitor** cuando el backend la tiene: el publicador de demo manda `temp`, que está en el
+  catálogo `variable` y no tiene umbral. Si no hay una lectura de los últimos 10 minutos, se usa la simulada.
+- **Los pacientes que no son de los 8** (DEMO-0009 en adelante, o cualquiera que se dé de alta) tienen un **perfil
+  generado** (`perfilGenerado`, con `generado: true`). Sale de su motivo de consulta (cardiológico, respiratorio,
+  infección, trauma, obstétrico, abdominal, metabólico, neurológico, musculoesquelético o general), de su edad, de su
+  sexo y de la gravedad de sus alertas.
+  - Trae datos personales, PA y temperatura, signos de ingreso, los paneles del monitoreo, nota de ingreso,
+    interrogatorio por aparatos, indicaciones, nota correlativa, entrega de turno y tendencias.
+  - Los textos usan las observaciones y los diagnósticos reales del expediente.
+  - Con una alerta crítica, una infección o un trauma empeoran la perfusión (PA baja, lactato, diuresis).
+  - En pantalla no lleva una marca propia, igual que lo simulado de los 8.
+
+| Simulado | Falta en el backend (pedido) |
+|---|---|
+| Presión arterial y PAM; temperatura sin monitor | PA como lectura (10) |
+| Datos personales (estado civil, ocupación, dirección, aseguradora) | Campos en `paciente` (19) |
+| Signos vitales de ingreso | La exploración solo guarda Glasgow |
+| Paneles del monitoreo detallado | No son telemetría; serían laboratorios y balance (13) |
+| Nota de ingreso e interrogatorio por aparatos | Modelo y rutas (12) |
+| Indicaciones que no son fármacos | Órdenes médicas (13) |
+| Nota correlativa de diagnósticos | ¿`notas` de cada diagnóstico? |
+| Entrega de turno | Modelo y rutas (11) |
+| Tendencias de PA (FC, SpO2, FR y temperatura ya son lecturas reales) | Histórico agregado (9) y PA (10) |
+| Umbrales por paciente | `thresholds` (8) |
+| Reportes clínicos por paciente | Reportes PDF (14) |
+| Batería, calibraciones, firmware y eventos de los equipos | Detalle de dispositivo (18) |
+| El trazo de ECG de las tarjetas de la central (corre a la FC real de cada cama) | Onda de varios equipos en un flujo (29) |
+
+### 11.3 Publicador de demo
+
+`prototipo/tools/telemetria-demo/` ([LEEME](tools/telemetria-demo/LEEME.md)): un script de Node que hace de los
+15 monitores `DEMO-DEV-*`.
+
+- Publica por MQTT, igual que la Raspberry: TLS, el usuario del `.env` y el formato de `mqttIngest.ts`.
+- Cada 30 s manda `hr`, `spo2`, `resp` y `temp` (`PERIODO_S`).
+- Cada segundo manda la onda del ECG a 125 Hz, con fibrilación auricular en DEMO-0005.
+- Al arrancar y al salir manda el estado `online` u `offline`.
+- Los valores siguen el caso de cada paciente (`casos.json`). Los críticos quedan cerca de su umbral y lo cruzan en
+  episodios cortos, no en cada lectura: hoy el backend crea una alerta, y una notificación por usuario a cargo, por
+  cada lectura fuera de rango (pedido 28).
+- `--alerta DEMO-DEV-06` manda una sola lectura crítica (FC 150), para mostrar el aviso en vivo.
+- Se corre con `docker run` en la red `siappc_default`; no es un servicio del Compose (pedido 32).
+
+### 11.4 Verificación
+
+- `npm run build` y `tsc` pasan.
+- **Modo mock:** la suite de pruebas automáticas (Edge sin ventana) pasa entera, 59 pruebas: fichas, recarga, listas,
+  IA, sesión y roles.
+- **Contra el backend local**, con la base de demo, el publicador corriendo y el prototipo en `real`. Se entró pocas
+  veces por cuenta (el límite es de 5 cada 15 min, pedido 27).
+  - **Médico:**
+    - Las 18 pantallas de cada uno de sus 16 pacientes, sin "Cargando" colgado, sin textos rotos ni errores de
+      consola.
+    - Los signos de Resumen cambian solos sin recargar, y la onda del ECG llega en vivo.
+    - DEMO-0009, DEMO-0010 y DEMO-0012 muestran sus perfiles generados (insuficiencia cardíaca con BNP, plan de asma,
+      datos personales).
+    - Una alerta crítica nueva (`--alerta`) muestra el aviso al instante, sube la campana y aparece en el centro de
+      alertas.
+    - Dispositivos lista los 16 equipos. Reportes descarga el CSV (200, `text/csv`). La bandeja solo trae las reales.
+    - Nota SOAP: borrador, firma, la firmada no se edita (409) y una adenda firmada que cuelga de la nota.
+    - Alta real: un diagnóstico I50.9 registrado desde la pantalla aparece en Diagnósticos activos.
+  - **Enfermería:**
+    - 403 en la IA, en la consulta y en el análisis.
+    - Lee la nota firmada y su adenda, sin poder editar ni agregar.
+    - Ve la onda del ECG y recibe el aviso de la alerta crítica.
+  - **Administrativo:** la central real con sus 4 unidades; las camas no abren el expediente; el trazo de las
+    tarjetas corre a la FC de cada cama.
+  - **Admin:** entra a Mi Perfil, sin campana ni flujo de alertas.
+  - **IA con el modelo apagado:** 503, el aviso y Reintentar.
+  - **IA con el modelo:** un contenedor de Ollama local con el modelo del servidor
+    (`hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M`, en CPU). El backend apuntó a él con un override de Compose temporal,
+    sin tocar el `.env`, y después volvió a su configuración.
+    - Una consulta tardó 18 s en empezar a escribir y 24 s en total.
+    - "Detener" la cortó en 0,1 s.
+    - Las ideas a pedido de DEMO-0009 tardaron 22 s; la primera fue "Descompensación de la insuficiencia cardíaca".
+    - El análisis automático por alerta también corrió.
+  - La corrida final de las 16 fichas (288 pantallas), con una pausa breve entre pantallas, pasa entera y sin
+    reintentos por el techo de peticiones (pedido 33).
+  - **PENDIENTE:** las capturas a 1440, 1024 y 390 px.
+- **Lo que se ve y no es error:**
+  - Las pruebas dejaron en la base local tres notas SOAP en DEMO-0009: un borrador, una firmada y su adenda. También
+    un diagnóstico I50.9 de prueba y dos alertas de FC 150 en DEMO-0006.
+  - Con el publicador corriendo, la campana acumula decenas de notificaciones por hora (pedido 28).
+
+### 11.5 Qué correr en el servidor después de mezclar
+
+Desde `/opt/siappc`, con `-f docker-compose.yml -f docker-compose.prod.yml` en cada `docker compose`:
+
+1. **El prototipo en modo real:** `git pull` y
+   `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build prototipo`.
+2. **Los datos** (9.3): `base.sh revisar` y, si falta algo, `base.sh cargar`. Deja los 18 pacientes DEMO, las notas
+   y la enfermera con sus pacientes.
+3. **El publicador de demo:** construir la imagen y dejarla corriendo con `--restart unless-stopped`
+   (comandos en [su LEEME](tools/telemetria-demo/LEEME.md)).
+4. **El modelo:** el backend tiene que apuntar al Ollama del servidor (`LLM_URL` y `LLM_MODEL` en el `.env`).
+
+### 11.6 Pedidos nuevos para Adrian
+
+28. **No repetir alertas.** Hoy cada lectura fuera de rango crea una alerta, y una notificación para cada usuario a
+    cargo. Con un monitor que publica cada 30 s, un paciente que sigue fuera de rango suma 120 alertas por hora.
+    Propuesta: mientras haya una alerta abierta del mismo tipo y equipo, actualizarla o contarla, en vez de crear
+    otra; o un enfriamiento por equipo y tipo, como el de la IA.
+29. **La onda de varios equipos en un solo flujo** (`GET /monitoring/waveform?unitId=` o `?devices=`). Hoy es una
+    conexión SSE por equipo, y el navegador abre como mucho 6 por host en HTTP/1.1. Por eso la central dibuja un
+    trazo simulado a la FC de cada cama, y la onda real solo está en las pantallas de un paciente.
+30. **Umbral de temperatura** en `evaluateAlert` (por ejemplo, fiebre desde 38,5 °C e hipotermia bajo 35 °C), ahora
+    que llega `temp`.
+31. **La unidad de FC:** el catálogo dice `lpm` y la Raspberry (`iot/monitor/net/publisher.py`) manda `bpm`. El
+    backend avisa en cada lectura ("unidad distinta a la del catálogo").
+32. **El publicador de demo como servicio del Compose** (amplía el 23): ya existe en `prototipo/tools/telemetria-demo`.
+    Falta llevarlo a un perfil `demo` del `docker-compose.yml`, que no es parte del prototipo.
+33. **El techo general de peticiones** (`RATE_LIMIT_MAX=100` por minuto y por IP) se queda corto para una app que
+    refresca cada 15 s. Una pantalla quieta ya pide unas 30 a 40 por minuto, y abrir pantallas seguidas lo pasa: el
+    backend responde 429 y la pantalla dice "No se pudo cargar".
+    - En las pruebas pasó con 18 pantallas por paciente abiertas en segundos.
+    - En el servidor cada visitante tiene su contador (IP real de Cloudflare, pedido 27), pero detrás de una misma red
+      (un hospital, una VPN) comparten uno.
+    - Propuesta: contar por usuario de la sesión y no por IP, o subir el techo de las lecturas (`GET`) y dejar el
+      estricto para las escrituras y el login.
+    - El prototipo ya pide lo menos posible: las tendencias cada 60 s, y lo simulado reutiliza las consultas durante
+      30 s.

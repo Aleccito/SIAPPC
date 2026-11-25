@@ -1,5 +1,5 @@
 // Pantalla "med-dispositivos-monitores" (Figma node 265:4) — generada desde el diseño original de Figma.
-// Los 8 monitores del seed (src/data/devices.ts); el estado en vivo, de GET /dashboard/devices.
+// Con el backend, los monitores de GET /dashboard/devices; sin él, los 8 del seed (src/data/useDevices.ts).
 import { useState } from 'react';
 import imgDropdownBadgeEllipse2 from '../../assets/dropdown-badge-ellipse-2.svg';
 import imgFiltersRowFrame from '../../assets/filters-row-frame.svg';
@@ -8,9 +8,9 @@ import imgKpiRowFrame2 from '../../assets/kpi-row-frame-2.svg';
 import imgKpiRowFrame3 from '../../assets/kpi-row-frame-3.svg';
 import imgKpiRowFrame4 from '../../assets/kpi-row-frame-4.svg';
 import imgSearchFieldVector from '../../assets/search-field-vector.svg';
-import { useDeviceStatus } from '../../api/queries';
 import { AppLayout, Badge, Button, Card, EmptyState, KpiCard, Pagination, rowLinkClass, SearchBox, Select, Table, useRowLink } from '../../components';
-import { deviceDetailPath, DEVICES, STATUS_TONE } from '../../data/devices';
+import { deviceDetailPath, STATUS_TONE } from '../../data/devices';
+import { useDevices } from '../../data/useDevices';
 import { cn } from '../../lib/cn';
 import { matches } from '../../lib/text';
 
@@ -24,8 +24,6 @@ const STATUS_OPTIONS = [
   { value: 'INACTIVO', label: 'Inactivo' },
 ];
 
-const BED_OPTIONS = [{ value: 'all', label: 'Todas las camas' }, ...DEVICES.map((d) => d.bed).sort().map((b) => ({ value: b, label: b }))];
-
 const filterIcon = <img className="size-3.5" alt="" src={imgFiltersRowFrame} />;
 const kpiIcon = (src: string) => <img className="size-7 shrink-0" alt="" src={src} />;
 
@@ -36,12 +34,8 @@ export default function MedDispositivosMonitores() {
   const [status, setStatus] = useState('all');
   const [bed, setBed] = useState('all');
   const [page, setPage] = useState(1);
-  // Estado en vivo del backend; si todavía no llegó, el del seed.
-  const live = useDeviceStatus();
-  const devices = DEVICES.map((d) => {
-    const state = live.data?.find((x) => x.code === d.serial)?.state;
-    return state ? { ...d, status: state === 'activo' ? ('ACTIVO' as const) : state === 'mantenimiento' ? ('FALLA' as const) : ('INACTIVO' as const) } : d;
-  });
+  const { devices } = useDevices();
+  const BED_OPTIONS = [{ value: 'all', label: 'Todas las camas' }, ...[...new Set(devices.map((d) => d.bed))].sort().map((b) => ({ value: b, label: b }))];
 
   // Cualquier cambio de filtro vuelve a la primera página.
   const filter = <T,>(set: (v: T) => void) => (v: T) => {
@@ -113,7 +107,7 @@ export default function MedDispositivosMonitores() {
               const low = d.battery < 20;
               return (
                 <div
-                  key={d.bed}
+                  key={d.serial}
                   {...rowLink(deviceDetailPath(d.bed))}
                   aria-label={`Ver detalle del monitor de la cama ${d.bed}`}
                   className={cn(COLS, 'border-b border-line py-3 last:border-b-0', d.rowBg ?? 'bg-white', rowLinkClass)}

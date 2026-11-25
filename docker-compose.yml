@@ -288,8 +288,11 @@ services:
   # VITE_API_MODE, que se fija al construir. Ver prototipo/LEEME.md y
   # prototipo/CONEXION-BACKEND.md.
   #
-  #   PROTOTIPO_API_MODE  mock | mixto | real
+  #   PROTOTIPO_API_MODE  real (por defecto) | mixto | mock
   #   PROTOTIPO_API_REAL  en mixto, los grupos o rutas que van al backend
+  #
+  # En real todo va al backend; solo lo que el backend todavía no tiene sigue
+  # simulado en el navegador (prototipo/src/api/sinBackend.ts).
   #
   # Sin depends_on a propósito: tiene que arrancar aunque el backend no esté
   # (sus pantallas cargan y solo /api responde 502).
@@ -304,8 +307,8 @@ services:
     build:
       context: ./prototipo
       args:
-        VITE_API_MODE: ${PROTOTIPO_API_MODE:-mixto}
-        VITE_API_REAL: ${PROTOTIPO_API_REAL:-auth,dashboard/assigned-patients,sensors}
+        VITE_API_MODE: ${PROTOTIPO_API_MODE:-real}
+        VITE_API_REAL: ${PROTOTIPO_API_REAL:-}
     container_name: siappc-prototipo
     profiles: ['prototipo']
     restart: unless-stopped

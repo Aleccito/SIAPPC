@@ -84,8 +84,9 @@ export function SoapHistoryView({ v }: { v: PatientView }) {
                     <p className="truncate font-jakarta text-[12px] font-normal text-muted">{staffName(n.authorName)}</p>
                   </div>
                   <p className="min-w-0 flex-1 font-jakarta text-[13px] font-normal leading-[1.4] text-ink sm:truncate">
-                    <span className="font-bold text-primary">S: </span>
-                    {n.subjective ?? '—'}
+                    {/* Una adenda (PR de conexión 2 y 3) cuelga de una nota firmada y suele traer una sola sección. */}
+                    <span className="font-bold text-primary">{n.parentId ? `Adenda de NS-${n.parentId.padStart(6, '0')}: ` : 'S: '}</span>
+                    {n.parentId ? (n.subjective ?? n.objective ?? n.assessment ?? n.plan ?? '—') : (n.subjective ?? '—')}
                   </p>
                   <div className="flex items-center gap-4">
                     <Badge tone={done ? 'success' : 'warning'}>{done ? 'Completada' : 'En progreso'}</Badge>

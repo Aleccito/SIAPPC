@@ -32,10 +32,13 @@ import {
   useToast,
 } from '../../components';
 import { cn } from '../../lib/cn';
+import { InformesSistema } from './InformesSistema';
 
 const TABS = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'historial', label: 'Historial de Entregas' },
+  // No viene de Figma: lo que el backend tiene de reportes (bitácora del ETL y el CSV de actividad clínica).
+  { id: 'sistema', label: 'Informes del Sistema' },
 ];
 
 type Pending = { patient: string; type: string; date: string; status: string; style: string };
@@ -246,7 +249,9 @@ export default function MedReportesPanel() {
         <Tabs items={TABS} active={tab} onChange={setTab} />
       </div>
       <div className="flex w-full min-w-0 flex-1 flex-col gap-6 bg-surface p-4 md:p-8">
-        {tab === 'historial' ? (
+        {tab === 'sistema' ? (
+          <InformesSistema />
+        ) : tab === 'historial' ? (
           historySection
         ) : (
           <>

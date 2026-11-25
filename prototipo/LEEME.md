@@ -3,8 +3,9 @@
 Las 35 pantallas de la página **MEDICO** de Figma y las 4 de **LOGIN**, generadas a partir del diseño original.
 Es una **segunda app**, aparte de `frontend/` (la app real), sin código compartido. Las pantallas piden sus datos a
 `src/api/`, que los trae del backend (`/api`) o de un simulador en el navegador con los **8 pacientes de
-`backend/db/seed-demo.sql`** (DEMO-0001…0008), según `VITE_API_MODE`. La conexión va en 3 PRs:
-[CONEXION-BACKEND.md](CONEXION-BACKEND.md), secciones 6 y 9.
+`backend/db/seed-demo.sql`** (DEMO-0001…0008), según `VITE_API_MODE`. Lo publicado usa el backend (`real`); lo que
+el backend todavía no tiene sigue simulado en `src/api/sinBackend.ts`. Cómo quedó la conexión:
+[CONEXION-BACKEND.md](CONEXION-BACKEND.md), secciones 10 y 11.
 
 ## Verlo con Docker (servidor)
 
@@ -15,8 +16,13 @@ docker compose up -d --build prototipo
 ```
 
 Queda en `http://<servidor>:8082` (cambia el puerto con `PROTOTIPO_PORT` en el `.env`).
-Solo levanta este contenedor: no necesita base de datos, backend ni broker.
+Por defecto se construye en modo `real`: usa el backend del mismo Compose a través de su nginx (`/api`). Si el
+backend no está, las pantallas cargan igual y solo `/api` responde 502. Para verlo sin backend, con el simulador:
+`PROTOTIPO_API_MODE=mock` en el `.env`.
 `docker compose up -d --build` sin nombrar el servicio **no** lo levanta (va en el perfil `prototipo`).
+
+Para que los signos vitales, las alertas y la onda del ECG se muevan sin equipos de verdad, está el publicador de
+demo: [tools/telemetria-demo/LEEME.md](tools/telemetria-demo/LEEME.md).
 
 ## Verlo en tu PC (desarrollo)
 
@@ -30,7 +36,7 @@ Abre http://localhost:5173 y navega con el menú lateral, o entra directo a cual
 
 ## Datos y sesión
 
-- **Con el backend** (lo publicado, `mixto` o `real`): se entra con las cuentas del seed (README de la raíz, "5.
+- **Con el backend** (lo publicado, `real`): se entra con las cuentas del seed (README de la raíz, "5.
   Entrar"). Después del login viene el código de verificación: mientras el backend no tenga MFA, el código es
   **000000** (lo dice la pantalla) y sin él no se entra. Cada rol ve lo suyo:
   - Médico: todo lo clínico.
@@ -41,25 +47,32 @@ Abre http://localhost:5173 y navega con el menú lateral, o entra directo a cual
   médico. En el Login sirve cualquier contraseña (las cuentas del seed entran con su rol) y el código también es
   000000. Después de "Cerrar sesión" hay que volver a entrar.
 - El paciente va en la URL: `/MedPacienteResumen?paciente=DEMO-0005`. Sin `?paciente=` se abre DEMO-0002; una cédula
-  que no existe muestra "Paciente no encontrado".
-- Lo que se escribe (notas SOAP, diagnósticos, umbrales, borradores) se guarda en la pestaña del navegador y sobrevive
-  a recargar; se pierde al cerrarla.
+  que no existe muestra "Paciente no encontrado". Con el backend se abren todos los pacientes de la base, no solo
+  los 8.
+- **Lo simulado** (PA, temperatura sin monitor, datos personales, los paneles del monitoreo detallado, nota de
+  ingreso, indicaciones, entrega de turno…) no es fijo: cambia poco a poco con el tiempo. Los pacientes que no son de
+  los 8 reciben valores simulados según su diagnóstico (`src/api/simulacion.ts`; CONEXION-BACKEND.md, 11.2).
+- Con el backend, las notas SOAP, los diagnósticos y las demás altas se guardan en la base. Sin él, lo que se escribe
+  se guarda en la pestaña del navegador y sobrevive a recargar; se pierde al cerrarla. Lo simulado que se edita
+  (umbrales, nota de ingreso, indicaciones) se guarda siempre en la pestaña.
 - Las respuestas tardan un poco, como un servidor. Para probar: `?retraso=0` (sin espera), `?sesion=vencida` (la
   siguiente petición responde 401 y vuelve al Login).
-- `.env.example` trae el interruptor `VITE_API_MODE` (`mock` por defecto, `real` o `mixto`, con `VITE_API_REAL`
-  para elegir grupos o rutas) y el proxy de `/api` está en `vite.config.ts`. En el contenedor, el modo se fija al
-  construir (`PROTOTIPO_API_MODE` y `PROTOTIPO_API_REAL` en el `.env` del servidor; por defecto, lo del último PR
-  de conexión) y el nginx del prototipo hace de proxy de `/api` hacia el backend.
+- `.env.example` trae el interruptor `VITE_API_MODE` (`mock` por defecto en `npm run dev`, `real` o `mixto`, con
+  `VITE_API_REAL` para elegir grupos o rutas) y el proxy de `/api` está en `vite.config.ts`. En el contenedor, el
+  modo se fija al construir (`PROTOTIPO_API_MODE` y `PROTOTIPO_API_REAL` en el `.env` del servidor; por defecto,
+  `real`) y el nginx del prototipo hace de proxy de `/api` hacia el backend.
 
-## IA (simulada)
+## IA
 
 - "Asistente IA" en el menú (`/MedAsistenteIa`) y "Consultar IA" en la cabecera de cada paciente: consulta libre
   sobre un paciente. Las ideas de la IA aparecen en el Resumen y, en los críticos, en el Monitoreo detallado.
-- Es un simulador: responde en segundos con textos escritos para cada paciente y se presenta como
-  `medgemma-4b-it (simulado)`. Nada de lo que dice se guarda; si se lleva a una nota SOAP, el médico la revisa y
-  la firma.
-- Solo la ven los médicos. Para probar estados: `?ia=lenta` (tiempos del modelo real), `?ia=caida` (no
+- **Con el backend** responde el modelo del servidor (`LLM_URL` y `LLM_MODEL` del backend; en CPU, unos 20 s por
+  respuesta). Si el modelo no está, la pantalla dice que la IA no está disponible y ofrece reintentar.
+- **Con el simulador** responde en segundos con textos escritos para cada paciente y se presenta como
+  `medgemma-4b-it (simulado)`. Para probar estados: `?ia=lenta` (tiempos del modelo real), `?ia=caida` (no
   disponible), `?ia=corte` (se corta a mitad), `?ia=sin-analisis` y `?ia=normal` para volver.
+- Nada de lo que dice se guarda; si se lleva a una nota SOAP, el médico la revisa y la firma. Solo la ven los
+  médicos.
 
 ## Notas
 

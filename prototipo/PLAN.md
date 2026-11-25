@@ -6,9 +6,10 @@ Documento de traspaso para seguir el trabajo en Claude Code. Léelo completo ant
 
 `prototipo/` contiene las **35 pantallas de la página MEDICO** y las **4 de la página LOGIN** del Figma de
 SIAPPC, convertidas a React a partir del código que genera Figma (codegen). Es una **segunda app**, aparte de
-`frontend/`: las pantallas piden sus datos a `src/api/` (copias de los servicios de `frontend/`), y un simulador en el
-navegador responde con los **8 pacientes de `backend/db/seed-demo.sql`**. Hoy no se conecta al backend; el interruptor
-para hacerlo está listo (`.env.example`, `CONEXION-BACKEND.md`).
+`frontend/`: las pantallas piden sus datos a `src/api/` (copias de los servicios de `frontend/`). Lo publicado usa el
+backend (`VITE_API_MODE=real`); lo que el backend todavía no tiene sigue simulado en `src/api/sinBackend.ts`. Sin
+backend (`npm run dev`), un simulador en el navegador responde con los **8 pacientes de `backend/db/seed-demo.sql`**.
+Ver `CONEXION-BACKEND.md`.
 
 - Stack: React 19, Vite 7, Tailwind CSS 3.4, react-router-dom 6, TypeScript.
 - Una carpeta por pantalla: `src/pages/<Nombre>/index.tsx`. Rutas en `src/App.tsx` (`/` abre el `Login`).
@@ -38,6 +39,9 @@ para hacerlo está listo (`.env.example`, `CONEXION-BACKEND.md`).
   git pull
   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build prototipo
   ```
+
+- Con el backend hacen falta además los datos de demo, el publicador de demo y el modelo de la IA:
+  `CONEXION-BACKEND.md`, sección 11.5.
 
 ## Problemas conocidos (por qué hace falta este plan)
 
@@ -159,9 +163,9 @@ para hacerlo está listo (`.env.example`, `CONEXION-BACKEND.md`).
      - Solo la ven los médicos (`asistente_ia`, sin el admin). Simulada con `?ia=lenta|caida|corte|sin-analisis`.
      - Las notas SOAP son las 8 que ahora trae el seed (una firmada por paciente).
      - Verificado: `npm run build`, revisión automática a 4 anchos y pruebas automáticas de IA, más las del PR 2.
-5. **Conectar con el backend.** *En curso.* Plan aprobado en `CONEXION-BACKEND.md`, secciones 6 y 9. Tres PRs
-   (acceso y tablero; pacientes y expediente; tiempo real y lo demás), con el modo `mixto` en lo publicado hasta el
-   tercero, que deja `VITE_API_MODE=real`. Administración la conecta la sección `Admin*`.
+5. ~~**Conectar con el backend.**~~ **Hecho.** Plan en `CONEXION-BACKEND.md`, secciones 6 y 9. Quedó en dos PRs:
+   el 1 en modo `mixto` y los 2 y 3 juntos, que dejan lo publicado en `VITE_API_MODE=real`. Administración la conecta
+   la sección `Admin*`.
    - **PR 1 — Acceso y tablero** (rama `feature/prototipo-conexion-1`):
      - nginx con `/api` y el modo en el build.
      - Login real con el código 000000 y la sesión.
@@ -169,6 +173,16 @@ para hacerlo está listo (`.env.example`, `CONEXION-BACKEND.md`).
      - Dashboard real.
      - Íconos de notificaciones arreglados.
      - Detalle y estado de las pruebas en `CONEXION-BACKEND.md`, sección 10.
+   - **PRs 2 y 3 — Pacientes, expediente, tiempo real y lo demás** (rama `feature/prototipo-conexion-2`):
+     - Todos los pacientes asignados (16 en la base de demo) con sus 18 pestañas, altas reales y búsqueda.
+     - Notas SOAP: borrador, firma, adenda (nueva en el detalle); la firmada no se edita y la enfermera solo lee.
+     - Central por unidad, onda del ECG en vivo, alertas en vivo con aviso, campana real, dispositivos, reportes
+       (bitácora del ETL y CSV) e IA real.
+     - Lo simulado cambia con el tiempo y los pacientes que no son de los 8 reciben valores según su diagnóstico
+       (`src/api/simulacion.ts`).
+     - Publicador de demo por MQTT (`tools/telemetria-demo/`).
+     - `docker-compose.yml`: el prototipo se construye en `real` por defecto.
+     - Detalle, pruebas, pasos del servidor y pedidos en `CONEXION-BACKEND.md`, sección 11.
 
 ## Componentes (`src/components/`)
 
