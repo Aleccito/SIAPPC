@@ -55,8 +55,8 @@ const CHARTS: ChartDef[] = [
     limits: [120],
     keys: ['hr'],
     tone: (p) => vitalTone('hr', p.hr),
-    status: (p, t) => (t === 'normal' ? 'En rango' : p.hr > 100 ? `${t === 'danger' ? 'Alerta' : 'Advertencia'} Taquicardia` : `${t === 'danger' ? 'Alerta' : 'Advertencia'} Bradicardia`),
-    value: (p) => String(p.hr),
+    status: (p, t) => (t === 'normal' ? 'En rango' : (p.hr ?? 0) > 100 ? `${t === 'danger' ? 'Alerta' : 'Advertencia'} Taquicardia` : `${t === 'danger' ? 'Alerta' : 'Advertencia'} Bradicardia`),
+    value: (p) => String(p.hr ?? '—'),
   },
   {
     title: 'SpO2 (Saturación de Oxígeno)',
@@ -67,7 +67,7 @@ const CHARTS: ChartDef[] = [
     keys: ['spo2'],
     tone: (p) => vitalTone('spo2', p.spo2),
     status: (_, t) => (t === 'danger' ? 'Alerta Desaturación' : t === 'warning' ? 'Advertencia Desaturación' : 'En rango'),
-    value: (p) => String(p.spo2),
+    value: (p) => String(p.spo2 ?? '—'),
   },
   {
     title: 'PA (Presión Arterial)',
@@ -77,8 +77,8 @@ const CHARTS: ChartDef[] = [
     limits: [160, 90],
     keys: ['sis', 'dia'],
     tone: (p) => vitalTone('pa', p.sis),
-    status: (p, t) => (t === 'normal' ? 'En rango' : p.sis < 100 ? 'Hipotensión' : 'PA Elevada'),
-    value: (p) => `${p.sis}/${p.dia}`,
+    status: (p, t) => (t === 'normal' ? 'En rango' : (p.sis ?? 120) < 100 ? 'Hipotensión' : 'PA Elevada'),
+    value: (p) => (p.sis === null ? '—' : `${p.sis}/${p.dia ?? '—'}`),
   },
   {
     title: 'Temperatura',
@@ -88,8 +88,8 @@ const CHARTS: ChartDef[] = [
     limits: [38],
     keys: ['temp'],
     tone: (p) => vitalTone('temp', p.temp),
-    status: (p, t) => (t === 'danger' ? (p.temp < 36 ? 'Hipotermia' : 'Estado Febril') : t === 'warning' ? 'Febrícula' : 'Afebril'),
-    value: (p) => p.temp.toFixed(1),
+    status: (p, t) => (t === 'danger' ? ((p.temp ?? 37) < 36 ? 'Hipotermia' : 'Estado Febril') : t === 'warning' ? 'Febrícula' : 'Afebril'),
+    value: (p) => (p.temp === null ? '—' : p.temp.toFixed(1)),
   },
 ];
 
@@ -114,7 +114,7 @@ export default function MedPacienteTendenciasVitales() {
 function Tendencias({ v }: { v: PatientView }) {
   const [range, setRange] = useState('24h');
   const hours = HOURS[range];
-  const data = useExtra(`tendencias-${range}`, v.cedula, (c) => getTendencias(c, hours));
+  const data = useExtra(`tendencias-${range}`, v.cedula, (c) => getTendencias(c, hours, v.assigned?.device));
   const points = data.data ?? [];
   const last = points.at(-1) ?? null;
   // Marcas del eje: los 6 instantes del rango, aunque el paciente no hubiera llegado todavía.
@@ -152,10 +152,12 @@ function Tendencias({ v }: { v: PatientView }) {
           const styles = c.keys.length > 1 ? PA_STYLE : SERIES_STYLE;
           const series: TrendSeries[] = c.keys.map((k, n) => ({
             ...styles[n],
-            points: points.flatMap((p, i) => (p ? [[X[i], y(c, p[k])] as [number, number]] : [])),
+            // Un tramo sin dato de ese signo (null) no se dibuja.
+            points: points.flatMap((p, i) => (p && p[k] !== null ? [[X[i], y(c, p[k] as number)] as [number, number]] : [])),
           }));
           const limitY = c.limits.map((l) => y(c, l));
-          const lastY = last ? y(c, last[c.keys[0]]) : 0;
+          const lastValue = last?.[c.keys[0]] ?? null;
+          const lastY = lastValue !== null ? y(c, lastValue) : 0;
           return (
             <Card key={c.title} className="flex min-w-0 flex-col gap-4">
               <div className="flex w-full flex-wrap items-center justify-between gap-3">

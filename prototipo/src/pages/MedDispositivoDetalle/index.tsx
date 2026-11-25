@@ -21,6 +21,7 @@ import {
   useToast,
 } from '../../components';
 import { calibrationsOf, deviceByBed, eventsOf, firmwareOf, lastSeenOf, STATUS_TONE } from '../../data/devices';
+import { useDevices, type DeviceLive } from '../../data/useDevices';
 import { cn } from '../../lib/cn';
 
 // El médico no calibra equipos: solicita la calibración a Ingeniería Biomédica (REVISION.md, R5).
@@ -30,7 +31,23 @@ const DOT = { danger: 'bg-danger', warning: 'bg-warning', success: 'bg-success',
 
 export default function MedDispositivoDetalle() {
   const [params] = useSearchParams();
-  const device = deviceByBed(params.get('cama'));
+  const cama = params.get('cama');
+  // Con el backend, el monitor de esa cama en GET /dashboard/devices; sin él, el del seed (src/data/useDevices.ts).
+  const { devices, isPending } = useDevices();
+  const device: DeviceLive | undefined = devices.find((d) => d.bed === cama) ?? (isPending ? undefined : (devices[0] ?? deviceByBed(cama)));
+  if (!device) {
+    return (
+      <AppLayout breadcrumb={`SIAPPC > Dispositivos > ${cama ?? '…'}`} title="Monitor" actions={<BackButton to="/MedDispositivosMonitores">Volver a Dispositivos</BackButton>}>
+        <PageBody>
+          <Card className="w-full font-jakarta text-[13px] text-muted">Cargando monitor…</Card>
+        </PageBody>
+      </AppLayout>
+    );
+  }
+  return <Detalle device={device} />;
+}
+
+function Detalle({ device }: { device: DeviceLive }) {
   const toast = useToast();
   const free = !device.age;
   const low = device.battery < 20;
@@ -87,7 +104,7 @@ export default function MedDispositivoDetalle() {
               <InfoField label="Cama">{`${device.bed} · ${device.unit ?? '—'}`}</InfoField>
               <InfoField label="Paciente">{free ? '—' : device.patient}</InfoField>
               <InfoField label="Firmware">{firmwareOf(device)}</InfoField>
-              <InfoField label="Última conexión">{lastSeenOf(device)}</InfoField>
+              <InfoField label="Última conexión">{device.lastSeen ?? lastSeenOf(device)}</InfoField>
             </div>
           </Card>
 

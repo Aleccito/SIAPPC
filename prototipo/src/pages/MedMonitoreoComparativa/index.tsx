@@ -34,13 +34,19 @@ type Metrics = { fcAvg: number | null; spo2Min: number | null; alerts: number; c
 
 /** Lo que muestra cada columna y lo que usa el resumen de abajo. */
 function usePatientData(p: PatientRow | undefined, hours: number) {
-  const trend = useExtra(`tendencias-${hours}`, p?.document, (c) => getTendencias(c, hours));
+  const trend = useExtra(`tendencias-${hours}`, p?.document, (c) => getTendencias(c, hours, p?.device));
   const notes = useSoapNotes(p?.id);
   const exp = useExpediente(p?.id);
   const points = (trend.data ?? []).filter((x): x is NonNullable<typeof x> => !!x);
   const metrics: Metrics = {
-    fcAvg: points.length ? Math.round(points.reduce((s, x) => s + x.hr, 0) / points.length) : null,
-    spo2Min: points.length ? Math.min(...points.map((x) => x.spo2)) : null,
+    fcAvg: (() => {
+      const hr = points.map((x) => x.hr).filter((v): v is number => v !== null);
+      return hr.length ? Math.round(hr.reduce((s, x) => s + x, 0) / hr.length) : null;
+    })(),
+    spo2Min: (() => {
+      const spo2 = points.map((x) => x.spo2).filter((v): v is number => v !== null);
+      return spo2.length ? Math.min(...spo2) : null;
+    })(),
     alerts: p?.alertGroups.reduce((s, g) => s + g.count, 0) ?? 0,
     critical: !!p?.alertGroups.some((g) => g.severity === 'critica'),
     interventions: (exp.data?.medicamentos ?? []).filter((m) => m.status === 'activo').length,
@@ -60,8 +66,9 @@ function PatientColumn({ p, hours }: { p: PatientRow; hours: number }) {
     { label: 'Temp', value: p.signos ? `${p.signos.temp.toFixed(1)}°C` : '—', alert: tone(vitalTone('temp', p.signos?.temp)) },
     { label: 'Glasgow', value: p.glasgow ? `${p.glasgow}/15` : '—' },
   ];
-  const hrValues = points.map((x) => x.hr);
-  const spo2Values = points.map((x) => x.spo2);
+  // Un tramo sin lectura (null) se salta: no se dibuja como cero.
+  const hrValues = points.map((x) => x.hr).filter((v): v is number => v !== null);
+  const spo2Values = points.map((x) => x.spo2).filter((v): v is number => v !== null);
   const charts: Array<{ title: string; note: string; color: string; body: React.ReactNode }> = [
     {
       title: `Frecuencia Cardíaca (Últimas ${hours}h)`,
@@ -81,8 +88,8 @@ function PatientColumn({ p, hours }: { p: PatientRow; hours: number }) {
       color: pa && (pa.sis < 90 || pa.sis > 140) ? 'text-danger' : 'text-success',
       body: (
         <div className="relative h-[70px] w-full">
-          <Sparkline values={points.map((x) => x.sis)} className="absolute inset-0 h-[46px] text-[#06B6D4]" />
-          <Sparkline values={points.map((x) => x.dia)} className="absolute inset-x-0 bottom-0 h-[46px] text-[#8B5CF6]" />
+          <Sparkline values={points.map((x) => x.sis).filter((v): v is number => v !== null)} className="absolute inset-0 h-[46px] text-[#06B6D4]" />
+          <Sparkline values={points.map((x) => x.dia).filter((v): v is number => v !== null)} className="absolute inset-x-0 bottom-0 h-[46px] text-[#8B5CF6]" />
         </div>
       ),
     },

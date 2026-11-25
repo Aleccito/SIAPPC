@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { cn } from '../../lib/cn';
 import { LogoutDialog } from '../auth/LogoutDialog';
 import { IconX } from '../icons';
+import { useEnVivo } from './EnVivo';
 import { Sidebar } from './Sidebar';
 import { TopBar, type TopBarProps } from './TopBar';
 
@@ -27,6 +28,9 @@ export function AppLayout({ children, className, ...topBar }: AppLayoutProps) {
     setMenuOpen(false);
     setConfirmLogout(true);
   };
+
+  // Alertas en vivo: refrescan las pantallas y la campana al llegar (src/components/layout/EnVivo.tsx).
+  useEnVivo();
 
   useEffect(() => setMenuOpen(false), [pathname]);
 

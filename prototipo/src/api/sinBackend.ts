@@ -1,22 +1,39 @@
-// Lo que el backend todavía NO tiene (CONEXION-BACKEND.md, secciones 3 y 7). Siempre simulado,
+// SIMULADO: lo que el backend todavía NO tiene (CONEXION-BACKEND.md, secciones 3, 7 y 11). Siempre simulado,
 // también con VITE_API_MODE=real, y por cédula (no por id: el id del backend real no tiene por qué
 // coincidir con el del simulador). Cada función dice qué endpoint haría falta.
-// Los datos salen del bloque `inventado` de src/api/mock/seed/DEMO-000X.ts (no viene del seed).
+//
+// De dónde sale cada paciente:
+// - Los 8 del simulador (DEMO-0001…0008): del bloque `inventado` de src/api/mock/seed/DEMO-000X.ts, hecho a mano
+//   coherente con su caso (no viene del seed).
+// - Cualquier otro (DEMO-0009 en adelante, o uno dado de alta): un perfil GENERADO por src/api/simulacion.ts según
+//   su motivo de consulta, la gravedad de sus alertas, su edad y su sexo (los textos usan además las observaciones
+//   y los diagnósticos del expediente real). Lleva `generado: true`.
+// Y en los dos casos lo que se mide (PA, temperatura, paneles del monitoreo detallado, tendencias) no es un número
+// fijo: deriva poco a poco alrededor del valor del caso (simulacion.ts) y las pantallas lo vuelven a pedir cada 15 s.
+// La temperatura es la del monitor cuando el backend la tiene (`temp`, la manda el publicador de demo).
 import { useQuery } from '@tanstack/react-query';
-import { ApiError } from './http';
+import { ageFrom } from '../lib/clinical';
+import { getExpediente } from './clinical';
+import { listAssignedPatients } from './dashboard';
+import { API_MODE, goesToBackend } from './mode';
 import * as db from './mock/db';
 import { delayFor, wait } from './mock/delay';
 import type { Inventado } from './mock/seed/tipos';
+import { listPatients } from './patients';
+import { listReadings } from './sensors';
+import { monitoreoVivo, perfilGenerado, signosVivos, vivo, type Contexto } from './simulacion';
+import type { Expediente } from './types/clinical';
+import type { AssignedPatient } from './types/dashboard';
+import type { Patient } from './types/patients';
+import type { SensorReading } from './types/sensors';
 
-async function pedir<T>(fn: () => T, kind: 'detalle' | 'lista' | 'escritura' = 'detalle'): Promise<T> {
+const HORA = 3_600_000;
+/** Cada cuánto vuelven a pedirse los valores simulados que cambian solos. */
+export const VIVO_MS = 15_000;
+
+async function pedir<T>(fn: () => T | Promise<T>, kind: 'detalle' | 'lista' | 'escritura' = 'detalle'): Promise<T> {
   await wait(delayFor(kind));
   return fn();
-}
-
-function demo(cedula: string) {
-  const d = db.demoPorCedula(cedula);
-  if (!d) throw new ApiError(404, `No hay ningún paciente con la cédula ${cedula}`);
-  return d;
 }
 
 /** Lo guardado en las pantallas sin backend (sessionStorage, como el resto del simulador). */
@@ -28,76 +45,210 @@ function guardar(clave: string, valor: unknown) {
   db.guardar();
 }
 
+// --- El contexto real de cada paciente (para generar su perfil) ------------------------------------
+
+/** La misma promesa durante `ttl` ms (si falla, se olvida y la siguiente vez se vuelve a pedir). */
+function memo<T>(ttl: number, fn: () => Promise<T>) {
+  let at = 0;
+  let promesa: Promise<T> | null = null;
+  return () => {
+    if (!promesa || Date.now() - at > ttl) {
+      at = Date.now();
+      promesa = fn().catch((e: unknown) => {
+        promesa = null;
+        throw e;
+      });
+    }
+    return promesa;
+  };
+}
+
+// Cachés largas a propósito: el backend tiene un techo de 100 peticiones por minuto por IP (RATE_LIMIT_MAX, pedido 33)
+// y React Query ya pide lo mismo para las pantallas. Lo que cambia (la gravedad, la temperatura) va cada 30 s, que es
+// lo que tarda el monitor en mandar una lectura nueva.
+const pacientes = memo(5 * 60_000, async (): Promise<Patient[]> => (await listPatients()).items);
+/** Sin permiso (el administrador) o sin pacientes a cargo: lista vacía, el perfil sale sin la gravedad. */
+const asignados = memo(30_000, () => listAssignedPatients().catch((): AssignedPatient[] => []));
+const expedientes = new Map<string, () => Promise<Expediente | null>>();
+const expediente = (id: string) => {
+  if (!expedientes.has(id)) expedientes.set(id, memo(5 * 60_000, () => getExpediente(id).catch(() => null)));
+  return expedientes.get(id)!();
+};
+
+/** Lo simulado de un paciente, sea hecho a mano o generado. */
+type Perfil = Pick<Inventado, 'personales' | 'pa' | 'temp' | 'monitoreo' | 'notaIngreso' | 'interrogatorio' | 'indicaciones' | 'notaCorrelativa' | 'turno'> & {
+  /** true: generado por diagnóstico (no es uno de los 8). */
+  generado: boolean;
+  signosIngreso: SignosIngreso | null;
+  /** Alergias activas (las del seed o las del expediente real). */
+  alergias: string[];
+  /** Para las tendencias simuladas: cuándo llegó y sus FC, SpO2 y FR de ahora. */
+  llegada: number;
+  actuales: { hr: number; spo2: number; resp: number };
+};
+
+/**
+ * El perfil del paciente, o null si la cédula no existe. `conTextos`: además pide el expediente real (observaciones,
+ * diagnósticos y alergias) para los textos de un perfil generado; las listas no lo piden y los números son los mismos.
+ */
+async function perfil(cedula: string, conTextos = false): Promise<Perfil | null> {
+  const d = db.demoPorCedula(cedula);
+  if (d) {
+    const s = d.delSeed;
+    const ultimo = (v: string) => s.lecturas[v]?.at(-1) ?? 0;
+    return {
+      ...d.inventado,
+      generado: false,
+      signosIngreso: d.inventado.exploracion?.signosIngreso ?? null,
+      alergias: s.alergias.filter((a) => a.estado === 'activa').map((a) => a.sustancia),
+      llegada: db.AHORA - s.llegadaHorasAtras * HORA,
+      actuales: { hr: ultimo('hr'), spo2: ultimo('spo2'), resp: ultimo('resp') },
+    };
+  }
+  const p = (await pacientes().catch((): Patient[] => [])).find((x) => x.document === cedula);
+  if (!p) return null;
+  const a = (await asignados()).find((x) => x.id === p.id);
+  const ctx: Contexto = { cedula, nombre: p.name, motivo: p.reason, edad: ageFrom(p.birthDate), sexo: p.sex, severidad: a?.worstSeverity ?? null };
+  const e = conTextos ? await expediente(p.id) : null;
+  if (e) {
+    ctx.observaciones = e.notes;
+    ctx.diagnosticos = e.diagnosticos.filter((x) => x.status === 'activo').map((x) => String(x.description));
+  }
+  const g = perfilGenerado(ctx);
+  const dx = ctx.diagnosticos?.length ? ctx.diagnosticos.join('; ') : p.reason;
+  return {
+    ...g,
+    generado: true,
+    notaCorrelativa: `${dx}. ${g.turno.novedad}; pendiente: ${g.turno.pendiente.toLowerCase()}.`,
+    alergias: (e?.alergias ?? []).filter((x) => x.status === 'activa').map((x) => String(x.substance)),
+    llegada: Date.parse(p.arrivedAt),
+    actuales: {
+      hr: a?.vitals.hr ?? g.signosIngreso.fc - 8,
+      spo2: a?.vitals.spo2 ?? Math.min(99, g.signosIngreso.spo2 + 2),
+      resp: g.signosIngreso.fr - 2,
+    },
+  };
+}
+
+// --- Temperatura del monitor (la manda el publicador de demo; el backend la guarda sin umbrales) -----
+
+/** Con el backend: la última `temp` de cada equipo (de los últimos 10 minutos). */
+const temperaturas = memo(30_000, async () => {
+  const porEquipo = new Map<string, number>();
+  if (API_MODE === 'mock' || !goesToBackend('/sensors/readings')) return porEquipo;
+  const lecturas = await listReadings({ variable: 'temp', limit: 500 }).catch((): SensorReading[] => []);
+  for (const l of lecturas) {
+    if (Date.now() - Date.parse(l.at) > 10 * 60_000) continue;
+    if (!porEquipo.has(l.device)) porEquipo.set(l.device, l.value);
+  }
+  return porEquipo;
+});
+
+async function temperaturaDelMonitor(cedula: string): Promise<number | null> {
+  const temps = await temperaturas();
+  if (!temps.size) return null;
+  const device = (await asignados()).find((a) => a.document === cedula)?.device;
+  return device ? (temps.get(device) ?? null) : null;
+}
+
 // --- Datos personales (faltan en `paciente`: dirección, estado civil, ocupación, aseguradora) --------
 
 export type DatosExtra = Inventado['personales'];
-export const getDatosExtra = (cedula: string) => pedir(() => demo(cedula).inventado.personales);
+export const getDatosExtra = (cedula: string) => pedir(async (): Promise<DatosExtra | null> => (await perfil(cedula))?.personales ?? null);
 
-// --- PA y temperatura (no existen en el modelo: `lectura.valor` es un número y nadie publica temp) ---
+// --- PA y temperatura (no existen en el modelo: `lectura.valor` es un número; la temperatura sí, del monitor) ---
 
-export type SignosExtra = { pa: { sis: number; dia: number }; pam: number; temp: number };
-export const getSignosExtra = (cedula: string) =>
-  pedir((): SignosExtra => {
-    const { pa, temp } = demo(cedula).inventado;
-    return { pa, temp, pam: Math.round((pa.sis + 2 * pa.dia) / 3) };
-  });
+export type SignosExtra = {
+  pa: { sis: number; dia: number };
+  pam: number;
+  temp: number;
+  /** true: la temperatura es la última del monitor (`temp` real); false: simulada. */
+  tempDelMonitor: boolean;
+  /** true: el perfil se generó por diagnóstico (no es uno de los 8). */
+  generado: boolean;
+};
 
-/** PA y temperatura de los 8, para las listas (por cédula). */
+async function signosDe(cedula: string): Promise<SignosExtra | null> {
+  const p = await perfil(cedula);
+  if (!p) return null;
+  const v = signosVivos(cedula, p);
+  const temp = await temperaturaDelMonitor(cedula);
+  return { ...v, temp: temp ?? v.temp, tempDelMonitor: temp !== null, generado: p.generado };
+}
+
+export const getSignosExtra = (cedula: string) => pedir(() => signosDe(cedula));
+
+/** PA y temperatura de todos los pacientes, para las listas (por cédula). */
 export const getSignosExtraTodos = () =>
-  pedir((): Record<string, SignosExtra> =>
-    Object.fromEntries(
-      db.DEMOS.map((d) => {
-        const { pa, temp } = d.inventado;
-        return [d.delSeed.cedula, { pa, temp, pam: Math.round((pa.sis + 2 * pa.dia) / 3) }];
-      }),
-    ),
-  'lista');
+  pedir(async (): Promise<Record<string, SignosExtra>> => {
+    const cedulas = new Set(db.DEMOS.map((d) => d.delSeed.cedula));
+    for (const p of await pacientes().catch((): Patient[] => [])) cedulas.add(p.document);
+    const filas = await Promise.all([...cedulas].map(async (c) => [c, await signosDe(c)] as const));
+    return Object.fromEntries(filas.filter((f): f is [string, SignosExtra] => f[1] !== null));
+  }, 'lista');
 
 // --- Exploración: signos vitales de ingreso (el backend solo guarda Glasgow) --------------------
 
 export type SignosIngreso = NonNullable<Inventado['exploracion']>['signosIngreso'];
 export const getSignosIngreso = (cedula: string) =>
-  pedir((): SignosIngreso | null => guardado<SignosIngreso>(`signosIngreso:${cedula}`) ?? demo(cedula).inventado.exploracion?.signosIngreso ?? null);
+  pedir(async (): Promise<SignosIngreso | null> => guardado<SignosIngreso>(`signosIngreso:${cedula}`) ?? (await perfil(cedula))?.signosIngreso ?? null);
 export const saveSignosIngreso = (cedula: string, signos: SignosIngreso) => pedir(() => guardar(`signosIngreso:${cedula}`, signos), 'escritura');
 
 // --- Monitoreo detallado: neurológico, respiratorio, balance, laboratorios, perfusión -------------
 
 export type MonitoreoExtra = Inventado['monitoreo'];
-export const getMonitoreoExtra = (cedula: string) => pedir(() => demo(cedula).inventado.monitoreo);
+/** Los paneles del caso, con sus números moviéndose poco a poco (simulacion.ts, `monitoreoVivo`). */
+export const getMonitoreoExtra = (cedula: string) =>
+  pedir(async (): Promise<MonitoreoExtra | null> => {
+    const p = await perfil(cedula);
+    return p ? monitoreoVivo(p.monitoreo, cedula) : null;
+  });
 
 // --- Nota de ingreso (no existe; ¿evolución o nota SOAP de un tipo?) ------------------------------
 
 export type NotaIngreso = Inventado['notaIngreso'];
-export const getNotaIngreso = (cedula: string) => pedir(() => guardado<NotaIngreso>(`ingreso:${cedula}`) ?? demo(cedula).inventado.notaIngreso);
+export const getNotaIngreso = (cedula: string) =>
+  pedir(async (): Promise<NotaIngreso | null> => guardado<NotaIngreso>(`ingreso:${cedula}`) ?? (await perfil(cedula, true))?.notaIngreso ?? null);
 export const saveNotaIngreso = (cedula: string, nota: NotaIngreso) => pedir(() => guardar(`ingreso:${cedula}`, nota), 'escritura');
 
 // --- Interrogatorio por aparatos (no existe) --------------------------------------------------------
 
 export type Interrogatorio = Inventado['interrogatorio'];
-export const getInterrogatorio = (cedula: string) => pedir(() => guardado<Interrogatorio>(`interrogatorio:${cedula}`) ?? demo(cedula).inventado.interrogatorio);
+export const getInterrogatorio = (cedula: string) =>
+  pedir(async (): Promise<Interrogatorio> => guardado<Interrogatorio>(`interrogatorio:${cedula}`) ?? (await perfil(cedula, true))?.interrogatorio ?? {});
 export const saveInterrogatorio = (cedula: string, datos: Interrogatorio) => pedir(() => guardar(`interrogatorio:${cedula}`, datos), 'escritura');
 
 // --- Indicaciones que no son fármacos (los fármacos son `medicamento_paciente`) -------------------
 
 export type IndicacionesExtra = Inventado['indicaciones'];
-export const getIndicacionesExtra = (cedula: string) => pedir(() => guardado<IndicacionesExtra>(`indicaciones:${cedula}`) ?? demo(cedula).inventado.indicaciones);
+/** Una cédula que no existe: todo vacío. */
+const SIN_INDICACIONES: IndicacionesExtra = { soluciones: [], dieta: [], restriccion: null, cuidados: [], estudios: [], interconsulta: null };
+export const getIndicacionesExtra = (cedula: string) =>
+  pedir(async (): Promise<IndicacionesExtra> => guardado<IndicacionesExtra>(`indicaciones:${cedula}`) ?? (await perfil(cedula))?.indicaciones ?? SIN_INDICACIONES);
 export const saveIndicacionesExtra = (cedula: string, datos: IndicacionesExtra) => pedir(() => guardar(`indicaciones:${cedula}`, datos), 'escritura');
 
 // --- Nota correlativa de diagnósticos (no existe; ¿`notas` de cada diagnóstico?) --------------------
 
-export const getNotaCorrelativa = (cedula: string) => pedir(() => guardado<string>(`correlativa:${cedula}`) ?? demo(cedula).inventado.notaCorrelativa);
+export const getNotaCorrelativa = (cedula: string) =>
+  pedir(async (): Promise<string> => guardado<string>(`correlativa:${cedula}`) ?? (await perfil(cedula, true))?.notaCorrelativa ?? '');
 export const saveNotaCorrelativa = (cedula: string, texto: string) => pedir(() => guardar(`correlativa:${cedula}`, texto), 'escritura');
 
 // --- Entrega de turno (no existe) -------------------------------------------------------------------
 
 export type TurnoPaciente = Inventado['turno'] & { cedula: string; alergias: string[] };
-/** Lo que se dice de cada paciente al entregar el turno; las alergias son las del seed (para "Indicaciones importantes"). */
+/** Lo que se dice de cada paciente a cargo al entregar el turno, con sus alergias activas (para "Indicaciones importantes"). */
 export const getTurno = () =>
-  pedir(
-    (): TurnoPaciente[] =>
-      db.DEMOS.map((d) => ({ ...d.inventado.turno, cedula: d.delSeed.cedula, alergias: d.delSeed.alergias.filter((a) => a.estado === 'activa').map((a) => a.sustancia) })),
-    'lista',
-  );
+  pedir(async (): Promise<TurnoPaciente[]> => {
+    const lista = await asignados();
+    const cedulas = lista.length ? lista.map((a) => a.document) : db.DEMOS.map((d) => d.delSeed.cedula);
+    const filas = await Promise.all(
+      cedulas.map(async (cedula) => {
+        const p = await perfil(cedula, true);
+        return p ? { ...p.turno, cedula, alergias: p.alergias } : null;
+      }),
+    );
+    return filas.filter((f): f is TurnoPaciente => f !== null);
+  }, 'lista');
 export const getBorradorEntrega = () => pedir(() => guardado<string>('entrega:borrador') ?? null);
 export const saveBorradorEntrega = (texto: string) => pedir(() => guardar('entrega:borrador', texto), 'escritura');
 
@@ -114,8 +265,13 @@ export type NotificacionExtra = {
   leida: boolean;
 };
 
+/**
+ * Solo sin backend. Con VITE_API_MODE=real la campana y la bandeja son solo las notificaciones reales
+ * (`GET /notifications`): estas hablan de los 8 del simulador y de borradores que solo existen en él.
+ */
 export const getNotificacionesExtra = () =>
   pedir((): NotificacionExtra[] => {
+    if (API_MODE !== 'mock' && goesToBackend('/notifications')) return [];
     const leidas = guardado<string[]>('notificaciones:leidas') ?? [];
     const lista: Array<Omit<NotificacionExtra, 'leida'>> = [];
     const porLlegada = [...db.DEMOS].sort((a, b) => a.delSeed.llegadaHorasAtras - b.delSeed.llegadaHorasAtras);
@@ -126,7 +282,7 @@ export const getNotificacionesExtra = () =>
         tipo: 'asignacion',
         titulo: 'Nueva Asignación de Paciente',
         texto: `${s.nombre} (${s.cedula}) quedó a su cargo. Cama ${s.ingreso.cama}, motivo: ${s.motivo.toLowerCase()}.`,
-        at: db.isoHace(s.llegadaHorasAtras * 3_600_000),
+        at: db.isoHace(s.llegadaHorasAtras * HORA),
         to: `/MedPacienteResumen?paciente=${s.cedula}`,
       });
     }
@@ -143,7 +299,7 @@ export const getNotificacionesExtra = () =>
         tipo,
         titulo,
         texto: `${x.doc.titulo} de ${x.d.delSeed.nombre}: ${x.doc.descripcion}`,
-        at: db.isoHace(x.doc.horasAtras * 3_600_000),
+        at: db.isoHace(x.doc.horasAtras * HORA),
         to: `/MedPacienteDocumentosClinicos?paciente=${x.d.delSeed.cedula}`,
       });
     }
@@ -165,7 +321,7 @@ export const getNotificacionesExtra = () =>
       tipo: 'sistema',
       titulo: 'Actualización del Sistema',
       texto: 'Mantenimiento programado completado. Nuevas funciones de exportación de reportes disponibles.',
-      at: db.isoHace(30 * 3_600_000),
+      at: db.isoHace(30 * HORA),
       to: null,
     });
     return lista.map((n) => ({ ...n, leida: leidas.includes(n.id) || n.tipo === 'sistema' })).sort((a, b) => b.at.localeCompare(a.at));
@@ -176,52 +332,72 @@ export const marcarNotificacionesExtra = (ids: string[]) =>
 
 // --- Tendencias (el backend guarda lecturas pero no tiene histórico agregado; el seed trae 40 min) ---
 
-export type PuntoTendencia = { at: string; hr: number; spo2: number; resp: number; sis: number; dia: number; temp: number };
-
-/** Número entre 0 y 1 que siempre sale igual para el mismo texto: las curvas no cambian al recargar. */
-function ruido(texto: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < texto.length; i++) h = Math.imul(h ^ texto.charCodeAt(i), 16777619);
-  return ((h >>> 0) % 1000) / 1000;
-}
+/** Un instante de la curva. `null` en un signo: no hay dato de ese signo en ese tramo. */
+export type PuntoTendencia = { at: string; hr: number | null; spo2: number | null; resp: number | null; sis: number | null; dia: number | null; temp: number | null };
 
 /**
- * Seis puntos repartidos en las últimas `horas`: el último es el valor de ahora (FC, SpO2 y FR del seed;
- * PA y temperatura inventadas) y los anteriores se inventan acercándose desde los signos de ingreso.
- * Antes de que el paciente llegara no hay puntos (`null`).
+ * Seis puntos repartidos en las últimas `horas`.
+ * - Con el backend: FC, SpO2, FR y temperatura son el promedio de las lecturas reales de cada tramo
+ *   (`GET /sensors/readings`, hasta 500 por signo); un tramo sin lecturas queda en null (la temperatura, simulada).
+ *   La PA sigue simulada (falta en el backend: histórico agregado y PA, pedidos 9 y 10).
+ * - Sin backend: todo simulado. Cada signo va de su valor de ingreso al de ahora, con la misma deriva que el resto
+ *   de las pantallas (el último punto es exactamente el valor que muestran). Antes de que llegara no hay puntos.
  */
-export const getTendencias = (cedula: string, horas: number) =>
-  pedir((): Array<PuntoTendencia | null> => {
-    const d = demo(cedula);
-    const s = d.delSeed;
-    const inv = d.inventado;
-    const ultimo = (v: string) => s.lecturas[v].at(-1) ?? 0;
-    const ingreso = inv.exploracion?.signosIngreso;
-    const [sisIng, diaIng] = (ingreso?.ta ?? `${inv.pa.sis + 8}/${inv.pa.dia + 6}`).split('/').map(Number);
-    const inicio: Omit<PuntoTendencia, 'at'> = {
-      hr: ingreso?.fc ?? s.lecturas.hr[0],
-      spo2: ingreso?.spo2 ?? s.lecturas.spo2[0],
-      resp: ingreso?.fr ?? s.lecturas.resp[0],
-      sis: sisIng,
-      dia: diaIng,
-      temp: ingreso?.temp ?? inv.temp,
+export const getTendencias = async (cedula: string, horas: number, device?: string | null): Promise<Array<PuntoTendencia | null>> => {
+  const simulada = await tendenciaSimulada(cedula, horas);
+  if (API_MODE === 'mock' || !goesToBackend('/sensors/readings')) return simulada;
+  if (!device) return simulada.map((p) => (p ? { ...p, hr: null, spo2: null, resp: null } : null));
+  const [hr, spo2, resp, temp] = await Promise.all(['hr', 'spo2', 'resp', 'temp'].map((variable) => listReadings({ device, variable, limit: 500 })));
+  const tramo = (horas * HORA) / 5;
+  const promedio = (lecturas: SensorReading[], centro: number, decimales = 0) => {
+    const en = lecturas.filter((l) => Math.abs(Date.parse(l.at) - centro) <= tramo / 2).map((l) => l.value);
+    const f = 10 ** decimales;
+    return en.length ? Math.round((en.reduce((a, b) => a + b, 0) / en.length) * f) / f : null;
+  };
+  const ahora = Date.now();
+  return Array.from({ length: 6 }, (_, i) => {
+    const t = ahora - ((5 - i) / 5) * horas * HORA;
+    const sim = simulada[i];
+    const punto: PuntoTendencia = {
+      at: new Date(t).toISOString(),
+      hr: promedio(hr, t),
+      spo2: promedio(spo2, t),
+      resp: promedio(resp, t),
+      sis: sim?.sis ?? null,
+      dia: sim?.dia ?? null,
+      temp: promedio(temp, t, 1) ?? sim?.temp ?? null,
     };
-    const fin: Omit<PuntoTendencia, 'at'> = { hr: ultimo('hr'), spo2: ultimo('spo2'), resp: ultimo('resp'), sis: inv.pa.sis, dia: inv.pa.dia, temp: inv.temp };
-    const amplitud: Record<keyof typeof fin, number> = { hr: 6, spo2: 1.5, resp: 2, sis: 6, dia: 4, temp: 0.3 };
-    const llegada = db.AHORA - s.llegadaHorasAtras * 3_600_000;
+    return Object.entries(punto).some(([k, v]) => k !== 'at' && v !== null) ? punto : null;
+  });
+};
+
+type Valores = { hr: number; spo2: number; resp: number; sis: number; dia: number; temp: number };
+
+const tendenciaSimulada = (cedula: string, horas: number) =>
+  pedir(async (): Promise<Array<PuntoTendencia | null>> => {
+    const p = await perfil(cedula);
+    if (!p) return Array.from({ length: 6 }, () => null);
+    const ing = p.signosIngreso;
+    const [sisIng, diaIng] = (ing?.ta ?? `${p.pa.sis + 8}/${p.pa.dia + 6}`).split('/').map(Number);
+    const inicio: Valores = { hr: ing?.fc ?? p.actuales.hr, spo2: ing?.spo2 ?? p.actuales.spo2, resp: ing?.fr ?? p.actuales.resp, sis: sisIng, dia: diaIng, temp: ing?.temp ?? p.temp };
+    const fin: Valores = { ...p.actuales, sis: p.pa.sis, dia: p.pa.dia, temp: p.temp };
+    const ahora = Date.now();
     return Array.from({ length: 6 }, (_, i) => {
-      const t = db.AHORA - ((5 - i) / 5) * horas * 3_600_000;
-      if (t < llegada) return null;
-      const avance = Math.max(0, Math.min(1, (t - llegada) / Math.max(1, db.AHORA - llegada)));
-      const punto = Object.fromEntries(
-        (Object.keys(fin) as Array<keyof typeof fin>).map((k) => {
-          if (i === 5) return [k, fin[k]];
-          const base = inicio[k] + (fin[k] - inicio[k]) * avance ** 1.5;
-          const v = base + (ruido(`${cedula}${k}${horas}${i}`) - 0.5) * 2 * amplitud[k];
-          return [k, k === 'temp' ? Math.round(v * 10) / 10 : Math.round(v)];
-        }),
-      ) as Omit<PuntoTendencia, 'at'>;
-      return { ...punto, spo2: Math.min(100, punto.spo2), at: new Date(t).toISOString() };
+      const t = ahora - ((5 - i) / 5) * horas * HORA;
+      if (t < p.llegada) return null;
+      const avance = Math.max(0, Math.min(1, (t - p.llegada) / Math.max(1, ahora - p.llegada)));
+      const curva = (k: keyof Valores) => inicio[k] + (fin[k] - inicio[k]) * avance ** 1.5;
+      // Lo mismo que getSignosExtra en ese instante: en t = ahora, el valor que muestran las demás pantallas.
+      const s = signosVivos(cedula, { pa: { sis: curva('sis'), dia: curva('dia') }, temp: curva('temp') }, t);
+      return {
+        at: new Date(t).toISOString(),
+        hr: Math.round(vivo(curva('hr'), 4, `${cedula}:hr`, 7, t)),
+        spo2: Math.min(100, Math.round(vivo(curva('spo2'), 1, `${cedula}:spo2`, 13, t))),
+        resp: Math.round(vivo(curva('resp'), 1.5, `${cedula}:resp`, 9, t)),
+        sis: s.pa.sis,
+        dia: s.pa.dia,
+        temp: s.temp,
+      };
     });
   });
 
@@ -229,15 +405,27 @@ export const getTendencias = (cedula: string, horas: number) =>
 
 /** Una fila por signo, en el orden de la pantalla. `null`: el paciente usa los sugeridos. */
 export type Umbrales = { severity: string[]; enabled: boolean[]; limits: Array<{ min: string; max: string }> };
-export const getUmbrales = (cedula: string) => pedir(() => (demo(cedula), guardado<Umbrales>(`umbrales:${cedula}`) ?? null));
+export const getUmbrales = (cedula: string) => pedir(() => guardado<Umbrales>(`umbrales:${cedula}`) ?? null);
 export const saveUmbrales = (cedula: string, umbrales: Umbrales) => pedir(() => guardar(`umbrales:${cedula}`, umbrales), 'escritura');
 
 // --- Hook común -------------------------------------------------------------------------------------
 
-/** PA y temperatura de todos (las listas del tablero, la central y el turno). */
-export const useSignosTodos = () => useQuery({ queryKey: ['sinBackend', 'signosTodos'], queryFn: getSignosExtraTodos });
+/** PA y temperatura de todos (las listas del tablero, la central y el turno); se mueven solas. */
+export const useSignosTodos = () => useQuery({ queryKey: ['sinBackend', 'signosTodos'], queryFn: getSignosExtraTodos, refetchInterval: VIVO_MS });
+
+/**
+ * Lo que cambia con el tiempo y se vuelve a pedir solo: signos y paneles cada 15 s (casi siempre sin red: la deriva se
+ * calcula aquí), tendencias cada 60 s (con el backend son 4 consultas de lecturas). Lo que se edita en pantalla
+ * (notas, indicaciones), no.
+ */
+const cadaCuanto = (nombre: string) => (/^(signos|monitoreo)$/.test(nombre) ? VIVO_MS : nombre.startsWith('tendencias-') ? 60_000 : false);
 
 /** React Query para estas funciones: `useExtra('monitoreo', cedula, getMonitoreoExtra)`. */
 export function useExtra<T>(nombre: string, cedula: string | undefined, fn: (cedula: string) => Promise<T>) {
-  return useQuery({ queryKey: ['sinBackend', nombre, cedula], queryFn: () => fn(cedula!), enabled: !!cedula });
+  return useQuery({
+    queryKey: ['sinBackend', nombre, cedula],
+    queryFn: () => fn(cedula!),
+    enabled: !!cedula,
+    refetchInterval: cadaCuanto(nombre),
+  });
 }

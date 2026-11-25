@@ -110,13 +110,21 @@ function Vital({ kind, label, value, unit, note, tone, big }: { kind: keyof type
   );
 }
 
-/** Trazo de ECG que se repite (en Figma eran segmentos sueltos); toma el color del estado de la cama. */
-export function EcgTrace({ color, className }: { color: string; className?: string }) {
+/**
+ * Trazo de ECG que se repite (en Figma eran segmentos sueltos); toma el color del estado de la cama.
+ * SIMULADO: en la central no es la onda del equipo (sería una conexión por cama, y el navegador abre 6 por host;
+ * pedido 29 de CONEXION-BACKEND.md). Corre a la FC real de la cama: un latido cada 60/FC segundos. Sin FC, plano.
+ */
+export function EcgTrace({ color, className, hr }: { color: string; className?: string; hr?: number | null }) {
   const beat = (x: number) => `${x},22 ${x + 8},22 ${x + 11},19 ${x + 14},22 ${x + 18},22 ${x + 20},26 ${x + 23},6 ${x + 26},34 ${x + 28},22 ${x + 34},22 ${x + 38},17 ${x + 43},22 ${x + 50},22`;
-  const points = Array.from({ length: 9 }, (_, i) => beat(i * 50)).join(' ');
+  const points = hr === null ? '0,22 450,22' : Array.from({ length: 9 }, (_, i) => beat(i * 50)).join(' ');
+  const quieto = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   return (
     <svg viewBox="0 0 400 44" preserveAspectRatio="xMinYMid slice" className={cn('h-full w-full', className)} aria-hidden="true">
-      <polyline points={points} fill="none" stroke={color} strokeWidth={1.6} strokeLinejoin="round" />
+      <g>
+        <polyline points={points} fill="none" stroke={color} strokeWidth={1.6} strokeLinejoin="round" opacity={hr === null ? 0.45 : 1} />
+        {hr && !quieto && <animateTransform attributeName="transform" type="translate" from="0 0" to="-50 0" dur={`${(60 / Math.max(30, hr)).toFixed(2)}s`} repeatCount="indefinite" />}
+      </g>
     </svg>
   );
 }
@@ -177,7 +185,7 @@ export function BedCard({ b }: { b: BedView }) {
           <Vital kind="gcs" label="GCS" value={b.glasgow !== null ? String(b.glasgow) : '—'} unit="pts" tone={gcsTone(b.glasgow)} />
         </div>
         <div className="flex h-11 w-full overflow-clip rounded-lg border border-[#1f2937] bg-[#0b1220]">
-          <EcgTrace color={style.ecg} />
+          <EcgTrace color={style.ecg} hr={hr} />
         </div>
       </div>
     </div>

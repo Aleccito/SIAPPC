@@ -10,6 +10,7 @@ import { clearFlag, mockFlags } from './flags';
 import { puede, tokenDe, usuarioDeLogin, usuarioDeToken, type Accion } from './session';
 import * as db from './db';
 import * as ia from './ai';
+import { generadorEcg } from '../../lib/ecg';
 
 type Ctx = {
   method: string;
@@ -115,7 +116,9 @@ route('GET', '/soap/notes', { perm: ['notas_soap', 'ver'], delay: 'lista' }, ({ 
   const patientId = query.get('patientId');
   if (!patientId) return error(400, 'patientId es requerido');
   if (!db.demoDe(patientId)) return error(404, `No existe el paciente ${patientId}`);
-  return json(200, db.notas().filter((n) => n.patientId === patientId && n.parentId === null).sort((a, b) => b.at.localeCompare(a.at)));
+  // Como el backend: las adendas salen también, salvo con includeAddenda=false.
+  const conAdendas = query.get('includeAddenda') !== 'false';
+  return json(200, db.notas().filter((n) => n.patientId === patientId && (conAdendas || n.parentId === null)).sort((a, b) => b.at.localeCompare(a.at)));
 });
 route('GET', '/soap/notes/:id', { perm: ['notas_soap', 'ver'] }, ({ params }) => {
   const nota = notaDe(params.id);
@@ -337,6 +340,41 @@ route('GET', '/alerts/stream', { perm: ['alertas', 'ver'], delay: 'detalle' }, (
     },
     cancel() {
       clearInterval(latido);
+    },
+  });
+  return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+});
+
+// --- Onda del ECG -------------------------------------------------------------
+
+// Como GET /monitoring/:device/waveform: `listo` al abrir y luego un lote por segundo (125 Hz) a la FC del seed.
+// SIMULADO: la onda es sintética (src/lib/ecg.ts); con el backend es la que publica el equipo.
+route('GET', '/monitoring/:device/waveform', { perm: ['monitoreo', 'ver'], delay: 'detalle' }, ({ params, signal }) => {
+  const d = db.DEMOS.find((x) => x.delSeed.dispositivo.codigo === params.device);
+  if (!d) return error(404, 'Dispositivo no encontrado');
+  const fc = d.delSeed.lecturas.hr?.at(-1) ?? 80;
+  const HZ = 125;
+  const muestras = generadorEcg(HZ);
+  const encoder = new TextEncoder();
+  let lotes: ReturnType<typeof setInterval> | undefined;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const enviar = (evento: string, datos: unknown) => controller.enqueue(encoder.encode(`event: ${evento}\ndata: ${JSON.stringify(datos)}\n\n`));
+      enviar('listo', { device: params.device });
+      const lote = () => enviar('onda', { variable: 'ecg', hz: HZ, ts: Date.now() / 1000, samples: muestras(fc, HZ) });
+      lote();
+      lotes = setInterval(lote, 1000);
+      signal?.addEventListener('abort', () => {
+        clearInterval(lotes);
+        try {
+          controller.close();
+        } catch {
+          // Ya cerrado.
+        }
+      });
+    },
+    cancel() {
+      clearInterval(lotes);
     },
   });
   return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });

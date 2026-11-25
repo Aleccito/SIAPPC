@@ -11,6 +11,7 @@ import imgHeaderRowFrame from '../../assets/header-row-frame.svg';
 import imgSpo2Wave from '../../assets/spo2-wave.svg';
 import imgTempWave from '../../assets/temp-wave.svg';
 import { AiIdeasCard, AppLink, BackButton, Badge, Card, Divider, PatientLayout, usePatient, type PatientView } from '../../components';
+import { EcgLive } from '../../components/monitor/EcgLive';
 import { alertTitle, groupAlerts, vitalTone } from '../../lib/alerts';
 import { fmtAgo } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
@@ -136,7 +137,8 @@ function Monitoreo({ v }: { v: PatientView }) {
                   </div>
                 </div>
                 <div className="relative h-14 w-full overflow-hidden rounded-lg border border-white bg-[#0b1220]">
-                  <img className="absolute inset-x-0 top-0 h-9 w-full object-fill" alt="" src={s.wave} />
+                  {/* El ECG es la onda real del equipo (GET /monitoring/:device/waveform); las demás, el trazo de Figma. */}
+                  {s.ecg ? <EcgLive device={device ?? bed?.device} /> : <img className="absolute inset-x-0 top-0 h-9 w-full object-fill" alt="" src={s.wave} />}
                 </div>
               </div>
             ))}

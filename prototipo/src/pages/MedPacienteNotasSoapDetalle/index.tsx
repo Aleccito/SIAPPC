@@ -4,9 +4,15 @@ import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
 import imgSectionOEllipse from '../../assets/section-o-ellipse.svg';
 import imgSectionPEllipse from '../../assets/section-p-ellipse.svg';
 import imgSectionSEllipse from '../../assets/section-s-ellipse.svg';
+import { useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { addSoapAddendum } from '../../api/clinical';
+import { ApiError } from '../../api/http';
 import { useSoapNote, useSoapNotes } from '../../api/queries';
-import { BackButton, Button, CloseButton, Divider, Modal, PatientLayout, usePatient, useSession, type PatientView } from '../../components';
+import type { SoapNote } from '../../api/types/clinical';
+import { BackButton, Button, CloseButton, Divider, Modal, PatientLayout, TextArea, usePatient, useSession, useToast, type PatientView } from '../../components';
+import { cn } from '../../lib/cn';
 import { noteRef, SOAP_HISTORY_PATH, SOAP_NEW_PATH } from '../../data/soap';
 import { fmtDateTime, staffName } from '../../lib/clinical';
 import { usePatientNavigate } from '../../lib/patientLink';
@@ -92,6 +98,8 @@ function Detalle({ v }: { v: PatientView }) {
         ))}
       </div>
 
+      {done && <Adendas note={entry} patientId={v.id} />}
+
       <Divider />
       <div className="flex w-full flex-wrap justify-end gap-3">
         <Button variant="secondary" onClick={close}>
@@ -111,5 +119,104 @@ function Detalle({ v }: { v: PatientView }) {
         )}
       </div>
     </Modal>
+  );
+}
+
+const SECCIONES = [
+  { key: 'subjective', letter: 'S', label: 'Subjetivo' },
+  { key: 'objective', letter: 'O', label: 'Objetivo' },
+  { key: 'assessment', letter: 'A', label: 'Evaluación' },
+  { key: 'plan', letter: 'P', label: 'Plan' },
+] as const;
+type Seccion = (typeof SECCIONES)[number]['key'];
+
+/**
+ * No viene de Figma (PR de conexión 2 y 3): las adendas de una nota firmada. Una nota firmada no se edita; se corrige
+ * con una adenda (POST /soap/notes/:id/addendum), que nace firmada por quien la escribe y cuelga de la nota original
+ * (`parentId`). La agrega quien puede escribir notas SOAP; la enfermera solo las lee.
+ */
+function Adendas({ note, patientId }: { note: SoapNote; patientId: string }) {
+  const { can } = useSession();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const list = useSoapNotes(patientId);
+  // El backend aplana: la adenda de una adenda cuelga de la nota raíz.
+  const raiz = note.parentId ?? note.id;
+  const adendas = (list.data ?? []).filter((n) => n.parentId === raiz && n.id !== note.id).sort((a, b) => a.at.localeCompare(b.at));
+  const puede = can('notas_soap', 'crear');
+  const [abierta, setAbierta] = useState(false);
+  const [seccion, setSeccion] = useState<Seccion>('assessment');
+  const [texto, setTexto] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  if (!puede && adendas.length === 0) return null;
+
+  const guardar = async () => {
+    if (!texto.trim() || guardando) return;
+    setGuardando(true);
+    try {
+      await addSoapAddendum(note.id, { [seccion]: texto.trim() });
+      await queryClient.invalidateQueries({ queryKey: ['soapNotes', patientId] });
+      toast('Adenda agregada y firmada');
+      setTexto('');
+      setAbierta(false);
+    } catch (e) {
+      toast(e instanceof ApiError && e.status === 403 ? 'Su rol no puede escribir notas SOAP' : 'No se pudo guardar la adenda. Intente de nuevo.', 'info');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-3">
+      <p className="font-jakarta text-[14px] font-semibold leading-[normal] text-ink">Adendas</p>
+      {adendas.map((a) => (
+        <div key={a.id} className="flex w-full flex-col gap-1.5 rounded-lg border border-line px-[14px] py-3">
+          <p className="font-jakarta text-[12px] font-medium leading-[normal] text-muted">{`${fmtDateTime(a.at)} · ${staffName(a.authorName)}`}</p>
+          {SECCIONES.filter((x) => a[x.key]).map((x) => (
+            <p key={x.key} className="font-jakarta text-[13px] font-normal leading-[normal] text-[#334155]">
+              <span className="font-semibold text-ink">{`${x.label}: `}</span>
+              {a[x.key]}
+            </p>
+          ))}
+        </div>
+      ))}
+      {adendas.length === 0 && <p className="font-jakarta text-[13px] leading-[normal] text-muted">Sin adendas.</p>}
+      {puede && !abierta && (
+        <div>
+          <Button variant="secondary" size="sm" onClick={() => setAbierta(true)}>
+            Agregar adenda
+          </Button>
+        </div>
+      )}
+      {puede && abierta && (
+        <div className="flex w-full flex-col gap-3 rounded-lg bg-surface p-3">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Sección de la adenda">
+            {SECCIONES.map((x) => (
+              <button
+                key={x.key}
+                type="button"
+                aria-pressed={seccion === x.key}
+                onClick={() => setSeccion(x.key)}
+                className={cn(
+                  'rounded-md border px-2.5 py-1 font-jakarta text-[12px] font-semibold leading-[normal]',
+                  seccion === x.key ? 'border-primary bg-primary-soft text-primary' : 'border-line bg-white text-muted hover:bg-surface',
+                )}
+              >
+                {`${x.letter} · ${x.label}`}
+              </button>
+            ))}
+          </div>
+          <TextArea id="adenda-texto" label="Texto de la adenda" value={texto} onChange={setTexto} placeholder="Corrección o dato nuevo; queda firmada a su nombre." maxLength={2000} />
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setAbierta(false)} disabled={guardando}>
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={() => void guardar()} disabled={guardando || !texto.trim()}>
+              {guardando ? 'Guardando…' : 'Firmar adenda'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import { cn } from '../../lib/cn';
 import { IconCheck } from '../icons';
 
-type Tone = 'success' | 'info';
+type Tone = 'success' | 'info' | 'danger';
 type ToastItem = { id: number; message: string; tone: Tone };
 type ShowToast = (message: string, tone?: Tone) => void;
 
@@ -35,8 +35,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             className="pointer-events-auto flex max-w-sm items-center gap-2 rounded-lg bg-ink px-4 py-3 font-jakarta text-[13px] font-semibold leading-[normal] text-white shadow-lg"
           >
-            <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-full', t.tone === 'success' ? 'bg-success' : 'bg-primary')}>
-              <IconCheck size={12} />
+            <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-full', t.tone === 'success' ? 'bg-success' : t.tone === 'danger' ? 'bg-danger' : 'bg-primary')}>
+              {t.tone === 'danger' ? (
+                <span className="font-jakarta text-[12px] font-extrabold" aria-hidden="true">
+                  !
+                </span>
+              ) : (
+                <IconCheck size={12} />
+              )}
             </span>
             {t.message}
           </div>

@@ -1,0 +1,18 @@
+{
+  "_nota": "SIMULADO. Un monitor de demo por equipo del seed (backend/db/seed-demo.sql). Cada signo es [centro, amplitud]: el valor oscila alrededor del centro y tarda varios minutos en ir de un lado al otro. Los centros siguen el caso de cada paciente desde la última lectura del seed; en los críticos quedan cerca del umbral de backend/src/services/mqttIngest.ts (FC 50-120, crítica <40 o >140; SpO2 <90, crítica <85; FR 8-30) y lo cruzan en episodios cortos, no siempre (cada lectura fuera de rango crea una alerta y una notificación por usuario a cargo). La temperatura no tiene umbral en el backend. `ritmo`: sinusal o fa (fibrilación auricular, intervalos irregulares y sin onda P).",
+  "DEMO-DEV-01": { "paciente": "DEMO-0001 sepsis de origen urinario", "hr": [116, 7], "spo2": [91.5, 2], "resp": [26, 3], "temp": [38.9, 0.35], "ritmo": "sinusal" },
+  "DEMO-DEV-02": { "paciente": "DEMO-0002 tromboembolia pulmonar", "hr": [113, 7], "spo2": [90.8, 2.4], "resp": [26, 3], "temp": [37.6, 0.25], "ritmo": "sinusal" },
+  "DEMO-DEV-03": { "paciente": "DEMO-0003 EPOC exacerbado", "hr": [105, 6], "spo2": [90.8, 2], "resp": [25, 3], "temp": [37.9, 0.3], "ritmo": "sinusal" },
+  "DEMO-DEV-04": { "paciente": "DEMO-0004 politraumatizado", "hr": [115, 8], "spo2": [94, 2], "resp": [23, 3], "temp": [36.2, 0.2], "ritmo": "sinusal" },
+  "DEMO-DEV-05": { "paciente": "DEMO-0005 bradicardia con fibrilación auricular", "hr": [54, 5], "spo2": [94, 1.5], "resp": [14, 2], "temp": [36.4, 0.2], "ritmo": "fa" },
+  "DEMO-DEV-06": { "paciente": "DEMO-0006 taquicardia paroxística", "hr": [110, 13], "spo2": [95, 1.5], "resp": [19, 2], "temp": [36.7, 0.2], "ritmo": "sinusal" },
+  "DEMO-DEV-07": { "paciente": "DEMO-0007 neumonía", "hr": [90, 5], "spo2": [93.5, 1.5], "resp": [20, 2], "temp": [37.4, 0.35], "ritmo": "sinusal" },
+  "DEMO-DEV-08": { "paciente": "DEMO-0008 pancreatitis aguda", "hr": [106, 5], "spo2": [95, 1], "resp": [21, 2], "temp": [37.8, 0.3], "ritmo": "sinusal" },
+  "DEMO-DEV-09": { "paciente": "DEMO-0009 insuficiencia cardíaca", "hr": [96, 5], "spo2": [91.6, 1.8], "resp": [23, 2], "temp": [36.7, 0.2], "ritmo": "sinusal" },
+  "DEMO-DEV-10": { "paciente": "DEMO-0010 crisis asmática", "hr": [110, 6], "spo2": [93, 1.5], "resp": [24, 2.5], "temp": [37.1, 0.2], "ritmo": "sinusal" },
+  "DEMO-DEV-11": { "paciente": "DEMO-0011 posoperatorio de colecistectomía", "hr": [80, 4], "spo2": [97, 1], "resp": [16, 1.5], "temp": [37.2, 0.25], "ritmo": "sinusal" },
+  "DEMO-DEV-12": { "paciente": "DEMO-0012 fractura de tibia", "hr": [74, 4], "spo2": [98, 0.8], "resp": [14, 1.5], "temp": [36.7, 0.2], "ritmo": "sinusal" },
+  "DEMO-DEV-13": { "paciente": "DEMO-0013 fractura de radio", "hr": [71, 3], "spo2": [96, 1], "resp": [15, 1.5], "temp": [36.5, 0.2], "ritmo": "sinusal" },
+  "DEMO-DEV-14": { "paciente": "DEMO-0014 hipoglucemia", "hr": [76, 4], "spo2": [98, 0.8], "resp": [15, 1.5], "temp": [36.4, 0.2], "ritmo": "sinusal" },
+  "DEMO-DEV-15": { "paciente": "DEMO-0015 embarazo de 30 semanas", "hr": [89, 4], "spo2": [98.5, 0.6], "resp": [17, 1.5], "temp": [36.8, 0.2], "ritmo": "sinusal" }
+}

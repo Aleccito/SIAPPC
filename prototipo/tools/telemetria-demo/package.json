@@ -1,0 +1,13 @@
+{
+  "name": "siappc-telemetria-demo",
+  "private": true,
+  "description": "SIMULADO: monitores de demo por MQTT para el prototipo (ver LEEME.md).",
+  "type": "module",
+  "scripts": {
+    "start": "node publicador.mjs",
+    "una-vez": "node publicador.mjs --una-vez"
+  },
+  "dependencies": {
+    "mqtt": "5.15.2"
+  }
+}
