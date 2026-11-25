@@ -12,11 +12,22 @@ import imgDropdownBadgeEllipse from '../../assets/dropdown-badge-ellipse.svg';
 import imgDropdownBadgeEllipse2 from '../../assets/dropdown-badge-ellipse-2.svg';
 import imgLiveIndicatorEllipse from '../../assets/live-indicator-ellipse.svg';
 import { useAlerts } from '../../api/queries';
-import { AppLayout, Badge, Button, EmptyState, IconCalendar, KpiCard, rowLinkClass, Select, Table, useRowLink, useToast } from '../../components';
+import { AppLayout, Badge, Button, EmptyState, IconCalendar, KpiCard, rowLinkClass, Select, Table, useDisplayUser, useRowLink, useToast } from '../../components';
 import { alertInfoFrom, attendedAlerts, CONFIRM_PATH, type AttendedState, type ConfirmState } from '../../data/alerts';
 import { usePatientRows, type PatientRow } from '../../data/patients';
-import { alertTitle, alertValueText, type AlertGroup } from '../../lib/alerts';
+import { alertTitle, alertValueText, esActiva, type AlertGroup } from '../../lib/alerts';
+import { AnterioresSinAtender } from '../../components/ui/AnterioresSinAtender';
 import { fmtAgo, fmtDate, fmtTime, SEVERITY_LABEL } from '../../lib/clinical';
+
+/** "las 15:53" si es de hoy, "ayer a las 15:53" o "el 22 Nov a las 15:53": sin la fecha, una hora de ayer parecía de hoy. */
+function desde(value: string): string {
+  const d = new Date(value);
+  const hoy = new Date();
+  const ayer = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1);
+  if (d.toDateString() === hoy.toDateString()) return `las ${fmtTime(value)}`;
+  if (d.toDateString() === ayer.toDateString()) return `ayer a las ${fmtTime(value)}`;
+  return `el ${fmtDate(value).replace(/ \d{4}$/, '')} a las ${fmtTime(value)}`;
+}
 import { cn } from '../../lib/cn';
 import { patientPath } from '../../lib/patientLink';
 
@@ -50,6 +61,7 @@ export default function MedAlertasCentro() {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
+  const me = useDisplayUser();
   const rowLink = useRowLink();
   const attendedId = (location.state as AttendedState | null)?.attendedId;
 
@@ -74,11 +86,53 @@ export default function MedAlertasCentro() {
   const visible = date === 'ayer' ? [] : ALERTS.filter((a) => {
     const st = statusOf(a);
     if (severity !== 'Todas' && SEVERITY_LABEL[a.group.severity] !== severity) return false;
-    if (stateFilter === 'Activas') return st !== 'atendida';
+    if (stateFilter === 'Activas') return st !== 'atendida' && esActiva(a.group);
     if (stateFilter === 'Silenciadas') return st === 'silenciada';
     if (stateFilter === 'Atendidas') return st === 'atendida';
     return true;
   });
+
+  // Activas: sin atender y con un aviso en los últimos 30 min. Las demás sin atender van plegadas debajo.
+  const anteriores = stateFilter === 'Activas' && date !== 'ayer' ? ALERTS.filter((a) => statusOf(a) !== 'atendida' && !esActiva(a.group)) : [];
+  const tarjeta = (a: Alert) => {
+                const st = statusOf(a);
+                const s = SEVERITY_STYLE[a.group.severity];
+                const g = a.group;
+                return (
+                  <article key={g.key} className={cn('flex w-full items-stretch overflow-hidden rounded-xl border border-line transition-opacity', s.box, st !== 'activa' && 'opacity-60')}>
+                    <div className={cn('w-1.5 shrink-0', s.stripe)} />
+                    <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 flex-col gap-1.5 leading-[normal]">
+                        <div className="flex items-center gap-2">
+                          <img className="size-3.5 shrink-0" alt="" src={s.icon} />
+                          <p className="font-jakarta text-[15px] font-extrabold text-ink">{`${a.patient.bed ?? '—'} ${a.patient.name}`}</p>
+                        </div>
+                        <p className={cn('font-jakarta text-[13px] font-semibold', s.event)}>
+                          {`${alertTitle(g.variable, g.severity, g.latest.value)} — ${alertValueText(g.variable, g.latest.value)}`}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                          <p className="font-jakarta font-medium text-subtle">
+                            {`${fmtAgo(g.latest.at).replace(/^h/, 'H')} · ${g.count} ${g.count === 1 ? 'aviso' : 'avisos'} desde ${desde(g.since)}`}
+                          </p>
+                          <p className="font-jakarta font-semibold text-primary">{`${me.name} (a cargo)`}</p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        {st === 'atendida' ? (
+                          <Badge tone="success">Atendida</Badge>
+                        ) : (
+                          <>
+                            <Button variant="secondary" onClick={() => toggleMute(a)}>
+                              {st === 'silenciada' ? 'Reactivar' : 'Silenciar'}
+                            </Button>
+                            <Button onClick={() => attend(a)}>Atender</Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+  };
 
   const attended = ALERTS.filter((a) => statusOf(a) === 'atendida');
   // Historial: lo atendido en esta visita y las alertas que el seed trae como reconocidas.
@@ -96,11 +150,12 @@ export default function MedAlertasCentro() {
     date === 'ayer'
       ? []
       : [
-          ...attended.map((a): HistoryRow => ({ key: a.group.key, time: 'Ahora', dot: imgLiveIndicatorEllipse, patient: a.patient, event: alertTitle(a.group.variable, a.group.severity, a.group.latest.value), by: 'Dr. C. Méndez', resp: '—' })),
+          ...attended.map((a): HistoryRow => ({ key: a.group.key, time: 'Ahora', dot: imgLiveIndicatorEllipse, patient: a.patient, event: alertTitle(a.group.variable, a.group.severity, a.group.latest.value), by: me.name, resp: '—' })),
           ...acknowledged,
         ];
 
-  const activeCount = ALERTS.length - attended.length;
+  // Activas con la misma regla que la lista (último aviso en los últimos 30 min); las anteriores siguen pendientes.
+  const activeCount = ALERTS.filter((a) => statusOf(a) !== 'atendida' && esActiva(a.group)).length;
   const pendingCount = ALERTS.filter((a) => a.group.open > 0 && statusOf(a) === 'activa').length;
 
   const toggleMute = (a: Alert) => {
@@ -147,48 +202,14 @@ export default function MedAlertasCentro() {
             <div className="flex w-full flex-col gap-3">
               {visible.length === 0 && (
                 <div className="rounded-xl border border-line bg-white">
-                  <EmptyState message={isPending ? 'Cargando alertas…' : undefined} onReset={resetFilters} />
+                  <EmptyState
+                    message={isPending ? 'Cargando alertas…' : anteriores.length ? 'Sin alertas nuevas en los últimos 30 minutos.' : undefined}
+                    onReset={resetFilters}
+                  />
                 </div>
               )}
-              {visible.map((a) => {
-                const st = statusOf(a);
-                const s = SEVERITY_STYLE[a.group.severity];
-                const g = a.group;
-                return (
-                  <article key={g.key} className={cn('flex w-full items-stretch overflow-hidden rounded-xl border border-line transition-opacity', s.box, st !== 'activa' && 'opacity-60')}>
-                    <div className={cn('w-1.5 shrink-0', s.stripe)} />
-                    <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex min-w-0 flex-col gap-1.5 leading-[normal]">
-                        <div className="flex items-center gap-2">
-                          <img className="size-3.5 shrink-0" alt="" src={s.icon} />
-                          <p className="font-jakarta text-[15px] font-extrabold text-ink">{`${a.patient.bed ?? '—'} ${a.patient.name}`}</p>
-                        </div>
-                        <p className={cn('font-jakarta text-[13px] font-semibold', s.event)}>
-                          {`${alertTitle(g.variable, g.severity, g.latest.value)} — ${alertValueText(g.variable, g.latest.value)}`}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
-                          <p className="font-jakarta font-medium text-subtle">
-                            {`${fmtAgo(g.latest.at).replace(/^h/, 'H')} · ${g.count} ${g.count === 1 ? 'aviso' : 'avisos'} desde las ${fmtTime(g.since)}`}
-                          </p>
-                          <p className="font-jakarta font-semibold text-primary">Dr. Carlos Méndez (Asignado)</p>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 gap-2">
-                        {st === 'atendida' ? (
-                          <Badge tone="success">Atendida</Badge>
-                        ) : (
-                          <>
-                            <Button variant="secondary" onClick={() => toggleMute(a)}>
-                              {st === 'silenciada' ? 'Reactivar' : 'Silenciar'}
-                            </Button>
-                            <Button onClick={() => attend(a)}>Atender</Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+              {visible.map(tarjeta)}
+              <AnterioresSinAtender cantidad={anteriores.length}>{anteriores.map(tarjeta)}</AnterioresSinAtender>
             </div>
           </section>
 

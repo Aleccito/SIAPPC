@@ -18,7 +18,11 @@ import type { AlertsFilter, ReadingsFilter } from './types/sensors';
 
 const LIVE = API_MODE === 'mock' ? false : 15_000;
 
-export const usePatients = () => useQuery({ queryKey: ['patients'], queryFn: () => listPatients() });
+// La lista de pacientes y el expediente casi no cambian: se consideran al día 5 minutos (y se refrescan al escribir en
+// ellos), así volver a una pantalla no repite la consulta (REVISION-MEDICO.md, 5.1).
+const QUIETO = 5 * 60_000;
+
+export const usePatients = () => useQuery({ queryKey: ['patients'], queryFn: () => listPatients(), staleTime: QUIETO });
 export const useAssignments = (patientId: string | undefined) =>
   useQuery({ queryKey: ['assignments', patientId], queryFn: () => listAssignments(patientId!), enabled: !!patientId });
 
@@ -27,7 +31,7 @@ export const useDeviceStatus = () => useQuery({ queryKey: ['deviceStatus'], quer
 export const useMonitoredBeds = () => useQuery({ queryKey: ['monitoredBeds'], queryFn: () => listMonitoredBeds(), refetchInterval: LIVE });
 
 export const useExpediente = (patientId: string | undefined) =>
-  useQuery({ queryKey: ['expediente', patientId], queryFn: () => getExpediente(patientId!), enabled: !!patientId });
+  useQuery({ queryKey: ['expediente', patientId], queryFn: () => getExpediente(patientId!), enabled: !!patientId, staleTime: QUIETO });
 export const useSoapNotes = (patientId: string | undefined) =>
   useQuery({ queryKey: ['soapNotes', patientId], queryFn: () => listSoapNotes(patientId!), enabled: !!patientId });
 export const useSoapNote = (noteId: string | undefined) =>

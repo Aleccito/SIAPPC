@@ -1,0 +1,133 @@
+[
+ {
+  "paso": "Entrar con el código",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "path": "/MedDashboardPrincipal"
+  },
+  "captura": "01-entrar-con-el-c-digo.png"
+ },
+ {
+  "paso": "Dashboard",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "atencion": "Requiere tu atención ahora\nFC Crítica\n\nhace 4 h\n\nLasso: FC > 140 lpm — Taquicardia crítica (150 lpm), 15 avisos sin confirmación médica\n\nUCI-05\n\nFC Crítica\n\nhace 7 h\n\nVallejo: FC > 140 lpm — Taquicard"
+  },
+  "captura": "02-dashboard.png"
+ },
+ {
+  "paso": "Su turno: resumen recibido",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "titulo": "Entrega de Turno"
+  },
+  "captura": "03-su-turno-resumen-recibido.png"
+ },
+ {
+  "paso": "Atender una alerta (Centro de alertas)",
+  "ok": true,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "04-atender-una-alerta-centro-de-alertas-.png"
+ },
+ {
+  "paso": "Confirmar la atención",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "aviso": "Atención registrada · Teodoro Lasso Mejía",
+   "path": "/MedAlertasCentro"
+  },
+  "captura": "05-confirmar-la-atenci-n.png"
+ },
+ {
+  "paso": "Abrir un paciente crítico desde el Dashboard",
+  "ok": false,
+  "detalle": {
+   "ok": false,
+   "url": "/MedDashboardPrincipal"
+  },
+  "captura": "06-abrir-un-paciente-cr-tico-desde-el-dashb.png"
+ },
+ {
+  "paso": "Monitoreo detallado (signos en vivo)",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "alertas": "Alertas Activas\n4\n\nSpO2 < 85% — Desaturación crítica\n\n9 avisos · el último hace 7 h\n\nSpO2 < 90% — Saturación baja\n\n47 avisos · el último hace 6 min\n\nFR > 30 rpm"
+  },
+  "captura": "07-monitoreo-detallado-signos-en-vivo-.png"
+ },
+ {
+  "paso": "Tendencias 24 h",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "puntos": 1,
+   "lineas": [
+    3,
+    3,
+    3,
+    3,
+    3
+   ]
+  },
+  "captura": "08-tendencias-24-h.png"
+ },
+ {
+  "paso": "Tendencias 1 h",
+  "ok": false,
+  "detalle": {
+   "ok": false,
+   "puntos": 1,
+   "lineas": [
+    3,
+    3,
+    3,
+    3,
+    3
+   ]
+  },
+  "captura": "09-tendencias-1-h.png"
+ },
+ {
+  "paso": "Escribir una nota SOAP",
+  "ok": true,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "10-escribir-una-nota-soap.png"
+ },
+ {
+  "paso": "Firmar la nota",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "aviso": "Nota firmada"
+  },
+  "captura": "11-firmar-la-nota.png"
+ },
+ {
+  "paso": "Pedir ayuda a la IA (panel del paciente)",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "disponible": true,
+   "respuesta": "Del paciente Ileana Montenegro Sáez: ¿Cuáles son los diagnósticos diferenciales más probables?\n\nBanderas rojas: Tromboembolia pulmonar (TEP) posoperatoria.\n\nDiferenciales:\n\nTromboembolismo pulmonar (TEP).\nNeumonía.\nCardiomiopatía congestiva.\nPericarditis.\n\nEstudios:\n\nAngio-TC de tórax.\nDímero D.\n\nMa"
+  },
+  "captura": "12-pedir-ayuda-a-la-ia-panel-del-paciente-.png"
+ },
+ {
+  "paso": "Entregar el turno",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "aviso": "Entrega de turno confirmada · se notificó a la Dra. Ana Gómez"
+  },
+  "captura": "13-entregar-el-turno.png"
+ }
+]

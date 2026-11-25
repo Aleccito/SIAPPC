@@ -85,7 +85,7 @@ function NotaIngresoForm({ v, nota }: { v: PatientView; nota: NotaIngreso }) {
       pronostico: prognosis as NotaIngreso['pronostico'],
     });
     await queryClient.invalidateQueries({ queryKey: ['sinBackend', 'ingreso', v.cedula] });
-    toast('Nota de ingreso guardada');
+    toast('Nota de ingreso guardada en este navegador');
   };
 
   return (

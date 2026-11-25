@@ -18,15 +18,21 @@ export const AI_TEXT = {
   ideasStale: 'Hay una alerta más reciente; esperando análisis nuevo',
 };
 
-/** Las 5 preguntas rápidas de frontend/ (aiConsult.quick.*). */
+/**
+ * Las preguntas rápidas: las 5 de frontend/ (aiConsult.quick.*) más gravedad y entrega de turno. Cada texto es uno que
+ * el backend reconoce como su tipo de respuesta (backend/src/services/aiTemas.ts, detectarTipo; lo prueba
+ * Pruebas/backend/aiTemas.test.ts).
+ */
 export const QUICK_QUESTIONS = [
+  { label: 'Gravedad', text: '¿Qué tan grave está este paciente?' },
   { label: 'Diferenciales', text: '¿Cuáles son los diagnósticos diferenciales más probables?' },
   { label: 'Banderas rojas', text: '¿Qué banderas rojas debo vigilar en este paciente?' },
   { label: 'Estudios', text: '¿Qué estudios de laboratorio e imagen solicitarías?' },
   { label: 'Alergias e interacciones', text: 'Revisa alergias e interacciones de sus medicamentos activos.' },
   { label: 'Manejo inicial', text: '¿Cuál sería el manejo inicial recomendado?' },
+  { label: 'Entrega de turno', text: 'Resumen para entregar el turno.' },
 ];
-export const INTERACTIONS_QUESTION = QUICK_QUESTIONS[3].text;
+export const INTERACTIONS_QUESTION = QUICK_QUESTIONS.find((q) => q.label === 'Alergias e interacciones')!.text;
 
 export const SEVERITY_TEXT = {
   critica: { label: 'Disparado por alerta crítica', tone: 'danger' },

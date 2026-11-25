@@ -1,6 +1,5 @@
 // Pantalla nueva del paso 2: no viene de Figma. Detalle de un monitor de UCI; se llega
 // desde "Ver Detalle" o la fila de un monitor en Dispositivos (?cama=C-06).
-import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   AppLayout,
@@ -9,23 +8,18 @@ import {
   Button,
   Card,
   CardHeader,
-  ConfirmDialog,
   InfoField,
-  Modal,
-  ModalHeader,
   PageBody,
-  Select,
   Table,
   TableHead,
   TableRow,
-  useToast,
 } from '../../components';
 import { calibrationsOf, deviceByBed, eventsOf, firmwareOf, lastSeenOf, STATUS_TONE } from '../../data/devices';
 import { useDevices, type DeviceLive } from '../../data/useDevices';
 import { cn } from '../../lib/cn';
 
-// El médico no calibra equipos: solicita la calibración a Ingeniería Biomédica (REVISION.md, R5).
-const SLOTS = ['Mañana, 08:00', 'Pasado mañana, 10:00', 'En 3 días, 14:00', 'En 7 días, 09:00'];
+// El médico ve el estado del equipo; calibraciones y fallas son de Ingeniería Biomédica y todavía no hay a dónde
+// mandarlas (pedido 18), así que no hay botones para pedirlas.
 
 const DOT = { danger: 'bg-danger', warning: 'bg-warning', success: 'bg-success', neutral: 'bg-subtle' } as const;
 
@@ -48,19 +42,12 @@ export default function MedDispositivoDetalle() {
 }
 
 function Detalle({ device }: { device: DeviceLive }) {
-  const toast = useToast();
   const free = !device.age;
   const low = device.battery < 20;
 
-  const [calOpen, setCalOpen] = useState(false);
-  const [slot, setSlot] = useState(SLOTS[0]);
-  const [scheduled, setScheduled] = useState<string | null>(null);
-  const [faultOpen, setFaultOpen] = useState(false);
-  const [reported, setReported] = useState(false);
 
-  const calibrations = [...(scheduled ? [{ date: scheduled, tech: 'Ing. Mario Vargas', result: 'Solicitada' }] : []), ...calibrationsOf(device)];
+  const calibrations = calibrationsOf(device);
   const events = [
-    ...(reported ? [{ time: 'Ahora', text: 'Falla reportada a Ingeniería Biomédica (ticket #BIO-2214)', tone: 'warning' as const }] : []),
     ...eventsOf(device),
   ];
 
@@ -85,12 +72,7 @@ function Detalle({ device }: { device: DeviceLive }) {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => setCalOpen(true)}>
-              Solicitar calibración
-            </Button>
-            <Button variant="secondary" onClick={() => setFaultOpen(true)} disabled={reported}>
-              {reported ? 'Falla reportada' : 'Reportar falla'}
-            </Button>
+            {/* "Solicitar calibración" y "Reportar falla" se quitaron: no le llegaban a nadie (pedido 18; REVISION-MEDICO.md, 6). */}
             {!free && device.cedula && <Button to={`/MedPacienteResumen?paciente=${device.cedula}`}>Ver paciente</Button>}
           </div>
         </Card>
@@ -175,42 +157,6 @@ function Detalle({ device }: { device: DeviceLive }) {
         </div>
       </PageBody>
 
-      <Modal labelledBy="calibracion-titulo" open={calOpen} onClose={() => setCalOpen(false)} width={440} className="gap-4 p-5 shadow-xl sm:p-6">
-        <ModalHeader id="calibracion-titulo" title="Solicitar calibración" onClose={() => setCalOpen(false)} />
-        <p className="font-jakarta text-[14px] font-normal leading-[1.5] text-muted">
-          Monitor {device.serial} · cama {device.bed}. Ingeniería Biomédica recibirá la solicitud.
-        </p>
-        <Select variant="input" fieldLabel="Fecha y hora preferidas" options={SLOTS} value={slot} onChange={setSlot} />
-        <div className="flex w-full flex-wrap justify-end gap-3 pt-1">
-          <Button variant="secondary" onClick={() => setCalOpen(false)}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => {
-              setCalOpen(false);
-              setScheduled(slot);
-              toast(`Solicitud enviada a Ingeniería Biomédica · ${slot}`);
-            }}
-          >
-            Enviar solicitud
-          </Button>
-        </div>
-      </Modal>
-
-      <ConfirmDialog
-        open={faultOpen}
-        title="¿Reportar falla?"
-        confirmLabel="Reportar falla"
-        confirmVariant="danger"
-        onCancel={() => setFaultOpen(false)}
-        onConfirm={() => {
-          setFaultOpen(false);
-          setReported(true);
-          toast('Falla reportada a Ingeniería Biomédica');
-        }}
-      >
-        Se abrirá un ticket para el monitor {device.serial} de la cama {device.bed}. El equipo sigue transmitiendo mientras se revisa.
-      </ConfirmDialog>
     </AppLayout>
   );
 }

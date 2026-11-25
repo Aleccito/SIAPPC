@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { fmtDate, initials } from '../../lib/clinical';
 import { useSession } from '../auth/session';
 import { useAiPanel } from '../ai/AiPanel';
@@ -6,7 +8,7 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Tabs, type TabItem } from '../ui/Tabs';
-import { useToast } from '../ui/Toast';
+import { HojaPaciente } from './HojaPaciente';
 import type { PatientView } from './usePatient';
 
 /** Círculo con las iniciales: la foto de Figma era de una sola paciente (REVISION-IA.md, D2). */
@@ -24,9 +26,12 @@ export function PatientAvatar({ name, size = 56 }: { name: string; size?: number
 
 /** Tarjeta superior del expediente: iniciales, nombre, estado, cama y acciones rápidas. */
 export function PatientHeader({ view }: { view: PatientView | undefined }) {
-  const toast = useToast();
   const { can } = useSession();
   const ai = useAiPanel();
+  const { pathname } = useLocation();
+  // La hoja imprimible del paciente: con "Generar Reporte" o al llegar con ?imprimir=1 (desde Reportes).
+  const [params] = useSearchParams();
+  const [hoja, setHoja] = useState(params.get('imprimir') === '1');
   return (
     <Card raised className="w-full">
       {/* Debajo de 1280 px los botones van en una fila bajo los datos; en celular, a todo el ancho. */}
@@ -63,12 +68,13 @@ export function PatientHeader({ view }: { view: PatientView | undefined }) {
           </div>
         )}
         <div className="grid grid-cols-1 gap-[10px] sm:flex sm:flex-wrap sm:items-center">
-          {can('notas_soap', 'crear') && (
+          {/* En la propia Nueva Nota SOAP el botón no tendría a dónde llevar. */}
+          {can('notas_soap', 'crear') && pathname !== '/MedPacienteNotasSoapNueva' && (
             <Button to="/MedPacienteNotasSoapNueva" icon={<IconClipboard size={14} />}>
               Nueva Nota SOAP
             </Button>
           )}
-          <Button variant="secondary" icon={<IconFileText size={14} />} onClick={() => view && toast(`Reporte de ${view.name} generado`)}>
+          <Button variant="secondary" icon={<IconFileText size={14} />} onClick={() => setHoja(true)} disabled={!view}>
             Generar Reporte
           </Button>
           {/* No viene de Figma (PR 3): abre la consulta a la IA en el panel lateral, con este paciente. */}
@@ -79,6 +85,7 @@ export function PatientHeader({ view }: { view: PatientView | undefined }) {
           )}
         </div>
       </div>
+      {hoja && view && <HojaPaciente v={view} onClose={() => setHoja(false)} />}
     </Card>
   );
 }

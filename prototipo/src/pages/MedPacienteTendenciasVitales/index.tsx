@@ -1,7 +1,7 @@
 // Pantalla "med/paciente/tendencias-vitales" (Figma node 140:6) — generada desde el diseño original de Figma.
-// El último punto de cada gráfica es el valor de ahora (FC y SpO2 del seed; PA y temperatura inventadas);
-// los anteriores salen de src/api/sinBackend.ts (getTendencias): el seed solo trae 40 min de lecturas y
-// el backend no tiene histórico agregado (CONEXION-BACKEND.md, pedido 9).
+// Cada lectura en su hora real (src/api/sinBackend.ts, getSerie): FC, SpO2, FR y temperatura del monitor; la PA,
+// simulada. El backend entrega hasta 500 lecturas por signo y sin filtro de fecha, así que en los rangos largos la
+// gráfica dice desde cuándo hay datos (CONEXION-BACKEND.md, pedido 9). Se vuelve a pedir cada 30 s.
 import { useState } from 'react';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
@@ -9,7 +9,7 @@ import imgArrowLeft4 from '../../assets/arrow-left-4.svg';
 import imgChartCanvasEllipse from '../../assets/chart-canvas-ellipse.svg';
 import imgChartCanvasEllipse2 from '../../assets/chart-canvas-ellipse-2.svg';
 import imgChartCanvasEllipse3 from '../../assets/chart-canvas-ellipse-3.svg';
-import { getTendencias, useExtra, type PuntoTendencia } from '../../api/sinBackend';
+import { getSerie, useExtra, type PuntoTendencia, type Signo } from '../../api/sinBackend';
 import { AppLink, Card, PatientLayout, usePatient, type PatientView } from '../../components';
 import { vitalTone } from '../../lib/alerts';
 import { cn } from '../../lib/cn';
@@ -19,7 +19,10 @@ const RANGES = ['6h', '12h', '24h', '48h', '7d'];
 const HOURS: Record<string, number> = { '6h': 6, '12h': 12, '24h': 24, '48h': 48, '7d': 168 };
 const RANGE_TEXT: Record<string, string> = { '6h': '6 horas', '12h': '12 horas', '24h': '24 horas', '48h': '48 horas', '7d': '7 días' };
 const X = [20, 114, 209, 303, 398, 492];
+const W = 512;
 const H = 110;
+/** Con menos puntos que esto se dibuja cada lectura con su marcador. */
+const POCOS = 16;
 
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -40,7 +43,7 @@ type ChartDef = {
   hi: number;
   /** Límites dibujados (los umbrales de alerta del backend, y los de PA/temperatura de la pantalla de umbrales). */
   limits: number[];
-  keys: Array<keyof Omit<PuntoTendencia, 'at'>>;
+  keys: Signo[];
   tone: (p: PuntoTendencia) => 'danger' | 'warning' | 'normal';
   status: (p: PuntoTendencia, tone: 'danger' | 'warning' | 'normal') => string;
   value: (p: PuntoTendencia) => string;
@@ -114,12 +117,23 @@ export default function MedPacienteTendenciasVitales() {
 function Tendencias({ v }: { v: PatientView }) {
   const [range, setRange] = useState('24h');
   const hours = HOURS[range];
-  const data = useExtra(`tendencias-${range}`, v.cedula, (c) => getTendencias(c, hours, v.assigned?.device));
-  const points = data.data ?? [];
-  const last = points.at(-1) ?? null;
-  // Marcas del eje: los 6 instantes del rango, aunque el paciente no hubiera llegado todavía.
-  const axis = X.map((_, i) => axisLabel(Date.now() - ((5 - i) / 5) * hours * 3_600_000, range));
-  const y = (c: ChartDef, value: number) => Math.round(8 + (1 - (value - c.lo) / (c.hi - c.lo)) * (H - 16));
+  const data = useExtra(`serie-${range}`, v.cedula, (c) => getSerie(c, hours, v.assigned?.device));
+  const serie = data.data ?? null;
+  const u = serie?.ultimo ?? {};
+  // El último valor de cada signo, con la forma que esperan los tonos y los textos de cada gráfica.
+  const last: PuntoTendencia | null = serie
+    ? { at: new Date(serie.hasta).toISOString(), hr: u.hr ?? null, spo2: u.spo2 ?? null, resp: u.resp ?? null, sis: u.sis ?? null, dia: u.dia ?? null, temp: u.temp ?? null }
+    : null;
+  const desde = serie?.desde ?? Date.now() - hours * 3_600_000;
+  const hasta = serie?.hasta ?? Date.now();
+  // Marcas del eje: 6 instantes repartidos en el rango.
+  const axis = X.map((_, i) => axisLabel(desde + (i / 5) * (hasta - desde), range));
+  const x = (t: number) => 8 + ((t - desde) / Math.max(1, hasta - desde)) * (W - 16);
+  const y = (c: ChartDef, value: number) => Math.round(8 + (1 - (Math.min(c.hi, Math.max(c.lo, value)) - c.lo) / (c.hi - c.lo)) * (H - 16));
+  const hora = (t: number) => {
+    const d = new Date(t);
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   return (
     <>
@@ -150,14 +164,23 @@ function Tendencias({ v }: { v: PatientView }) {
         {CHARTS.map((c) => {
           const tone = last ? c.tone(last) : 'normal';
           const styles = c.keys.length > 1 ? PA_STYLE : SERIES_STYLE;
-          const series: TrendSeries[] = c.keys.map((k, n) => ({
-            ...styles[n],
-            // Un tramo sin dato de ese signo (null) no se dibuja.
-            points: points.flatMap((p, i) => (p && p[k] !== null ? [[X[i], y(c, p[k] as number)] as [number, number]] : [])),
-          }));
+          const series: TrendSeries[] = c.keys.flatMap((k, n) => {
+            const pts = (serie?.series[k] ?? []).map(([t, val]) => [x(t), y(c, val)] as [number, number]);
+            const ultimoPunto = pts.at(-1);
+            // Con pocas lecturas, un marcador en cada una; con muchas, solo en la última.
+            return [
+              { color: styles[n].color, points: pts, marker: pts.length <= POCOS ? styles[n].marker : undefined },
+              ...(ultimoPunto && pts.length > POCOS ? [{ color: styles[n].color, points: [ultimoPunto], marker: styles[n].marker }] : []),
+            ];
+          });
           const limitY = c.limits.map((l) => y(c, l));
           const lastValue = last?.[c.keys[0]] ?? null;
           const lastY = lastValue !== null ? y(c, lastValue) : 0;
+          const lastX = serie?.series[c.keys[0]].at(-1)?.[0];
+          // Desde cuándo hay lecturas del monitor, si empiezan bastante después del inicio del rango.
+          const primera = serie && serie.reales.includes(c.keys[0]) ? serie.series[c.keys[0]][0]?.[0] : undefined;
+          const avisoDesde = primera !== undefined && primera - desde > (hasta - desde) * 0.05 ? `Lecturas del monitor desde las ${hora(primera)}` : null;
+          const simulada = serie && !serie.reales.includes(c.keys[0]);
           return (
             <Card key={c.title} className="flex min-w-0 flex-col gap-4">
               <div className="flex w-full flex-wrap items-center justify-between gap-3">
@@ -184,8 +207,13 @@ function Tendencias({ v }: { v: PatientView }) {
                 series={series}
                 limits={limitY}
                 limitLabel={c.keys.length === 1 ? { text: `Límite: ${c.limits[0]}`, y: Math.max(0, limitY[0] - 12) } : undefined}
-                tooltip={last && c.keys.length === 1 ? { text: c.value(last), y: Math.max(1, lastY - 14) } : undefined}
+                tooltip={last && c.keys.length === 1 && lastValue !== null ? { text: c.value(last), y: Math.max(1, lastY - 14), x: lastX !== undefined ? Math.min(x(lastX), W - 40) - 20 : undefined } : undefined}
               />
+              {(avisoDesde || simulada) && (
+                <p className="-mt-2 font-jakarta text-[11px] font-medium leading-[normal] text-muted">
+                  {[avisoDesde, simulada && 'Valores simulados: el monitor no mide este signo'].filter(Boolean).join(' · ')}
+                </p>
+              )}
               <div className="flex w-full justify-between font-jakarta text-[10px] font-normal leading-[normal] text-subtle">
                 {axis.map((h, i) => (
                   <span key={`${h}-${i}`}>{h}</span>

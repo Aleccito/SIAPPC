@@ -4,43 +4,29 @@
 // Nada de lo que responde se guarda en el expediente; si el médico lo adopta,
 // lo escribe él en una nota SOAP firmada.
 //
-// El modelo corre en el mismo servidor (Docker Model Runner): los
-// datos del paciente no salen del hospital.
+// El modelo corre en el mismo servidor (Ollama): los datos del paciente no
+// salen del hospital.
+//
+// Cada pregunta recibe un prompt base corto más la instrucción de SU tipo
+// (dato, gravedad, fármaco, turno…; services/aiTemas.ts, mensajesDe) con su
+// propio tope de largo. Con un solo prompt grande, un modelo de 4B ponía la plantilla de
+// análisis completo en todo (prototipo/REVISION-IA-RESPUESTAS.md).
 
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { prisma } from "../lib/prisma.ts";
 import { notFound, parseOr400 } from "../lib/http.ts";
-import { DATOS_NO_INSTRUCCIONES, DISCLAIMER, llm, llmNoDisponible, patientContext } from "../lib/clinicalAi.ts";
+import { DISCLAIMER, llmNoDisponible, modelo, patientContext, prioridad } from "../lib/clinicalAi.ts";
 import { generarAnalisisIA, leerAnalisisIA } from "../services/aiAuto.ts";
-import { TEMAS_CLINICOS, detectarTemas, type Tema } from "../services/aiTemas.ts";
+import { PARAMETROS, detectarTemas, detectarTipo, mensajesDe, temasDelTipo, type Tema, type TipoPregunta } from "../services/aiTemas.ts";
+import { estadoPaciente, haceTexto } from "../services/aiParse.ts";
 import { env } from "../env.ts";
 
-const SYSTEM = `Eres un asistente de apoyo a la decisión clínica para médicos de un hospital de trauma.
-Reglas:
-- Hablas con un MÉDICO, no con el paciente. Lenguaje técnico, con un tono humano, cordial y tranquilo, sin alarmismo; las banderas rojas se dicen con claridad.
-- Usa SOLO los datos del paciente que se te dan. Si falta un dato crítico (peso, función renal, embarazo, etc.), dilo y no lo inventes.
-- Revisa SIEMPRE alergias y medicamentos activos antes de sugerir fármacos; señala interacciones y contraindicaciones.
-- Da dosis solo como rangos de referencia estándar de adulto, indicando que deben ajustarse.
-- Prioriza banderas rojas y causas que amenazan la vida.
-- No eres fuente definitiva: el médico tratante decide.
-- ${DATOS_NO_INSTRUCCIONES}
-Cómo responder (Markdown, en español):
-- Responde SOLO lo que se pregunta. Si piden estudios, da solo estudios; si piden un dato, solo ese dato. No agregues secciones que no se pidieron.
-- Si preguntan un dato (nombre, edad, médico a cargo, cama), responde en una frase corta y natural con el valor exacto del contexto (p. ej. "El médico a cargo es ..."). Si no lo hay, dilo con calma y amabilidad (p. ej. "Este paciente todavía no tiene un médico asignado." o "No encuentro ese dato en su expediente.").
-- El contexto trae solo algunas secciones del expediente: que una no aparezca NO significa que el paciente no tenga ese dato. Di que no existe solo si el contexto lo dice.
-- Sé breve y directo: viñetas cortas, una línea por punto, con el motivo en pocas palabras (p. ej. "Troponina: descartar SCA").
-- Solo si la consulta es abierta (p. ej. "¿qué tiene?", "analiza al paciente"), usa: **Banderas rojas**, **Diferenciales**, **Estudios**, **Manejo**, **Datos faltantes**, cada una con 2–4 viñetas.
-- Si hay una bandera roja relevante para lo preguntado, menciónala en una línea al inicio.`;
+const salidaTexto = new StringOutputParser();
 
-const prompt = ChatPromptTemplate.fromMessages([
-  ["system", SYSTEM],
-  ["human", "CONTEXTO DEL PACIENTE:\n<datos_paciente>\n{context}\n</datos_paciente>\n\nCONSULTA DEL MÉDICO:\n{question}"],
-]);
-
-const chain = prompt.pipe(llm).pipe(new StringOutputParser());
+/** El modelo con el tope y la temperatura del tipo, ya con salida en texto. */
+const cadena = (tipo: TipoPregunta) => modelo(PARAMETROS[tipo]).pipe(salidaTexto);
 
 // Toda consulta va sobre un paciente: sin él la IA no tiene datos reales y
 // respondería en el aire.
@@ -65,6 +51,7 @@ async function datosAdministrativos(patientId: number, hospitalId: number, temas
     where: { paciente_id: patientId, hospital_id: hospitalId },
     select: {
       nombre: true,
+      estado: true,
       medicos: {
         where: { activo: true },
         orderBy: { fecha_asignacion: "desc" },
@@ -88,25 +75,26 @@ async function datosAdministrativos(patientId: number, hospitalId: number, temas
   const otros = listar(p.medicos.filter((m) => m.usuario.rol.nombre !== "medico"));
   const ingreso = p.ingresos[0];
   const texto = [
-    `Paciente: ${p.nombre}`,
+    `Paciente: ${p.nombre} (${estadoPaciente(p.estado)})`,
     ...(temas.has("equipo") ? [
       `Médico a cargo: ${medicos || "este paciente todavía no tiene un médico asignado"}`,
       `Otro personal a cargo: ${otros || "todavía no hay nadie más asignado"}`,
     ] : []),
     ...(temas.has("ubicacion") ? [
       `Cama: ${ingreso?.cama ? `${ingreso.cama.codigo} (${ingreso.cama.unidad.nombre})` : "todavía no tiene una cama asignada"}`,
-      `Ingreso activo: ${ingreso ? ingreso.fecha_ingreso.toISOString() : "no tiene un ingreso activo"}`,
+      `Ingreso activo: ${ingreso ? `desde ${haceTexto(ingreso.fecha_ingreso)}` : "no tiene un ingreso activo"}`,
     ] : []),
   ].join("\n");
   return { nombre: p.nombre, texto };
 }
 
-/** Valida el cuerpo y arma contexto + pregunta. Lanza 400/404 antes de tocar el LLM. */
+/** Valida el cuerpo y arma el tipo, el contexto y los mensajes. Lanza 400/404 antes de tocar el LLM. */
 async function prepararConsulta(body: unknown, hospitalId: number) {
   const input = parseOr400(bodySchema, body);
-  // Solo las secciones que la pregunta toca. Con síntomas hay que razonar.
+  const tipo = detectarTipo(input.question ?? input.symptoms ?? "", Boolean(input.symptoms));
+  // Las secciones que la pregunta nombra, más las que su tipo necesita.
   const temas = detectarTemas(input.question ?? "");
-  if (input.symptoms) for (const tema of TEMAS_CLINICOS) temas.add(tema);
+  for (const tema of temasDelTipo(tipo)) temas.add(tema);
   const [clinico, admin] = await Promise.all([
     patientContext(input.patientId, hospitalId, temas),
     datosAdministrativos(input.patientId, hospitalId, temas),
@@ -117,7 +105,7 @@ async function prepararConsulta(body: unknown, hospitalId: number) {
     input.question,
   ].filter(Boolean).join("\n");
   const question = `Del paciente ${admin.nombre}: ${consulta}`;
-  return { input, context, question };
+  return { input, tipo, mensajes: mensajesDe(tipo, context, question) };
 }
 
 export default async function aiRoutes(app: FastifyInstance) {
@@ -133,21 +121,26 @@ export default async function aiRoutes(app: FastifyInstance) {
     "/ai/assist",
     { preHandler: medico, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
     async (req) => {
-      const { input, context, question } = await prepararConsulta(req.body, req.hospitalId);
+      const { input, tipo, mensajes } = await prepararConsulta(req.body, req.hospitalId);
 
       let answer: string;
+      // La consulta del médico va primero: el análisis automático espera o se corta.
+      const terminar = prioridad.empieza();
       try {
-        answer = await chain.invoke({ context, question });
+        answer = await cadena(tipo).invoke(mensajes);
       } catch (err: unknown) {
         // Sin contenido clínico en el log: solo el tipo de error.
         req.log.error({ reason: err instanceof Error ? err.name : "desconocido" }, "ai_assist: LLM no disponible");
         throw llmNoDisponible();
+      } finally {
+        terminar();
       }
 
-      req.log.info({ userId: req.user.sub, patientId: input.patientId }, "ai_assist");
+      req.log.info({ userId: req.user.sub, patientId: input.patientId, tipo }, "ai_assist");
 
       return {
         model: env.llm.model,
+        tipo,
         answer,
         disclaimer: DISCLAIMER,
       };
@@ -160,7 +153,7 @@ export default async function aiRoutes(app: FastifyInstance) {
   // navegador lo lee con fetch y no con EventSource.
   //
   // Marcos:
-  //   event: inicio  data: {model, disclaimer}
+  //   event: inicio  data: {model, tipo, disclaimer}
   //   event: trozo   data: {text}            (n veces)
   //   event: fin     data: {}
   //   event: error   data: {error}           (en lugar de `fin`)
@@ -170,7 +163,7 @@ export default async function aiRoutes(app: FastifyInstance) {
     "/ai/assist/stream",
     { preHandler: medico, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
     async (req, reply) => {
-      const { input, context, question } = await prepararConsulta(req.body, req.hospitalId);
+      const { input, tipo, mensajes } = await prepararConsulta(req.body, req.hospitalId);
 
       // Si el médico cierra la pestaña se corta también la generación: el LLM
       // es de un solo hilo y no debe seguir ocupado para nadie.
@@ -184,21 +177,23 @@ export default async function aiRoutes(app: FastifyInstance) {
         // Sin esto nginx guarda los trozos y el médico no ve nada hasta el final.
         "X-Accel-Buffering": "no",
       });
-      reply.raw.write(marco("inicio", { model: env.llm.model, disclaimer: DISCLAIMER }));
+      reply.raw.write(marco("inicio", { model: env.llm.model, tipo, disclaimer: DISCLAIMER }));
 
+      const terminar = prioridad.empieza();
       try {
-        const flujo = await chain.stream({ context, question }, { signal: control.signal });
+        const flujo = await cadena(tipo).stream(mensajes, { signal: control.signal });
         for await (const text of flujo) {
           if (text) reply.raw.write(marco("trozo", { text }));
         }
         reply.raw.write(marco("fin", {}));
-        req.log.info({ userId: req.user.sub, patientId: input.patientId }, "ai_assist_stream");
+        req.log.info({ userId: req.user.sub, patientId: input.patientId, tipo }, "ai_assist_stream");
       } catch (err: unknown) {
         if (!control.signal.aborted) {
           req.log.error({ reason: err instanceof Error ? err.name : "desconocido" }, "ai_assist_stream: LLM no disponible");
           reply.raw.write(marco("error", { error: llmNoDisponible().message }));
         }
       } finally {
+        terminar();
         reply.raw.end();
       }
       return reply;
@@ -223,6 +218,8 @@ export default async function aiRoutes(app: FastifyInstance) {
       const { patientId } = parseOr400(z.object({ patientId: z.coerce.number().int().positive() }), req.params);
       const existe = await prisma.paciente.count({ where: { paciente_id: patientId, hospital_id: req.hospitalId } });
       if (!existe) throw notFound("Paciente no encontrado");
+      // Lo pide el médico: tiene prioridad sobre el análisis automático.
+      const terminar = prioridad.empieza();
       try {
         const analysis = await generarAnalisisIA(patientId, req.hospitalId);
         req.log.info({ userId: req.user.sub, patientId }, "ai_ideas");
@@ -231,6 +228,8 @@ export default async function aiRoutes(app: FastifyInstance) {
         // El mensaje del error (timeout, conexión, "JSON inválido") no lleva datos del paciente.
         req.log.error({ patientId, reason: err instanceof Error ? `${err.name}: ${err.message.slice(0, 200)}` : "desconocido" }, "ai_ideas: falló");
         throw llmNoDisponible();
+      } finally {
+        terminar();
       }
     },
   );

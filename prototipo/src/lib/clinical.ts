@@ -3,6 +3,14 @@ import type { AlertSeverity } from '../api/types/sensors';
 
 export type ClinicalState = 'critico' | 'atencion' | 'estable';
 
+/** El turno de una hora: matutino 07–15, vespertino 15–23, nocturno 23–07. */
+export function turnoDe(fecha = new Date()): { nombre: string; horas: string } {
+  const h = fecha.getHours();
+  if (h >= 7 && h < 15) return { nombre: 'Matutino', horas: '07:00 - 15:00' };
+  if (h >= 15 && h < 23) return { nombre: 'Vespertino', horas: '15:00 - 23:00' };
+  return { nombre: 'Nocturno', horas: '23:00 - 07:00' };
+}
+
 /**
  * Estado clínico a partir de la peor alerta abierta. Misma regla que
  * frontend/src/modules/dashboard/presentation.ts (`clinicalState`).

@@ -98,7 +98,7 @@ function InterrogatorioForm({ v, data }: { v: PatientView; data: Interrogatorio 
     );
     await saveInterrogatorio(v.cedula, next);
     await queryClient.invalidateQueries({ queryKey: ['sinBackend', 'interrogatorio', v.cedula] });
-    toast('Interrogatorio guardado');
+    toast('Interrogatorio guardado en este navegador');
   };
 
   return (

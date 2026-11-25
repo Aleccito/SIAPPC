@@ -1,22 +1,19 @@
 // La onda del ECG del equipo, en vivo: GET /monitoring/:device/waveform (SSE). Como el flujo de alertas
 // (src/api/alertStream.ts), con fetch y no con EventSource, para mandar el token en `Authorization` y no en la URL.
-// El backend reparte un lote por segundo; aquí se reproduce a su ritmo (hz muestras por segundo) con un barrido
-// como el de un monitor. Sin equipo, o si en 5 s no llega ningún lote: "Sin señal de ECG" sobre una línea plana.
+// El backend reparte un lote por segundo; aquí se reproduce a su ritmo (hz muestras por segundo), desplazándose: lo
+// último a la derecha. El recuadro se llena desde el primer lote (la ventana crece de 1 a 3 s) y la escala vertical
+// sigue a la señal, para que ocupe el alto. Sin equipo, o si en 5 s no llega ningún lote: "Sin señal de ECG".
 // Una conexión por equipo: se usa en las pantallas de un paciente, no en la central (6 conexiones por host en HTTP/1.1;
-// pedido 29 de CONEXION-BACKEND.md).
+// pedido 29 de CONEXION-BACKEND.md). Si el backend responde 429, espera lo que diga `Retry-After` o cada vez más.
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch, getToken } from '../../api/http';
+import { esperaTras429 } from '../../api/alertStream';
 import { cn } from '../../lib/cn';
 
 const SIN_SENAL_MS = 5_000;
 const REINTENTO_MS = 3_000;
-/** Segundos de onda a lo ancho. */
-const VENTANA_S = 4;
-/** Hueco que deja el barrido delante de lo que va escribiendo (fracción del ancho). */
-const HUECO = 0.04;
-/** Rango vertical en mV. */
-const MIN_MV = -0.45;
-const MAX_MV = 1.25;
+/** Segundos de onda a lo ancho, una vez que hay suficientes. */
+const VENTANA_S = 3;
 
 type Estado = 'conectando' | 'en-vivo' | 'sin-senal';
 
@@ -32,20 +29,22 @@ export function EcgLive({ device, color = '#22c55e', className }: { device: stri
     let activo = true;
     let control: AbortController | null = null;
     let reintento: ReturnType<typeof setTimeout> | undefined;
+    let espera = REINTENTO_MS;
     let estadoActual: Estado = 'conectando';
     const cambiar = (e: Estado) => {
       if (e !== estadoActual) setEstado((estadoActual = e));
     };
     cambiar('conectando');
 
-    // Muestras recibidas y aún sin dibujar, y la pantalla (un anillo que el barrido va sobrescribiendo).
+    // Muestras recibidas y aún sin dibujar, y las que están en pantalla (de la más vieja a la más nueva).
     let hz = 125;
     let cola: number[] = [];
-    let pantalla = new Float32Array(hz * VENTANA_S).fill(Number.NaN);
-    let escritura = 0;
+    let pantalla: number[] = [];
     let deuda = 0;
-    let reproduciendo = false;
     let ultimoLote = 0;
+    // Escala vertical que sigue a la señal, suavizada para que no salte de un cuadro a otro.
+    let bajo = -0.4;
+    let alto = 1.2;
     const inicio = Date.now();
 
     const procesar = (marco: string) => {
@@ -57,11 +56,13 @@ export function EcgLive({ device, color = '#22c55e', className }: { device: stri
         if (lote.variable && lote.variable !== 'ecg') return;
         if (lote.hz && lote.hz !== hz) {
           hz = lote.hz;
-          pantalla = new Float32Array(hz * VENTANA_S).fill(Number.NaN);
-          escritura = 0;
+          pantalla = [];
           cola = [];
         }
-        cola.push(...(lote.samples ?? []));
+        const muestras = lote.samples ?? [];
+        // El primer lote va directo a la pantalla: el recuadro se llena enseguida en vez de dibujarse desde cero.
+        if (pantalla.length === 0) pantalla = muestras.slice();
+        else cola.push(...muestras);
         // Si la pestaña estuvo oculta no se acumulan segundos de atraso: se queda lo último.
         if (cola.length > hz * 3) cola = cola.slice(-hz);
         ultimoLote = Date.now();
@@ -84,7 +85,12 @@ export function EcgLive({ device, color = '#22c55e', className }: { device: stri
           cambiar('sin-senal');
           return;
         }
+        if (r.status === 429) {
+          espera = esperaTras429(r, espera);
+          throw new Error('429');
+        }
         if (!r.ok || !r.body) throw new Error(String(r.status));
+        espera = REINTENTO_MS;
         const lector = r.body.getReader();
         const decodificador = new TextDecoder();
         let resto = '';
@@ -97,9 +103,9 @@ export function EcgLive({ device, color = '#22c55e', className }: { device: stri
           marcos.forEach(procesar);
         }
       } catch {
-        // Corte de red o desmontaje: abajo se decide si se reintenta.
+        // Corte de red, 429 o desmontaje: abajo se decide si se reintenta.
       }
-      if (activo) reintento = setTimeout(() => void conectar(), REINTENTO_MS);
+      if (activo) reintento = setTimeout(() => void conectar(), espera);
     };
     void conectar();
 
@@ -110,62 +116,58 @@ export function EcgLive({ device, color = '#22c55e', className }: { device: stri
       const dt = Math.min(0.25, (ahora - anterior) / 1000);
       anterior = ahora;
 
-      // Arranca cuando hay medio segundo guardado, así un lote que llega un poco tarde no deja la línea a saltos.
-      if (!reproduciendo && cola.length >= hz * 0.5) reproduciendo = true;
-      if (reproduciendo) {
-        deuda += dt * hz;
-        let n = Math.floor(deuda);
-        deuda -= n;
-        while (n-- > 0 && cola.length) {
-          pantalla[escritura] = cola.shift()!;
-          escritura = (escritura + 1) % pantalla.length;
-        }
-        if (!cola.length) reproduciendo = false;
-      }
+      // Las muestras pasan de la cola a la pantalla a su ritmo real (hz por segundo).
+      deuda += dt * hz;
+      let n = Math.floor(deuda);
+      deuda -= n;
+      while (n-- > 0 && cola.length) pantalla.push(cola.shift()!);
+      if (pantalla.length > hz * VENTANA_S) pantalla = pantalla.slice(-hz * VENTANA_S);
 
       const c = lienzo.current;
       if (!c) return;
       const dpr = window.devicePixelRatio || 1;
       const ancho = c.clientWidth;
-      const alto = c.clientHeight;
-      if (c.width !== Math.round(ancho * dpr) || c.height !== Math.round(alto * dpr)) {
+      const altoPx = c.clientHeight;
+      if (c.width !== Math.round(ancho * dpr) || c.height !== Math.round(altoPx * dpr)) {
         c.width = Math.round(ancho * dpr);
-        c.height = Math.round(alto * dpr);
+        c.height = Math.round(altoPx * dpr);
       }
       const ctx = c.getContext('2d');
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, ancho, alto);
+      ctx.clearRect(0, 0, ancho, altoPx);
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.6;
       ctx.lineJoin = 'round';
-      const y = (mv: number) => alto - ((mv - MIN_MV) / (MAX_MV - MIN_MV)) * alto;
-      if (estadoActual === 'sin-senal') {
+      if (estadoActual === 'sin-senal' || pantalla.length < 2) {
         ctx.globalAlpha = 0.45;
         ctx.beginPath();
-        ctx.moveTo(0, y(0));
-        ctx.lineTo(ancho, y(0));
+        ctx.moveTo(0, altoPx * 0.7);
+        ctx.lineTo(ancho, altoPx * 0.7);
         ctx.stroke();
         ctx.globalAlpha = 1;
         return;
       }
-      const n = pantalla.length;
-      const hueco = Math.round(n * HUECO);
-      ctx.beginPath();
-      let trazando = false;
-      for (let i = 0; i < n; i++) {
-        // Delante del barrido queda un hueco, como en el monitor: ahí está la muestra más vieja.
-        const distancia = (i - escritura + n) % n;
-        const v = pantalla[i];
-        if (distancia < hueco || Number.isNaN(v)) {
-          trazando = false;
-          continue;
-        }
-        const x = (i / (n - 1)) * ancho;
-        if (trazando) ctx.lineTo(x, y(v));
-        else ctx.moveTo(x, y(v));
-        trazando = true;
+      // La escala sigue al mínimo y al máximo de lo que se ve, con un poco de margen.
+      let min = Infinity;
+      let max = -Infinity;
+      for (const v of pantalla) {
+        if (v < min) min = v;
+        if (v > max) max = v;
       }
+      const margen = Math.max(0.1, (max - min) * 0.12);
+      bajo += (min - margen - bajo) * 0.15;
+      alto += (max + margen - alto) * 0.15;
+      const y = (mv: number) => altoPx - ((mv - bajo) / Math.max(0.2, alto - bajo)) * altoPx;
+      // La ventana crece de 1 a 3 s con la señal: el recuadro siempre lleno, lo último a la derecha.
+      const ventana = Math.min(hz * VENTANA_S, Math.max(hz, pantalla.length));
+      const desplazamiento = ventana - pantalla.length;
+      ctx.beginPath();
+      pantalla.forEach((v, i) => {
+        const px = ((i + desplazamiento) / (ventana - 1)) * ancho;
+        if (i === 0) ctx.moveTo(px, y(v));
+        else ctx.lineTo(px, y(v));
+      });
       ctx.stroke();
     };
     cuadro = requestAnimationFrame(dibujar);

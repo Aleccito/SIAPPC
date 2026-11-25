@@ -18,7 +18,8 @@ import { aiAnalysisKey, AppLayout, Badge, Button, Card, EmptyState, IconSparkles
 import { Sparkline } from '../../components/ui/Sparkline';
 import { alertInfoFrom, CONFIRM_PATH, type ConfirmState } from '../../data/alerts';
 import { usePatientRows, vitalsText, type PatientRow } from '../../data/patients';
-import { alertTitle } from '../../lib/alerts';
+import { alertTitle, esActiva } from '../../lib/alerts';
+import { RegistrarExploracion } from '../../components/patient/RegistrarExploracion';
 import { fmtAgo, surnameFirst, VARIABLE_LABEL } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 import { patientPath } from '../../lib/patientLink';
@@ -60,7 +61,8 @@ const surname = (name: string) => name.split(/\s+/)[1] ?? name;
 /** "Requiere tu atención ahora": las alertas más graves y recientes (una por paciente) y las evaluaciones pendientes. */
 function attentionItems(rows: PatientRow[]): Attention[] {
   const alerts = rows.flatMap((r) => {
-    const g = r.alertGroups[0];
+    // La más grave de las activas (con un aviso en los últimos 30 min): una de hace horas no "requiere atención ahora".
+    const g = r.alertGroups.find((x) => esActiva(x));
     if (!g) return [];
     const crit = g.severity === 'critica';
     const short = VARIABLE_LABEL[g.variable]?.short ?? g.variable;
@@ -160,13 +162,13 @@ export default function MedDashboardPrincipal() {
     setUnit(ALL_UNITS);
     setStatus('TODOS');
   };
-  // Indicadores: los dos primeros llevan a su lista; "Pendientes" filtra la tabla a quien no tiene exploración.
-  const [pendingOnly, setPendingOnly] = useState(false);
-  const shownRows = pendingOnly ? filtered.filter((r) => !r.examined).slice(0, PAGE) : rows;
-  const KPIS: Array<{ label: string; value: string; stripe: string; color: string; icon: string; to?: string }> = [
+  // Indicadores: cada uno lleva a su lista. "Pendientes" abre Mis Pacientes filtrado a quien no tiene exploración
+  // física, donde cada fila lleva a registrarla (REVISION-MEDICO.md, 3.4).
+  const shownRows = rows;
+  const KPIS: Array<{ label: string; value: string; stripe: string; color: string; icon: string; to: string }> = [
     { label: 'Pacientes Asignados', value: isPending ? '—' : String(all.length), stripe: 'bg-primary', color: 'text-ink', icon: imgUsers3, to: '/MedPacientesLista' },
     { label: 'Alertas Críticas', value: isPending ? '—' : String(all.filter((r) => r.state === 'critico').length), stripe: 'bg-danger', color: 'text-danger', icon: imgAlertTriangle2, to: '/MedAlertasCentro' },
-    { label: 'Pendientes Evaluación', value: isPending ? '—' : String(all.filter((r) => !r.examined).length), stripe: 'bg-success', color: 'text-ink', icon: imgCheckSquare },
+    { label: 'Pendientes Evaluación', value: isPending ? '—' : String(all.filter((r) => !r.examined).length), stripe: 'bg-success', color: 'text-ink', icon: imgCheckSquare, to: '/MedPacientesLista?filtro=evaluacion' },
   ];
   const trends = all.filter((r) => r.state === 'critico').slice(0, 2);
   const attention = attentionItems(all);
@@ -178,9 +180,8 @@ export default function MedDashboardPrincipal() {
           {/* En celular los tres indicadores van en una fila compacta (REVISION.md, V16). */}
           <div className="grid w-full grid-cols-3 gap-2 sm:gap-[14px]">
             {KPIS.map((k) => {
-              const pressed = !k.to && pendingOnly;
               const body = (
-                <Card raised padding="none" className={cn('relative flex h-full flex-col gap-2 overflow-hidden p-3 transition-colors hover:border-subtle sm:p-[18px]', pressed && 'border-primary')}>
+                <Card raised padding="none" className="relative flex h-full flex-col gap-2 overflow-hidden p-3 transition-colors hover:border-subtle sm:p-[18px]">
                   <span className={cn('absolute inset-y-0 left-0 w-1', k.stripe)} />
                   <div className="flex w-full items-center justify-between pl-1.5">
                     <p className="font-jakarta text-[11px] font-medium leading-[normal] text-muted sm:text-[13px]">{k.label}</p>
@@ -189,24 +190,10 @@ export default function MedDashboardPrincipal() {
                   <p className={cn('pl-1.5 font-jakarta text-[22px] font-extrabold leading-[normal] sm:text-[28px]', k.color)}>{k.value}</p>
                 </Card>
               );
-              return k.to ? (
+              return (
                 <Link key={k.label} to={k.to} className="block rounded-xl">
                   {body}
                 </Link>
-              ) : (
-                <button
-                  key={k.label}
-                  type="button"
-                  aria-pressed={pressed}
-                  title="Filtrar la tabla a pacientes con evaluación pendiente"
-                  onClick={() => {
-                    resetFilters();
-                    setPendingOnly(!pressed);
-                  }}
-                  className="block rounded-xl text-left"
-                >
-                  {body}
-                </button>
               );
             })}
           </div>
@@ -261,6 +248,7 @@ export default function MedDashboardPrincipal() {
                         <p className="font-jakarta text-[13px] font-bold text-ink" title={r.glasgow ? undefined : 'Glasgow pendiente: sin exploración física desde el ingreso'}>
                           {r.glasgow ? `GCS: ${r.glasgow}/15` : 'GCS: —'}
                         </p>
+                        {!r.glasgow && <RegistrarExploracion cedula={r.document} texto="Registrar" className="text-[11px]" />}
                         <p className={cn('font-jakarta text-[11px] font-semibold', s.triage)}>{`TRIAGE: ${r.triage}`}</p>
                       </div>
                       <p className={cn('w-[120px] shrink-0 whitespace-nowrap font-jakarta text-[12px] leading-[normal]', lastAlert ? 'font-bold text-danger' : 'font-normal text-muted')}>
@@ -287,7 +275,7 @@ export default function MedDashboardPrincipal() {
               </Table>
             </div>
             <div className="flex w-full flex-wrap items-center justify-between gap-3 font-jakarta text-[13px] leading-[normal]">
-              <p className="font-normal text-muted">{`Mostrando ${shownRows.length} de ${pendingOnly ? filtered.filter((r) => !r.examined).length : filtered.length} pacientes`}</p>
+              <p className="font-normal text-muted">{`Mostrando ${shownRows.length} de ${filtered.length} pacientes`}</p>
               <Button variant="link" to="/MedPacientesLista">
                 Ver todos →
               </Button>

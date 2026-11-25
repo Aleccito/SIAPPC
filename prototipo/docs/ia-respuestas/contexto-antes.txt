@@ -1,0 +1,164 @@
+### DEMO-0002 · ¿Gravedad de este paciente?
+Temas: vitales, alertas, exploracion, antecedentes, notas
+Largo: 1517 caracteres
+Edad: 55 años · Sexo: F · Sangre: A_POS
+Motivo de consulta: Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera · Estado: inService
+Alergias activas: ninguna registrada
+Medicamentos activos: Enoxaparina 40 mg subcutánea cada 24 h; Paracetamol 1 g oral cada 8 h
+Diagnósticos activos: Fractura de cuello de fémur [S72.0] (definitivo); Tromboembolia pulmonar [I26.9] (presuntivo)
+Antecedentes: quirurgico: Osteosíntesis de cadera derecha hace 5 días; habito: Tabaquismo, 10 cigarrillos al día
+Signos vitales (último valor; rango de 6 h previas): hr=119 lpm (2026-11-25T03:27:41.365Z; mín 106, máx 120, estable); resp=25 rpm (2026-11-25T03:27:41.366Z; mín 23, máx 29, estable); spo2=92 % (2026-11-25T03:27:41.365Z; mín 88, máx 93, estable); temp=37.6 °C (2026-11-25T03:27:41.367Z; mín 37.4, máx 37.8, estable)
+Alertas: 58 abiertas. Últimas: 2026-11-25T02:47:59.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:47:29.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:46:59.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:46:29.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:45:59.000Z alta, abierta: SpO2 89% bajo
+Exploración física: sin registros
+Nota SOAP 2026-11-24T19:12:53.000Z: S: Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cadera. | O: FC 112, SpO2 89 % aire ambiente, FR 26. Pantorrilla izquierda edematizada. | A: Sospecha alta de tromboembolia pulmonar posoperatoria. | P: Angio-TC de tórax, dímero D, oxígeno a SpO2 > 92 %, valorar anticoagulación según riesgo de sangrado.
+
+### DEMO-0002 · ¿Cuáles son los diagnósticos diferenciales más probables?
+Temas: diagnosticos, vitales, alertas, exploracion, antecedentes, notas
+Largo: 1569 caracteres
+Edad: 55 años · Sexo: F · Sangre: A_POS
+Motivo de consulta: Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera · Estado: inService
+Alergias activas: ninguna registrada
+Medicamentos activos: Enoxaparina 40 mg subcutánea cada 24 h; Paracetamol 1 g oral cada 8 h
+Diagnósticos activos: Fractura de cuello de fémur [S72.0] (definitivo); Tromboembolia pulmonar [I26.9] (presuntivo)
+Antecedentes: quirurgico: Osteosíntesis de cadera derecha hace 5 días; habito: Tabaquismo, 10 cigarrillos al día
+Diagnósticos resueltos o descartados: sin registros
+Signos vitales (último valor; rango de 6 h previas): hr=119 lpm (2026-11-25T03:27:41.365Z; mín 106, máx 120, estable); resp=25 rpm (2026-11-25T03:27:41.366Z; mín 23, máx 29, estable); spo2=92 % (2026-11-25T03:27:41.365Z; mín 88, máx 93, estable); temp=37.6 °C (2026-11-25T03:27:41.367Z; mín 37.4, máx 37.8, estable)
+Alertas: 58 abiertas. Últimas: 2026-11-25T02:47:59.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:47:29.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:46:59.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:46:29.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:45:59.000Z alta, abierta: SpO2 89% bajo
+Exploración física: sin registros
+Nota SOAP 2026-11-24T19:12:53.000Z: S: Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cadera. | O: FC 112, SpO2 89 % aire ambiente, FR 26. Pantorrilla izquierda edematizada. | A: Sospecha alta de tromboembolia pulmonar posoperatoria. | P: Angio-TC de tórax, dímero D, oxígeno a SpO2 > 92 %, valorar anticoagulación según riesgo de sangrado.
+
+### DEMO-0002 · ¿Cuál sería el manejo inicial recomendado?
+Temas: vitales, alertas, exploracion, antecedentes, notas
+(mismo contexto que arriba)
+
+### DEMO-0002 · ¿Cómo han evolucionado sus signos vitales en las últimas horas?
+Temas: vitales, evoluciones
+Largo: 736 caracteres
+Edad: 55 años · Sexo: F · Sangre: A_POS
+Motivo de consulta: Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera · Estado: inService
+Alergias activas: ninguna registrada
+Medicamentos activos: Enoxaparina 40 mg subcutánea cada 24 h; Paracetamol 1 g oral cada 8 h
+Diagnósticos activos: Fractura de cuello de fémur [S72.0] (definitivo); Tromboembolia pulmonar [I26.9] (presuntivo)
+Signos vitales (último valor; rango de 6 h previas): hr=119 lpm (2026-11-25T03:27:41.365Z; mín 106, máx 120, estable); resp=25 rpm (2026-11-25T03:27:41.366Z; mín 23, máx 29, estable); spo2=92 % (2026-11-25T03:27:41.365Z; mín 88, máx 93, estable); temp=37.6 °C (2026-11-25T03:27:41.367Z; mín 37.4, máx 37.8, estable)
+Evoluciones: sin registros
+
+### DEMO-0002 · ¿Cuál es su última saturación?
+Temas: vitales
+Largo: 709 caracteres
+Edad: 55 años · Sexo: F · Sangre: A_POS
+Motivo de consulta: Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera · Estado: inService
+Alergias activas: ninguna registrada
+Medicamentos activos: Enoxaparina 40 mg subcutánea cada 24 h; Paracetamol 1 g oral cada 8 h
+Diagnósticos activos: Fractura de cuello de fémur [S72.0] (definitivo); Tromboembolia pulmonar [I26.9] (presuntivo)
+Signos vitales (último valor; rango de 6 h previas): hr=119 lpm (2026-11-25T03:27:41.365Z; mín 106, máx 120, estable); resp=25 rpm (2026-11-25T03:27:41.366Z; mín 23, máx 29, estable); spo2=92 % (2026-11-25T03:27:41.365Z; mín 88, máx 93, estable); temp=37.6 °C (2026-11-25T03:27:41.367Z; mín 37.4, máx 37.8, estable)
+
+### DEMO-0002 · ¿Qué dosis de enoxaparina le corresponde?
+Temas: medicamentos, vitales, alertas, exploracion, antecedentes, notas
+Largo: 1571 caracteres
+Edad: 55 años · Sexo: F · Sangre: A_POS
+Motivo de consulta: Dolor torácico y falta de aire súbita, 5 días tras cirugía de cadera · Estado: inService
+Alergias activas: ninguna registrada
+Medicamentos activos: Enoxaparina 40 mg subcutánea cada 24 h; Paracetamol 1 g oral cada 8 h
+Diagnósticos activos: Fractura de cuello de fémur [S72.0] (definitivo); Tromboembolia pulmonar [I26.9] (presuntivo)
+Antecedentes: quirurgico: Osteosíntesis de cadera derecha hace 5 días; habito: Tabaquismo, 10 cigarrillos al día
+Medicamentos suspendidos o finalizados: sin registros
+Signos vitales (último valor; rango de 6 h previas): hr=119 lpm (2026-11-25T03:27:41.365Z; mín 106, máx 120, estable); resp=25 rpm (2026-11-25T03:27:41.366Z; mín 23, máx 29, estable); spo2=92 % (2026-11-25T03:27:41.365Z; mín 88, máx 93, estable); temp=37.6 °C (2026-11-25T03:27:41.367Z; mín 37.4, máx 37.8, estable)
+Alertas: 58 abiertas. Últimas: 2026-11-25T02:47:59.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:47:29.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:46:59.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:46:29.000Z alta, abierta: SpO2 89% bajo; 2026-11-25T02:45:59.000Z alta, abierta: SpO2 89% bajo
+Exploración física: sin registros
+Nota SOAP 2026-11-24T19:12:53.000Z: S: Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cadera. | O: FC 112, SpO2 89 % aire ambiente, FR 26. Pantorrilla izquierda edematizada. | A: Sospecha alta de tromboembolia pulmonar posoperatoria. | P: Angio-TC de tórax, dímero D, oxígeno a SpO2 > 92 %, valorar anticoagulación según riesgo de sangrado.
+
+### DEMO-0009 · ¿Qué tiene este paciente?
+Temas: vitales, alertas, exploracion, antecedentes, notas
+Largo: 1589 caracteres
+Edad: 65 años · Sexo: F · Sangre: A_POS
+Motivo de consulta: Hinchazón de piernas y falta de aire al acostarse · Estado: inService
+Alergias activas: Yodo (leve: Prurito)
+Medicamentos activos: Furosemida 40 mg intravenosa cada 12 h; Carvedilol 6.25 mg oral cada 12 h; Losartán 50 mg oral cada 24 h
+Diagnósticos activos: Insuficiencia cardíaca, no especificada [I50.9] (presuntivo); Insuficiencia cardíaca [I50.9] (definitivo)
+Antecedentes: personal: Insuficiencia cardíaca con fracción de eyección reducida; personal: Hipertensión arterial
+Signos vitales (último valor; rango de 6 h previas): hr=95 lpm (2026-11-25T03:27:41.383Z; mín 91, máx 102, estable); resp=24 rpm (2026-11-25T03:27:41.384Z; mín 21, máx 25, estable); spo2=92 % (2026-11-25T03:27:41.383Z; mín 90, máx 94, estable); temp=36.8 °C (2026-11-25T03:27:41.385Z; mín 36.5, máx 36.9, estable)
+Alertas: 9 abiertas. Últimas: 2026-11-24T21:12:53.000Z alta, abierta: SpO2 89% bajo; 2026-11-24T21:11:53.000Z alta, abierta: SpO2 89% bajo; 2026-11-24T21:10:53.000Z alta, abierta: SpO2 88% bajo; 2026-11-24T21:09:53.000Z alta, abierta: SpO2 89% bajo; 2026-11-24T21:08:53.000Z alta, abierta: SpO2 89% bajo
+Exploración física: sin registros
+Nota SOAP 2026-11-24T23:51:22.000Z: S: - | O: - | A: Adenda: Prueba conexión 1795564281515 | P: -
+Nota SOAP 2026-11-24T23:51:21.000Z: S: Prueba conexión 1795564281515 | O: FC y SpO2 del monitor. | A: Paciente estable, sin cambios. | P: Continuar el manejo indicado.
+Nota SOAP 2026-11-24T23:44:41.000Z: S: Prueba conexión 1795563876807 | O: FC y SpO2 del monitor. | A: Estable. | P: Continuar manejo.
+
+### DEMO-0009 · ¿Qué estudios de laboratorio e imagen solicitarías?
+Temas: documentos, vitales, alertas, exploracion, antecedentes, notas
+Largo: 1644 caracteres
+Edad: 65 años · Sexo: F · Sangre: A_POS
+Motivo de consulta: Hinchazón de piernas y falta de aire al acostarse · Estado: inService
+Alergias activas: Yodo (leve: Prurito)
+Medicamentos activos: Furosemida 40 mg intravenosa cada 12 h; Carvedilol 6.25 mg oral cada 12 h; Losartán 50 mg oral cada 24 h
+Diagnósticos activos: Insuficiencia cardíaca, no especificada [I50.9] (presuntivo); Insuficiencia cardíaca [I50.9] (definitivo)
+Antecedentes: personal: Insuficiencia cardíaca con fracción de eyección reducida; personal: Hipertensión arterial
+Signos vitales (último valor; rango de 6 h previas): hr=95 lpm (2026-11-25T03:27:41.383Z; mín 91, máx 102, estable); resp=24 rpm (2026-11-25T03:27:41.384Z; mín 21, máx 25, estable); spo2=92 % (2026-11-25T03:27:41.383Z; mín 90, máx 94, estable); temp=36.8 °C (2026-11-25T03:27:41.385Z; mín 36.5, máx 36.9, estable)
+Alertas: 9 abiertas. Últimas: 2026-11-24T21:12:53.000Z alta, abierta: SpO2 89% bajo; 2026-11-24T21:11:53.000Z alta, abierta: SpO2 89% bajo; 2026-11-24T21:10:53.000Z alta, abierta: SpO2 88% bajo; 2026-11-24T21:09:53.000Z alta, abierta: SpO2 89% bajo; 2026-11-24T21:08:53.000Z alta, abierta: SpO2 89% bajo
+Exploración física: sin registros
+Documentos (solo título, sin contenido): sin registros
+Nota SOAP 2026-11-24T23:51:22.000Z: S: - | O: - | A: Adenda: Prueba conexión 1795564281515 | P: -
+Nota SOAP 2026-11-24T23:51:21.000Z: S: Prueba conexión 1795564281515 | O: FC y SpO2 del monitor. | A: Paciente estable, sin cambios. | P: Continuar el manejo indicado.
+Nota SOAP 2026-11-24T23:44:41.000Z: S: Prueba conexión 1795563876807 | O: FC y SpO2 del monitor. | A: Estable. | P: Continuar manejo.
+
+### DEMO-0009 · Revisa alergias e interacciones de sus medicamentos activos.
+Temas: basico, medicamentos, vitales, alertas, exploracion, antecedentes, notas
+Largo: 1643 caracteres
+Edad: 65 años · Sexo: F · Sangre: A_POS
+Motivo de consulta: Hinchazón de piernas y falta de aire al acostarse · Estado: inService
+Alergias activas: Yodo (leve: Prurito)
+Medicamentos activos: Furosemida 40 mg intravenosa cada 12 h; Carvedilol 6.25 mg oral cada 12 h; Losartán 50 mg oral cada 24 h
+Diagnósticos activos: Insuficiencia cardíaca, no especificada [I50.9] (presuntivo); Insuficiencia cardíaca [I50.9] (definitivo)
+Antecedentes: personal: Insuficiencia cardíaca con fracción de eyección reducida; personal: Hipertensión arterial
+Medicamentos suspendidos o finalizados: sin registros
+Signos vitales (último valor; rango de 6 h previas): hr=95 lpm (2026-11-25T03:27:41.383Z; mín 91, máx 102, estable); resp=24 rpm (2026-11-25T03:27:41.384Z; mín 21, máx 25, estable); spo2=92 % (2026-11-25T03:27:41.383Z; mín 90, máx 94, estable); temp=36.8 °C (2026-11-25T03:27:41.385Z; mín 36.5, máx 36.9, estable)
+Alertas: 9 abiertas. Últimas: 2026-11-24T21:12:53.000Z alta, abierta: SpO2 89% bajo; 2026-11-24T21:11:53.000Z alta, abierta: SpO2 89% bajo; 2026-11-24T21:10:53.000Z alta, abierta: SpO2 88% bajo; 2026-11-24T21:09:53.000Z alta, abierta: SpO2 89% bajo; 2026-11-24T21:08:53.000Z alta, abierta: SpO2 89% bajo
+Exploración física: sin registros
+Nota SOAP 2026-11-24T23:51:22.000Z: S: - | O: - | A: Adenda: Prueba conexión 1795564281515 | P: -
+Nota SOAP 2026-11-24T23:51:21.000Z: S: Prueba conexión 1795564281515 | O: FC y SpO2 del monitor. | A: Paciente estable, sin cambios. | P: Continuar el manejo indicado.
+Nota SOAP 2026-11-24T23:44:41.000Z: S: Prueba conexión 1795563876807 | O: FC y SpO2 del monitor. | A: Estable. | P: Continuar manejo.
+
+### DEMO-0009 · Hazme un resumen para entregar el turno.
+Temas: vitales, alertas, exploracion, antecedentes, notas
+(mismo contexto que arriba)
+
+### DEMO-0009 · ¿Qué medicamentos tiene indicados?
+Temas: medicamentos
+Largo: 477 caracteres
+Edad: 65 años · Sexo: F · Sangre: A_POS
+Motivo de consulta: Hinchazón de piernas y falta de aire al acostarse · Estado: inService
+Alergias activas: Yodo (leve: Prurito)
+Medicamentos activos: Furosemida 40 mg intravenosa cada 12 h; Carvedilol 6.25 mg oral cada 12 h; Losartán 50 mg oral cada 24 h
+Diagnósticos activos: Insuficiencia cardíaca, no especificada [I50.9] (presuntivo); Insuficiencia cardíaca [I50.9] (definitivo)
+Medicamentos suspendidos o finalizados: sin registros
+
+### DEMO-0011 · ¿Está grave?
+Temas: vitales, alertas, exploracion, antecedentes, notas
+Largo: 1087 caracteres
+Edad: 52 años · Sexo: F · Sangre: AB_NEG
+Motivo de consulta: Postoperatorio de colecistectomía laparoscópica · Estado: inService
+Alergias activas: Tramadol (leve: Mareo intenso)
+Medicamentos activos: Paracetamol 1 g oral cada 8 h; Cefazolina 1 g intravenosa cada 8 h
+Diagnósticos activos: Colelitiasis [K80.2] (definitivo)
+Antecedentes: quirurgico: Cesárea; ginecoobstetrico: Dos embarazos, dos partos
+Signos vitales (último valor; rango de 6 h previas): hr=84 lpm (2026-11-25T03:27:41.388Z; mín 75, máx 85, estable); resp=16 rpm (2026-11-25T03:27:41.389Z; mín 14, máx 18, bajando); spo2=96 % (2026-11-25T03:27:41.388Z; mín 96, máx 98, estable); temp=37.4 °C (2026-11-25T03:27:41.390Z; mín 37, máx 37.4, estable)
+Alertas: 0 abiertas. Últimas: ninguna
+Exploración física: sin registros
+Nota SOAP 2026-11-24T19:12:53.000Z: S: Posoperatorio inmediato de colecistectomía laparoscópica; dolor leve en heridas. | O: Signos vitales estables, heridas limpias, tolera líquidos. | A: Evolución posoperatoria favorable. | P: Analgesia, progresar dieta, deambulación temprana, alta prevista en 24 h.
+
+### DEMO-0011 · ¿Qué banderas rojas debo vigilar en este paciente?
+Temas: vitales, alertas, exploracion, antecedentes, notas
+(mismo contexto que arriba)
+
+### DEMO-0011 · ¿Puedo darle tramadol para el dolor?
+Temas: vitales, alertas, exploracion, antecedentes, notas
+(mismo contexto que arriba)
+
+### DEMO-0011 · ¿Qué alergias tiene?
+Temas: basico
+Largo: 322 caracteres
+Edad: 52 años · Sexo: F · Sangre: AB_NEG
+Motivo de consulta: Postoperatorio de colecistectomía laparoscópica · Estado: inService
+Alergias activas: Tramadol (leve: Mareo intenso)
+Medicamentos activos: Paracetamol 1 g oral cada 8 h; Cefazolina 1 g intravenosa cada 8 h
+Diagnósticos activos: Colelitiasis [K80.2] (definitivo)
+

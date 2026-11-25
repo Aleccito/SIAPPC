@@ -1,0 +1,5014 @@
+[
+ {
+  "ruta": "/MedAyudaSoporte",
+  "titulo": "Centro de Soporte",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (170 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 1,
+    "tag": "button",
+    "rol": null,
+    "texto": "Uso del SistemaGuías generales y primeros pasos",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": null,
+    "texto": "Monitoreo y AlertasConfiguración y gestión de umbrales clínicos",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Notas SOAP e Historia ClínicaDocumentación y registro clínico estructu",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Problemas Técnicos / ConectividadDiagnósticos de red y sensores inalám",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 5,
+    "tag": "button",
+    "rol": null,
+    "texto": "¿Cómo confirmo una alerta?",
+    "resultado": "ya no está en pantalla"
+   },
+   {
+    "i": 6,
+    "tag": "button",
+    "rol": null,
+    "texto": "¿Qué hago si un sensor se desconecta?",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 7,
+    "tag": "button",
+    "rol": null,
+    "texto": "¿Cómo registro una nota SOAP?",
+    "resultado": "ya no está en pantalla"
+   },
+   {
+    "i": 8,
+    "tag": "button",
+    "rol": null,
+    "texto": "¿Puedo modificar umbrales de un paciente?",
+    "resultado": "ya no está en pantalla"
+   },
+   {
+    "i": 9,
+    "tag": "button",
+    "rol": null,
+    "texto": "¿Cómo genero un reporte de turno?",
+    "resultado": "ya no está en pantalla"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": null,
+    "texto": "¿Dónde veo el historial de signos vitales?",
+    "resultado": "ya no está en pantalla"
+   },
+   {
+    "i": 11,
+    "tag": "a",
+    "rol": null,
+    "texto": "+52 800 123 4567",
+    "resultado": "NADA"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": null,
+    "texto": "Contactar Soporte Técnico",
+    "resultado": "abre: Contactar Soporte Técnico"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPerfilMiPerfil",
+  "titulo": "Mi Perfil",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (170 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedTurnoResumenRecibido",
+  "titulo": "Entrega de Turno",
+  "error": false,
+  "guiones": 13,
+  "sinDatos": 1,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Buscar paciente, HC...",
+    "resultado": "navega a /MedBusquedaGlobal"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (170 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Teodoro Lasso Mejía",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0006"
+   },
+   {
+    "i": 3,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver Paciente",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0006"
+   },
+   {
+    "i": 4,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Darío Vallejo Pinto",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0004"
+   },
+   {
+    "i": 6,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Ileana Montenegro Sáez",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Yamileth Orozco Arce",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0005"
+   },
+   {
+    "i": 10,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Anselmo Ruiz Cardoza",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0003"
+   },
+   {
+    "i": 12,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Rogelio Batista Quintero",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0001"
+   },
+   {
+    "i": 14,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Marisol Caicedo Rey",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0009"
+   },
+   {
+    "i": 16,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a 5252",
+    "resultado": "navega a /MedPacienteResumen?paciente=235235"
+   },
+   {
+    "i": 18,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Cristian Barrios Tello",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0008"
+   },
+   {
+    "i": 20,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Elías Ferrer Domínguez",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0010"
+   },
+   {
+    "i": 22,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Graciela Arosemena Villa",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0011"
+   },
+   {
+    "i": 24,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Hugo Delgado Pérez",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0012"
+   },
+   {
+    "i": 26,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Luz Divina Aguirre Mora",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0015"
+   },
+   {
+    "i": 28,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Nicolás Bernal Cruz",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0014"
+   },
+   {
+    "i": 30,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Paloma Esquivel Núñez",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0007"
+   },
+   {
+    "i": 32,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Rosa Amelia Chong Lee",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0013"
+   },
+   {
+    "i": 34,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Troponina de 3 h y decidir cardioversión - Teodoro Lasso Mejía",
+    "resultado": "NADA"
+   },
+   {
+    "i": 35,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "TC de abdomen o quirófano - Darío Vallejo Pinto",
+    "resultado": "NADA"
+   },
+   {
+    "i": 36,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Decidir trombólisis con Cardiología - Ileana Montenegro Sáez",
+    "resultado": "NADA"
+   },
+   {
+    "i": 37,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Decidir Fab antidigoxina o marcapasos - Yamileth Orozco Arce",
+    "resultado": "NADA"
+   },
+   {
+    "i": 38,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Gasometría de control en 1 h - Anselmo Ruiz Cardoza",
+    "resultado": "NADA"
+   },
+   {
+    "i": 39,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Ecografía renal y lactato de control - Rogelio Batista Quintero",
+    "resultado": "NADA"
+   },
+   {
+    "i": 40,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Control de electrolitos y peso - Marisol Caicedo Rey",
+    "resultado": "NADA"
+   },
+   {
+    "i": 41,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Reevaluación - 5252",
+    "resultado": "NADA"
+   },
+   {
+    "i": 42,
+    "tag": "button",
+    "rol": null,
+    "texto": "Marcar como Leído ✓",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedTurnoHistorial",
+  "titulo": "Entrega de Turno — Historial",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 1,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Buscar entrega, médico, cama...",
+    "resultado": "navega a /MedBusquedaGlobal"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (175 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Nueva Entrega",
+    "resultado": "navega a /MedTurnoEntregaHandoff"
+   },
+   {
+    "i": 3,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historial de Entregas",
+    "resultado": "NADA"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Fecha:Últimos 7 días",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 5,
+    "tag": "button",
+    "rol": null,
+    "texto": "Turno:Todos los turnos",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 6,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver resumen de la entrega del 14 Ago 2026, 06:55",
+    "resultado": "navega a /MedTurnoResumenRecibido"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver Resumen",
+    "resultado": "navega a /MedTurnoResumenRecibido"
+   },
+   {
+    "i": 8,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver resumen de la entrega del 13 Ago 2026, 22:50",
+    "resultado": "navega a /MedTurnoResumenRecibido"
+   },
+   {
+    "i": 10,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver resumen de la entrega del 13 Ago 2026, 14:45",
+    "resultado": "navega a /MedTurnoResumenRecibido"
+   },
+   {
+    "i": 12,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver resumen de la entrega del 13 Ago 2026, 06:50",
+    "resultado": "navega a /MedTurnoResumenRecibido"
+   },
+   {
+    "i": 14,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver resumen de la entrega del 12 Ago 2026, 22:45",
+    "resultado": "navega a /MedTurnoResumenRecibido"
+   },
+   {
+    "i": 16,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver resumen de la entrega del 12 Ago 2026, 14:55",
+    "resultado": "navega a /MedTurnoResumenRecibido"
+   },
+   {
+    "i": 18,
+    "tag": "button",
+    "rol": null,
+    "texto": "Anterior",
+    "resultado": "NADA"
+   },
+   {
+    "i": 19,
+    "tag": "button",
+    "rol": null,
+    "texto": "1",
+    "resultado": "NADA"
+   },
+   {
+    "i": 20,
+    "tag": "button",
+    "rol": null,
+    "texto": "2",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 21,
+    "tag": "button",
+    "rol": null,
+    "texto": "3",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 22,
+    "tag": "button",
+    "rol": null,
+    "texto": "4",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 23,
+    "tag": "button",
+    "rol": null,
+    "texto": "Siguiente",
+    "resultado": "cambia la pantalla"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedTurnoEntregaHandoff",
+  "titulo": "Entrega de Turno — Matutino",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de turno generado"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (176 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Nueva Entrega",
+    "resultado": "NADA"
+   },
+   {
+    "i": 3,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historial de Entregas",
+    "resultado": "navega a /MedTurnoHistorial"
+   },
+   {
+    "i": 4,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Teodoro Lasso Mejía, cama UCI-05",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0006"
+   },
+   {
+    "i": 5,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Darío Vallejo Pinto, cama TR-01",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0004"
+   },
+   {
+    "i": 6,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Ileana Montenegro Sáez, cama UCI-02",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Yamileth Orozco Arce, cama UCI-04",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0005"
+   },
+   {
+    "i": 8,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Anselmo Ruiz Cardoza, cama UCI-03",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0003"
+   },
+   {
+    "i": 9,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Rogelio Batista Quintero, cama UCI-01",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0001"
+   },
+   {
+    "i": 10,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Marisol Caicedo Rey, cama P3-03",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0009"
+   },
+   {
+    "i": 11,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a 5252, cama C-01",
+    "resultado": "navega a /MedPacienteResumen?paciente=235235"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": null,
+    "texto": "Guardar Borrador",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": null,
+    "texto": "Confirmar Entrega de Turno",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedReportesPanel",
+  "titulo": "Módulo de Reportes Clínicos",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 4,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Nuevo Reporte",
+    "resultado": "abre: Generar nuevo reporte"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (176 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "NADA"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "Historial de Entregas",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "Informes del Sistema",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": null,
+    "texto": "Reporte de Entrega de TurnoGenera el reporte general de handoff con el",
+    "resultado": "navega a /MedTurnoEntregaHandoff"
+   },
+   {
+    "i": 6,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Vista previa: Evolución Clínica de Rogelio Batista Quintero",
+    "resultado": "abre: Evolución Clínica — Rogelio Batista Quintero"
+   },
+   {
+    "i": 7,
+    "tag": "button",
+    "rol": null,
+    "texto": "Entregar",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 8,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Vista previa: Alta Médica de Paloma Esquivel Núñez",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 10,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Vista previa: Interconsulta de Teodoro Lasso Mejía",
+    "resultado": "abre: Interconsulta — Teodoro Lasso Mejía"
+   },
+   {
+    "i": 12,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Vista previa de Evolucion_Clinica_Montenegro_DEMO-0002.pdf",
+    "resultado": "abre: Evolucion_Clinica_Montenegro_DEMO-0002.pdf"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": null,
+    "texto": "Ver",
+    "resultado": "abre: Evolucion_Clinica_Montenegro_DEMO-0002.pdf"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": null,
+    "texto": "Descargar",
+    "resultado": "aviso: Descargando Evolucion_Clinica_Montenegro_DEMO-0002.pdf"
+   },
+   {
+    "i": 15,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Vista previa de Interconsulta_Vallejo_DEMO-0004.pdf",
+    "resultado": "abre: Interconsulta_Vallejo_DEMO-0004.pdf"
+   },
+   {
+    "i": 18,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Vista previa de Resumen_Ocupacion_UCI.xlsx",
+    "resultado": "abre: Resumen_Ocupacion_UCI.xlsx"
+   },
+   {
+    "i": 21,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Vista previa de Evolucion_Clinica_Ruiz_DEMO-0003.pdf",
+    "resultado": "abre: Evolucion_Clinica_Ruiz_DEMO-0003.pdf"
+   },
+   {
+    "i": 24,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Vista previa de Evolucion_Clinica_Barrios_DEMO-0008.pdf",
+    "resultado": "abre: Evolucion_Clinica_Barrios_DEMO-0008.pdf"
+   },
+   {
+    "i": 27,
+    "tag": "button",
+    "rol": null,
+    "texto": "Anterior",
+    "resultado": "NADA"
+   },
+   {
+    "i": 28,
+    "tag": "button",
+    "rol": null,
+    "texto": "1",
+    "resultado": "NADA"
+   },
+   {
+    "i": 29,
+    "tag": "button",
+    "rol": null,
+    "texto": "2",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 30,
+    "tag": "button",
+    "rol": null,
+    "texto": "Siguiente",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 31,
+    "tag": "button",
+    "rol": null,
+    "texto": "Configurar y Generar",
+    "resultado": "abre: Generar nuevo reporte"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedDispositivoDetalle?cama=UCI-02",
+  "titulo": "Monitor Monitor de prueba",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Volver a Dispositivos",
+    "resultado": "navega a /MedDispositivosMonitores"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (176 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": null,
+    "texto": "Solicitar calibración",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Reportar falla",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 4,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver paciente",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedDispositivosMonitores",
+  "titulo": "Dispositivos — Monitores UCI",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (176 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 1,
+    "tag": "button",
+    "rol": null,
+    "texto": "EstadoTodos",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": null,
+    "texto": "CamaTodas las camas",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 3,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver detalle del monitor de la cama C-01",
+    "resultado": "navega a /MedDispositivoDetalle?cama=C-01"
+   },
+   {
+    "i": 4,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver Detalle",
+    "resultado": "navega a /MedDispositivoDetalle?cama=C-01"
+   },
+   {
+    "i": 5,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver detalle del monitor de la cama P3-01",
+    "resultado": "navega a /MedDispositivoDetalle?cama=P3-01"
+   },
+   {
+    "i": 7,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver detalle del monitor de la cama P3-02",
+    "resultado": "navega a /MedDispositivoDetalle?cama=P3-02"
+   },
+   {
+    "i": 9,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver detalle del monitor de la cama P3-03",
+    "resultado": "navega a /MedDispositivoDetalle?cama=P3-03"
+   },
+   {
+    "i": 11,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver detalle del monitor de la cama P3-04",
+    "resultado": "navega a /MedDispositivoDetalle?cama=P3-04"
+   },
+   {
+    "i": 13,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver detalle del monitor de la cama P3-05",
+    "resultado": "navega a /MedDispositivoDetalle?cama=P3-05"
+   },
+   {
+    "i": 15,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver detalle del monitor de la cama P3-06",
+    "resultado": "navega a /MedDispositivoDetalle?cama=P3-06"
+   },
+   {
+    "i": 17,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver detalle del monitor de la cama P3-07",
+    "resultado": "navega a /MedDispositivoDetalle?cama=P3-07"
+   },
+   {
+    "i": 19,
+    "tag": "button",
+    "rol": null,
+    "texto": "Anterior",
+    "resultado": "NADA"
+   },
+   {
+    "i": 20,
+    "tag": "button",
+    "rol": null,
+    "texto": "1",
+    "resultado": "NADA"
+   },
+   {
+    "i": 21,
+    "tag": "button",
+    "rol": null,
+    "texto": "2",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 22,
+    "tag": "button",
+    "rol": null,
+    "texto": "Siguiente",
+    "resultado": "cambia la pantalla"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedBusquedaGlobal?q=tromboembolia",
+  "titulo": "Búsqueda Global",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [
+   {
+    "t": "\"Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cadera.",
+    "ellipsis": true,
+    "box": [
+     357,
+     289,
+     700,
+     16
+    ],
+    "need": 969
+   }
+  ],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (176 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 1,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "Todos (1)",
+    "resultado": "NADA"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "Pacientes (0)",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "Notas SOAP (1)",
+    "resultado": "NADA"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "Documentos (0)",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver Nota",
+    "resultado": "navega a /MedPacienteNotasSoapDetalle?paciente=DEMO-0002&nota=2"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedAsistenteIa?paciente=DEMO-0002",
+  "titulo": "Asistente IA",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (176 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 1,
+    "tag": "button",
+    "rol": null,
+    "texto": "Paciente de la consulta",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": null,
+    "texto": "Diferenciales",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Banderas rojas",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Estudios",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 5,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alergias e interacciones",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 6,
+    "tag": "button",
+    "rol": null,
+    "texto": "Manejo inicial",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/Notificaciones",
+  "titulo": "Bandeja de Notificaciones",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Marcar todas como leídas",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 1,
+    "tag": "button",
+    "rol": null,
+    "texto": "Tipo: Todas",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (50 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Teodoro Lasso Mejía - Cama UCI-05Frecuencia cardíaca ",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 5,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Rogelio Batista Quintero - Cama UCI-01Frecuencia card",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 7,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Darío Vallejo Pinto - Cama TR-01Frecuencia cardíaca 1",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 9,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Anselmo Ruiz Cardoza - Cama UCI-03SpO2 89% bajo. Vigi",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Ileana Montenegro Sáez - Cama UCI-02SpO2 89% bajo. Vi",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Ileana Montenegro Sáez - Cama UCI-02SpO2 88% bajo. Vi",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 22,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Yamileth Orozco Arce - Cama UCI-04Frecuencia cardíaca",
+    "resultado": "navega a /MedAlertasCentro"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedNotificacionesCentro",
+  "titulo": "Centro de Notificaciones",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Marcar todas como leídas",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 1,
+    "tag": "button",
+    "rol": null,
+    "texto": "Tipo: Todas",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (50 sin leer)",
+    "resultado": "NADA"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Teodoro Lasso Mejía - Cama UCI-05Frecuencia cardíaca ",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 5,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Rogelio Batista Quintero - Cama UCI-01Frecuencia card",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 6,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Anselmo Ruiz Cardoza - Cama UCI-03SpO2 89% bajo. Vigi",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 8,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Ileana Montenegro Sáez - Cama UCI-02SpO2 89% bajo. Vi",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Darío Vallejo Pinto - Cama TR-01Frecuencia cardíaca 1",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 33,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Yamileth Orozco Arce - Cama UCI-04Frecuencia cardíaca",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 47,
+    "tag": "button",
+    "rol": null,
+    "texto": "Alerta Temprana: Rogelio Batista Quintero - Cama UCI-01SpO2 89% bajo. ",
+    "resultado": "navega a /MedAlertasCentro"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedAlertasConfirmacionAtencion?paciente=DEMO-0002",
+  "titulo": "Centro de Alertas Críticas",
+  "error": false,
+  "guiones": 48,
+  "sinDatos": 1,
+  "viejos": [
+   "hace 4 h"
+  ],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Severidad: Todas",
+    "resultado": "abre: Confirmar Atención de Alerta"
+   },
+   {
+    "i": 1,
+    "tag": "button",
+    "rol": null,
+    "texto": "Estado: Activas",
+    "resultado": "abre: Confirmar Atención de Alerta"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": null,
+    "texto": "Hoy, 24 Nov 2026",
+    "resultado": "abre: Confirmar Atención de Alerta"
+   },
+   {
+    "i": 3,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (162 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Silenciar",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 5,
+    "tag": "button",
+    "rol": null,
+    "texto": "Atender",
+    "resultado": "navega a /MedAlertasConfirmacionAtencion"
+   },
+   {
+    "i": 36,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Darío Vallejo Pinto",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0004"
+   },
+   {
+    "i": 37,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Anselmo Ruiz Cardoza",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0003"
+   },
+   {
+    "i": 38,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Ileana Montenegro Sáez",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 39,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Yamileth Orozco Arce",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0005"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedAlertasCentro",
+  "titulo": "Centro de Alertas Críticas",
+  "error": false,
+  "guiones": 45,
+  "sinDatos": 1,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Severidad: Todas",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 1,
+    "tag": "button",
+    "rol": null,
+    "texto": "Estado: Activas",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": null,
+    "texto": "Hoy, 24 Nov 2026",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 3,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (163 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Silenciar",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 5,
+    "tag": "button",
+    "rol": null,
+    "texto": "Atender",
+    "resultado": "navega a /MedAlertasConfirmacionAtencion"
+   },
+   {
+    "i": 36,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Darío Vallejo Pinto",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0004"
+   },
+   {
+    "i": 37,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Anselmo Ruiz Cardoza",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0003"
+   },
+   {
+    "i": 38,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Ileana Montenegro Sáez",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 39,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Yamileth Orozco Arce",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0005"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedMonitoreoComparativa",
+  "titulo": "Comparativa de Pacientes",
+  "error": false,
+  "guiones": 2,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Buscar paciente, cama o HC...",
+    "resultado": "navega a /MedBusquedaGlobal"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (163 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": null,
+    "texto": "Paciente A: Teodoro Lasso Mejía",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Paciente B: Rogelio Batista Quintero",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "+ Agregar Paciente",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 5,
+    "tag": "button",
+    "rol": null,
+    "texto": "Últimas 4h",
+    "resultado": "NADA"
+   },
+   {
+    "i": 6,
+    "tag": "button",
+    "rol": null,
+    "texto": "12h",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 7,
+    "tag": "button",
+    "rol": null,
+    "texto": "24h",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 8,
+    "tag": "button",
+    "rol": null,
+    "texto": "Exportar",
+    "resultado": "aviso: Comparativa exportada (PDF)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedMonitoreoListaUci",
+  "titulo": "Central de Monitoreo – UCI",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Unidad",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Grid",
+    "resultado": "navega a /MedMonitoreoGridUci"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Lista",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 3,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (163 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 4,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Rogelio Batista Quintero, cama UCI-01",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0001"
+   },
+   {
+    "i": 5,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Ileana Montenegro Sáez, cama UCI-02",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Anselmo Ruiz Cardoza, cama UCI-03",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0003"
+   },
+   {
+    "i": 7,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Yamileth Orozco Arce, cama UCI-04",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0005"
+   },
+   {
+    "i": 8,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Teodoro Lasso Mejía, cama UCI-05",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0006"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedMonitoreoGridUci",
+  "titulo": "Central de Monitoreo - UCI",
+  "error": false,
+  "guiones": 5,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Unidad",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Grid",
+    "resultado": "NADA"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Lista",
+    "resultado": "navega a /MedMonitoreoListaUci"
+   },
+   {
+    "i": 3,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (163 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 4,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver paciente de la cama UCI-01",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0001"
+   },
+   {
+    "i": 5,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver paciente de la cama UCI-02",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver paciente de la cama UCI-03",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0003"
+   },
+   {
+    "i": 7,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver paciente de la cama UCI-04",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0005"
+   },
+   {
+    "i": 8,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver paciente de la cama UCI-05",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0006"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacientesLista",
+  "titulo": "Mis Pacientes",
+  "error": false,
+  "guiones": 4,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (163 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 1,
+    "tag": "button",
+    "rol": null,
+    "texto": "UnidadTodas",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": null,
+    "texto": "EstadoTodos",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Rango de AdmisiónCualquier fecha",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Ordenar pacientes",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 5,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Teodoro Lasso Mejía",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0006"
+   },
+   {
+    "i": 6,
+    "tag": "button",
+    "rol": null,
+    "texto": "Más opciones de Teodoro Lasso Mejía",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 7,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Darío Vallejo Pinto",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0004"
+   },
+   {
+    "i": 8,
+    "tag": "button",
+    "rol": null,
+    "texto": "Más opciones de Darío Vallejo Pinto",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 9,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Ileana Montenegro Sáez",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": null,
+    "texto": "Más opciones de Ileana Montenegro Sáez",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 11,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Yamileth Orozco Arce",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0005"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": null,
+    "texto": "Más opciones de Yamileth Orozco Arce",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 13,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Anselmo Ruiz Cardoza",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0003"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": null,
+    "texto": "Más opciones de Anselmo Ruiz Cardoza",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 15,
+    "tag": "button",
+    "rol": null,
+    "texto": "Anterior",
+    "resultado": "NADA"
+   },
+   {
+    "i": 16,
+    "tag": "button",
+    "rol": null,
+    "texto": "1",
+    "resultado": "NADA"
+   },
+   {
+    "i": 17,
+    "tag": "button",
+    "rol": null,
+    "texto": "2",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 18,
+    "tag": "button",
+    "rol": null,
+    "texto": "3",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 19,
+    "tag": "button",
+    "rol": null,
+    "texto": "4",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 20,
+    "tag": "button",
+    "rol": null,
+    "texto": "Siguiente",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 21,
+    "tag": "a",
+    "rol": null,
+    "texto": "SpO2 < 90% — Saturación baja (89)Cama UCI-02hace 2 min",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 22,
+    "tag": "a",
+    "rol": null,
+    "texto": "FC > 120 lpm — Taquicardia (122)Cama UCI-05hace 7 min",
+    "resultado": "ya no está en pantalla"
+   },
+   {
+    "i": 23,
+    "tag": "a",
+    "rol": null,
+    "texto": "FC > 120 lpm — Taquicardia (121)Cama UCI-01hace 8 min",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 24,
+    "tag": "a",
+    "rol": null,
+    "texto": "FC > 120 lpm — Taquicardia (121)Cama TR-01hace 8 min",
+    "resultado": "ya no está en pantalla"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedDashboardPrincipal",
+  "titulo": "Dashboard Principal",
+  "error": false,
+  "guiones": 9,
+  "sinDatos": 1,
+  "viejos": [
+   "hace 4 h",
+   "hace 7 h",
+   "hace 13 h",
+   "hace 7 h"
+  ],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Buscar paciente por nombre o HC...",
+    "resultado": "navega a /MedBusquedaGlobal"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (163 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Pacientes Asignados16",
+    "resultado": "navega a /MedPacientesLista"
+   },
+   {
+    "i": 3,
+    "tag": "a",
+    "rol": null,
+    "texto": "Alertas Críticas5",
+    "resultado": "navega a /MedAlertasCentro"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Pendientes Evaluación16",
+    "resultado": "NADA"
+   },
+   {
+    "i": 5,
+    "tag": "button",
+    "rol": null,
+    "texto": "Unidad",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 6,
+    "tag": "button",
+    "rol": null,
+    "texto": "Estado",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 7,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Teodoro Lasso Mejía",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0006"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver perfil de Teodoro Lasso Mejía",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0006"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": null,
+    "texto": "Monitoreo de Teodoro Lasso Mejía",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0006"
+   },
+   {
+    "i": 10,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nota SOAP de Teodoro Lasso Mejía",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0006"
+   },
+   {
+    "i": 11,
+    "tag": "a",
+    "rol": null,
+    "texto": "Historia clínica de Teodoro Lasso Mejía",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0006"
+   },
+   {
+    "i": 12,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Darío Vallejo Pinto",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0004"
+   },
+   {
+    "i": 13,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver perfil de Darío Vallejo Pinto",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0004"
+   },
+   {
+    "i": 14,
+    "tag": "a",
+    "rol": null,
+    "texto": "Monitoreo de Darío Vallejo Pinto",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0004"
+   },
+   {
+    "i": 15,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nota SOAP de Darío Vallejo Pinto",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0004"
+   },
+   {
+    "i": 16,
+    "tag": "a",
+    "rol": null,
+    "texto": "Historia clínica de Darío Vallejo Pinto",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0004"
+   },
+   {
+    "i": 17,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Ileana Montenegro Sáez",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 18,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver perfil de Ileana Montenegro Sáez",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 19,
+    "tag": "a",
+    "rol": null,
+    "texto": "Monitoreo de Ileana Montenegro Sáez",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 20,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nota SOAP de Ileana Montenegro Sáez",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 21,
+    "tag": "a",
+    "rol": null,
+    "texto": "Historia clínica de Ileana Montenegro Sáez",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 22,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Yamileth Orozco Arce",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0005"
+   },
+   {
+    "i": 23,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver perfil de Yamileth Orozco Arce",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0005"
+   },
+   {
+    "i": 24,
+    "tag": "a",
+    "rol": null,
+    "texto": "Monitoreo de Yamileth Orozco Arce",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0005"
+   },
+   {
+    "i": 25,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nota SOAP de Yamileth Orozco Arce",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0005"
+   },
+   {
+    "i": 26,
+    "tag": "a",
+    "rol": null,
+    "texto": "Historia clínica de Yamileth Orozco Arce",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0005"
+   },
+   {
+    "i": 27,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Anselmo Ruiz Cardoza",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0003"
+   },
+   {
+    "i": 28,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver perfil de Anselmo Ruiz Cardoza",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0003"
+   },
+   {
+    "i": 29,
+    "tag": "a",
+    "rol": null,
+    "texto": "Monitoreo de Anselmo Ruiz Cardoza",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0003"
+   },
+   {
+    "i": 30,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nota SOAP de Anselmo Ruiz Cardoza",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0003"
+   },
+   {
+    "i": 31,
+    "tag": "a",
+    "rol": null,
+    "texto": "Historia clínica de Anselmo Ruiz Cardoza",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0003"
+   },
+   {
+    "i": 32,
+    "tag": "div",
+    "rol": "link",
+    "texto": "Ver a Rogelio Batista Quintero",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0001"
+   },
+   {
+    "i": 33,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver perfil de Rogelio Batista Quintero",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0001"
+   },
+   {
+    "i": 34,
+    "tag": "a",
+    "rol": null,
+    "texto": "Monitoreo de Rogelio Batista Quintero",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0001"
+   },
+   {
+    "i": 35,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nota SOAP de Rogelio Batista Quintero",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0001"
+   },
+   {
+    "i": 36,
+    "tag": "a",
+    "rol": null,
+    "texto": "Historia clínica de Rogelio Batista Quintero",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0001"
+   },
+   {
+    "i": 37,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver todos →",
+    "resultado": "navega a /MedPacientesLista"
+   },
+   {
+    "i": 38,
+    "tag": "a",
+    "rol": null,
+    "texto": "Tendencias de Teodoro Lasso Mejía",
+    "resultado": "navega a /MedPacienteTendenciasVitales?paciente=DEMO-0006"
+   },
+   {
+    "i": 39,
+    "tag": "a",
+    "rol": null,
+    "texto": "Tendencias de Darío Vallejo Pinto",
+    "resultado": "navega a /MedPacienteTendenciasVitales?paciente=DEMO-0004"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteResumen?paciente=DEMO-0002",
+  "titulo": "Cama UCI-02 — Ileana Montenegro Sáez",
+  "error": false,
+  "guiones": 7,
+  "sinDatos": 0,
+  "viejos": [
+   "hace 7 h",
+   "hace 7 h",
+   "hace 7 h"
+  ],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Volver al Mapa",
+    "resultado": "navega a /MedMonitoreoGridUci?unidad=UCI"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (164 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "a",
+    "rol": null,
+    "texto": "⚙Configurar Umbrales",
+    "resultado": "navega a /MedPacienteConfigUmbrales?paciente=DEMO-0002"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar ideas",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": null,
+    "texto": "Atender",
+    "resultado": "navega a /MedAlertasConfirmacionAtencion?paciente=DEMO-0002"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002",
+  "titulo": "Historia Clínica General",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [
+   "hace 5 días"
+  ],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (165 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "NADA"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "a",
+    "rol": null,
+    "texto": "+ Agregar Diagnóstico",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Datos Personales y Demográficos",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 12,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver datos completos →",
+    "resultado": "navega a /MedPacienteDatosPersonales?paciente=DEMO-0002"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Antecedentes Patológicos Diagnosticados",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 14,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver historial completo de antecedentes →",
+    "resultado": "navega a /MedPacienteAntecedentes?paciente=DEMO-0002"
+   },
+   {
+    "i": 15,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Interrogatorio por Aparatos y Sistemas",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 16,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver interrogatorio completo →",
+    "resultado": "navega a /MedPacienteInterrogatorioAparatos?paciente=DEMO-0002"
+   },
+   {
+    "i": 17,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Exploración Física",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 18,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver exploración completa →",
+    "resultado": "navega a /MedPacienteExploracionFisica?paciente=DEMO-0002"
+   },
+   {
+    "i": 19,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Alergias y Reacciones Adversas",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 20,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Medicamentos y Tratamientos Actuales",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 21,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Diagnósticos y Problemas Activos",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 22,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver diagnósticos →",
+    "resultado": "navega a /MedPacienteDiagnosticosActivos?paciente=DEMO-0002"
+   },
+   {
+    "i": 23,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Historial de Hospitalizaciones e Intervenciones",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 24,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver historial completo →",
+    "resultado": "navega a /MedPacienteHistorialHospitalizaciones?paciente=DEMO-0002"
+   },
+   {
+    "i": 25,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Nota de Ingreso / Admisión",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 26,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver nota de ingreso →",
+    "resultado": "navega a /MedPacienteNotaIngreso?paciente=DEMO-0002"
+   },
+   {
+    "i": 27,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Indicaciones Médicas",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 28,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver indicaciones médicas →",
+    "resultado": "navega a /MedPacienteIndicacionesMedicas?paciente=DEMO-0002"
+   },
+   {
+    "i": 29,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Documentos Clínicos Adjuntos",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 30,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver documentos →",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteAntecedentes?paciente=DEMO-0002",
+  "titulo": "Antecedentes Completos",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (168 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "Heredofamiliares",
+    "resultado": "NADA"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "Personales Patológicos",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "No Patológicos",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": "tab",
+    "texto": "Gineco-obstétricos",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": null,
+    "texto": "+ Agregar Antecedente",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 15,
+    "tag": "button",
+    "rol": null,
+    "texto": "Ver sección →",
+    "resultado": "cambia la pantalla"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteDatosPersonales?paciente=DEMO-0002",
+  "titulo": "Datos Personales y Demográficos",
+  "error": false,
+  "guiones": 3,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteAntecedentes?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (168 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteDiagnosticosActivos?paciente=DEMO-0002",
+  "titulo": "Diagnósticos y Problemas Activos",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteDatosPersonales?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (168 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "a",
+    "rol": null,
+    "texto": "+ Nuevo Diagnóstico",
+    "resultado": "navega a /MedPacienteRegistroDiagnostico?paciente=DEMO-0002"
+   },
+   {
+    "i": 11,
+    "tag": "a",
+    "rol": null,
+    "texto": "Editar Tromboembolia pulmonar",
+    "resultado": "navega a /MedPacienteRegistroDiagnostico?paciente=DEMO-0002&diagnostico=4"
+   },
+   {
+    "i": 12,
+    "tag": "a",
+    "rol": null,
+    "texto": "Editar Fractura de cuello de fémur",
+    "resultado": "navega a /MedPacienteRegistroDiagnostico?paciente=DEMO-0002&diagnostico=3"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": null,
+    "texto": "Actualizar Nota",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteRegistroDiagnostico?paciente=DEMO-0002",
+  "titulo": "Registro de Nuevo Diagnóstico",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteDiagnosticosActivos?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (168 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": null,
+    "texto": "Tipo de Diagnóstico",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": null,
+    "texto": "Código CIE-10: sin elegir",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": "radio",
+    "texto": "Leve",
+    "resultado": "NADA"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": "radio",
+    "texto": "Moderada",
+    "resultado": "NADA"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": "radio",
+    "texto": "Severa",
+    "resultado": "NADA"
+   },
+   {
+    "i": 15,
+    "tag": "button",
+    "rol": "radio",
+    "texto": "Crítica",
+    "resultado": "NADA"
+   },
+   {
+    "i": 16,
+    "tag": "button",
+    "rol": null,
+    "texto": "Fecha de registro: 24 Nov 2026. Cambiar fecha",
+    "resultado": "NADA"
+   },
+   {
+    "i": 17,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Subir estudios adjuntos",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 18,
+    "tag": "button",
+    "rol": null,
+    "texto": "Cancelar",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 19,
+    "tag": "button",
+    "rol": null,
+    "texto": "Registrar Diagnóstico",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 20,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar ideas",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteDocumentosClinicos?paciente=DEMO-0002",
+  "titulo": "Documentos Clínicos Adjuntos",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteRegistroDiagnostico?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (169 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "NADA"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": null,
+    "texto": "Todos",
+    "resultado": "NADA"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": null,
+    "texto": "Laboratorio",
+    "resultado": "NADA"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": null,
+    "texto": "Imagen",
+    "resultado": "NADA"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consentimiento",
+    "resultado": "NADA"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": null,
+    "texto": "Otro",
+    "resultado": "NADA"
+   },
+   {
+    "i": 15,
+    "tag": "button",
+    "rol": null,
+    "texto": "Subir documento",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 16,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Subir documento",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteExploracionFisica?paciente=DEMO-0002",
+  "titulo": "Exploración Física",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (172 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Evaluación primaria pendiente: este paciente todavía no tiene exploración física. | Reporte de Ileana Montenegro Sáez ge"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": null,
+    "texto": "Cabeza y cuello",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": null,
+    "texto": "Tórax",
+    "resultado": "NADA"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": null,
+    "texto": "Abdomen",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": null,
+    "texto": "Extremidades superiores",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": null,
+    "texto": "Extremidades inferiores",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 15,
+    "tag": "button",
+    "rol": null,
+    "texto": "Neurológico",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 16,
+    "tag": "button",
+    "rol": null,
+    "texto": "INSPECCIÓN: Normal. Cambiar",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 17,
+    "tag": "button",
+    "rol": null,
+    "texto": "PALPACIÓN: Normal. Cambiar",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 18,
+    "tag": "button",
+    "rol": null,
+    "texto": "PERCUSIÓN: Normal. Cambiar",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 19,
+    "tag": "button",
+    "rol": null,
+    "texto": "AUSCULTACIÓN: Normal. Cambiar",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 20,
+    "tag": "button",
+    "rol": null,
+    "texto": "Guardar",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteHistorialHospitalizaciones?paciente=DEMO-0002",
+  "titulo": "Historial de Hospitalizaciones e Intervenciones",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteExploracionFisica?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (173 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteIndicacionesMedicas?paciente=DEMO-0002",
+  "titulo": "Indicaciones Médicas",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 1,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteHistorialHospitalizaciones?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "button",
+    "rol": null,
+    "texto": "Nueva Indicación",
+    "resultado": "abre: Nueva indicación"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (173 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 3,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 5,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": null,
+    "texto": "+ Agregar Solución",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": null,
+    "texto": "Revisar interacciones con IA",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": null,
+    "texto": "+ Agregar Medicamento",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteInterrogatorioAparatos?paciente=DEMO-0002",
+  "titulo": "Interrogatorio por Aparatos y Sistemas",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteIndicacionesMedicas?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (173 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Aparato Respiratorio",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Disnea",
+    "resultado": "NADA"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Tos",
+    "resultado": "NADA"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Expectoración",
+    "resultado": "NADA"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Hemoptisis",
+    "resultado": "NADA"
+   },
+   {
+    "i": 15,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Dolor torácico",
+    "resultado": "NADA"
+   },
+   {
+    "i": 16,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Sibilancias",
+    "resultado": "NADA"
+   },
+   {
+    "i": 17,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Aparato Cardiovascular",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 18,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Dolor precordial",
+    "resultado": "NADA"
+   },
+   {
+    "i": 19,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Palpitaciones",
+    "resultado": "NADA"
+   },
+   {
+    "i": 20,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Edema",
+    "resultado": "NADA"
+   },
+   {
+    "i": 21,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Disnea de esfuerzo",
+    "resultado": "NADA"
+   },
+   {
+    "i": 22,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Claudicación",
+    "resultado": "NADA"
+   },
+   {
+    "i": 23,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Síncope",
+    "resultado": "NADA"
+   },
+   {
+    "i": 24,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Desplegar Aparato Digestivo",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 25,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Desplegar Aparato Genitourinario",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 26,
+    "tag": "button",
+    "rol": null,
+    "texto": "Plegar Sistema Músculo-esquelético",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 27,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Artralgias",
+    "resultado": "NADA"
+   },
+   {
+    "i": 28,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Mialgias",
+    "resultado": "NADA"
+   },
+   {
+    "i": 29,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Rigidez",
+    "resultado": "NADA"
+   },
+   {
+    "i": 30,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Debilidad",
+    "resultado": "NADA"
+   },
+   {
+    "i": 31,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Dolor",
+    "resultado": "NADA"
+   },
+   {
+    "i": 32,
+    "tag": "button",
+    "rol": "checkbox",
+    "texto": "Deformidad",
+    "resultado": "NADA"
+   },
+   {
+    "i": 33,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Desplegar Sistema Neurológico",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 34,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Desplegar Sistema Endocrino",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 35,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Desplegar Piel y Anexos",
+    "resultado": "despliega/pliega"
+   },
+   {
+    "i": 36,
+    "tag": "button",
+    "rol": null,
+    "texto": "Guardar Interrogatorio",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotaIngreso?paciente=DEMO-0002",
+  "titulo": "Nota de Ingreso",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteInterrogatorioAparatos?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (173 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "a",
+    "rol": null,
+    "texto": "+ Agregar Diagnóstico",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": null,
+    "texto": "+ Agregar indicación",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": "radio",
+    "texto": "BuenoEvolución favorable esperada",
+    "resultado": "NADA"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": "radio",
+    "texto": "ReservadoEvolución incierta sujeta a monitoreo",
+    "resultado": "NADA"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": "radio",
+    "texto": "GraveAlto riesgo de complicaciones inminentes",
+    "resultado": "NADA"
+   },
+   {
+    "i": 15,
+    "tag": "button",
+    "rol": null,
+    "texto": "Guardar Nota de Ingreso",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteMonitoreoDetallado?paciente=DEMO-0002",
+  "titulo": "Monitoreo Detallado",
+  "error": false,
+  "guiones": 7,
+  "sinDatos": 1,
+  "viejos": [
+   "hace 7 h",
+   "hace 7 h",
+   "hace 7 h"
+  ],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteNotaIngreso?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (173 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "NADA"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "a",
+    "rol": null,
+    "texto": "Ver tendencias de signos vitales",
+    "resultado": "navega a /MedPacienteTendenciasVitales?paciente=DEMO-0002"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar ideas",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotasSoapHistorial?paciente=DEMO-0002",
+  "titulo": "Notas SOAP",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [
+   {
+    "t": "S: Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cader",
+    "ellipsis": true,
+    "box": [
+     476,
+     378,
+     355,
+     18
+    ],
+    "need": 412
+   }
+  ],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (173 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "NADA"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": null,
+    "texto": "Filtrar notas: Todas",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 11,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Nota del 24 Nov 2026, 14:12, Dr. Carlos Méndez",
+    "resultado": "NADA"
+   },
+   {
+    "i": 12,
+    "tag": "a",
+    "rol": null,
+    "texto": "Abrir el detalle de la nota del 24 Nov 2026, 14:12",
+    "resultado": "navega a /MedPacienteNotasSoapDetalle?paciente=DEMO-0002&nota=2"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotasSoapDetalle?paciente=DEMO-0002",
+  "titulo": "Detalle de Nota SOAP",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [
+   {
+    "t": "S: Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cader",
+    "ellipsis": true,
+    "box": [
+     476,
+     378,
+     355,
+     18
+    ],
+    "need": 412
+   }
+  ],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (173 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Nota SOAP — Detalle"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": null,
+    "texto": "Filtrar notas: Todas",
+    "resultado": "abre: Nota SOAP — Detalle"
+   },
+   {
+    "i": 11,
+    "tag": "div",
+    "rol": "button",
+    "texto": "Nota del 24 Nov 2026, 14:12, Dr. Carlos Méndez",
+    "resultado": "NADA"
+   },
+   {
+    "i": 12,
+    "tag": "a",
+    "rol": null,
+    "texto": "Abrir el detalle de la nota del 24 Nov 2026, 14:12",
+    "resultado": "navega a /MedPacienteNotasSoapDetalle?paciente=DEMO-0002&nota=2"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotasSoapNueva?paciente=DEMO-0002",
+  "titulo": "Nueva Nota SOAP",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [
+   {
+    "t": "Disnea súbita y dolor pleurítico, 5 días tras artroplastia de cadera.",
+    "ellipsis": true,
+    "box": [
+     918,
+     395,
+     319,
+     16
+    ],
+    "need": 396
+   },
+   {
+    "t": "FC 112, SpO2 89 % aire ambiente, FR 26. Pantorrilla izquierda edematiz",
+    "ellipsis": true,
+    "box": [
+     921,
+     420,
+     316,
+     16
+    ],
+    "need": 451
+   }
+  ],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteNotasSoapDetalle?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (173 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "NADA"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Nueva Nota SOAP"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteTendenciasVitales?paciente=DEMO-0002",
+  "titulo": "Tendencias de Signos Vitales",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (174 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 2,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 4,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": null,
+    "texto": "Volver a Monitoreo en Vivo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": null,
+    "texto": "6h",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 11,
+    "tag": "button",
+    "rol": null,
+    "texto": "12h",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": null,
+    "texto": "24h",
+    "resultado": "NADA"
+   },
+   {
+    "i": 13,
+    "tag": "button",
+    "rol": null,
+    "texto": "48h",
+    "resultado": "cambia la pantalla"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": null,
+    "texto": "7d",
+    "resultado": "cambia la pantalla"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteConfigUmbrales?paciente=DEMO-0002",
+  "titulo": "Configuración de Umbrales de Alarma",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [
+   {
+    "i": 0,
+    "tag": "button",
+    "rol": null,
+    "texto": "Volver",
+    "resultado": "navega a /MedPacienteTendenciasVitales?paciente=DEMO-0002"
+   },
+   {
+    "i": 1,
+    "tag": "a",
+    "rol": null,
+    "texto": "Notificaciones (174 sin leer)",
+    "resultado": "navega a /MedNotificacionesCentro"
+   },
+   {
+    "i": 2,
+    "tag": "a",
+    "rol": null,
+    "texto": "Nueva Nota SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapNueva?paciente=DEMO-0002"
+   },
+   {
+    "i": 3,
+    "tag": "button",
+    "rol": null,
+    "texto": "Generar Reporte",
+    "resultado": "aviso: Reporte de Ileana Montenegro Sáez generado"
+   },
+   {
+    "i": 4,
+    "tag": "button",
+    "rol": null,
+    "texto": "Consultar IA",
+    "resultado": "abre: Consultar IA"
+   },
+   {
+    "i": 5,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Resumen",
+    "resultado": "navega a /MedPacienteResumen?paciente=DEMO-0002"
+   },
+   {
+    "i": 6,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Historia Clínica",
+    "resultado": "navega a /MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0002"
+   },
+   {
+    "i": 7,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Notas SOAP",
+    "resultado": "navega a /MedPacienteNotasSoapHistorial?paciente=DEMO-0002"
+   },
+   {
+    "i": 8,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Monitoreo",
+    "resultado": "navega a /MedPacienteMonitoreoDetallado?paciente=DEMO-0002"
+   },
+   {
+    "i": 9,
+    "tag": "a",
+    "rol": "tab",
+    "texto": "Documentos",
+    "resultado": "navega a /MedPacienteDocumentosClinicos?paciente=DEMO-0002"
+   },
+   {
+    "i": 10,
+    "tag": "button",
+    "rol": null,
+    "texto": "Severidad por defecto de FC (Frecuencia Cardíaca)",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 12,
+    "tag": "button",
+    "rol": null,
+    "texto": "Severidad por defecto de SpO2 (Saturación)",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 14,
+    "tag": "button",
+    "rol": null,
+    "texto": "Severidad por defecto de PA Sistólica",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 16,
+    "tag": "button",
+    "rol": null,
+    "texto": "Severidad por defecto de PA Diastólica",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 18,
+    "tag": "button",
+    "rol": null,
+    "texto": "Severidad por defecto de Temp (Temperatura)",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 20,
+    "tag": "button",
+    "rol": null,
+    "texto": "Severidad por defecto de FR (Frecuencia Resp.)",
+    "resultado": "abre: ventana/menú"
+   },
+   {
+    "i": 22,
+    "tag": "button",
+    "rol": null,
+    "texto": "Restablecer valores sugeridos",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   },
+   {
+    "i": 23,
+    "tag": "button",
+    "rol": null,
+    "texto": "Guardar Configuración",
+    "resultado": "no se toca (escribe, IA o sesión)"
+   }
+  ],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteResumen?paciente=DEMO-0011",
+  "titulo": "Cama P3-05 — Graciela Arosemena Villa",
+  "error": false,
+  "guiones": 3,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0011",
+  "titulo": "Historia Clínica General",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteAntecedentes?paciente=DEMO-0011",
+  "titulo": "Antecedentes Completos",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteDatosPersonales?paciente=DEMO-0011",
+  "titulo": "Datos Personales y Demográficos",
+  "error": false,
+  "guiones": 3,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteDiagnosticosActivos?paciente=DEMO-0011",
+  "titulo": "Diagnósticos y Problemas Activos",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteRegistroDiagnostico?paciente=DEMO-0011",
+  "titulo": "Registro de Nuevo Diagnóstico",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteDocumentosClinicos?paciente=DEMO-0011",
+  "titulo": "Documentos Clínicos Adjuntos",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteExploracionFisica?paciente=DEMO-0011",
+  "titulo": "Exploración Física",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteHistorialHospitalizaciones?paciente=DEMO-0011",
+  "titulo": "Historial de Hospitalizaciones e Intervenciones",
+  "error": false,
+  "guiones": 2,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteIndicacionesMedicas?paciente=DEMO-0011",
+  "titulo": "Indicaciones Médicas",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 1,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteInterrogatorioAparatos?paciente=DEMO-0011",
+  "titulo": "Interrogatorio por Aparatos y Sistemas",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotaIngreso?paciente=DEMO-0011",
+  "titulo": "Nota de Ingreso",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteMonitoreoDetallado?paciente=DEMO-0011",
+  "titulo": "Monitoreo Detallado",
+  "error": false,
+  "guiones": 4,
+  "sinDatos": 1,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotasSoapHistorial?paciente=DEMO-0011",
+  "titulo": "Notas SOAP",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [
+   {
+    "t": "S: Posoperatorio inmediato de colecistectomía laparoscópica; dolor lev",
+    "ellipsis": true,
+    "box": [
+     476,
+     378,
+     355,
+     18
+    ],
+    "need": 518
+   }
+  ],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotasSoapDetalle?paciente=DEMO-0011",
+  "titulo": "Detalle de Nota SOAP",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [
+   {
+    "t": "S: Posoperatorio inmediato de colecistectomía laparoscópica; dolor lev",
+    "ellipsis": true,
+    "box": [
+     476,
+     378,
+     355,
+     18
+    ],
+    "need": 518
+   }
+  ],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotasSoapNueva?paciente=DEMO-0011",
+  "titulo": "Nueva Nota SOAP",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [
+   {
+    "t": "Posoperatorio inmediato de colecistectomía laparoscópica; dolor leve e",
+    "ellipsis": true,
+    "box": [
+     918,
+     395,
+     319,
+     16
+    ],
+    "need": 503
+   },
+   {
+    "t": "Signos vitales estables, heridas limpias, tolera líquidos.",
+    "ellipsis": true,
+    "box": [
+     921,
+     420,
+     316,
+     16
+    ],
+    "need": 333
+   }
+  ],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteTendenciasVitales?paciente=DEMO-0011",
+  "titulo": "Tendencias de Signos Vitales",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteConfigUmbrales?paciente=DEMO-0011",
+  "titulo": "Configuración de Umbrales de Alarma",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteResumen?paciente=DEMO-0009",
+  "titulo": "Cama P3-03 — Marisol Caicedo Rey",
+  "error": false,
+  "guiones": 7,
+  "sinDatos": 0,
+  "viejos": [
+   "hace 7 h"
+  ],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteHistoriaClinicaGeneral?paciente=DEMO-0009",
+  "titulo": "Historia Clínica General",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteAntecedentes?paciente=DEMO-0009",
+  "titulo": "Antecedentes Completos",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteDatosPersonales?paciente=DEMO-0009",
+  "titulo": "Datos Personales y Demográficos",
+  "error": false,
+  "guiones": 3,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteDiagnosticosActivos?paciente=DEMO-0009",
+  "titulo": "Diagnósticos y Problemas Activos",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteRegistroDiagnostico?paciente=DEMO-0009",
+  "titulo": "Registro de Nuevo Diagnóstico",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteDocumentosClinicos?paciente=DEMO-0009",
+  "titulo": "Documentos Clínicos Adjuntos",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteExploracionFisica?paciente=DEMO-0009",
+  "titulo": "Exploración Física",
+  "error": false,
+  "guiones": 1,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteHistorialHospitalizaciones?paciente=DEMO-0009",
+  "titulo": "Historial de Hospitalizaciones e Intervenciones",
+  "error": false,
+  "guiones": 2,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteIndicacionesMedicas?paciente=DEMO-0009",
+  "titulo": "Indicaciones Médicas",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 1,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteInterrogatorioAparatos?paciente=DEMO-0009",
+  "titulo": "Interrogatorio por Aparatos y Sistemas",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotaIngreso?paciente=DEMO-0009",
+  "titulo": "Nota de Ingreso",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteMonitoreoDetallado?paciente=DEMO-0009",
+  "titulo": "Monitoreo Detallado",
+  "error": false,
+  "guiones": 5,
+  "sinDatos": 1,
+  "viejos": [
+   "hace 7 h"
+  ],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotasSoapHistorial?paciente=DEMO-0009",
+  "titulo": "Notas SOAP",
+  "error": false,
+  "guiones": 3,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [
+   {
+    "t": "Adenda de NS-000020: Adenda: Prueba conexión 1795564281515",
+    "ellipsis": true,
+    "box": [
+     476,
+     400,
+     355,
+     18
+    ],
+    "need": 411
+   }
+  ],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotasSoapDetalle?paciente=DEMO-0009",
+  "titulo": "Detalle de Nota SOAP",
+  "error": false,
+  "guiones": 7,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [
+   {
+    "t": "Adenda de NS-000020: Adenda: Prueba conexión 1795564281515",
+    "ellipsis": true,
+    "box": [
+     476,
+     400,
+     355,
+     18
+    ],
+    "need": 411
+   }
+  ],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteNotasSoapNueva?paciente=DEMO-0009",
+  "titulo": "Nueva Nota SOAP",
+  "error": false,
+  "guiones": 2,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteTendenciasVitales?paciente=DEMO-0009",
+  "titulo": "Tendencias de Signos Vitales",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ },
+ {
+  "ruta": "/MedPacienteConfigUmbrales?paciente=DEMO-0009",
+  "titulo": "Configuración de Umbrales de Alarma",
+  "error": false,
+  "guiones": 0,
+  "sinDatos": 0,
+  "viejos": [],
+  "desborde": 0,
+  "cortados": [],
+  "tocables": [],
+  "consola": []
+ }
+]

@@ -2,6 +2,9 @@
 // Los pacientes asignados (GET /dashboard/assigned-patients) con sus alertas agrupadas; las camas libres
 // salen de la central (GET /monitoring/beds). Temperatura: src/api/sinBackend.ts.
 import { useState, type SyntheticEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { createSoapNote } from '../../api/clinical';
+import { ApiError } from '../../api/http';
 import { useMonitoredBeds } from '../../api/queries';
 import { Link } from 'react-router-dom';
 import imgAlertTriangle from '../../assets/alert-triangle.svg';
@@ -15,7 +18,7 @@ import imgStateIndicator from '../../assets/state-indicator.svg';
 import imgStateIndicator2 from '../../assets/state-indicator-2.svg';
 import { AppLayout, Badge, Card, ConfirmDialog, Divider, EmptyState, KpiCard, Menu, Pagination, rowLinkClass, Select, Table, useRowLink, useToast } from '../../components';
 import { usePatientRows, type PatientRow as Patient } from '../../data/patients';
-import { alertTitle } from '../../lib/alerts';
+import { alertTitle, esActiva, VIGENCIA_ALERTA_MIN } from '../../lib/alerts';
 import { fmtAgo, initials, STATE_ORDER } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 import { patientPath } from '../../lib/patientLink';
@@ -33,6 +36,8 @@ const STATUS_OPTIONS = [
   { value: 'critico', label: 'Crítico' },
   { value: 'atencion', label: 'Atención' },
   { value: 'estable', label: 'Estable' },
+  // Sin exploración física desde el ingreso; viene del indicador del Dashboard (?filtro=evaluacion).
+  { value: 'evaluacion', label: 'Evaluación pendiente' },
 ];
 const RANGE_OPTIONS = [
   { value: '-1', label: 'Cualquier fecha' },
@@ -53,14 +58,15 @@ const COLS = 'grid grid-cols-[210px_100px_110px_75px_70px_70px_70px_minmax(30px,
 const stop = (e: SyntheticEvent) => e.stopPropagation();
 const icon = (src: string) => <img className="size-3.5 shrink-0" alt="" src={src} />;
 
-function PatientRow({ p, onDischarge }: { p: Patient; onDischarge: (p: Patient) => void }) {
+/** `aExploracion`: la fila abre la Exploración física (para registrar la evaluación pendiente) en vez del Resumen. */
+function PatientRow({ p, onDischarge, aExploracion = false }: { p: Patient; onDischarge: (p: Patient) => void; aExploracion?: boolean }) {
   const rowLink = useRowLink();
   const crit = p.state === 'critico';
   const transfer = TRANSFER[p.admissionType ?? ''] ?? [imgArrowRight, 'Ingreso'];
   return (
     <div
-      {...rowLink(patientPath('/MedPacienteResumen', p.document))}
-      aria-label={`Ver a ${p.name}`}
+      {...rowLink(patientPath(aExploracion ? '/MedPacienteExploracionFisica' : '/MedPacienteResumen', p.document))}
+      aria-label={aExploracion ? `Registrar la exploración física de ${p.name}` : `Ver a ${p.name}`}
       className={cn(COLS, 'p-4', 'border-b border-line bg-white last:border-b-0', rowLinkClass)}
     >
       <div className="flex items-center gap-[10px]">
@@ -105,8 +111,28 @@ function PatientRow({ p, onDischarge }: { p: Patient; onDischarge: (p: Patient) 
 export default function MedPacientesLista() {
   const toast = useToast();
   const [discharge, setDischarge] = useState<Patient | null>(null);
+  const navigate = useNavigate();
+  // "Indicar alta" deja constancia real: un borrador de nota SOAP con el alta en el plan, que el médico firma
+  // (POST /soap/notes). El egreso lo hace Admisión; el backend no tiene una orden de alta aparte.
+  const indicarAlta = async () => {
+    const p = discharge;
+    setDischarge(null);
+    if (!p) return;
+    try {
+      const nota = await createSoapNote({
+        patientId: Number(p.id),
+        assessment: `Evolución favorable; criterios de alta cumplidos. Motivo de ingreso: ${p.reason}.`,
+        plan: 'Alta médica indicada. Admisión completa el egreso y libera la cama. Indicaciones de egreso y control según evolución.',
+      });
+      toast(`Borrador de alta creado para ${p.name}: revíselo y fírmelo`);
+      navigate(patientPath('/MedPacienteNotasSoapNueva', p.document, { nota: nota.id }));
+    } catch (e) {
+      toast(e instanceof ApiError && e.status === 403 ? 'Su rol no puede escribir notas SOAP' : 'No se pudo crear el borrador de alta', 'info');
+    }
+  };
   const [unit, setUnit] = useState('Todas');
-  const [status, setStatus] = useState('Todos');
+  const [params] = useSearchParams();
+  const [status, setStatus] = useState(params.get('filtro') === 'evaluacion' ? 'evaluacion' : 'Todos');
   const [range, setRange] = useState('-1');
   const [sort, setSort] = useState('default');
   const [query, setQuery] = useState('');
@@ -127,7 +153,7 @@ export default function MedPacientesLista() {
   const filtered = patients.filter(
     (p) =>
       (unit === 'Todas' || p.unit === unit) &&
-      (status === 'Todos' || p.state === status) &&
+      (status === 'Todos' || (status === 'evaluacion' ? !p.examined : p.state === status)) &&
       (days < 0 || admittedDaysAgo(p) <= Math.max(days, 1)) &&
       matches(query, p.name, p.document),
   );
@@ -179,7 +205,7 @@ export default function MedPacientesLista() {
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard label="Pacientes Activos" value={isPending ? '—' : String(patients.length)} note={`Cupo: ${beds.data?.length ?? '—'} camas`} />
           <KpiCard label="Estado Crítico" value={String(patients.filter((p) => p.state === 'critico').length)} tone="danger" tint="danger" note="Acción inmediata" />
-          <KpiCard label="Alertas Activas" value={String(groups.filter((g) => Date.now() - Date.parse(g.latest.at) < 15 * 60_000).length)} tone="warning" tint="warning" note="Últimos 15 min" />
+          <KpiCard label="Alertas Activas" value={String(groups.filter((g) => esActiva(g)).length)} tone="warning" tint="warning" note={`Últimos ${VIGENCIA_ALERTA_MIN} min`} />
           <KpiCard label="Camas Disponibles" value={`${free} / ${beds.data?.length ?? '—'}`} note={beds.data?.length ? `${Math.round((free / beds.data.length) * 100)}% libre` : '—'} />
         </div>
 
@@ -216,7 +242,7 @@ export default function MedPacientesLista() {
                   <p className="text-right">•••</p>
                 </div>
                 {rows.map((p) => (
-                  <PatientRow key={p.id} p={p} onDischarge={setDischarge} />
+                  <PatientRow key={p.id} p={p} onDischarge={setDischarge} aExploracion={status === 'evaluacion'} />
                 ))}
                 {rows.length === 0 && <EmptyState message={isPending ? 'Cargando pacientes…' : undefined} onReset={reset} />}
               </Table>
@@ -255,12 +281,10 @@ export default function MedPacientesLista() {
         title="¿Indicar alta médica?"
         confirmLabel="Indicar alta"
         onCancel={() => setDischarge(null)}
-        onConfirm={() => {
-          if (discharge) toast(`Alta médica indicada · ${discharge.name} · Admisión completará el egreso`);
-          setDischarge(null);
-        }}
+        onConfirm={() => void indicarAlta()}
       >
-        {discharge && `Se notificará a Admisión que ${discharge.name} (${discharge.bed}) puede egresar. El egreso y la liberación de la cama los hace Admisión.`}
+        {discharge &&
+          `Se creará un borrador de nota SOAP de ${discharge.name} con el alta médica indicada en el plan. Usted lo revisa y lo firma; el egreso y la liberación de la cama los hace Admisión.`}
       </ConfirmDialog>
     </AppLayout>
   );

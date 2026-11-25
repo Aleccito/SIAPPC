@@ -13,7 +13,8 @@ import { AiIdeasCard, AppLink, BackButton, Badge, Button, Card, Divider, Patient
 import { EcgLive } from '../../components/monitor/EcgLive';
 import { alertInfoFrom, attendedAlerts, CONFIRM_PATH, type AttendedState, type ConfirmState } from '../../data/alerts';
 import { toSoapSections } from '../../data/soap';
-import { alertTitle, alertValueText, groupAlerts, vitalTone } from '../../lib/alerts';
+import { alertTitle, alertValueText, esActiva, groupAlerts, vitalTone } from '../../lib/alerts';
+import { AnterioresSinAtender } from '../../components/ui/AnterioresSinAtender';
 import { fmtAgo, fmtDate, fmtDateTime, staffName } from '../../lib/clinical';
 
 const SELF = '/MedPacienteResumen';
@@ -110,8 +111,13 @@ function Resumen({ v }: { v: PatientView }) {
     ['Seguro Médico', datos.data ? `${datos.data.seguro.tipo.replace(/ \(.*\)$/, '')} — Póliza ${datos.data.seguro.poliza}` : '—'],
   ];
 
-  const last = notes.data?.[0];
-  const groups = groupAlerts(alerts.data ?? []).filter((g) => !attendedAlerts.has(g.key));
+  // La última nota que no es adenda (una adenda trae solo una sección), con cuántas adendas tiene.
+  const last = notes.data?.find((n) => n.parentId === null);
+  const adendas = last ? (notes.data ?? []).filter((n) => n.parentId === last.id).length : 0;
+  const sinAtender = groupAlerts(alerts.data ?? []).filter((g) => !attendedAlerts.has(g.key));
+  // Activas: con un aviso en los últimos 30 min; las demás sin atender van plegadas.
+  const groups = sinAtender.filter((g) => esActiva(g));
+  const anteriores = sinAtender.filter((g) => !esActiva(g));
   const attend = (key: string) => {
     const group = groups.find((g) => g.key === key);
     if (!group) return;
@@ -137,7 +143,7 @@ function Resumen({ v }: { v: PatientView }) {
               className="flex items-center justify-center gap-1.5 rounded-md border border-white/20 bg-white/10 px-[10px] py-1 leading-[normal] text-subtle hover:bg-white/15"
             >
               <span className="font-inter text-[12px] font-normal">⚙</span>
-              <span className="font-inter text-[11px] font-medium">Configurar Umbrales</span>
+              <span className="font-inter text-[11px] font-medium">Ver umbrales</span>
             </AppLink>
           </div>
 
@@ -199,6 +205,7 @@ function Resumen({ v }: { v: PatientView }) {
               </div>
               <Divider />
               <SoapSections note={toSoapSections(last)} size="sm" />
+              {adendas > 0 && <p className="font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{adendas === 1 ? "Con 1 adenda" : `Con ${adendas} adendas`}</p>}
             </>
           ) : (
             <p className="font-jakarta text-[13px] font-medium leading-[normal] text-muted">{notes.isPending ? 'Cargando…' : 'Sin notas SOAP todavía.'}</p>
@@ -213,7 +220,8 @@ function Resumen({ v }: { v: PatientView }) {
           <Divider />
           <div className="flex w-full flex-col gap-3">
             {groups.length === 0 && <p className="font-jakarta text-[13px] font-medium leading-[normal] text-muted">{alerts.isPending ? 'Cargando…' : 'Sin alertas activas.'}</p>}
-            {groups.map((g) => (
+            {[...groups, ...anteriores].map((g, i) => {
+              const fila = (
               <div key={g.key} className="flex w-full items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-[10px]">
                   <img className="size-2 shrink-0" alt="" src={g.severity === 'critica' ? imgAlertTextEllipse2 : imgAlertTextEllipse} />
@@ -226,7 +234,25 @@ function Resumen({ v }: { v: PatientView }) {
                   Atender
                 </Button>
               </div>
-            ))}
+              );
+              // Las anteriores van juntas, plegadas, después de la última activa.
+              if (i < groups.length) return fila;
+              return i === groups.length ? (
+                <AnterioresSinAtender key="anteriores" cantidad={anteriores.length}>
+                  {anteriores.map((a) => (
+                    <div key={a.key} className="flex w-full items-center justify-between gap-3">
+                      <div className="flex min-w-0 flex-col gap-0.5 leading-[normal]">
+                        <p className="font-jakarta text-[13px] font-bold text-ink">{alertTitle(a.variable, a.severity, a.latest.value)}</p>
+                        <p className="font-jakarta text-[11px] font-normal text-muted">{`${a.count} ${a.count === 1 ? 'aviso' : 'avisos'}, el último ${fmtAgo(a.latest.at)}`}</p>
+                      </div>
+                      <Button size="sm" variant="secondary" onClick={() => attend(a.key)}>
+                        Atender
+                      </Button>
+                    </div>
+                  ))}
+                </AnterioresSinAtender>
+              ) : null;
+            })}
           </div>
         </Card>
 

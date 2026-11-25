@@ -1,14 +1,15 @@
 // Pantalla "med/monitoreo/comparativa" (Figma node 245:895) — generada desde el diseño original de Figma.
 // Compara dos de los pacientes asignados: signos de la central, tendencias (src/api/sinBackend.ts:
 // el seed solo trae 40 min), alertas agrupadas, última nota SOAP y medicamentos activos del expediente.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
 import imgChevronDown3 from '../../assets/chevron-down-3.svg';
 import imgDownload from '../../assets/download.svg';
 import { useExpediente, useSoapNotes } from '../../api/queries';
 import { getTendencias, useExtra } from '../../api/sinBackend';
-import { AppLayout, Badge, Button, Divider, PatientAvatar, SearchBox, SegmentedControl, Select, Table, useToast } from '../../components';
+import { AppLayout, Badge, Button, Divider, PatientAvatar, SearchBox, SegmentedControl, Select, Table } from '../../components';
+import { imprimirElemento } from '../../lib/imprimir';
 import { Sparkline } from '../../components/ui/Sparkline';
 import { usePatientRows, type PatientRow } from '../../data/patients';
 import { vitalTone } from '../../lib/alerts';
@@ -51,7 +52,7 @@ function usePatientData(p: PatientRow | undefined, hours: number) {
     critical: !!p?.alertGroups.some((g) => g.severity === 'critica'),
     interventions: (exp.data?.medicamentos ?? []).filter((m) => m.status === 'activo').length,
   };
-  return { points, note: notes.data?.[0], metrics };
+  return { points, note: notes.data?.find((n) => n.parentId === null), metrics };
 }
 
 function PatientColumn({ p, hours }: { p: PatientRow; hours: number }) {
@@ -137,7 +138,7 @@ function PatientColumn({ p, hours }: { p: PatientRow; hours: number }) {
 }
 
 export default function MedMonitoreoComparativa() {
-  const toast = useToast();
+  const comparativa = useRef<HTMLDivElement>(null);
   const { rows } = usePatientRows();
   const [nameA, setNameA] = useState<string | null>(null);
   const [nameB, setNameB] = useState<string | null>(null);
@@ -186,20 +187,18 @@ export default function MedMonitoreoComparativa() {
               trailingIcon={chevron}
               ariaLabel={`Paciente B: ${b?.name ?? ''}`}
             />
-            <Button variant="outline" onClick={() => toast('La comparativa admite 2 pacientes; cambia A o B desde su lista', 'info')}>
-              + Agregar Paciente
-            </Button>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <SegmentedControl label="Periodo" items={PERIODS.map((p) => ({ id: String(p.hours), label: p.label }))} active={String(hours)} onChange={(id) => setHours(Number(id))} />
-            <Button variant="secondary" icon={<img className="size-3.5" alt="" src={imgDownload} />} onClick={() => toast('Comparativa exportada (PDF)')}>
+            {/* Imprime la comparativa (o la guarda en PDF desde el navegador). */}
+            <Button variant="secondary" icon={<img className="size-3.5" alt="" src={imgDownload} />} onClick={() => imprimirElemento(comparativa.current, 'Comparativa de pacientes')}>
               Exportar
             </Button>
           </div>
         </div>
 
         {/* Lado a lado desde 1024 px: es una comparación (REVISION.md, V13). */}
-        <div className="flex w-full flex-col items-start gap-5 lg:flex-row">
+        <div ref={comparativa} className="flex w-full flex-col items-start gap-5 lg:flex-row">
           {a && <PatientColumn p={a} hours={hours} />}
           {b && <PatientColumn p={b} hours={hours} />}
         </div>

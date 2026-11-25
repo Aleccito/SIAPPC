@@ -809,6 +809,8 @@ Lo que el backend no tiene sigue en `src/api/sinBackend.ts`, marcado `SIMULADO` 
   episodios cortos, no en cada lectura: hoy el backend crea una alerta, y una notificación por usuario a cargo, por
   cada lectura fuera de rango (pedido 28).
 - `--alerta DEMO-DEV-06` manda una sola lectura crítica (FC 150), para mostrar el aviso en vivo.
+- `--historia 24h --una-vez` carga una sola vez las lecturas de las últimas 24 h, cada 5 min y dentro de los
+  umbrales, para que las tendencias tengan historia (sección 12.1).
 - Se corre con `docker run` en la red `siappc_default`; no es un servicio del Compose (pedido 32).
 
 ### 11.4 Verificación
@@ -889,3 +891,33 @@ Desde `/opt/siappc`, con `-f docker-compose.yml -f docker-compose.prod.yml` en c
       estricto para las escrituras y el login.
     - El prototipo ya pide lo menos posible: las tendencias cada 60 s, y lo simulado reutiliza las consultas durante
       30 s.
+
+## 12. Revisión del médico (fase 2)
+
+Lo que cambió en el prototipo está en `REVISION-MEDICO.md` y `BOTONES.md`; lo de la IA, en
+`REVISION-IA-RESPUESTAS.md`. Aquí va lo que toca al backend y al servidor.
+
+### 12.1 Publicador: historia de 24 h
+
+Recién levantado, el servidor tenía un solo punto en las tendencias de 24 h. El publicador ahora carga la historia una
+vez ([LEEME](tools/telemetria-demo/LEEME.md#historia-para-las-tendencias)):
+
+- `--historia 24h --una-vez`: las lecturas de las últimas 24 h, con su fecha pasada, cada `PASO_HISTORIA_MIN`
+  minutos (5).
+- Quedan dentro de los umbrales del backend, a propósito: ver el pedido 34.
+- El backend las guarda como atrasadas (más de 60 s), sin avisos en vivo.
+
+### 12.2 La IA del backend
+
+Cambia solo en sus archivos (`routes/ai.ts`, `lib/clinicalAi.ts`, `services/aiTemas.ts`, `aiAuto.ts` y `aiParse.ts`,
+con pruebas nuevas en `Pruebas/backend/`). Las rutas, los permisos, los límites y la forma de las respuestas no
+cambian; el marco `inicio` del flujo y la respuesta de `/ai/assist` traen además el `tipo` de pregunta. El detalle y
+el antes y después están en `REVISION-IA-RESPUESTAS.md`, sección 6.
+
+### 12.3 Pedido nuevo para Adrian
+
+34. **La fecha de una alerta es la de la lectura, no la de cuando se guarda.** `alerta.fecha_hora` toma `now()` al
+    insertar. Una lectura atrasada fuera de rango, que llega tarde porque el equipo estuvo sin red o porque se carga
+    historia, crea una alerta con la hora de ahora: el prototipo la muestra como activa y reciente. Propuesta: en
+    `mqttIngest.ts`, crear la alerta con la `fecha_hora` de su lectura (y, si se quiere, no crear alertas para
+    lecturas de hace más de unos minutos, o crearlas ya resueltas).
