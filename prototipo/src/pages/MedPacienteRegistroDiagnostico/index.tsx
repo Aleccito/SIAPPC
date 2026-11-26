@@ -8,29 +8,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, request } from '../../api/http';
 import type { HistoriaEntry } from '../../api/types/clinical';
-import imgChevronDown from '../../assets/chevron-down.svg';
-import imgRadioOptionEllipse from '../../assets/radio-option-ellipse.svg';
-import imgRadioOptionEllipse2 from '../../assets/radio-option-ellipse-2.svg';
 import imgSearch3 from '../../assets/search-3.svg';
-import {
-  BackButton,
-  Badge,
-  Button,
-  Card,
-  Combobox,
-  DateField,
-  Divider,
-  FieldError,
-  focusFirst,
-  PatientLayout,
-  rowButton,
-  Select,
-  TextArea,
-  usePatient,
-  useToast,
-  useValidation,
-  type PatientView,
-} from '../../components';
+import { BackButton, Badge, Button, Card, Combobox, DateField, Divider, FieldError, focusFirst, IconChevronDown, PatientLayout, type PatientView, rowButton, Select, TextArea, usePatient, useToast, useValidation } from '../../components';
 import { AiIdeasCard } from '../../components/ai';
 import { matches, plain } from '../../lib/text';
 import { fmtDate } from '../../lib/clinical';
@@ -173,7 +152,7 @@ function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | und
     'dx-fecha': () => checkDate(date, { notBefore: editing ? undefined : admission }),
     'dx-notas': () => checkText(notes, { max: 1000 }),
   });
-  const chevron = <img className="size-3.5 shrink-0" alt="" src={imgChevronDown} />;
+  const chevron = <IconChevronDown size={14} className="text-muted" />;
   const others = (v.expediente?.diagnosticos ?? []).filter((d) => d.id !== editing?.id);
 
   const register = async () => {
@@ -257,7 +236,9 @@ function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | und
               <div className="flex flex-wrap items-center gap-4" role="radiogroup" aria-label="Severidad">
                 {SEVERITY.map((s) => (
                   <button key={s} type="button" role="radio" aria-checked={s === severity} onClick={() => setSeverity(s)} className="flex items-center gap-2">
-                    <img className="size-4" alt="" src={s === severity ? imgRadioOptionEllipse2 : imgRadioOptionEllipse} />
+                    <span className={cn('flex size-4 shrink-0 items-center justify-center rounded-full border-2 bg-white', s === severity ? 'border-primary' : 'border-subtle')}>
+                      {s === severity && <span className="size-2 rounded-full bg-primary" />}
+                    </span>
                     <span className="font-jakarta text-[13px] font-semibold leading-[normal] text-ink">{s}</span>
                   </button>
                 ))}

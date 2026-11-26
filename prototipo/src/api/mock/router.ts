@@ -91,6 +91,10 @@ route('POST', '/historia/:id/:cat', { perm: ['historia_clinica', 'crear'] }, ({ 
     const entry: HistoriaEntry = { ...body, id: db.nuevoId() };
     if (params.cat === 'antecedentes') entry.active ??= true;
     if (params.cat === 'diagnosticos') entry.status ??= 'activo';
+    if (params.cat === 'alergias') {
+      entry.status ??= 'activa';
+      entry.severity ??= 'leve';
+    }
     const porPaciente = (db.diario.historia[params.id] ??= {});
     porPaciente[params.cat] = [entry, ...(porPaciente[params.cat] ?? [])];
     db.guardar();

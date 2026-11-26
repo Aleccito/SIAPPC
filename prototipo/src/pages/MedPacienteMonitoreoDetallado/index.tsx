@@ -4,9 +4,7 @@
 import { useAlerts, useMonitoredBeds } from '../../api/queries';
 import { getMonitoreoExtra, getSerie, getSignosExtra, useExtra, type Signo } from '../../api/sinBackend';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
-import imgAlertTriangle3 from '../../assets/alert-triangle-3.svg';
-import imgHeaderRowFrame from '../../assets/header-row-frame.svg';
-import { AiIdeasCard, AppLink, BackButton, Badge, Card, Divider, PatientLayout, usePatient, type PatientView } from '../../components';
+import { AiIdeasCard, AppLink, BackButton, Badge, Card, Divider, IconActivity, IconAlertTriangle, PatientLayout, type PatientView, usePatient } from '../../components';
 import type { ReactNode } from 'react';
 import { CurvaSigno } from '../../components/monitor/CurvaSigno';
 import { RegistrarExploracion } from '../../components/patient/RegistrarExploracion';
@@ -132,8 +130,10 @@ function Monitoreo({ v }: { v: PatientView }) {
     : [];
 
   return (
+      // Las columnas crecen con la pantalla: con los anchos fijos de Figma (707 + 443 px) quedaban ~480 px libres a 1920.
+      // Desde 1600 px los paneles de la derecha van en dos columnas (REVISION-DETALLES.md, A1).
       <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
-        <div className="flex w-full min-w-0 flex-col gap-4 xl:max-w-[707px] xl:flex-1">
+        <div className="flex w-full min-w-0 flex-col gap-4 xl:flex-1">
         {/* El monitor lleva a las tendencias de signos vitales */}
         <AppLink to="/MedPacienteTendenciasVitales" className="w-full min-w-0" aria-label="Ver tendencias de signos vitales">
           <div className="flex w-full flex-col gap-[14px] rounded-xl border border-white bg-white p-4 drop-shadow-[0px_8px_10px_rgba(0,0,0,0.25)] sm:p-5">
@@ -143,12 +143,17 @@ function Monitoreo({ v }: { v: PatientView }) {
                 <div className="flex w-full items-center justify-between leading-[normal]">
                   <div className="flex items-center gap-2">
                     <p className="font-jakarta text-[11px] font-bold uppercase text-subtle">{s.label}</p>
-                    {s.ecg && <img className="size-3.5" alt="" src={imgHeaderRowFrame} />}
+                    {s.ecg && <IconActivity size={14} className="text-success" />}
                   </div>
                   <div className={cn('flex items-baseline gap-1.5', s.color)}>
                     <p className="font-jakarta text-[22px] font-extrabold">{s.value}</p>
                     <p className="font-jakarta text-[12px] font-bold">{s.unit}</p>
-                    {s.alert && <img className="size-3.5 self-center" alt="Fuera de rango" src={imgAlertTriangle3} />}
+                    {s.alert && (
+                      <span className="flex self-center">
+                        <IconAlertTriangle size={14} />
+                        <span className="sr-only">Fuera de rango</span>
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="relative h-14 w-full overflow-hidden rounded-lg border border-white bg-[#0b1220]">
@@ -173,7 +178,7 @@ function Monitoreo({ v }: { v: PatientView }) {
         {v.state === 'critico' && <AiIdeasCard variant="compact" patientId={v.id} cedula={v.cedula} />}
         </div>
 
-        <div className="flex w-full min-w-0 flex-col gap-4 xl:w-[443px] xl:shrink-0">
+        <div className="flex w-full min-w-0 flex-col gap-4 xl:w-[443px] xl:shrink-0 min-[1600px]:block min-[1600px]:w-auto min-[1600px]:flex-[1.3] min-[1600px]:columns-2 min-[1600px]:gap-4 min-[1600px]:[&>*]:mb-4 min-[1600px]:[&>*]:break-inside-avoid">
           <Card raised className="flex w-full flex-col gap-[14px]">
             <div className="flex w-full items-center justify-between gap-3">
               <SideTitle>Alertas Activas</SideTitle>

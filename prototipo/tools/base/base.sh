@@ -24,8 +24,10 @@ case "$1" in
     fi
     db < /tmp/db/parches/2026-11-23-permiso-asistente-ia.sql
     db < /tmp/db/parches/2026-11-24-notas-soap-demo.sql
+    db < /tmp/db/parches/2026-11-25-permiso-asignar-monitor.sql
     db -t < /tmp/base/asignar-enfermeria.sql
-    echo "Parches y asignaciones de enfermería al día."
+    db -t < /tmp/base/monitores-libres.sql
+    echo "Parches, asignaciones de enfermería y monitores libres al día."
     db -t < /tmp/base/revisar.sql
     ;;
   *)

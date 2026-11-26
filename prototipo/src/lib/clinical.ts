@@ -93,6 +93,16 @@ export function initials(name: string): string {
 }
 
 /** "Rogelio Batista Quintero" → "Batista Quintero, Rogelio" (como las filas "García López, Juan" de Figma). */
+/**
+ * El primer apellido: "Ileana Montenegro Sáez" → "Montenegro", y con dos nombres, "Rosa Elena Pinzón Mora" → "Pinzón"
+ * (antes se tomaba siempre la segunda palabra y salía "Elena").
+ */
+export function primerApellido(name: string): string {
+  const w = name.split(/\s+/).filter(Boolean);
+  if (w.length >= 4) return w[w.length - 2];
+  return w[1] ?? name;
+}
+
 export function surnameFirst(name: string): string {
   const parts = name.split(/\s+/).filter(Boolean);
   if (parts.length < 2) return name;

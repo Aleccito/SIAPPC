@@ -52,6 +52,26 @@ export type NewPatient = {
 // paciente de `waiting` a `inService` sin reenviar la ficha completa.
 export type PatientChanges = Partial<NewPatient> & { status?: PatientStatus }
 
+// Alguien del personal clínico que se puede poner a cargo de un paciente
+// (GET /patients/care-staff). Sin correo ni teléfono: solo lo que hace falta
+// para elegir.
+export type CareStaff = {
+  id: number
+  name: string
+  role: 'medico' | 'enfermero' | string
+  roleLabel: string
+  unit: string | null
+}
+
+// Un monitor a pie de cama (GET /devices/free, GET /patients/:id/device). Espejo
+// de `Monitor` en backend/src/types.ts.
+export type Monitor = {
+  id: string
+  code: string
+  model: string | null
+  state: 'activo' | 'inactivo' | 'mantenimiento' | 'baja'
+}
+
 // Quién está a cargo de un paciente. La tabla `medico_paciente` no es exclusiva
 // de médicos —su llave es el usuario—, así que enfermería también aparece aquí.
 export type CareAssignment = {

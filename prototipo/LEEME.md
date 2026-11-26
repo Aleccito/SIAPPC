@@ -54,7 +54,16 @@ Abre http://localhost:5173 y navega con el menú lateral, o entra directo a cual
   los 8 reciben valores simulados según su diagnóstico (`src/api/simulacion.ts`; CONEXION-BACKEND.md, 11.2).
 - Con el backend, las notas SOAP, los diagnósticos y las demás altas se guardan en la base. Sin él, lo que se escribe
   se guarda en la pestaña del navegador y sobrevive a recargar; se pierde al cerrarla. Lo simulado que se edita
-  (umbrales, nota de ingreso, indicaciones) se guarda siempre en la pestaña.
+  (nota de ingreso, interrogatorio, indicaciones, alertas atendidas, entregas de turno) se guarda en el navegador, y
+  el aviso lo dice ("en este equipo", "en este navegador").
+- Los umbrales de alarma son de solo lectura: muestran los del sistema, que son los mismos para todos los pacientes
+  (`REVISION-MEDICO.md`). Las alertas "activas" son las de los últimos 30 minutos; las anteriores aparecen plegadas.
+- Las preferencias de avisos de Mi Perfil (alertas críticas, altas y sonido) valen para este navegador.
+- Las alergias se registran, corrigen y marcan inactivas en el Resumen y en Antecedentes → "Alergias" (solo el
+  médico); las activas aparecen en la cabecera de todas las fichas, en la hoja imprimible y en lo que recibe la IA.
+- Un paciente admitido en la app principal con cama, médico y monitor aparece en Mis Pacientes, el Dashboard y la
+  central al entrar o cambiar de pantalla, y tiene signos en 1 a 2 minutos con el publicador de demo
+  (`tools/telemetria-demo`, `REVISION-DETALLES.md`).
 - Las respuestas tardan un poco, como un servidor. Para probar: `?retraso=0` (sin espera), `?sesion=vencida` (la
   siguiente petición responde 401 y vuelve al Login).
 - `.env.example` trae el interruptor `VITE_API_MODE` (`mock` por defecto en `npm run dev`, `real` o `mixto`, con
@@ -71,6 +80,8 @@ Abre http://localhost:5173 y navega con el menú lateral, o entra directo a cual
 - **Con el simulador** responde en segundos con textos escritos para cada paciente y se presenta como
   `medgemma-4b-it (simulado)`. Para probar estados: `?ia=lenta` (tiempos del modelo real), `?ia=caida` (no
   disponible), `?ia=corte` (se corta a mitad), `?ia=sin-analisis` y `?ia=normal` para volver.
+- Cada pregunta recibe una respuesta con la forma de su tipo (un dato, la gravedad con el NEWS2, un fármaco, la
+  entrega de turno…). Calidad, antes y después: [REVISION-IA-RESPUESTAS.md](REVISION-IA-RESPUESTAS.md).
 - Nada de lo que dice se guarda; si se lleva a una nota SOAP, el médico la revisa y la firma. Solo la ven los
   médicos.
 
@@ -83,7 +94,9 @@ Abre http://localhost:5173 y navega con el menú lateral, o entra directo a cual
   navegan entre pantallas.
 - Fuentes: Plus Jakarta Sans, Inter y Geist (Google Fonts, en `index.html`; requieren internet).
 - La ruta `/` abre el `Login`; después del código se llega al Dashboard.
-- Estado del trabajo y siguientes pasos: [PLAN.md](PLAN.md).
+- Estado del trabajo y siguientes pasos: [PLAN.md](PLAN.md). Revisión como médico: [REVISION-MEDICO.md](REVISION-MEDICO.md).
+- Imprimir: "Generar Reporte" (cabecera del paciente), la comparativa y la entrega de turno abren la impresión del
+  navegador, que también guarda en PDF.
 
 ## Rutas
 

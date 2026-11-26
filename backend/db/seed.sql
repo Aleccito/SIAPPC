@@ -98,7 +98,9 @@ FROM (
 
   UNION ALL SELECT 'administrativo', 'pacientes', TRUE, TRUE, TRUE, FALSE
   UNION ALL SELECT 'administrativo', 'monitoreo', TRUE, FALSE, FALSE, FALSE
-  UNION ALL SELECT 'administrativo', 'dispositivos', TRUE, FALSE, FALSE, FALSE
+  -- Edita para asignar y liberar el monitor de un paciente al admitirlo (routes/devices.ts). No da de alta
+  -- equipos ni los borra: eso sigue siendo del admin.
+  UNION ALL SELECT 'administrativo', 'dispositivos', TRUE, FALSE, TRUE, FALSE
   UNION ALL SELECT 'administrativo', 'alertas', TRUE, FALSE, FALSE, FALSE
   UNION ALL SELECT 'administrativo', 'reportes', TRUE, TRUE, FALSE, FALSE
   UNION ALL SELECT 'administrativo', 'configuracion', TRUE, FALSE, FALSE, FALSE

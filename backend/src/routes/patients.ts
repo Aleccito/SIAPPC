@@ -169,6 +169,36 @@ export default async function patientsRoutes(app: FastifyInstance) {
     return paciente;
   }
 
+  // Personal clínico que se puede poner a cargo: médicos y enfermería activos de este hospital.
+  //
+  // Quien asigna personal (`pacientes: editar`, el administrativo entre ellos) necesita la lista para elegir, y
+  // GET /users pide `usuarios: ver`, que el administrativo no tiene: su diálogo "Personal a cargo" salía vacío.
+  // Aquí va solo lo necesario para elegir —nombre, rol y unidad—, sin correo ni teléfono.
+  app.get(
+    "/patients/care-staff",
+    { preHandler: [app.requirePermission("pacientes", "editar")] },
+    async (req) => {
+      const filas = await prisma.usuario.findMany({
+        where: { hospital_id: req.hospitalId, activo: true, rol: { nombre: { in: ["medico", "enfermero"] } } },
+        select: {
+          usuario_id: true,
+          nombre: true,
+          rol: { select: { nombre: true, etiqueta: true } },
+          unidad: { select: { nombre: true } },
+        },
+        orderBy: { nombre: "asc" },
+        take: 500,
+      });
+      return filas.map((u) => ({
+        id: u.usuario_id,
+        name: u.nombre,
+        role: u.rol.nombre,
+        roleLabel: u.rol.etiqueta,
+        unit: u.unidad?.nombre ?? null,
+      }));
+    },
+  );
+
   app.get(
     "/patients/:id/assignments",
     { preHandler: [app.requirePermission("pacientes", "ver")] },

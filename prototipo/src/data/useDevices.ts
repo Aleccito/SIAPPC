@@ -41,7 +41,7 @@ const conBackend = API_MODE !== 'mock' && goesToBackend('/dashboard/devices');
 export function useDevices(): { devices: DeviceLive[]; isPending: boolean } {
   const status = useDeviceStatus();
   const beds = useMonitoredBeds();
-  const patients = usePatients();
+  const patients = usePatients({ ids: (beds.data ?? []).map((b) => b.patientId) });
   const readings = useReadings({ limit: 500 }, conBackend);
 
   if (!conBackend) {

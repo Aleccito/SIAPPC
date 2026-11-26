@@ -58,7 +58,7 @@ export function AiContext({ row, question, className }: { row: PatientRow | unde
   const exp = useExpediente(row?.id);
   const notes = useSoapNotes(row?.id);
   const explo = useExploracion(row?.id);
-  const patient = usePatients().data?.items.find((p) => p.id === row?.id);
+  const patient = usePatients({ ids: [row?.id] }).data?.items.find((p) => p.id === row?.id);
   // Mismas reglas que el backend (routes/ai.ts): los temas que nombra la pregunta más los que pide su tipo.
   const tipo = detectarTipo(question);
   const temas = detectarTemas(question);

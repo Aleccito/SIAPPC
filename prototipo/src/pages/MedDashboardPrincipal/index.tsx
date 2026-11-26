@@ -8,19 +8,15 @@ import { getAiAnalysis } from '../../api/ai';
 import { useReadings } from '../../api/queries';
 import imgAlertTriangle2 from '../../assets/alert-triangle-2.svg';
 import imgCheckSquare from '../../assets/check-square.svg';
-import imgEye from '../../assets/eye.svg';
-import imgFileText4 from '../../assets/file-text-4.svg';
-import imgFolder from '../../assets/folder.svg';
-import imgHeart2 from '../../assets/heart-2.svg';
-import imgHeart3 from '../../assets/heart-3.svg';
 import imgUsers3 from '../../assets/users-3.svg';
-import { aiAnalysisKey, AppLayout, Badge, Button, Card, EmptyState, IconSparkles, rowLinkClass, SearchBox, Select, Table, useAiAccess, useRowLink } from '../../components';
+import { aiAnalysisKey, AppLayout, Badge, Button, Card, EmptyState, IconAlertTriangle, IconArrowRight, IconEye, IconFileText, IconFolder, IconHeart, IconSparkles, IconTrendingUp, rowLinkClass, SearchBox, Select, Table, useAiAccess, useRowLink } from '../../components';
 import { Sparkline } from '../../components/ui/Sparkline';
 import { alertInfoFrom, CONFIRM_PATH, type ConfirmState } from '../../data/alerts';
-import { usePatientRows, vitalsText, type PatientRow } from '../../data/patients';
+import { paText, usePatientRows, type PatientRow } from '../../data/patients';
+import { direccionFc, direccionSpo2, Flecha } from '../../components/ui/Flecha';
 import { alertTitle, esActiva } from '../../lib/alerts';
 import { RegistrarExploracion } from '../../components/patient/RegistrarExploracion';
-import { fmtAgo, surnameFirst, VARIABLE_LABEL } from '../../lib/clinical';
+import { fmtAgo, primerApellido, surnameFirst, VARIABLE_LABEL } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 import { patientPath } from '../../lib/patientLink';
 
@@ -40,12 +36,13 @@ const STATUS_STYLE = {
   estable: { triage: 'text-success', row: 'bg-white' },
 } as const;
 
-// Íconos de acción de cada fila.
+// Íconos de acción de cada fila: SVG en línea (icons.tsx), no imágenes; si una imagen no carga, el botón queda vacío
+// (REVISION-DETALLES.md, A2).
 const ROW_ACTIONS = [
-  { label: 'Ver perfil', to: '/MedPacienteResumen' },
-  { label: 'Monitoreo', to: '/MedPacienteMonitoreoDetallado' },
-  { label: 'Nota SOAP', to: '/MedPacienteNotasSoapNueva' },
-  { label: 'Historia clínica', to: '/MedPacienteHistoriaClinicaGeneral' },
+  { label: 'Ver perfil', to: '/MedPacienteResumen', Icon: IconEye },
+  { label: 'Monitoreo', to: '/MedPacienteMonitoreoDetallado', Icon: IconHeart },
+  { label: 'Nota SOAP', to: '/MedPacienteNotasSoapNueva', Icon: IconFileText },
+  { label: 'Historia clínica', to: '/MedPacienteHistoriaClinicaGeneral', Icon: IconFolder },
 ];
 
 const FROM = '/MedDashboardPrincipal';
@@ -56,7 +53,7 @@ const BED_COLOR = { danger: 'text-danger', warning: 'text-warning', neutral: 'te
 
 const COLS = 'flex w-full items-center px-4';
 
-const surname = (name: string) => name.split(/\s+/)[1] ?? name;
+const surname = primerApellido;
 
 /** "Requiere tu atención ahora": las alertas más graves y recientes (una por paciente) y las evaluaciones pendientes. */
 function attentionItems(rows: PatientRow[]): Attention[] {
@@ -82,8 +79,11 @@ function attentionItems(rows: PatientRow[]): Attention[] {
       },
     ];
   });
+  // El ingreso más reciente primero: un paciente recién admitido sin evaluación primaria es lo que más urge, y así
+  // aparece aquí aunque esté estable y no entre en las 6 filas de la tabla (REVISION-DETALLES.md, 3.8).
   const pending = rows
     .filter((r) => !r.examined)
+    .sort((a, b) => (b.admittedAt ?? b.arrivedAt).localeCompare(a.admittedAt ?? a.arrivedAt))
     .map((r) => ({
       key: `eval-${r.document}`,
       tag: 'Evaluación',
@@ -227,8 +227,6 @@ export default function MedDashboardPrincipal() {
                 {shownRows.map((r) => {
                   const s = STATUS_STYLE[r.state];
                   const crit = r.state === 'critico';
-                  const icons = [imgEye, crit ? imgHeart2 : imgHeart3, imgFileText4, imgFolder];
-                  const vitals = vitalsText(r);
                   const lastAlert = r.alertGroups[0]?.latest.at;
                   return (
                     <div key={r.id} {...rowLink(patientPath('/MedPacienteResumen', r.document))} aria-label={`Ver a ${r.name}`} className={cn(COLS, 'border-b border-line py-3 last:border-b-0', s.row, rowLinkClass)}>
@@ -241,8 +239,13 @@ export default function MedDashboardPrincipal() {
                       </div>
                       <p className="w-[100px] shrink-0 font-jakarta text-[13px] font-semibold leading-[normal] text-ink">{r.bed ?? '—'}</p>
                       <div className="flex w-[250px] shrink-0 flex-col gap-0.5 leading-[normal]">
-                        <p className={cn('font-jakarta text-[13px] font-bold', crit ? 'text-danger' : 'text-ink')}>{vitals[0]}</p>
-                        <p className="font-jakarta text-[11px] font-normal text-muted">{vitals[1]}</p>
+                        <p className={cn('font-jakarta text-[13px] font-bold', crit ? 'text-danger' : 'text-ink')}>
+                          {`FC: ${r.vitals.hr ?? '—'}`}
+                          <Flecha dir={direccionFc(r.vitals.hr)} />
+                          {` SpO2: ${r.vitals.spo2 ?? '—'}%`}
+                          <Flecha dir={direccionSpo2(r.vitals.spo2)} />
+                        </p>
+                        <p className="font-jakarta text-[11px] font-normal text-muted">{paText(r)}</p>
                       </div>
                       <div className="flex w-[130px] shrink-0 flex-col gap-0.5 leading-[normal]">
                         <p className="font-jakarta text-[13px] font-bold text-ink" title={r.glasgow ? undefined : 'Glasgow pendiente: sin exploración física desde el ingreso'}>
@@ -251,11 +254,12 @@ export default function MedDashboardPrincipal() {
                         {!r.glasgow && <RegistrarExploracion cedula={r.document} texto="Registrar" className="text-[11px]" />}
                         <p className={cn('font-jakarta text-[11px] font-semibold', s.triage)}>{`TRIAGE: ${r.triage}`}</p>
                       </div>
-                      <p className={cn('w-[120px] shrink-0 whitespace-nowrap font-jakarta text-[12px] leading-[normal]', lastAlert ? 'font-bold text-danger' : 'font-normal text-muted')}>
-                        {lastAlert ? `⚠️ ${fmtAgo(lastAlert).replace('hace un momento', 'ahora').replace(/^[ha]/, (c) => c.toUpperCase())}` : 'Ninguna'}
+                      <p className={cn('flex w-[120px] shrink-0 items-center gap-1 whitespace-nowrap font-jakarta text-[12px] leading-[normal]', lastAlert ? 'font-bold text-danger' : 'font-normal text-muted')}>
+                        {lastAlert && <IconAlertTriangle size={13} className="text-warning" />}
+                        {lastAlert ? fmtAgo(lastAlert).replace('hace un momento', 'ahora').replace(/^[ha]/, (c) => c.toUpperCase()) : 'Ninguna'}
                       </p>
                       <div className="flex min-w-0 flex-1 justify-end gap-1">
-                        {ROW_ACTIONS.map((a, i) => (
+                        {ROW_ACTIONS.map(({ Icon, ...a }) => (
                           <Link
                             key={a.label}
                             to={patientPath(a.to, r.document)}
@@ -263,9 +267,9 @@ export default function MedDashboardPrincipal() {
                             aria-label={`${a.label} de ${r.name}`}
                             onClick={(e) => e.stopPropagation()}
                             onKeyDown={(e) => e.stopPropagation()}
-                            className="flex items-center justify-center rounded-lg border border-line bg-white p-2 hover:bg-surface"
+                            className="flex items-center justify-center rounded-lg border border-line bg-white p-2 text-muted hover:bg-surface"
                           >
-                            <img className="size-4" alt="" src={icons[i]} />
+                            <Icon size={16} className={Icon === IconHeart && crit ? 'text-danger' : undefined} />
                           </Link>
                         ))}
                       </div>
@@ -277,14 +281,20 @@ export default function MedDashboardPrincipal() {
             <div className="flex w-full flex-wrap items-center justify-between gap-3 font-jakarta text-[13px] leading-[normal]">
               <p className="font-normal text-muted">{`Mostrando ${shownRows.length} de ${filtered.length} pacientes`}</p>
               <Button variant="link" to="/MedPacientesLista">
-                Ver todos →
+                <span className="flex items-center gap-1">
+                  Ver todos
+                  <IconArrowRight size={14} />
+                </span>
               </Button>
             </div>
           </Card>
 
           <Card className="flex w-full flex-col gap-[14px]">
             <div className="flex flex-col gap-0.5 leading-[normal]">
-              <h2 className="font-jakarta text-[15px] font-extrabold text-ink">📈 Tendencias de Pacientes Críticos</h2>
+              <h2 className="flex items-center gap-2 font-jakarta text-[15px] font-extrabold text-ink">
+                <IconTrendingUp size={16} className="text-primary" />
+                Tendencias de Pacientes Críticos
+              </h2>
               {/* Las últimas 41 lecturas de cada signo (el seed trae una por minuto; un equipo publica una por segundo). */}
               <p className="font-jakarta text-[12px] font-normal text-muted">Últimas lecturas, se actualizan solas</p>
             </div>

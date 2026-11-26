@@ -826,6 +826,29 @@ const es = {
   // Segundo paso de quitar a alguien: dice qué va a pasar y a quién, no
   // "¿está seguro?".
   'patients.care.confirmRemove': 'Pulsa otra vez para quitar a {name}',
+  // Sugerencia: la enfermería de la unidad de la cama, en un clic.
+  'patients.care.unitNurse': 'Enfermería de {unit}',
+  'patients.care.unitNurseAssign': 'Asignar a {name}',
+
+  'patients.action.assignMonitor': 'Asignar monitor',
+  'patients.action.changeMonitor': 'Cambiar monitor',
+  'patients.monitor.title': 'Monitor del paciente',
+  'patients.monitor.subtitle': 'El monitor a pie de cama de {patient}. Sus signos aparecen en la central en 1 a 2 minutos.',
+  'patients.monitor.current': 'Monitor actual',
+  'patients.monitor.none': 'Este paciente no tiene monitor.',
+  'patients.monitor.needsBed': 'Asigne una cama antes del monitor: el monitor va en la cama.',
+  'patients.monitor.field': 'Monitor libre',
+  'patients.monitor.change': 'Cambiar por',
+  'patients.monitor.submit': 'Asignar',
+  'patients.monitor.confirmRelease': 'Pulsa otra vez para liberar {code}',
+  'patients.monitor.noneFree': 'No hay monitores libres. Libere uno o pida que den de alta otro equipo.',
+  'patients.monitor.state.activo': 'transmitiendo',
+  'patients.monitor.state.inactivo': 'sin transmitir',
+  'patients.monitor.state.mantenimiento': 'en mantenimiento',
+  'patients.monitor.state.baja': 'de baja',
+  'patients.monitor.loadError': 'No se pudo cargar la lista de monitores',
+  'patients.monitor.error': 'No se pudo cambiar el monitor',
+  'patients.monitor.forbidden': 'Su rol no puede asignar monitores (permiso de dispositivos).',
 
   'beds.capacity.title': 'Camas por unidad',
   'beds.capacity.hint':

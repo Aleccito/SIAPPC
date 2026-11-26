@@ -99,6 +99,16 @@ describe("detectarTipo: cada pregunta recibe la forma de respuesta que pide", ()
     ["¿Quién es el médico a cargo?", "dato"],
     ["¿En qué cama está?", "dato"],
     ["Analiza al paciente", "analisis"],
+    // Riesgo y pronóstico (prototipo/REVISION-DETALLES.md, A5): antes caían en "dato" o en el análisis completo.
+    ["¿Cuál es la probabilidad de muerte de este paciente?", "pronostico"],
+    ["¿Cuál es su pronóstico?", "pronostico"],
+    ["¿Qué riesgo de mortalidad tiene?", "pronostico"],
+    ["¿Qué probabilidad tiene de sobrevivir?", "pronostico"],
+    ["¿Se va a morir?", "pronostico"],
+    ["¿Qué riesgo tiene?", "gravedad"],
+    ["¿Cuál es su riesgo de deterioro?", "gravedad"],
+    // "Probabilidad" sola no es pronóstico.
+    ["¿Qué probabilidad hay de que sea un TEP?", "dato"],
   ];
   for (const [pregunta, tipo] of casos) {
     it(`${pregunta} → ${tipo}`, () => assert.equal(detectarTipo(pregunta), tipo));
@@ -129,8 +139,10 @@ describe("tipos: temas, topes y prompts", () => {
   });
 
   it("los topes van de corto (dato) a largo (análisis)", () => {
-    assert.ok(PARAMETROS.dato.maxTokens < PARAMETROS.gravedad.maxTokens);
-    assert.ok(PARAMETROS.gravedad.maxTokens < PARAMETROS.turno.maxTokens);
+    // Gravedad y pronóstico: el riesgo lo escribe el backend y el modelo solo agrega una línea.
+    assert.ok(PARAMETROS.gravedad.maxTokens <= PARAMETROS.dato.maxTokens);
+    assert.equal(PARAMETROS.pronostico.maxTokens, PARAMETROS.gravedad.maxTokens);
+    assert.ok(PARAMETROS.dato.maxTokens < PARAMETROS.turno.maxTokens);
     assert.ok(tipos.every((t) => PARAMETROS[t].maxTokens <= PARAMETROS.analisis.maxTokens));
   });
 

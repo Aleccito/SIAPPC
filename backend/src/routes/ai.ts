@@ -17,7 +17,7 @@ import { z } from "zod";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { prisma } from "../lib/prisma.ts";
 import { notFound, parseOr400 } from "../lib/http.ts";
-import { DISCLAIMER, llmNoDisponible, modelo, patientContext, prioridad } from "../lib/clinicalAi.ts";
+import { DISCLAIMER, llmNoDisponible, modelo, patientContext, prioridad, riesgoCalculado } from "../lib/clinicalAi.ts";
 import { generarAnalisisIA, leerAnalisisIA } from "../services/aiAuto.ts";
 import { PARAMETROS, detectarTemas, detectarTipo, mensajesDe, temasDelTipo, type Tema, type TipoPregunta } from "../services/aiTemas.ts";
 import { estadoPaciente, haceTexto } from "../services/aiParse.ts";
@@ -105,7 +105,12 @@ async function prepararConsulta(body: unknown, hospitalId: number) {
     input.question,
   ].filter(Boolean).join("\n");
   const question = `Del paciente ${admin.nombre}: ${consulta}`;
-  return { input, tipo, mensajes: mensajesDe(tipo, context, question) };
+  // Gravedad y pronóstico: el riesgo lo escribe el backend con los puntajes reales y el modelo solo agrega lo que más
+  // pesa (prototipo/REVISION-DETALLES.md, A5). Sale primero, así el médico lo lee en el acto.
+  const riesgo = tipo === "gravedad" || tipo === "pronostico"
+    ? `${(await riesgoCalculado(input.patientId, hospitalId, tipo === "pronostico")).join("\n")}\n`
+    : "";
+  return { input, tipo, riesgo, mensajes: mensajesDe(tipo, context, question) };
 }
 
 export default async function aiRoutes(app: FastifyInstance) {
@@ -121,13 +126,13 @@ export default async function aiRoutes(app: FastifyInstance) {
     "/ai/assist",
     { preHandler: medico, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
     async (req) => {
-      const { input, tipo, mensajes } = await prepararConsulta(req.body, req.hospitalId);
+      const { input, tipo, riesgo, mensajes } = await prepararConsulta(req.body, req.hospitalId);
 
       let answer: string;
       // La consulta del médico va primero: el análisis automático espera o se corta.
       const terminar = prioridad.empieza();
       try {
-        answer = await cadena(tipo).invoke(mensajes);
+        answer = riesgo + (await cadena(tipo).invoke(mensajes));
       } catch (err: unknown) {
         // Sin contenido clínico en el log: solo el tipo de error.
         req.log.error({ reason: err instanceof Error ? err.name : "desconocido" }, "ai_assist: LLM no disponible");
@@ -163,7 +168,7 @@ export default async function aiRoutes(app: FastifyInstance) {
     "/ai/assist/stream",
     { preHandler: medico, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
     async (req, reply) => {
-      const { input, tipo, mensajes } = await prepararConsulta(req.body, req.hospitalId);
+      const { input, tipo, riesgo, mensajes } = await prepararConsulta(req.body, req.hospitalId);
 
       // Si el médico cierra la pestaña se corta también la generación: el LLM
       // es de un solo hilo y no debe seguir ocupado para nadie.
@@ -178,6 +183,7 @@ export default async function aiRoutes(app: FastifyInstance) {
         "X-Accel-Buffering": "no",
       });
       reply.raw.write(marco("inicio", { model: env.llm.model, tipo, disclaimer: DISCLAIMER }));
+      if (riesgo) reply.raw.write(marco("trozo", { text: riesgo }));
 
       const terminar = prioridad.empieza();
       try {

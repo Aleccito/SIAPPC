@@ -2,7 +2,6 @@
 // La misma bandeja que el Centro de Notificaciones (src/data/notifications.ts), con los tipos de esta pantalla.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import imgUnreadIndicatorContainer from '../../assets/unread-indicator-container.svg';
 import { AppLayout, Button, EmptyState, IconCheck, NotificationIcon, Select, useToast } from '../../components';
 import { useNotificationFeed, type FeedItem, type FeedKind } from '../../data/notifications';
 
@@ -74,7 +73,7 @@ export default function Notificaciones() {
                       onClick={() => open(n)}
                       className="flex w-full items-center gap-3 rounded-xl border border-line bg-white p-4 text-left transition-colors hover:border-subtle sm:gap-4"
                     >
-                      {n.unread ? <img className="size-3 shrink-0" alt="Sin leer" src={imgUnreadIndicatorContainer} /> : <span className="size-3 shrink-0" />}
+                      {n.unread ? <span className="flex size-3 shrink-0 items-center justify-center"><span className="size-2 rounded-full bg-primary" /><span className="sr-only">Sin leer</span></span> : <span className="size-3 shrink-0" />}
                       <NotificationIcon kind={n.kind} />
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[normal]">
                         <p className="font-jakarta text-[14px] font-extrabold text-ink">{n.title}</p>

@@ -1,6 +1,6 @@
 import { request, requestList } from '../../../shared/api/http'
 import type { ListResult } from '../../../shared/api/http'
-import type { CareAssignment, NewPatient, Patient, PatientChanges } from '../types'
+import type { CareAssignment, CareStaff, Monitor, NewPatient, Patient, PatientChanges } from '../types'
 
 export type PatientQuery = {
   page?: number
@@ -66,4 +66,34 @@ export async function assignCare(
 // 204: la asignación no se borra, se marca inactiva. El historial se conserva.
 export async function unassignCare(patientId: string, userId: number): Promise<void> {
   await request<void>(`/patients/${patientId}/assignments/${userId}`, { method: 'DELETE' })
+}
+
+// Personal clínico que se puede poner a cargo (médicos y enfermería activos).
+// No es GET /users: esa pide `usuarios: ver` y el administrativo, que es quien
+// admite, no la tiene.
+export async function listCareStaff(): Promise<CareStaff[]> {
+  return request<CareStaff[]>('/patients/care-staff')
+}
+
+// Monitor a pie de cama (backend/src/routes/devices.ts). Asignar pide cama
+// (ingreso activo): sin ella el servidor responde 409 con el motivo.
+export async function listFreeMonitors(): Promise<Monitor[]> {
+  return request<Monitor[]>('/devices/free')
+}
+
+/** El monitor del paciente aunque no esté transmitiendo, o null. */
+export async function getPatientMonitor(patientId: string): Promise<Monitor | null> {
+  return (await request<{ monitor: Monitor | null }>(`/patients/${patientId}/device`)).monitor
+}
+
+export async function assignMonitor(patientId: string, deviceId: number): Promise<Monitor> {
+  return request<Monitor>(`/patients/${patientId}/device`, {
+    method: 'PUT',
+    body: JSON.stringify({ deviceId }),
+  })
+}
+
+// 204: el monitor queda libre; el paciente no se toca.
+export async function releaseMonitor(patientId: string): Promise<void> {
+  await request<void>(`/patients/${patientId}/device`, { method: 'DELETE' })
 }

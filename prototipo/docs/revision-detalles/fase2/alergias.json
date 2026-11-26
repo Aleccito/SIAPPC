@@ -1,0 +1,83 @@
+[
+ {
+  "paso": "Médico: tarjeta \"Alergias\" en el Resumen, con \"Registrar alergia\"",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "entro": "/MedPacienteResumen",
+   "tarjeta": true,
+   "inicio": "S\n\nSIAPPC\n\nCUIDADO CRÍTICO\n\nDashboard\nPacientes\nMonitoreo\nAlertas\nAsistente IA\nReportes\nDispositivos\n?\nCM\n\nDr. Carlos Mé"
+  },
+  "captura": "d00-resumen"
+ },
+ {
+  "paso": "Registra \"Penicilina\", grave, urticaria y disnea",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "cabecera": "Alergias: Penicilina (grave)"
+  },
+  "captura": "d01-registrada"
+ },
+ {
+  "paso": "Corrige la severidad a anafilaxia",
+  "ok": true,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "d02-corregida"
+ },
+ {
+  "paso": "Aparece en la hoja imprimible",
+  "ok": true,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "d03-hoja"
+ },
+ {
+  "paso": "Aparece en \"Lo que verá la IA\" (sin consultar al modelo)",
+  "ok": true,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "d04-ia"
+ },
+ {
+  "paso": "Subpestaña \"Alergias\" en Antecedentes",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "textoPatologicos": true
+  },
+  "captura": "d05-antecedentes"
+ },
+ {
+  "paso": "La marca inactiva (resuelta): sale de la cabecera y queda plegada en \"Inactivas\"",
+  "ok": true,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "d06-inactiva"
+ },
+ {
+  "paso": "enfermero: ve las alergias pero no los botones",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "alergias": true,
+   "tecnica": false
+  },
+  "captura": "d07-enfermero"
+ },
+ {
+  "paso": "admin: ve las alergias pero no los botones",
+  "ok": true,
+  "detalle": {
+   "ok": true,
+   "alergias": false,
+   "tecnica": true
+  },
+  "captura": "d07-admin"
+ }
+]

@@ -5,8 +5,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../../api/http';
 import { useSession } from '../../components/auth/session';
-import imgEye from '../../assets/login-eye.svg';
-import { AuthButton, AuthCard, AuthDivider, AuthField, AuthLayout, useAuthText } from '../../components';
+import { AuthButton, AuthCard, AuthDivider, AuthField, AuthLayout, IconEye, useAuthText } from '../../components';
 
 /** Ojo tachado (contraseña visible), con el mismo trazo que el ojo de Figma. */
 const EyeOff = () => (
@@ -83,7 +82,7 @@ export default function Login() {
                 aria-pressed={show}
                 className="-m-1 flex shrink-0 rounded p-1 hover:bg-surface"
               >
-                {show ? <EyeOff /> : <img className="size-[18px]" alt="" src={imgEye} />}
+                {show ? <EyeOff /> : <IconEye size={18} className="text-muted" />}
               </button>
             }
           />

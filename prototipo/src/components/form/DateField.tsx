@@ -1,5 +1,5 @@
+import { IconCalendar } from '../icons';
 import { useRef } from 'react';
-import imgCalendar from '../../assets/calendar.svg';
 import { cn } from '../../lib/cn';
 import { formatDate, type ErrorText } from '../../lib/validate';
 import { errorProps } from './validation';
@@ -48,7 +48,7 @@ export function DateField({ id, value, onChange, onBlur, min, max, label, error 
         {...errorProps(id, error ?? null)}
       >
         <span>{value ? formatDate(value) : 'Elegir fecha'}</span>
-        <img className="size-3.5 shrink-0" alt="" src={imgCalendar} />
+        <IconCalendar size={14} className="text-muted" />
       </button>
       {/* Calendario del navegador: invisible, pegado al borde inferior para que se abra debajo. */}
       <input

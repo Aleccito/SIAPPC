@@ -1,12 +1,13 @@
 // Pantalla "med/paciente/antecedentes" (Figma node 183:421) — generada desde el diseño original de Figma.
 // Los antecedentes son los del expediente (GET/POST /historia/:id/antecedentes). Cada subpestaña es
 // uno o dos valores del enum `TipoAntecedente` del backend.
+import { AlergiasCard } from '../../components/patient/AlergiasCard';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createAntecedente, type TipoAntecedente } from '../../api/antecedentes';
 import { ApiError } from '../../api/http';
 import type { HistoriaEntry } from '../../api/types/clinical';
-import { BackButton, Badge, Button, Card, Modal, ModalHeader, PatientLayout, Select, Table, Tabs, usePatient, useSession, useToast, type PatientView } from '../../components';
+import { BackButton, Badge, Button, Card, IconArrowRight, Modal, ModalHeader, PatientLayout, Select, Table, Tabs, usePatient, useSession, useToast, type PatientView } from '../../components';
 
 type Section = {
   id: string;
@@ -39,7 +40,8 @@ const SECTIONS: Section[] = [
     title: 'Antecedentes Personales Patológicos',
     column: 'AÑO / TIPO',
     types: ['personal', 'quirurgico'],
-    blurb: 'Incluye cirugías previas, hospitalizaciones previas, transfusiones, alergias severas y comorbilidades sistémicas activas.',
+    // Las alergias tienen su propia subpestaña (REVISION-DETALLES.md, D): mencionarlas aquí confundía.
+    blurb: 'Incluye cirugías previas, hospitalizaciones previas, transfusiones y comorbilidades sistémicas activas. Las alergias están en su pestaña.',
     conditions: ['Hipotiroidismo', 'Enfermedad renal crónica', 'Cardiopatía isquémica', 'Epilepsia'],
     relations: ['2015', '2019', '2022', '2024', '2025'],
   },
@@ -64,6 +66,9 @@ const SECTIONS: Section[] = [
     relations: ['1990', '2000', '2010', '2020'],
   },
 ];
+
+const ALERGIAS = { id: 'alergias', label: 'Alergias' };
+const TABS = [...SECTIONS, ALERGIAS];
 
 /** Segunda columna: parentesco, año o "Cirugía", según el tipo. */
 function detail(e: HistoriaEntry): string {
@@ -107,6 +112,16 @@ function Antecedentes({ v }: { v: PatientView }) {
   const [subtab, setSubtab] = useState('heredo');
   const [addOpen, setAddOpen] = useState(false);
 
+  // "Alergias" no es un tipo de antecedente del backend: es su propia tabla (GET/POST/PATCH /historia/:id/alergias).
+  if (subtab === ALERGIAS.id) {
+    return (
+      <>
+        <Tabs variant="pills" items={TABS} active={subtab} onChange={setSubtab} />
+        <AlergiasCard pacienteId={v.id} nombre={v.name} entradas={v.expediente?.alergias} />
+      </>
+    );
+  }
+
   const index = SECTIONS.findIndex((s) => s.id === subtab);
   const section = SECTIONS[index];
   const next = SECTIONS[(index + 1) % SECTIONS.length];
@@ -133,7 +148,7 @@ function Antecedentes({ v }: { v: PatientView }) {
 
   return (
     <>
-      <Tabs variant="pills" items={SECTIONS} active={subtab} onChange={setSubtab} />
+      <Tabs variant="pills" items={TABS} active={subtab} onChange={setSubtab} />
 
       <Card padding="lg" className="flex w-full flex-col gap-5">
         <div className="flex w-full flex-wrap items-center justify-between gap-3">
@@ -176,8 +191,9 @@ function Antecedentes({ v }: { v: PatientView }) {
       <div className="flex w-full flex-col gap-3 rounded-xl border border-line bg-surface p-5 leading-[normal] opacity-60">
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
           <p className="font-jakarta text-[13px] font-bold text-muted">{`Sección siguiente: ${next.title}`}</p>
-          <button type="button" onClick={() => setSubtab(next.id)} className="font-jakarta text-[11px] font-semibold text-primary hover:underline">
-            Ver sección →
+          <button type="button" onClick={() => setSubtab(next.id)} className="flex items-center gap-1 font-jakarta text-[11px] font-semibold text-primary hover:underline">
+            Ver sección
+            <IconArrowRight size={12} />
           </button>
         </div>
         <p className="font-jakarta text-[12px] font-normal text-muted">{next.blurb}</p>

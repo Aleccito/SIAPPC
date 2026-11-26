@@ -1,0 +1,122 @@
+[
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "probabilidad",
+  "tipoBackend": "pronostico",
+  "pregunta": "¿Cuál es la probabilidad de muerte de este paciente?",
+  "primer_trozo_s": 0.2,
+  "total_s": 16.7,
+  "palabras": 102,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Riesgo alto** · NEWS2 parcial 7: valoración urgente por un equipo de cuidados críticos y considerar UCI.\n- Es parcial porque faltan oxígeno suplementario, PA sistólica y conciencia (Glasgow): con esos datos el puntaje solo puede subir.\n- **TEP:** sPESI 2 (FC ≥ 110 y SpO2 < 90): riesgo alto · PESI parcial 95, al menos clase III (riesgo intermedio). Falta PA sistólica y estado mental (Glasgow).\n- No se puede dar una probabilidad exacta de muerte: los puntajes estiman el riesgo de grupos de pacientes, no el de uno en particular.\n- **Lo que más pesa:** NEWS2 parcial 7 (riesgo alto)\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "pronostico",
+  "tipoBackend": "pronostico",
+  "pregunta": "¿Cuál es su pronóstico?",
+  "primer_trozo_s": 0.4,
+  "total_s": 10.6,
+  "palabras": 101,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Riesgo alto** · NEWS2 parcial 8: valoración urgente por un equipo de cuidados críticos y considerar UCI.\n- Es parcial porque faltan oxígeno suplementario, PA sistólica y conciencia (Glasgow): con esos datos el puntaje solo puede subir.\n- **TEP:** sPESI 2 (FC ≥ 110 y SpO2 < 90): riesgo alto · PESI parcial 95, al menos clase III (riesgo intermedio). Falta PA sistólica y estado mental (Glasgow).\n- No se puede dar una probabilidad exacta de muerte: los puntajes estiman el riesgo de grupos de pacientes, no el de uno en particular.\n- **Lo que más pesa:** SpO2 89% (riesgo alto)\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "mortalidad",
+  "tipoBackend": "pronostico",
+  "pregunta": "¿Qué riesgo de mortalidad tiene?",
+  "primer_trozo_s": 0.1,
+  "total_s": 3,
+  "palabras": 102,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Riesgo alto** · NEWS2 parcial 8: valoración urgente por un equipo de cuidados críticos y considerar UCI.\n- Es parcial porque faltan oxígeno suplementario, PA sistólica y conciencia (Glasgow): con esos datos el puntaje solo puede subir.\n- **TEP:** sPESI 2 (FC ≥ 110 y SpO2 < 90): riesgo alto · PESI parcial 95, al menos clase III (riesgo intermedio). Falta PA sistólica y estado mental (Glasgow).\n- No se puede dar una probabilidad exacta de muerte: los puntajes estiman el riesgo de grupos de pacientes, no el de uno en particular.\n- **Lo que más pesa:** NEWS2 parcial 8 (riesgo alto)\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "sobrevivir",
+  "tipoBackend": "pronostico",
+  "pregunta": "¿Qué probabilidad tiene de sobrevivir?",
+  "primer_trozo_s": 0.2,
+  "total_s": 11.8,
+  "palabras": 120,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Riesgo alto** · NEWS2 parcial 8: valoración urgente por un equipo de cuidados críticos y considerar UCI.\n- Es parcial porque faltan oxígeno suplementario, PA sistólica y conciencia (Glasgow): con esos datos el puntaje solo puede subir.\n- **TEP:** sPESI 2 (FC ≥ 110 y SpO2 < 90): riesgo alto · PESI parcial 95, al menos clase III (riesgo intermedio). Falta PA sistólica y estado mental (Glasgow).\n- No se puede dar una probabilidad exacta de muerte: los puntajes estiman el riesgo de grupos de pacientes, no el de uno en particular.\n- **Lo que más pesa:** SpO2 89% (en el contexto se indica que la saturación es de 89%, lo cual es bajo y sugiere una posible dificultad respiratoria).\n"
+ },
+ {
+  "cedula": "DEMO-0001",
+  "tipo": "probabilidad",
+  "tipoBackend": "pronostico",
+  "pregunta": "¿Cuál es la probabilidad de muerte de este paciente?",
+  "primer_trozo_s": 0.1,
+  "total_s": 11.3,
+  "palabras": 90,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Riesgo alto** · NEWS2 parcial 9: valoración urgente por un equipo de cuidados críticos y considerar UCI.\n- Es parcial porque faltan oxígeno suplementario, PA sistólica y conciencia (Glasgow): con esos datos el puntaje solo puede subir.\n- **Sepsis:** qSOFA al menos 1 de 3: por debajo de 2. Falta PA sistólica y conciencia (Glasgow).\n- No se puede dar una probabilidad exacta de muerte: los puntajes estiman el riesgo de grupos de pacientes, no el de uno en particular.\n- **Lo que más pesa:** NEWS2 parcial 9 (riesgo alto)\n"
+ },
+ {
+  "cedula": "DEMO-0001",
+  "tipo": "pronostico",
+  "tipoBackend": "pronostico",
+  "pregunta": "¿Cuál es su pronóstico?",
+  "primer_trozo_s": 0.1,
+  "total_s": 3,
+  "palabras": 90,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Riesgo alto** · NEWS2 parcial 9: valoración urgente por un equipo de cuidados críticos y considerar UCI.\n- Es parcial porque faltan oxígeno suplementario, PA sistólica y conciencia (Glasgow): con esos datos el puntaje solo puede subir.\n- **Sepsis:** qSOFA al menos 1 de 3: por debajo de 2. Falta PA sistólica y conciencia (Glasgow).\n- No se puede dar una probabilidad exacta de muerte: los puntajes estiman el riesgo de grupos de pacientes, no el de uno en particular.\n- **Lo que más pesa:** NEWS2 parcial 9 (riesgo alto)\n"
+ },
+ {
+  "cedula": "DEMO-0007",
+  "tipo": "probabilidad",
+  "tipoBackend": "pronostico",
+  "pregunta": "¿Cuál es la probabilidad de muerte de este paciente?",
+  "primer_trozo_s": 0.1,
+  "total_s": 10.3,
+  "palabras": 94,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Riesgo bajo** · NEWS2 parcial 2: vigilancia según protocolo.\n- Es parcial porque faltan oxígeno suplementario, PA sistólica y conciencia (Glasgow): con esos datos el puntaje solo puede subir.\n- **Neumonía:** CURB-65 al menos 0: riesgo bajo. Falta confusión, urea > 7 mmol/L y PA sistólica < 90 o diastólica ≤ 60.\n- No se puede dar una probabilidad exacta de muerte: los puntajes estiman el riesgo de grupos de pacientes, no el de uno en particular.\n- **Lo que más pesa:** NEWS2 parcial 2 (riesgo bajo; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow))\n"
+ },
+ {
+  "cedula": "DEMO-0007",
+  "tipo": "mortalidad",
+  "tipoBackend": "pronostico",
+  "pregunta": "¿Qué riesgo de mortalidad tiene?",
+  "primer_trozo_s": 0.1,
+  "total_s": 3.9,
+  "palabras": 94,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Riesgo bajo** · NEWS2 parcial 2: vigilancia según protocolo.\n- Es parcial porque faltan oxígeno suplementario, PA sistólica y conciencia (Glasgow): con esos datos el puntaje solo puede subir.\n- **Neumonía:** CURB-65 al menos 0: riesgo bajo. Falta confusión, urea > 7 mmol/L y PA sistólica < 90 o diastólica ≤ 60.\n- No se puede dar una probabilidad exacta de muerte: los puntajes estiman el riesgo de grupos de pacientes, no el de uno en particular.\n- **Lo que más pesa:** NEWS2 parcial 2 (riesgo bajo; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow))\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "gravedad",
+  "tipoBackend": "gravedad",
+  "pregunta": "¿Gravedad de este paciente?",
+  "primer_trozo_s": 0.1,
+  "total_s": 12.5,
+  "palabras": 73,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Riesgo alto** · NEWS2 parcial 7: valoración urgente por un equipo de cuidados críticos y considerar UCI.\n- Es parcial porque faltan oxígeno suplementario, PA sistólica y conciencia (Glasgow): con esos datos el puntaje solo puede subir.\n- **TEP:** sPESI 1 (FC ≥ 110): riesgo alto · PESI parcial 75, al menos clase II (riesgo bajo). Falta PA sistólica y estado mental (Glasgow).\n- **Lo que más pesa:** NEWS2 parcial 7 (riesgo alto)\n"
+ },
+ {
+  "cedula": "DEMO-0011",
+  "tipo": "gravedad",
+  "tipoBackend": "gravedad",
+  "pregunta": "¿Está grave?",
+  "primer_trozo_s": 0.1,
+  "total_s": 10.1,
+  "palabras": 46,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Riesgo bajo** · NEWS2 parcial 0: vigilancia según protocolo.\n- Es parcial porque faltan oxígeno suplementario, PA sistólica y conciencia (Glasgow): con esos datos el puntaje solo puede subir.\n- **Lo que más pesa:** NEWS2 parcial 0 (riesgo bajo; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow))\n"
+ }
+]

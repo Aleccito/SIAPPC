@@ -3,7 +3,6 @@
 // recordatorio, imagen, sistema) no existen en el backend y salen de src/api/sinBackend.ts.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import imgUnreadIndicatorContainer2 from '../../assets/unread-indicator-container-2.svg';
 import { AppLayout, Badge, Button, Card, Divider, EmptyState, IconCheck, NotificationIcon, Select, useToast } from '../../components';
 import { useNotificationFeed, type FeedItem, type FeedKind } from '../../data/notifications';
 import { cn } from '../../lib/cn';
@@ -80,7 +79,7 @@ export default function MedNotificacionesCentro() {
                         )}
                       >
                         <div className="flex w-14 shrink-0 items-center gap-2">
-                          {r.unread ? <img className="h-2 w-4 shrink-0" alt="Sin leer" src={imgUnreadIndicatorContainer2} /> : <span className="h-2 w-4 shrink-0" />}
+                          {r.unread ? <span className="flex h-2 w-4 shrink-0 items-center justify-center"><span className="size-2 rounded-full bg-primary" /><span className="sr-only">Sin leer</span></span> : <span className="h-2 w-4 shrink-0" />}
                           <NotificationIcon kind={r.kind} size="sm" />
                         </div>
                         <div className="flex min-w-0 flex-1 basis-48 flex-col gap-0.5">

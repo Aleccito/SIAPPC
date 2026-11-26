@@ -500,6 +500,14 @@ export type PatientVitals = {
   at: string | null;
 };
 
+/** Un monitor a pie de cama, para asignarlo a un paciente (routes/devices.ts). */
+export type Monitor = {
+  id: string;
+  code: string;
+  model: string | null;
+  state: DeviceState;
+};
+
 /** Conectividad de un equipo a pie de cama, para el tablero del administrador. */
 export type DeviceStatus = {
   code: string;

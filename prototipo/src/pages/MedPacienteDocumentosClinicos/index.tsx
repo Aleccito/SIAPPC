@@ -8,22 +8,8 @@ import type { HistoriaEntry } from '../../api/types/clinical';
 import imgFileText7 from '../../assets/file-text-7.svg';
 import imgImageIcon from '../../assets/image-icon.svg';
 import imgLabIcon from '../../assets/lab-icon.svg';
-import imgUpload from '../../assets/upload.svg';
 import imgUpload2 from '../../assets/upload-2.svg';
-import {
-  BackButton,
-  Button,
-  Card,
-  DocumentPreview,
-  EmptyState,
-  PatientLayout,
-  rowButton,
-  UploadDocumentModal,
-  usePatient,
-  useToast,
-  type DocumentType,
-  type PatientView,
-} from '../../components';
+import { BackButton, Button, Card, DocumentPreview, type DocumentType, EmptyState, IconUpload, PatientLayout, type PatientView, rowButton, UploadDocumentModal, usePatient, useToast } from '../../components';
 import { fmtDate, staffName } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 
@@ -108,7 +94,7 @@ function Documentos({ v }: { v: PatientView }) {
             </button>
           ))}
         </div>
-        <Button icon={<img className="size-3.5" alt="" src={imgUpload} />} onClick={() => setUploadOpen(true)}>
+        <Button icon={<IconUpload size={14} />} onClick={() => setUploadOpen(true)}>
           Subir documento
         </Button>
       </div>

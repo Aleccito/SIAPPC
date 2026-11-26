@@ -1,0 +1,122 @@
+[
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "probabilidad",
+  "tipoBackend": "dato",
+  "pregunta": "¿Cuál es la probabilidad de muerte de este paciente?",
+  "primer_trozo_s": 24.4,
+  "total_s": 25.9,
+  "palabras": 14,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "El índice de shock no calculable debido a la falta de presión arterial sistólica.\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "pronostico",
+  "tipoBackend": "analisis",
+  "pregunta": "¿Cuál es su pronóstico?",
+  "primer_trozo_s": 9.2,
+  "total_s": 49,
+  "palabras": 243,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Gravedad:**\n\n*   NEWS2 parcial 8 (riesgo alto, algún parámetro en 3; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow))\n*   qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow))\n*   Índice de shock no calculable (sin PA)\n\n**Banderas rojas:**\n\n*   SpO2 baja (alta): 58 veces en las últimas 6 h.\n*   FC elevada: 116 lpm (último valor).\n*   Disnea persistente, a pesar de la mejoría reportada.\n\n**Diferenciales:**\n\n*   Tromboembolia pulmonar (TEP): es el diagnóstico presuntivo más probable dado el dolor torácico y la falta de aire súbita en un paciente postoperatorio.\n*   Fractura de cuello de fémur: puede causar dolor, pero no explica la disnea o la taquicardia.\n*   Otros: Considerar otras causas de dolor torácico (neumonía, pericarditis), aunque son menos probables dada la historia y el contexto.\n\n**Estudios:**\n\n*   Angio-TC para confirmar o descartar TEP.\n*   Evaluación de función renal (creatinina sérica) para ajustar la Enoxaparina si es necesario.\n*   Considerar gasometría arterial para evaluar la oxigenación y la ventilación.\n\n**Manejo:**\n\n*   Continuar con oxígeno suplementario, monitorizando la saturación.\n*   Monitorizar continuamente los signos vitales (FC, SpO2, FR).\n*   Evaluar la necesidad de analgesia adicional.\n*   Considerar la posibilidad de un tratamiento trombolítico si la Angio-TC confirma una TEP con evidencia de isquemia miocárdica.\n\n**Datos faltantes:**\n\n*   Peso del paciente.\n*   Función renal (creatinina sérica).\n*   Presión arterial sistólica.\n*   Glasgow Coma Scale (GCS) para evaluar el estado de conciencia.\n*   Si recibe oxígeno suplementario, y si es así, la FiO2.\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "mortalidad",
+  "tipoBackend": "analisis",
+  "pregunta": "¿Qué riesgo de mortalidad tiene?",
+  "primer_trozo_s": 9.3,
+  "total_s": 35.9,
+  "palabras": 157,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Gravedad:**\n\n*   NEWS2 parcial 6 (riesgo medio).\n*   qSOFA 1 de 1 criterios evaluables.\n*   Indice de shock no calculable (sin PA).\n*   Gravedad sugerida por el NEWS2: moderada (puede ser mayor: el puntaje es parcial).\n\n**Banderas rojas:**\n\n*   SpO2 baja (alta): 58 veces en las últimas 6 h.\n*   Abiertas sin atender: 180 (6 de los últimos 30 min; las demás son anteriores).\n\n**Diferenciales:**\n\n*   Posible descompensación de la fractura de cadera, dada la disnea y el dolor torácico.\n*   Descompensación de la TEP preexistente.\n\n**Estudios:**\n\n*   Hemodinámica (PA sistólica)\n*   Función renal (creatinina sérica).\n*   Gasometría arterial.\n*   Electrocardiograma (ECG).\n\n**Manejo:**\n\n*   Continuar con oxígeno suplementario para mantener SpO2 > 90%.\n*   Considerar la necesidad de analgesia para el dolor torácico.\n*   Monitorizar estrechamente los signos vitales y el estado de conciencia.\n*   Evaluar la posibilidad de realizar una TAC cerebral si hay sospecha de un evento cerebrovascular relacionado con la TEP o la cirugía.\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "sobrevivir",
+  "tipoBackend": "dato",
+  "pregunta": "¿Qué probabilidad tiene de sobrevivir?",
+  "primer_trozo_s": 8,
+  "total_s": 10.4,
+  "palabras": 20,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "El paciente tiene un puntaje NEWS2 parcial de 6 y un qSOFA de 1, lo que sugiere una gravedad moderada.\n"
+ },
+ {
+  "cedula": "DEMO-0001",
+  "tipo": "probabilidad",
+  "tipoBackend": "dato",
+  "pregunta": "¿Cuál es la probabilidad de muerte de este paciente?",
+  "primer_trozo_s": 9.6,
+  "total_s": 12.1,
+  "palabras": 20,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "El paciente tiene un puntaje NEWS2 parcial de 9 y un qSOFA de 1, lo que sugiere una gravedad alta.\n"
+ },
+ {
+  "cedula": "DEMO-0001",
+  "tipo": "pronostico",
+  "tipoBackend": "analisis",
+  "pregunta": "¿Cuál es su pronóstico?",
+  "primer_trozo_s": 8.3,
+  "total_s": 38.4,
+  "palabras": 190,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Gravedad:**\n\n*   NEWS2 parcial 8 (riesgo alto, algún parámetro en 3; sin oxígeno suplementario, PA sistólica, conciencia (Glasgow)).\n*   qSOFA 1 de 1 criterios evaluables (sin PA sistólica, conciencia (Glasgow)).\n*   Índice de shock no calculable (sin PA).\n\n**Banderas rojas:**\n\n*   FC fuera de rango.\n*   SpO2 baja.\n*   Confusión.\n*   Disuria previa.\n*   Positiva puñopercusión derecha.\n\n**Diferenciales:**\n\n*   Aunque el diagnóstico activo es sepsis, podría estar descompensado por una infección bacteriana resistente a la ceftriaxona o por un estado de shock séptico severo.\n\n**Estudios:**\n\n*   Hemocultivos y urocultivo (para identificar la fuente de la infección).\n*   Lactato (para evaluar el grado de acidosis metabólica).\n*   Pruebas de función renal (creatinina, BUN) para evaluar la función renal.\n*   Gasometría arterial (para evaluar la acidosis y la oxigenación).\n*   Análisis de sangre completo (CBC) con diferencial.\n\n**Manejo:**\n\n*   Iniciar cristaloides 30 ml/kg por vía intravenosa.\n*   Considerar vasopresores si no hay respuesta a los fluidos.\n*   Monitorizar la saturación de oxígeno y ajustar la oxigenoterapia según sea necesario.\n*   Controlar la glucemia.\n*   Evaluar la necesidad de soporte respiratorio (ej: ventilación mecánica) si la saturación de oxígeno no mejora con oxigenoterapia.\n"
+ },
+ {
+  "cedula": "DEMO-0007",
+  "tipo": "probabilidad",
+  "tipoBackend": "dato",
+  "pregunta": "¿Cuál es la probabilidad de muerte de este paciente?",
+  "primer_trozo_s": 8.3,
+  "total_s": 9.9,
+  "palabras": 15,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "El índice de shock no es calculable debido a la falta de presión arterial sistólica.\n"
+ },
+ {
+  "cedula": "DEMO-0007",
+  "tipo": "mortalidad",
+  "tipoBackend": "analisis",
+  "pregunta": "¿Qué riesgo de mortalidad tiene?",
+  "primer_trozo_s": 6.3,
+  "total_s": 31,
+  "palabras": 164,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Gravedad:**\n\n*   Gravedad sugerida por el NEWS2: baja (puede ser mayor: el puntaje es parcial).\n\n**Banderas rojas:**\n\n*   No hay banderas rojas identificadas en el contexto.\n\n**Diferenciales:**\n\n*   Asma exacerbada (considerar si la paciente tiene antecedentes de asma y si presenta sibilancias o dificultad para respirar).\n*   Empeoramiento de la neumonía adquirida en la comunidad (si hay deterioro clínico, como aumento de la fiebre, taquipnea, disminución del nivel de conciencia o signos de sepsis).\n\n**Estudios:**\n\n*   Considerar solicitar un hemograma completo y una radiografía de tórax para evaluar la evolución de la neumonía.\n*   Si no se dispone de resultados de PCR, considerar solicitarla para confirmar el diagnóstico bacteriano.\n\n**Manejo:**\n\n*   Continuar con la amoxicilina/clavulánico según dosis actual.\n*   Administrar antipiréticos según necesidad (paracetamol).\n*   Asegurar una adecuada hidratación oral.\n*   Monitorizar los signos vitales y el nivel de saturación de oxígeno.\n\n**Datos faltantes:**\n\n*   Peso del paciente.\n*   Función renal.\n*   Presión arterial.\n*   Glasgow (estado de conciencia).\n*   Si recibe oxígeno suplementario.\n"
+ },
+ {
+  "cedula": "DEMO-0002",
+  "tipo": "gravedad",
+  "tipoBackend": "gravedad",
+  "pregunta": "¿Gravedad de este paciente?",
+  "primer_trozo_s": 11.3,
+  "total_s": 19.9,
+  "palabras": 53,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Gravedad: alta** · NEWS2 parcial 7\n- SpO2 90 % (hace 1 min; últimas 6 h entre 88 y 94)\n- FC 109 lpm (hace 1 min; últimas 6 h entre 106 y 120)\nFalta para afinarla: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.\n"
+ },
+ {
+  "cedula": "DEMO-0011",
+  "tipo": "gravedad",
+  "tipoBackend": "gravedad",
+  "pregunta": "¿Está grave?",
+  "primer_trozo_s": 9.4,
+  "total_s": 21.6,
+  "palabras": 70,
+  "modelo": "hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M",
+  "error": null,
+  "respuesta": "**Gravedad: baja** · NEWS2 parcial 0\n- FC 77 lpm (últimas 6 h entre 76 y 85)\n- SpO2 97 % (últimas 6 h entre 95 y 99)\n- FR 15 rpm (últimas 6 h entre 14 y 18)\n- Temperatura 37.2 °C (últimas 6 h entre 36.9 y 37.5)\n- Falta para afinarla: peso, función renal y demás laboratorios, presión arterial, Glasgow (estado de conciencia), si recibe oxígeno suplementario.\n"
+ }
+]

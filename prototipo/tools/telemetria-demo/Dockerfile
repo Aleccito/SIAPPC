@@ -4,6 +4,6 @@ FROM node:24-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
-COPY publicador.mjs casos.json ./
+COPY publicador.mjs casos.json perfiles.json ./
 USER node
 CMD ["node", "publicador.mjs"]

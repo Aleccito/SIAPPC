@@ -79,6 +79,7 @@ export function detectarTemas(pregunta: string): Set<Tema> {
 export type TipoPregunta =
   | "dato"
   | "gravedad"
+  | "pronostico"
   | "analisis"
   | "diferenciales"
   | "estudios"
@@ -93,7 +94,9 @@ export type TipoPregunta =
 const TIPOS: Array<[TipoPregunta, RegExp]> = [
   ["turno", /\bturno\b|\bguardia\b|\bhandoff\b|entreg(a|ar)\b.*\b(paciente|turno|guardia)\b|\bpase de (visita|guardia)/],
   ["farmaco", /\bdosis\b|\bpuedo (darle|dar|indicar|administrar|usar|ponerle|iniciar)|\bse (le )?puede (dar|indicar|administrar|usar)|\binteracci|contraindic|\bfarmaco|\bsuspend(o|er|emos)\b|\bpuede (tomar|recibir|usar)\b/],
-  ["gravedad", /graved|\bgrave\b|que tan (mal|critico|inestable)|\b(esta|sigue) (estable|inestable|critico)|\bnews ?2?\b|\bqsofa\b|riesgo de (deterioro|muerte)/],
+  // Antes que gravedad: "¿qué riesgo de mortalidad tiene?" pide además decir que no hay una probabilidad exacta.
+  ["pronostico", /pronostic|mortalidad|probabilidad(es)? de (muerte|morir|fallecer|sobrevivir|vivir|salir)|\bmorir|\bmuerte\b|se (va a )?muer|sobreviv|supervivencia|fallec|salir adelante/],
+  ["gravedad", /graved|\bgrave\b|que tan (mal|critico|inestable)|\b(esta|sigue) (estable|inestable|critico)|\bnews ?2?\b|\bqsofa\b|riesgo de deterioro|que riesgo tiene|cual es su riesgo|nivel de riesgo|riesgo (vital|clinico|actual)/],
   ["diferenciales", /diferencial|diagnosticos? (mas )?probables?|posibles? diagnostic|que (mas )?podria tener|que podria ser/],
   ["banderas", /bandera|signos? de alarma|datos? de alarma|que (debo )?vigilar|\bvigilar\b/],
   ["estudios", /\bestudios?\b|\bexamen(es)?\b|laboratorios? (pedir|solicitar|faltan)|que (solicit|pid)o|que (solicit|ped)ir|paraclinic|imagen(es)? (pedir|solicitar)/],
@@ -117,7 +120,9 @@ export function detectarTipo(pregunta: string, conSintomas = false): TipoPregunt
 export const PARAMETROS: Record<TipoPregunta, { maxTokens: number; temperature: number }> = {
   // 120 y no 80: una lista de cinco medicamentos con su dosis no entra en 80.
   dato: { maxTokens: 120, temperature: 0.1 },
-  gravedad: { maxTokens: 220, temperature: 0.1 },
+  // El riesgo lo escribe el backend (services/aiParse.ts, lineasRiesgo); el modelo agrega una línea.
+  gravedad: { maxTokens: 90, temperature: 0.1 },
+  pronostico: { maxTokens: 90, temperature: 0.1 },
   farmaco: { maxTokens: 220, temperature: 0.1 },
   estudios: { maxTokens: 220, temperature: 0.2 },
   banderas: { maxTokens: 220, temperature: 0.2 },
@@ -142,12 +147,13 @@ export function temasDelTipo(tipo: TipoPregunta): Tema[] {
 export const INSTRUCCION: Record<TipoPregunta, string> = {
   dato: `Piden un dato. Responde en UNA frase corta con el dato tal como está en el contexto, sin análisis ni recomendaciones. Si son varios (por ejemplo, la lista de medicamentos), una viñeta por cada uno. Si el dato no está en el contexto, dilo en una frase.`,
 
-  gravedad: `Piden la gravedad. Responde SOLO con este formato:
-**Gravedad: <alta | moderada | baja, la "gravedad sugerida por el NEWS2" del contexto>** · NEWS2 <solo el número, y "parcial" si lo es>
-- <signo vital o hallazgo del contexto, con su valor, que la sostiene>
-- <otro signo vital o hallazgo, con su valor>
-- Falta para afinarla: <datos que no hay, si faltan>
-Nada más después de esas líneas.`,
+  // El sistema ya escribió el riesgo calculado (NEWS2 con su significado, por qué es parcial y el puntaje de su
+  // enfermedad) antes de este texto: el modelo solo agrega lo que más lo sostiene.
+  gravedad: `El sistema ya le mostró al médico el riesgo calculado. NO nombres el NEWS2, el qSOFA ni ningún otro puntaje, y no des porcentajes. Escribe UNA sola línea, con este formato:
+- **Lo que más pesa:** <el signo vital que más suma según "lo que más suma" del contexto, con su valor y unidad; o, si no suma ninguno, el hallazgo o antecedente del contexto que más explica el riesgo>`,
+
+  pronostico: `El sistema ya le mostró al médico el riesgo calculado y que no se puede dar una probabilidad exacta. NO nombres el NEWS2, el qSOFA ni ningún otro puntaje, y no des porcentajes. Escribe UNA sola línea, con este formato:
+- **Lo que más pesa:** <el signo vital que más suma según "lo que más suma" del contexto, con su valor y unidad; o, si no suma ninguno, el hallazgo o antecedente del contexto que más explica el riesgo>`,
 
   diferenciales: `Piden diagnósticos diferenciales. Da de 2 a 4, de más a menos probable. Cada uno es una ENFERMEDAD o un síndrome, nunca un síntoma ni un signo, y distinto de los demás. Solo los que sostiene algún síntoma, signo, valor o antecedente del contexto (un puntaje no sostiene un diagnóstico); no agregues uno por llenar. No agregues estudios ni manejo. Formato:
 1. **<diagnóstico>** · <síntoma, signo, valor o antecedente del contexto que lo sostiene>`,

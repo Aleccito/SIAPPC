@@ -8,6 +8,7 @@ import { notificarAlerta } from "../lib/notificaciones.ts";
 import { repartirOnda, waveformSchema } from "./waveform.ts";
 import { encolarAnalisisIA } from "./aiAuto.ts";
 import { ColaPorClave, clasificarLectura, topicCompartido, type Frescura } from "./mqttOrden.ts";
+import { usarClienteAsignacion } from "./mqttAsignacion.ts";
 
 // Forma de siappc/<device>/telemetry, ver iot/src/publisher.py:build_payload.
 // `variable` no es un enum cerrado: sensor.variable_medida es VARCHAR(60) y
@@ -417,6 +418,9 @@ export function startMqttIngest(logger: FastifyBaseLogger): mqtt.MqttClient {
       if (err) logger.error({ err }, "mqtt: fallo al suscribirse a la onda");
     });
   });
+
+  // El mismo cliente publica el aviso de asignación de cada monitor (services/mqttAsignacion.ts).
+  usarClienteAsignacion(client, logger);
 
   client.on("reconnect", () => logger.warn("mqtt: reconectando…"));
   client.on("error", (err) => logger.error({ err }, "mqtt: error de conexión"));

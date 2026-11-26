@@ -47,7 +47,8 @@ export type BedView = MonitoredBed & { cedula: string | null; state: ClinicalSta
 /** Camas de la unidad con el paciente (cédula, estado clínico, PA y temperatura). */
 export function useUnitBeds(unit: string) {
   const beds = useMonitoredBeds();
-  const patients = usePatients();
+  // Con los ids de las camas: un paciente recién admitido no sale como cama "Disponible" mientras se pide la lista.
+  const patients = usePatients({ ids: (beds.data ?? []).map((b) => b.patientId) });
   const signos = useSignosTodos();
   const units = [...new Set((beds.data ?? []).map((b) => b.unit))];
   const list: BedView[] = (beds.data ?? [])

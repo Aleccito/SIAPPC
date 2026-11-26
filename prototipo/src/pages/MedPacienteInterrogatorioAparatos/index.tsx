@@ -8,12 +8,11 @@ import { getInterrogatorio, saveInterrogatorio, useExtra, type Interrogatorio } 
 import imgActivity3 from '../../assets/activity-3.svg';
 import imgBone from '../../assets/bone.svg';
 import imgBrain from '../../assets/brain.svg';
-import imgChevronDown2 from '../../assets/chevron-down-2.svg';
 import imgCircleX from '../../assets/circle-x.svg';
 import imgDroplet from '../../assets/droplet.svg';
 import imgIconWrapper from '../../assets/icon-wrapper.svg';
 import imgSparkles from '../../assets/sparkles.svg';
-import { BackButton, Badge, Button, Card, Divider, focusFirst, PatientLayout, rowButton, TextArea, usePatient, useToast, useValidation, type PatientView } from '../../components';
+import { BackButton, Badge, Button, Card, Divider, focusFirst, IconChevronDown, PatientLayout, type PatientView, rowButton, TextArea, usePatient, useToast, useValidation } from '../../components';
 import { checkText } from '../../lib/validate';
 import { cn } from '../../lib/cn';
 
@@ -122,7 +121,7 @@ function InterrogatorioForm({ v, data }: { v: PatientView; data: Interrogatorio 
                 <div className="flex shrink-0 items-center gap-3">
                   <FindingsBadge count={marks.size} />
                   <span className="flex size-7 items-center justify-center rounded-full border border-[#dbeafe] bg-[#f1f5f9]">
-                    <img className="size-4 rotate-180" alt="" src={imgChevronDown2} />
+                    <IconChevronDown size={16} className="text-muted" />
                   </span>
                 </div>
               </div>
@@ -138,7 +137,7 @@ function InterrogatorioForm({ v, data }: { v: PatientView; data: Interrogatorio 
                 <div className="flex shrink-0 items-center gap-4">
                   <FindingsBadge count={marks.size} />
                   <button type="button" onClick={() => toggleOpen(s.title)} aria-expanded aria-label={`Plegar ${s.title}`} className="flex rounded-full hover:opacity-80">
-                    <img className="size-7" alt="" src={imgChevronDown2} />
+                    <span className="flex size-7 shrink-0 items-center justify-center"><IconChevronDown size={16} className="rotate-180 text-muted" /></span>
                   </button>
                 </div>
               </div>

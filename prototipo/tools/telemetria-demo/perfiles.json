@@ -1,0 +1,17 @@
+{
+  "_nota": "SIMULADO. Perfil de signos de un monitor de demo asignado a un paciente que no está en casos.json (por ejemplo, uno admitido desde la app principal). Se elige por el primer perfil cuyas `palabras` aparezcan en los diagnósticos activos; si ningún diagnóstico coincide (o todavía no hay), en el motivo de consulta; si tampoco, `general`. El texto se compara en minúscula y sin tildes. Cada signo es [centro, amplitud], como en casos.json; los críticos quedan cerca de los umbrales del backend (FC 50-120, SpO2 < 90, FR 8-30) y los cruzan a ratos.",
+  "perfiles": [
+    { "nombre": "tep", "palabras": "tromboembolia|embolia pulmonar|\\btep\\b|\\[i26", "hr": [112, 7], "spo2": [91, 2.2], "resp": [25, 3], "temp": [37.5, 0.25], "ritmo": "sinusal" },
+    { "nombre": "sepsis", "palabras": "sepsis|septic|pielonefr|infeccion urinaria|fiebre alta|\\[a4[01]|\\[r65", "hr": [114, 7], "spo2": [93, 1.8], "resp": [24, 3], "temp": [38.8, 0.35], "ritmo": "sinusal" },
+    { "nombre": "respiratorio", "palabras": "neumon|epoc|asma|bronqu|disnea|falta de aire|dificultad para respirar|\\btos\\b|sibilanc|\\[j", "hr": [104, 6], "spo2": [91.5, 2], "resp": [25, 3], "temp": [37.8, 0.35], "ritmo": "sinusal" },
+    { "nombre": "arritmia", "palabras": "fibrilacion|aleteo|flutter|arritmi|palpitacion|taquicardia|\\[i4[78]", "hr": [118, 14], "spo2": [95, 1.5], "resp": [19, 2], "temp": [36.7, 0.2], "ritmo": "fa" },
+    { "nombre": "cardiaco", "palabras": "insuficiencia cardiaca|edema|ortopnea|hinchazon de piernas|\\[i50", "hr": [96, 5], "spo2": [92, 1.8], "resp": [23, 2], "temp": [36.7, 0.2], "ritmo": "sinusal" },
+    { "nombre": "coronario", "palabras": "infarto|angina|coronari|dolor toracico|dolor en el pecho|opresion|\\[i2[0-5]", "hr": [98, 6], "spo2": [95, 1.5], "resp": [20, 2], "temp": [36.8, 0.2], "ritmo": "sinusal" },
+    { "nombre": "trauma", "palabras": "fractur|trauma|politrauma|caida|accidente|herida|contusion|golpe|\\[s|\\[t0", "hr": [104, 8], "spo2": [95, 1.5], "resp": [21, 2], "temp": [36.4, 0.2], "ritmo": "sinusal" },
+    { "nombre": "abdominal", "palabras": "apendic|colecist|pancreat|abdom|iliaca|posoperatori|postoperatori|vomito|\\[k", "hr": [100, 6], "spo2": [96, 1], "resp": [19, 2], "temp": [37.7, 0.3], "ritmo": "sinusal" },
+    { "nombre": "metabolico", "palabras": "hipoglucem|cetoacidosis|diabet|glucemia|glucosa|\\[e1[0-6]", "hr": [92, 5], "spo2": [97, 1], "resp": [18, 2], "temp": [36.6, 0.2], "ritmo": "sinusal" },
+    { "nombre": "neurologico", "palabras": "cefalea|dolor de cabeza|convulsi|ictus|evc|neurolog|migran|confusion|\\[g|\\[i6", "hr": [84, 5], "spo2": [96, 1], "resp": [16, 1.5], "temp": [36.9, 0.2], "ritmo": "sinusal" },
+    { "nombre": "obstetrico", "palabras": "embaraz|gestac|obstetr|semanas de|\\[o", "hr": [92, 4], "spo2": [98, 0.6], "resp": [18, 1.5], "temp": [36.9, 0.2], "ritmo": "sinusal" },
+    { "nombre": "general", "palabras": "", "hr": [82, 4], "spo2": [97, 1], "resp": [16, 1.5], "temp": [36.8, 0.2], "ritmo": "sinusal" }
+  ]
+}

@@ -4,11 +4,10 @@
 import { useRef, useState } from 'react';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
-import imgChevronDown3 from '../../assets/chevron-down-3.svg';
-import imgDownload from '../../assets/download.svg';
 import { useExpediente, useSoapNotes } from '../../api/queries';
 import { getTendencias, useExtra } from '../../api/sinBackend';
-import { AppLayout, Badge, Button, Divider, PatientAvatar, SearchBox, SegmentedControl, Select, Table } from '../../components';
+import { AppLayout, Badge, Button, Divider, IconChevronDown, IconDownload, PatientAvatar, SearchBox, SegmentedControl, Select, Table } from '../../components';
+import { direccionFc, direccionSpo2, Flecha, type Direccion } from '../../components/ui/Flecha';
 import { imprimirElemento } from '../../lib/imprimir';
 import { Sparkline } from '../../components/ui/Sparkline';
 import { usePatientRows, type PatientRow } from '../../data/patients';
@@ -60,9 +59,9 @@ function PatientColumn({ p, hours }: { p: PatientRow; hours: number }) {
   const { hr, spo2 } = p.vitals;
   const pa = p.signos?.pa;
   const tone = (t: string) => (t === 'normal' ? undefined : (t as 'danger' | 'warning'));
-  const kpis: Array<{ label: string; value: string; alert?: 'danger' | 'warning' }> = [
-    { label: 'FC (LPM)', value: `${hr ?? '—'}${hr && hr > 100 ? ' ↑' : hr && hr < 60 ? ' ↓' : ''}`, alert: tone(vitalTone('hr', hr)) },
-    { label: 'SpO2 (%)', value: `${spo2 ?? '—'}%${spo2 && spo2 < 95 ? ' ↓' : ''}`, alert: tone(vitalTone('spo2', spo2)) },
+  const kpis: Array<{ label: string; value: string; dir?: Direccion; alert?: 'danger' | 'warning' }> = [
+    { label: 'FC (LPM)', value: `${hr ?? '—'}`, dir: direccionFc(hr), alert: tone(vitalTone('hr', hr)) },
+    { label: 'SpO2 (%)', value: `${spo2 ?? '—'}%`, dir: direccionSpo2(spo2), alert: tone(vitalTone('spo2', spo2)) },
     { label: 'PA (mmHg)', value: pa ? `${pa.sis}/${pa.dia}` : '—', alert: tone(vitalTone('pa', pa?.sis)) },
     { label: 'Temp', value: p.signos ? `${p.signos.temp.toFixed(1)}°C` : '—', alert: tone(vitalTone('temp', p.signos?.temp)) },
     { label: 'Glasgow', value: p.glasgow ? `${p.glasgow}/15` : '—' },
@@ -111,7 +110,10 @@ function PatientColumn({ p, hours }: { p: PatientRow; hours: number }) {
         {kpis.map((k) => (
           <div key={k.label} className={cn('flex min-w-0 flex-col gap-1 rounded-lg p-3', k.alert ? KPI_STYLE[k.alert] : 'bg-surface')}>
             <p className={cn('font-jakarta text-[11px] font-semibold', !k.alert && 'text-muted')}>{k.label}</p>
-            <p className={cn('whitespace-nowrap font-jakarta text-[20px] font-extrabold', !k.alert && 'text-ink')}>{k.value}</p>
+            <p className={cn('flex items-center gap-1 whitespace-nowrap font-jakarta text-[20px] font-extrabold', !k.alert && 'text-ink')}>
+              {k.value}
+              <Flecha dir={k.dir ?? null} size={16} />
+            </p>
           </div>
         ))}
       </div>
@@ -150,7 +152,7 @@ export default function MedMonitoreoComparativa() {
   const mb = usePatientData(b, hours).metrics;
   // Cada lista excluye al paciente que ya está en la otra columna.
   const optionsFor = (other: PatientRow | undefined) => rows.filter((p) => p !== other).map((p) => p.name);
-  const chevron = <img className="size-3 shrink-0" alt="" src={imgChevronDown3} />;
+  const chevron = <IconChevronDown size={12} className="text-muted" />;
   const alertsText = (m: Metrics) => (m.alerts === 0 ? 'Sin alertas' : `${m.alerts} ${m.alerts === 1 ? 'alerta' : 'alertas'} ${m.critical ? 'críticas' : 'preventivas'}`);
 
   const summary: Array<[string, string, string, string, 'danger' | 'warning' | 'success']> =
@@ -191,7 +193,7 @@ export default function MedMonitoreoComparativa() {
           <div className="flex flex-wrap items-center gap-3">
             <SegmentedControl label="Periodo" items={PERIODS.map((p) => ({ id: String(p.hours), label: p.label }))} active={String(hours)} onChange={(id) => setHours(Number(id))} />
             {/* Imprime la comparativa (o la guarda en PDF desde el navegador). */}
-            <Button variant="secondary" icon={<img className="size-3.5" alt="" src={imgDownload} />} onClick={() => imprimirElemento(comparativa.current, 'Comparativa de pacientes')}>
+            <Button variant="secondary" icon={<IconDownload size={14} />} onClick={() => imprimirElemento(comparativa.current, 'Comparativa de pacientes')}>
               Exportar
             </Button>
           </div>

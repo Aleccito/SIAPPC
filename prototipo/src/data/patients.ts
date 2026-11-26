@@ -50,14 +50,13 @@ export function usePatientRows({ includeAttended = false } = {}) {
   return { rows, groups, isPending: assigned.isPending, isError: assigned.isError, error: assigned.error };
 }
 
-/** "FC: 132↑ SpO2: 88%↓" y "PA: 92/54 (Hipotensión)", como las filas de Figma. */
-export function vitalsText(r: PatientRow): [string, string] {
-  const { hr, spo2 } = r.vitals;
-  const hrArrow = hr === null ? '' : hr > 100 ? '↑' : hr < 60 ? '↓' : '';
-  const spo2Arrow = spo2 !== null && spo2 < 95 ? '↓' : '';
-  const first = `FC: ${hr ?? '—'}${hrArrow} SpO2: ${spo2 ?? '—'}%${spo2Arrow}`;
-  if (!r.signos) return [first, 'PA: —'];
+/**
+ * "PA: 92/54 (Hipotensión)", como las filas de Figma. La primera línea ("FC: 132 ↑ SpO2: 88% ↓") la arma cada pantalla
+ * con `Flecha` (components/ui/Flecha.tsx): las flechas eran caracteres que dependen de la fuente del sistema.
+ */
+export function paText(r: PatientRow): string {
+  if (!r.signos) return 'PA: —';
   const { sis, dia } = r.signos.pa;
   const note = sis < 90 ? ' (Hipotensión)' : sis < 100 ? ' (Baja)' : sis > 140 ? ' (Elevada)' : '';
-  return [first, `PA: ${sis}/${dia}${note}`];
+  return `PA: ${sis}/${dia}${note}`;
 }

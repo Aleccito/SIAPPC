@@ -2,13 +2,12 @@
 // Con el backend, los monitores de GET /dashboard/devices; sin él, los 8 del seed (src/data/useDevices.ts).
 import { useState } from 'react';
 import imgDropdownBadgeEllipse2 from '../../assets/dropdown-badge-ellipse-2.svg';
-import imgFiltersRowFrame from '../../assets/filters-row-frame.svg';
 import imgKpiRowFrame from '../../assets/kpi-row-frame.svg';
 import imgKpiRowFrame2 from '../../assets/kpi-row-frame-2.svg';
 import imgKpiRowFrame3 from '../../assets/kpi-row-frame-3.svg';
 import imgKpiRowFrame4 from '../../assets/kpi-row-frame-4.svg';
 import imgSearchFieldVector from '../../assets/search-field-vector.svg';
-import { AppLayout, Badge, Button, Card, EmptyState, KpiCard, Pagination, rowLinkClass, SearchBox, Select, Table, useRowLink } from '../../components';
+import { AppLayout, Badge, Button, Card, EmptyState, IconFilter, KpiCard, Pagination, rowLinkClass, SearchBox, Select, Table, useRowLink } from '../../components';
 import { deviceDetailPath, STATUS_TONE } from '../../data/devices';
 import { useDevices } from '../../data/useDevices';
 import { cn } from '../../lib/cn';
@@ -24,7 +23,7 @@ const STATUS_OPTIONS = [
   { value: 'INACTIVO', label: 'Inactivo' },
 ];
 
-const filterIcon = <img className="size-3.5" alt="" src={imgFiltersRowFrame} />;
+const filterIcon = <IconFilter size={14} className="text-muted" />;
 const kpiIcon = (src: string) => <img className="size-7 shrink-0" alt="" src={src} />;
 
 export default function MedDispositivosMonitores() {
@@ -95,13 +94,14 @@ export default function MedDispositivosMonitores() {
           <Table minWidth={1060}>
             <div className={cn(COLS, 'border-b border-line bg-surface py-[14px] font-jakarta text-[11px] font-bold leading-[normal] text-muted')}>
               <p className="w-[76px] shrink-0">CAMA</p>
-              <p className="w-[160px] shrink-0">PACIENTE</p>
-              <p className="w-[180px] shrink-0">MODELO MONITOR</p>
+              <p className="min-w-[160px] flex-[1.6]">PACIENTE</p>
+              <p className="min-w-[150px] flex-[1.2]">MODELO MONITOR</p>
               <p className="w-[100px] shrink-0">ESTADO</p>
               <p className="w-[100px] shrink-0">BATERÍA</p>
               <p className="w-[130px] shrink-0">ÚLTIMA CALIBRACIÓN</p>
-              <p className="w-[180px] shrink-0">SEÑALES</p>
-              <p className="min-w-0 flex-1 text-right">ACCIÓN</p>
+              <p className="min-w-[180px] flex-[1.4]">SEÑALES</p>
+              {/* Proporcionales: con anchos fijos, "Acción" se llevaba ~250 px vacíos a 1920 (REVISION-DETALLES.md, A1). */}
+              <p className="w-[96px] shrink-0 text-right">ACCIÓN</p>
             </div>
             {rows.map((d) => {
               const low = d.battery < 20;
@@ -116,11 +116,11 @@ export default function MedDispositivosMonitores() {
                     <img className="size-4" alt="" src={d.icon} />
                     <p className="whitespace-nowrap font-jakarta text-[12px] font-extrabold leading-[normal] text-ink">{d.bed}</p>
                   </div>
-                  <div className="flex w-[160px] shrink-0 flex-col gap-0.5 leading-[normal]">
+                  <div className="flex min-w-[160px] flex-[1.6] flex-col gap-0.5 leading-[normal]">
                     <p className={cn('truncate font-jakarta text-[12px] font-bold', d.age ? 'text-ink' : 'text-muted')}>{d.patient}</p>
                     {d.age && <p className="font-jakarta text-[11px] font-medium text-muted">{d.age}</p>}
                   </div>
-                  <p className="w-[180px] shrink-0 truncate font-jakarta text-[13px] font-medium leading-[normal] text-ink">{d.model}</p>
+                  <p className="min-w-[150px] flex-[1.2] truncate font-jakarta text-[13px] font-medium leading-[normal] text-ink">{d.model}</p>
                   <div className="w-[100px] shrink-0">
                     <Badge tone={STATUS_TONE[d.status]} size="sm">{d.status}</Badge>
                   </div>
@@ -134,14 +134,14 @@ export default function MedDispositivosMonitores() {
                     {d.calibrationDue && <img className="size-1.5" alt="Calibración vencida" src={imgDropdownBadgeEllipse2} />}
                     <p className={cn('font-jakarta text-[13px] font-semibold leading-[normal]', d.calibrationDue ? 'text-warning' : 'text-ink')}>{d.calibration}</p>
                   </div>
-                  <div className="flex w-[180px] shrink-0 flex-wrap gap-1">
+                  <div className="flex min-w-[180px] flex-[1.4] flex-wrap gap-1">
                     {d.signals.map((s) => (
                       <span key={s} className="rounded border border-line bg-surface px-1.5 py-0.5 font-jakarta text-[10px] font-semibold leading-[normal] text-muted">
                         {s}
                       </span>
                     ))}
                   </div>
-                  <div className="flex min-w-0 flex-1 justify-end" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                  <div className="flex w-[96px] shrink-0 justify-end" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                     <Button variant="outline" size="sm" to={deviceDetailPath(d.bed)}>
                       Ver Detalle
                     </Button>
