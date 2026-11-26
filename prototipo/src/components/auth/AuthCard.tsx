@@ -1,6 +1,6 @@
+import { IconArrowLeft } from '../icons';
 import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import imgArrowLeft from '../../assets/login-arrow-left.svg';
 import { cn } from '../../lib/cn';
 import { useAuthText } from './authText';
 
@@ -111,7 +111,7 @@ export function AuthBackLink() {
   const { t } = useAuthText();
   return (
     <Link to="/Login" className="flex w-fit items-center gap-2 text-[14px] font-bold text-primary hover:underline">
-      <img className="size-4 shrink-0" alt="" src={imgArrowLeft} />
+      <IconArrowLeft size={16} />
       {t.back}
     </Link>
   );

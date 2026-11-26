@@ -21,6 +21,7 @@ import {
   estadoPaciente,
   grupoSanguineo,
   haceTexto,
+  lineasRiesgo,
   nombreSigno,
   recortar,
   sexoPaciente,
@@ -208,6 +209,54 @@ export async function patientContext(
     }
   }
   return recortar(lines.join("\n"), MAX_CONTEXTO);
+}
+
+/**
+ * Las líneas de riesgo de una pregunta de gravedad o de pronóstico (services/aiParse.ts, lineasRiesgo), con los
+ * datos reales: signos de la última hora, Glasgow, edad, sexo, diagnósticos activos y antecedentes. Las escribe el
+ * backend antes del texto del modelo (routes/ai.ts).
+ */
+export async function riesgoCalculado(patientId: number, hospitalId: number, pronostico: boolean): Promise<string[]> {
+  const p = await prisma.paciente.findFirst({
+    where: { paciente_id: patientId, hospital_id: hospitalId },
+    select: {
+      fecha_nacimiento: true,
+      sexo: true,
+      motivo_consulta: true,
+      expediente: {
+        select: {
+          diagnosticos: { where: { estado: "activo" }, select: { descripcion: true, cie10: true } },
+          antecedentes: { where: { activo: true }, select: { descripcion: true } },
+          exploracion: { select: { glasgow: true } },
+        },
+      },
+    },
+  });
+  if (!p) throw notFound("Paciente no encontrado");
+  const signos = await signosVitales(patientId);
+  const reciente = (codigo: string) => {
+    const u = signos.ultimos[codigo];
+    return u && Date.now() - u.fecha.getTime() <= VIGENCIA_PUNTAJE_MS ? u.valor : null;
+  };
+  const diagnosticos = (p.expediente?.diagnosticos ?? []).map((d) => (d.cie10 ? `${d.descripcion} [${d.cie10}]` : d.descripcion));
+  return lineasRiesgo(
+    {
+      hr: reciente("hr") ?? reciente("pr"),
+      resp: reciente("resp"),
+      spo2: reciente("spo2"),
+      temp: reciente("temp"),
+      // Nadie publica la PA ni dice si recibe oxígeno: el NEWS2 sale parcial y lo dice.
+      pas: null,
+      oxigeno: null,
+      glasgow: p.expediente?.exploracion?.glasgow ?? null,
+      edad: edad(p.fecha_nacimiento),
+      sexo: p.sexo,
+      motivo: p.motivo_consulta,
+      diagnosticos,
+      antecedentes: [...(p.expediente?.antecedentes ?? []).map((a) => a.descripcion), ...diagnosticos],
+    },
+    pronostico,
+  );
 }
 
 type Sensor = { sensor_id: number; variable_medida: string };

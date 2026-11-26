@@ -1,0 +1,114 @@
+[
+ {
+  "paso": "Médico entra al prototipo (Mis Pacientes, todavía sin la paciente)",
+  "ok": true,
+  "s": 2,
+  "detalle": {
+   "ok": true,
+   "esta": false
+  },
+  "captura": "b01-medico-antes"
+ },
+ {
+  "paso": "Administrativo entra a la app principal",
+  "ok": true,
+  "s": 6.5,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "b02-registrada-sin-cama"
+ },
+ {
+  "paso": "Asigna cama UCI-06",
+  "ok": true,
+  "s": 3.9,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "b03-cama"
+ },
+ {
+  "paso": "Pone a cargo a la enfermera de la unidad (sugerida) y a Carlos Méndez",
+  "ok": true,
+  "s": 4.6,
+  "detalle": {
+   "ok": true,
+   "sugerida": "Asignar a Lucía Ramos",
+   "aCargo": [
+    "Lucía Ramos · Enfermero",
+    "Carlos Méndez · Médico"
+   ]
+  },
+  "captura": "b04-personal"
+ },
+ {
+  "paso": "Asigna un monitor libre",
+  "ok": true,
+  "s": 2,
+  "detalle": {
+   "ok": true,
+   "libres": [
+    "DEMO-DEV-16 · Monitor de prueba · sin transmitir",
+    "DEMO-DEV-17 · Monitor de prueba · sin transmitir",
+    "DEMO-DEV-18 · Monitor de prueba · sin transmitir",
+    "DEMO-DEV-19 · Monitor de prueba · sin transmitir",
+    "DEMO-DEV-20 · Monitor de prueba · sin transmitir"
+   ],
+   "actual": "DEMO-DEV-16 · Monitor de prueba · transmitiendo"
+  },
+  "captura": "b05-monitor"
+ },
+ {
+  "paso": "Médico: aparece en el Dashboard al cambiar de pantalla",
+  "ok": false,
+  "s": 23.1,
+  "detalle": {
+   "ok": false
+  },
+  "captura": "b06-dashboard"
+ },
+ {
+  "paso": "Médico: aparece en Mis Pacientes",
+  "ok": true,
+  "s": 1.5,
+  "detalle": {
+   "ok": true
+  },
+  "captura": "b07-mis-pacientes"
+ },
+ {
+  "paso": "Médico: aparece en la central (UCI-06 ocupada)",
+  "ok": true,
+  "s": 16.7,
+  "detalle": {
+   "ok": true,
+   "fila": "UCI-06 R. Elena 70 años ESTABLE 101 92 134/79 37.8 25 — Registrar hace 14min"
+  },
+  "captura": "b08-central"
+ },
+ {
+  "paso": "Médico: signos en vivo en Monitoreo detallado (FC, SpO2, FR, temperatura y ECG)",
+  "ok": true,
+  "s": 5.3,
+  "detalle": {
+   "ok": true,
+   "fc": "101",
+   "spo2": "92",
+   "fr": "25",
+   "temp": "37.7",
+   "esperaDesdeLaPantalla_s": 0
+  },
+  "captura": "b09-signos-en-vivo",
+  "desdeAsignar_s": 47
+ },
+ {
+  "paso": "Médico: Resumen del paciente nuevo",
+  "ok": true,
+  "s": 6.2,
+  "detalle": {
+   "ok": true,
+   "monitor": "DEMO-DEV-16"
+  },
+  "captura": "b10-resumen"
+ }
+]

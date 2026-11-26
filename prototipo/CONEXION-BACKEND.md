@@ -906,6 +906,8 @@ vez ([LEEME](tools/telemetria-demo/LEEME.md#historia-para-las-tendencias)):
   minutos (5).
 - Quedan dentro de los umbrales del backend, a propósito: ver el pedido 34.
 - El backend las guarda como atrasadas (más de 60 s), sin avisos en vivo.
+- En el servidor escribe unas 17.000 lecturas en la base que también usa la app principal: se avisa antes de
+  correrla (`REVISION-MEDICO.md`, sección 8).
 
 ### 12.2 La IA del backend
 
@@ -921,3 +923,51 @@ el antes y después están en `REVISION-IA-RESPUESTAS.md`, sección 6.
     historia, crea una alerta con la hora de ahora: el prototipo la muestra como activa y reciente. Propuesta: en
     `mqttIngest.ts`, crear la alerta con la `fecha_hora` de su lectura (y, si se quiere, no crear alertas para
     lecturas de hace más de unos minutos, o crearlas ya resueltas).
+
+## 13. Ronda de detalles: monitores, alergias y nginx (rama `feature/prototipo-detalles`)
+
+Detalle, pruebas y capturas en `REVISION-DETALLES.md`.
+
+### 13.1 Lo que cambia en el backend (lo revisa Adrian)
+
+- **Monitores** (`routes/devices.ts`, `lib/monitores.ts`):
+  - `GET /devices/free` (`dispositivos: ver`): los del hospital sin paciente, `activo` o `inactivo`.
+  - `GET /patients/:id/device` (`dispositivos: ver`): `{ monitor }`, o `{ monitor: null }`, aunque no transmita.
+  - `PUT /patients/:id/device` `{ deviceId }` y `DELETE /patients/:id/device` (`dispositivos: editar`). Pide cama
+    (ingreso activo con cama), no asigna uno ocupado ni en mantenimiento, cambiar libera el anterior en la misma
+    transacción y todo queda en la bitácora.
+  - El egreso (`POST /admissions/:id/discharge`) y la cancelación del ingreso liberan el monitor.
+  - Matriz: el administrativo pasa a `dispositivos: editar` (`seed.sql` y `db/parches/2026-11-25-permiso-asignar-monitor.sql`).
+- **Aviso al monitor por MQTT** (`services/mqttAsignacion.ts`): `siappc/<equipo>/asignacion`, retenido,
+  `{ device, asignado, motivo, diagnosticos }`, sin nombre, cédula ni id. Al asignar o liberar, al conectarse y cada
+  2 min para todos los equipos. Lo usa el publicador de demo; le sirve también a un monitor real.
+- **Personal a cargo** (`GET /patients/care-staff`, `pacientes: editar`): médicos y enfermería activos del hospital,
+  sin correo ni teléfono. El diálogo "Personal a cargo" de la app principal usaba `GET /users` (`usuarios: ver`) y el
+  administrativo, que es quien admite, recibía 403 y no podía elegir al médico.
+- **IA:** tipo `pronostico` y líneas de riesgo calculadas (NEWS2, sPESI/PESI, CURB-65, qSOFA). Detenida a pedido;
+  `REVISION-DETALLES.md`, A5.
+- Pruebas: `Pruebas/backend/monitores.test.ts` (13) y casos nuevos en `aiTemas` y `aiPuntajes`. La suite completa con
+  base: 267 de 267.
+
+### 13.2 Lo que cambia en `frontend/` (lo revisa Adrian)
+
+- "Asignar monitor" en el menú de cada paciente de Pacientes (admin y administrativo), con el monitor actual, los
+  libres y "Liberar" en dos pasos (`AssignMonitorDialog.tsx`).
+- "Personal a cargo" sugiere la enfermería de la unidad de la cama en un clic y lista el personal con
+  `/patients/care-staff`.
+- `nginx.conf`: backend en una variable con `resolver` (no más 502 al reconstruirlo) e IP real de Cloudflare
+  (`CF-Connecting-IP`, solo desde la red local o de Docker), como `prototipo/nginx.conf`.
+
+### 13.3 Pedidos nuevos para Adrian
+
+35. **Profesionales de la agenda de Admisión.** `AdmissionsPage` también lista el personal con `GET /users`, que el
+    administrativo no puede leer: la lista de profesionales para una cita le sale vacía. Puede usar
+    `/patients/care-staff` o una ruta propia.
+36. **Flujos SSE en `frontend/nginx.conf`.** La app principal usa el flujo de alertas; el prototipo les quita el búfer
+    (`proxy_buffering off`) y les da 300 s. No se cambió aquí porque no se pidió.
+37. **Monitor asignado que todavía no transmite.** El tablero y la central solo muestran el equipo `activo` del
+    paciente: un monitor recién asignado en `inactivo` no aparece hasta su primera señal (con el publicador de demo,
+    segundos). Para un equipo real puede convenir mostrarlo como "sin señal".
+38. **Un solo publicador de demo en el servidor.** `tools/telemetria-demo/` (raíz, PR #64) es una copia anterior del
+    de `prototipo/tools/telemetria-demo/`: publica siempre los mismos 15 equipos. Si corren los dos, las lecturas y
+    las alertas salen duplicadas. Debe correr solo el del prototipo.

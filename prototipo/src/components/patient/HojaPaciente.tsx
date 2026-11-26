@@ -47,7 +47,8 @@ export function HojaPaciente({ v, onClose }: { v: PatientView; onClose: () => vo
   const activos = (filas: Array<Record<string, unknown>> | undefined, estado: string) => (filas ?? []).filter((f) => f.status === estado);
 
   const diagnosticos = activos(e?.diagnosticos, 'activo').map((d) => [texto(d.description), texto(d.code) && `(${d.code})`].filter(Boolean).join(' '));
-  const alergias = activos(e?.alergias, 'activa').map((a) => [texto(a.substance), texto(a.reaction) && `— ${a.reaction}`].filter(Boolean).join(' '));
+  // Con la severidad (REVISION-DETALLES.md, D): "Penicilina (grave) — urticaria".
+  const alergias = activos(e?.alergias, 'activa').map((a) => [texto(a.substance), a.severity && `(${String(a.severity)})`, texto(a.reaction) && `— ${a.reaction}`].filter(Boolean).join(' '));
   const medicamentos = activos(e?.medicamentos, 'activo').map((m) => [texto(m.name), texto(m.dose), texto(m.route), texto(m.frequency)].filter(Boolean).join(' '));
   const signosTexto = [
     vitals?.hr != null && `FC ${vitals.hr} lpm`,

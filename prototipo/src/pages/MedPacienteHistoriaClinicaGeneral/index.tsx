@@ -3,7 +3,6 @@
 // tiene, lo de src/api/sinBackend.ts.
 import { useState, type ReactNode } from 'react';
 import imgActivity2 from '../../assets/activity-2.svg';
-import imgChevronDown2 from '../../assets/chevron-down-2.svg';
 import imgClipboardList from '../../assets/clipboard-list.svg';
 import imgFileText3 from '../../assets/file-text-3.svg';
 import imgHeart from '../../assets/heart.svg';
@@ -14,20 +13,21 @@ import imgStethoscope from '../../assets/stethoscope.svg';
 import imgUser from '../../assets/user.svg';
 import { useMonitoredBeds } from '../../api/queries';
 import { getDatosExtra, getIndicacionesExtra, getInterrogatorio, getNotaIngreso, getSignosIngreso, useExtra } from '../../api/sinBackend';
-import { AppLink, BackButton, Button, Divider, PatientLayout, Table, usePatient, useSession, type PatientView } from '../../components';
+import { AppLink, BackButton, Button, Divider, IconArrowRight, IconChevronDown, PatientLayout, type PatientView, Table, usePatient, useSession } from '../../components';
 import { fmtDate } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 
 /** Botón redondeado que lleva a la sección completa. */
 const NavPill = ({ to, children }: { to: string; children: string }) => (
-  <AppLink to={to} className="rounded-full bg-[#eff2ff] px-4 py-2 font-jakarta text-[13px] font-medium leading-[normal] text-[#2663eb] hover:bg-primary-soft">
+  <AppLink to={to} className="flex items-center gap-1.5 rounded-full bg-[#eff2ff] px-4 py-2 font-jakarta text-[13px] font-medium leading-[normal] text-[#2663eb] hover:bg-primary-soft">
     {children}
+    <IconArrowRight size={14} />
   </AppLink>
 );
 
 const CollapseIcon = () => (
   <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[#dbeafe] bg-[#f1f5f9]">
-    <img className="size-4 rotate-180" alt="" src={imgChevronDown2} />
+    <IconChevronDown size={16} className="text-muted" />
   </span>
 );
 
@@ -48,7 +48,7 @@ function Section({ icon, title, expanded, children }: { icon: string; title: str
           aria-label={`${open ? 'Plegar' : 'Desplegar'} ${title}`}
           className={cn('flex shrink-0 rounded-full transition-transform hover:opacity-80', !open && 'rotate-180')}
         >
-          {expanded ? <img className="size-7 shrink-0" alt="" src={imgChevronDown2} /> : <CollapseIcon />}
+          {expanded ? <span className="flex size-7 shrink-0 items-center justify-center"><IconChevronDown size={16} className="rotate-180 text-muted" /></span> : <CollapseIcon />}
         </button>
       </div>
       {open && (
@@ -110,14 +110,14 @@ function Historia({ v }: { v: PatientView }) {
       title: 'Interrogatorio por Aparatos y Sistemas',
       text: marked.length ? `Hallazgos: ${marked.map(([name, x]) => `${name.replace(/^(Aparato|Sistema) /, '')} (${x.marcados.join(', ')})`).join(', ')}` : 'Sin hallazgos registrados',
       to: '/MedPacienteInterrogatorioAparatos',
-      link: 'Ver interrogatorio completo →',
+      link: 'Ver interrogatorio completo',
     },
     {
       icon: imgActivity2,
       title: 'Exploración Física',
       text: si ? `FC ${si.fc}bpm · PA ${si.ta} · FR ${si.fr}rpm · SpO₂ ${si.spo2}% · Temp ${si.temp.toFixed(1)}°C` : 'Evaluación primaria pendiente',
       to: '/MedPacienteExploracionFisica',
-      link: 'Ver exploración completa →',
+      link: 'Ver exploración completa',
     },
   ];
   const summaries2: typeof summaries = [
@@ -126,35 +126,35 @@ function Historia({ v }: { v: PatientView }) {
       title: 'Diagnósticos y Problemas Activos',
       text: `${dx.length} ${dx.length === 1 ? 'diagnóstico activo' : 'diagnósticos activos'}${dx.length ? ` - ${dx.map((d) => `${d.code} ${d.description}`).join(', ')}` : ''}`,
       to: '/MedPacienteDiagnosticosActivos',
-      link: 'Ver diagnósticos →',
+      link: 'Ver diagnósticos',
     },
     {
       icon: imgHome,
       title: 'Historial de Hospitalizaciones e Intervenciones',
       text: `Actual: ${fmtDate(v.assigned?.admittedAt ?? v.patient.arrivedAt)} · ${unit} · Cama ${v.bed ?? '—'} · Dr. Méndez`,
       to: '/MedPacienteHistorialHospitalizaciones',
-      link: 'Ver historial completo →',
+      link: 'Ver historial completo',
     },
     {
       icon: imgFileText3,
       title: 'Nota de Ingreso / Admisión',
       text: `Ingreso ${fmtDate(v.assigned?.admittedAt ?? v.patient.arrivedAt)} · Dx principal: ${v.mainDx ? String(v.mainDx.description) : '—'} · Pronóstico ${ingreso.data?.pronostico ?? '—'}`,
       to: '/MedPacienteNotaIngreso',
-      link: 'Ver nota de ingreso →',
+      link: 'Ver nota de ingreso',
     },
     {
       icon: imgPill,
       title: 'Indicaciones Médicas',
       text: `${drugs} ${drugs === 1 ? 'medicamento' : 'medicamentos'} · ${solutions} ${solutions === 1 ? 'solución IV' : 'soluciones IV'} · Dieta ${(indicaciones.data?.dieta ?? ['—']).join(', ').toLowerCase()}`,
       to: '/MedPacienteIndicacionesMedicas',
-      link: 'Ver indicaciones médicas →',
+      link: 'Ver indicaciones médicas',
     },
     {
       icon: imgFileText3,
       title: 'Documentos Clínicos Adjuntos',
       text: `${docs.length} ${docs.length === 1 ? 'documento adjunto' : 'documentos adjuntos'} · Subir archivo (PDF, JPG)`,
       to: '/MedPacienteDocumentosClinicos',
-      link: 'Ver documentos →',
+      link: 'Ver documentos',
     },
   ];
 
@@ -170,7 +170,7 @@ function Historia({ v }: { v: PatientView }) {
         <Summary>
           {[v.name, v.age !== null ? `${v.age} años` : null, SEX[v.patient.sex], v.patient.bloodType, datos.data?.estadoCivil, `ID ${v.cedula}`].filter(Boolean).join(' · ')}
         </Summary>
-        <NavPill to="/MedPacienteDatosPersonales">Ver datos completos →</NavPill>
+        <NavPill to="/MedPacienteDatosPersonales">Ver datos completos</NavPill>
       </Section>
 
       <Section icon={imgHeart} title="Antecedentes Patológicos Diagnosticados" expanded>
@@ -186,9 +186,10 @@ function Historia({ v }: { v: PatientView }) {
         </div>
         <AppLink
           to="/MedPacienteAntecedentes"
-          className="rounded-full border border-[#dbeafe] bg-primary-soft px-4 py-2 font-jakarta text-[13px] font-semibold leading-[normal] text-primary hover:bg-[#dbeafe]"
+          className="flex items-center gap-1.5 rounded-full border border-[#dbeafe] bg-primary-soft px-4 py-2 font-jakarta text-[13px] font-semibold leading-[normal] text-primary hover:bg-[#dbeafe]"
         >
-          Ver historial completo de antecedentes →
+          Ver historial completo de antecedentes
+          <IconArrowRight size={14} />
         </AppLink>
       </Section>
 

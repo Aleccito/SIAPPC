@@ -1,22 +1,14 @@
 // Pantalla "med/pacientes/lista" (Figma node 45:79) — generada desde el diseño original de Figma.
 // Los pacientes asignados (GET /dashboard/assigned-patients) con sus alertas agrupadas; las camas libres
 // salen de la central (GET /monitoring/beds). Temperatura: src/api/sinBackend.ts.
-import { useState, type SyntheticEvent } from 'react';
+import { useState, type ReactNode, type SyntheticEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createSoapNote } from '../../api/clinical';
 import { ApiError } from '../../api/http';
 import { useMonitoredBeds } from '../../api/queries';
 import { Link } from 'react-router-dom';
-import imgAlertTriangle from '../../assets/alert-triangle.svg';
-import imgArrowRight from '../../assets/arrow-right.svg';
-import imgArrowUpRight from '../../assets/arrow-up-right.svg';
-import imgCalendar from '../../assets/calendar.svg';
-import imgChevronDown from '../../assets/chevron-down.svg';
-import imgMoreHorizontal from '../../assets/more-horizontal.svg';
 import imgSearch from '../../assets/search.svg';
-import imgStateIndicator from '../../assets/state-indicator.svg';
-import imgStateIndicator2 from '../../assets/state-indicator-2.svg';
-import { AppLayout, Badge, Card, ConfirmDialog, Divider, EmptyState, KpiCard, Menu, Pagination, rowLinkClass, Select, Table, useRowLink, useToast } from '../../components';
+import { AppLayout, Badge, Card, ConfirmDialog, Divider, EmptyState, IconAlertTriangle, IconArrowRight, IconCalendar, IconChevronDown, IconMoreHorizontal, KpiCard, Menu, Pagination, rowLinkClass, Select, Table, useAiAccess, useRowLink, useSession, useToast } from '../../components';
 import { usePatientRows, type PatientRow as Patient } from '../../data/patients';
 import { alertTitle, esActiva, VIGENCIA_ALERTA_MIN } from '../../lib/alerts';
 import { fmtAgo, initials, STATE_ORDER } from '../../lib/clinical';
@@ -25,10 +17,10 @@ import { patientPath } from '../../lib/patientLink';
 import { matches } from '../../lib/text';
 
 /** Tipo de ingreso del backend (`ingreso.tipo`) en la columna "Traslado UCI". */
-const TRANSFER: Record<string, [string, string]> = {
-  urgencia: [imgAlertTriangle, 'Urgencia'],
-  programado: [imgArrowRight, 'Ingreso'],
-  traslado: [imgArrowUpRight, 'Traslado'],
+const TRANSFER: Record<string, [ReactNode, string]> = {
+  urgencia: [<IconAlertTriangle key="u" size={12} className="text-danger" />, 'Urgencia'],
+  programado: [<IconArrowRight key="p" size={12} className="text-muted" />, 'Ingreso'],
+  traslado: [<IconArrowRight key="t" size={12} className="-rotate-45 text-muted" />, 'Traslado'],
 };
 
 const STATUS_OPTIONS = [
@@ -54,15 +46,22 @@ const SORT_OPTIONS = [
 
 /** Filas por página: las de Figma. */
 const PAGE_SIZE = 5;
-const COLS = 'grid grid-cols-[210px_100px_110px_75px_70px_70px_70px_minmax(30px,1fr)] items-center gap-3';
+// Columnas proporcionales: con anchos fijos de Figma quedaba un hueco de ~500 px antes del menú a 1920
+// (REVISION-DETALLES.md, A1). Por debajo de 900 px la tabla se desplaza (Table minWidth).
+const COLS =
+  'grid grid-cols-[minmax(200px,2.6fr)_minmax(90px,1fr)_minmax(96px,1.1fr)_minmax(64px,0.8fr)_minmax(64px,0.8fr)_minmax(64px,0.8fr)_minmax(64px,0.8fr)_36px] items-center gap-3';
 const stop = (e: SyntheticEvent) => e.stopPropagation();
-const icon = (src: string) => <img className="size-3.5 shrink-0" alt="" src={src} />;
+
 
 /** `aExploracion`: la fila abre la Exploración física (para registrar la evaluación pendiente) en vez del Resumen. */
 function PatientRow({ p, onDischarge, aExploracion = false }: { p: Patient; onDischarge: (p: Patient) => void; aExploracion?: boolean }) {
   const rowLink = useRowLink();
   const crit = p.state === 'critico';
-  const transfer = TRANSFER[p.admissionType ?? ''] ?? [imgArrowRight, 'Ingreso'];
+  const transfer = TRANSFER[p.admissionType ?? ''] ?? TRANSFER.programado;
+  const aiAccess = useAiAccess();
+  // Solo lo que el rol puede hacer: la enfermera no escribe notas ni exploración (REVISION-DETALLES.md, A3).
+  const { can } = useSession();
+  const escribeNotas = can('notas_soap', 'crear');
   return (
     <div
       {...rowLink(patientPath(aExploracion ? '/MedPacienteExploracionFisica' : '/MedPacienteResumen', p.document))}
@@ -82,7 +81,7 @@ function PatientRow({ p, onDischarge, aExploracion = false }: { p: Patient; onDi
         <Badge tone={p.tone} size="sm">{p.stateLabel.toUpperCase()}</Badge>
       </div>
       <div className="flex items-center gap-1.5">
-        <img className="size-3" alt="" src={transfer[0]} />
+        {transfer[0]}
         <p className="font-jakarta text-[11px] font-bold leading-[normal] text-muted">{transfer[1]}</p>
       </div>
       <p className="font-jakarta text-[13px] font-semibold leading-[normal] text-ink">{p.bed ?? '—'}</p>
@@ -94,13 +93,16 @@ function PatientRow({ p, onDischarge, aExploracion = false }: { p: Patient; onDi
         <Menu
           label={`Más opciones de ${p.name}`}
           className="-m-1"
-          trigger={<img className="size-[18px]" alt="" src={imgMoreHorizontal} />}
+          trigger={<IconMoreHorizontal size={18} className="text-muted" />}
           items={[
-            { label: 'Ver expediente', to: patientPath('/MedPacienteResumen', p.document) },
-            { label: 'Monitoreo', to: patientPath('/MedPacienteMonitoreoDetallado', p.document) },
-            { label: 'Nueva nota SOAP', to: patientPath('/MedPacienteNotasSoapNueva', p.document) },
+            { label: 'Abrir expediente', to: patientPath('/MedPacienteResumen', p.document) },
+            { label: 'Ver monitoreo', to: patientPath('/MedPacienteMonitoreoDetallado', p.document) },
+            { label: 'Tendencias', to: patientPath('/MedPacienteTendenciasVitales', p.document) },
+            ...(escribeNotas ? [{ label: 'Nueva nota SOAP', to: patientPath('/MedPacienteNotasSoapNueva', p.document) }] : []),
+            ...(p.examined || !can('historia_clinica', 'editar') ? [] : [{ label: 'Registrar exploración física', to: patientPath('/MedPacienteExploracionFisica', p.document) }]),
+            ...(aiAccess ? [{ label: 'Consultar IA', to: patientPath('/MedAsistenteIa', p.document) }] : []),
             // El egreso lo hace Admisión; el médico solo indica el alta médica (REVISION.md, R2).
-            { label: 'Indicar alta médica', onSelect: () => onDischarge(p) },
+            ...(escribeNotas ? [{ label: 'Indicar alta médica', onSelect: () => onDischarge(p) }] : []),
           ]}
         />
       </div>
@@ -189,15 +191,15 @@ export default function MedPacientesLista() {
     >
       <div className="flex w-full min-w-0 flex-1 flex-col gap-5 p-4 md:p-8">
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-          <Select variant="stacked" label="Unidad" options={unitOptions} value={unit} onChange={filter(setUnit)} trailingIcon={icon(imgChevronDown)} />
-          <Select variant="stacked" label="Estado" options={STATUS_OPTIONS} value={status} onChange={filter(setStatus)} trailingIcon={icon(imgChevronDown)} />
+          <Select variant="stacked" label="Unidad" options={unitOptions} value={unit} onChange={filter(setUnit)} trailingIcon={<IconChevronDown size={14} className="text-muted" />} />
+          <Select variant="stacked" label="Estado" options={STATUS_OPTIONS} value={status} onChange={filter(setStatus)} trailingIcon={<IconChevronDown size={14} className="text-muted" />} />
           <Select
             variant="stacked"
             label="Rango de Admisión"
             options={RANGE_OPTIONS}
             value={range}
             onChange={filter(setRange)}
-            trailingIcon={icon(imgCalendar)}
+            trailingIcon={<IconCalendar size={14} className="text-muted" />}
             className="sm:flex-1"
           />
         </div>
@@ -216,7 +218,7 @@ export default function MedPacientesLista() {
               <p className="font-jakarta text-[13px] font-normal text-muted">Resumen de estado de salud actual para su supervisión.</p>
             </div>
             <div className="flex w-full flex-wrap items-center justify-end gap-[10px]">
-              <Select variant="soft" options={SORT_OPTIONS} value={sort} onChange={setSort} trailingIcon={icon(imgChevronDown)} ariaLabel="Ordenar pacientes" align="right" />
+              <Select variant="soft" options={SORT_OPTIONS} value={sort} onChange={setSort} trailingIcon={<IconChevronDown size={14} className="text-muted" />} ariaLabel="Ordenar pacientes" align="right" />
               <label className="flex w-full max-w-[320px] items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 focus-within:border-primary">
                 <img className="size-4 shrink-0" alt="" src={imgSearch} />
                 <input
@@ -239,7 +241,8 @@ export default function MedPacientesLista() {
                   <p>FC (LPM)</p>
                   <p>SPO2 (%)</p>
                   <p>TEMP (°C)</p>
-                  <p className="text-right">•••</p>
+                  {/* Sin "•••" aquí: era texto sin acción (REVISION-DETALLES.md, A3). Cada fila lleva su menú. */}
+                  <span aria-hidden="true" />
                 </div>
                 {rows.map((p) => (
                   <PatientRow key={p.id} p={p} onDischarge={setDischarge} aExploracion={status === 'evaluacion'} />
@@ -260,7 +263,7 @@ export default function MedPacientesLista() {
               {recent.map(({ g, bed }) => (
                 <li key={g.key}>
                   <Link to="/MedAlertasCentro" className="flex w-full items-start gap-[10px] rounded-md transition-colors hover:bg-surface">
-                    <img className="mt-0.5 h-3.5 w-2 shrink-0" alt="" src={g.severity === 'critica' ? imgStateIndicator : imgStateIndicator2} />
+                    <span className={cn('mt-0.5 h-3.5 w-1 shrink-0 rounded-full', g.severity === 'critica' ? 'bg-danger' : 'bg-warning')} />
                     <div className="flex min-w-0 flex-1 flex-col gap-px leading-[normal]">
                       <p className="font-jakarta text-[12px] font-bold text-ink">{`${alertTitle(g.variable, g.severity, g.latest.value)} (${g.latest.value})`}</p>
                       <div className="flex items-center gap-1.5 text-[10px]">

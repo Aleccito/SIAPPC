@@ -41,7 +41,7 @@ Ver `CONEXION-BACKEND.md`.
   ```
 
 - Con el backend hacen falta además los datos de demo, el publicador de demo y el modelo de la IA:
-  `CONEXION-BACKEND.md`, sección 11.5.
+  `CONEXION-BACKEND.md`, sección 11.5, y `REVISION-MEDICO.md`, sección 8 (la historia de 24 h del publicador).
 
 ## Problemas conocidos (por qué hace falta este plan)
 
@@ -183,6 +183,33 @@ Ver `CONEXION-BACKEND.md`.
      - Publicador de demo por MQTT (`tools/telemetria-demo/`).
      - `docker-compose.yml`: el prototipo se construye en `real` por defecto.
      - Detalle, pruebas, pasos del servidor y pedidos en `CONEXION-BACKEND.md`, sección 11.
+6. ~~**Revisión del médico.**~~ **Hecho (rama `feature/prototipo-revision-medico`).** Informe y resultados en
+   `REVISION-MEDICO.md` (sección 9) y `REVISION-IA-RESPUESTAS.md` (secciones 6 a 8):
+   - Tendencias sobre un eje de tiempo real y curvas del monitor con lecturas reales; el publicador de demo carga 24 h
+     de historia una vez (`--historia 24h --una-vez`).
+   - Alertas activas = últimos 30 minutos, con "Anteriores sin atender" plegadas; "Pendientes de evaluación" y el
+     Glasgow llevan a la Exploración física; ECG lleno desde el inicio y con la FC de cada cama en la central.
+   - Ante un 429 se espera en vez de reintentar; pacientes y expediente vigentes 5 minutos.
+   - Botones sin utilidad quitados o reales (`BOTONES.md`, "Revisión del médico"): hoja imprimible del paciente,
+     entregas de turno guardadas, umbrales de solo lectura, preferencias de avisos, "Indicar alta" con borrador SOAP.
+   - IA del backend (lo revisa Adrian): tipo de pregunta con su formato y su tope, NEWS2 y qSOFA calculados, contexto
+     limpio, sin dosis por peso sin el peso y prioridad de la consulta del médico. De 6 a 11 respuestas buenas de 15 y
+     de 595 a 319 s. MedGemma 4B Q8 se probó y no conviene.
+   - Verificado: verificación completa (sección 9.2 de `REVISION-MEDICO.md`).
+7. ~~**Ronda de detalles, admisión con monitor y alergias.**~~ **Hecho (rama `feature/prototipo-detalles`).** Informe
+   y resultados en `REVISION-DETALLES.md`:
+   - Columnas proporcionales: sin zonas vacías a 1920 (Lista UCI, Mis Pacientes, Monitoreo detallado, Resumen, Mi
+     Perfil, Entrega de turno, Dispositivos). La Lista UCI ya no repite las etiquetas y su GCS lleva a registrarlo.
+   - Íconos de botones y enlaces y símbolos de la fuente del sistema (⚠️, 📈, ⚙, ✓, ↑ ↓, →, ›) como SVG en línea.
+   - Mis Pacientes: sin el "•••" del encabezado; el de cada fila con el menú completo.
+   - Admisión → paciente en vivo: el backend asigna y libera monitores y avisa al equipo por MQTT; la app principal
+     tiene "Asignar monitor" y sugiere la enfermería de la unidad; el publicador de demo simula solo los asignados
+     (perfil por diagnóstico o motivo) y recibe solo las variables de MQTT; 5 monitores libres de demo.
+   - Alergias: registrar, corregir y marcar inactivas (médico), en el Resumen y en Antecedentes; aviso en la cabecera.
+   - `frontend/nginx.conf`: backend en variable con `resolver` e IP real de Cloudflare.
+   - IA de pronóstico: detenida a pedido, con lo hecho y lo que falta en `REVISION-DETALLES.md` (A5).
+   - Verificado: builds, `tsc`, backend 267 de 267, suite mock 60 de 60, flujo de admisión, alergias y recorrido del
+     médico. Sin verificar: capturas a 1024 y 390 (`REVISION-DETALLES.md`, 8.4).
 
 ## Componentes (`src/components/`)
 

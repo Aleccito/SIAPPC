@@ -1,5 +1,6 @@
 // Pantalla "med/paciente/resumen" (Figma node 100:256) — generada desde el diseño original de Figma.
 // Datos: el paciente de la URL (src/api/), sus signos del seed, alertas agrupadas y última nota.
+import { AlergiasCard } from '../../components/patient/AlergiasCard';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
@@ -9,7 +10,7 @@ import imgCpuIcon from '../../assets/cpu-icon.svg';
 import imgLiveIndicatorEllipse from '../../assets/live-indicator-ellipse.svg';
 import { useAlerts, useAssignments, useDeviceStatus, useMonitoredBeds, useSoapNotes } from '../../api/queries';
 import { getDatosExtra, getSignosExtra, useExtra } from '../../api/sinBackend';
-import { AiIdeasCard, AppLink, BackButton, Badge, Button, Card, Divider, PatientLayout, SoapSections, usePatient, type PatientView } from '../../components';
+import { AiIdeasCard, AppLink, BackButton, Badge, Button, Card, Divider, IconSettings, PatientLayout, SoapSections, usePatient, type PatientView } from '../../components';
 import { EcgLive } from '../../components/monitor/EcgLive';
 import { alertInfoFrom, attendedAlerts, CONFIRM_PATH, type AttendedState, type ConfirmState } from '../../data/alerts';
 import { toSoapSections } from '../../data/soap';
@@ -84,27 +85,13 @@ function Resumen({ v }: { v: PatientView }) {
     ['FR (Frecuencia Resp.)', vitals.resp?.toString() ?? '—', 'rpm', vitalTone('resp', vitals.resp)],
   ];
 
-  const allergies = (v.expediente?.alergias ?? []).filter((a) => a.status === 'activa');
   const blood = v.patient.bloodType ? `${v.patient.bloodType} (${BLOOD[v.patient.bloodType.slice(-1)] ?? ''})` : '—';
   const DETAILS: Array<[string, ReactNode]> = [
     ['Nombre Completo', v.name],
     ['Fecha de Nacimiento', `${fmtDate(v.patient.birthDate)} (${v.age ?? '—'} años)`],
     ['Grupo Sanguíneo', blood],
-    [
-      'Alergias',
-      allergies.length ? (
-        <span key="a" className="flex flex-wrap justify-end gap-1.5">
-          {allergies.map((a) => (
-            <Badge key={a.id} tone="danger" size="sm">
-              {String(a.substance)}
-            </Badge>
-          ))}
-        </span>
-      ) : (
-        'Sin alergias conocidas'
-      ),
-    ],
-    ['Médico Responsable', staffName(team.data?.[0]?.name)],
+    // El médico a cargo, no el primero del equipo: con la enfermera asignada antes salía ella (REVISION-DETALLES.md, 3.8).
+    ['Médico Responsable', staffName(team.data?.find((a) => /m[eé]dic/i.test(a.role))?.name)],
     ['Diagnóstico Principal', v.mainDx ? String(v.mainDx.description) : '—'],
     ['Contacto de Emergencia', v.patient.emergencyContact ?? '—'],
     // No viene del backend: `paciente` no tiene aseguradora (src/api/sinBackend.ts).
@@ -129,8 +116,10 @@ function Resumen({ v }: { v: PatientView }) {
   const uptimeHours = v.assigned?.admittedAt ? Math.max(1, Math.round((Date.now() - Date.parse(v.assigned.admittedAt)) / 3_600_000)) : null;
 
   return (
+    // Las columnas crecen con la pantalla: con los anchos fijos de Figma (630 + 474 px) quedaban ~520 px libres a 1920.
+    // Desde 1600 px las tarjetas de la derecha van en dos columnas (REVISION-DETALLES.md, A1).
     <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
-      <div className="flex w-full min-w-0 flex-col gap-4 xl:max-w-[630px] xl:flex-1">
+      <div className="flex w-full min-w-0 flex-col gap-4 xl:flex-1">
         <div className="flex w-full flex-col gap-4 rounded-xl bg-[#0b1220] p-4 drop-shadow-[0px_8px_10px_rgba(0,0,0,0.25)] sm:p-5 xl:min-h-[571px]">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-white">{`Monitor de Signos Vitales — Cama ${v.bed ?? '—'}`}</h2>
@@ -142,7 +131,7 @@ function Resumen({ v }: { v: PatientView }) {
               to="/MedPacienteConfigUmbrales"
               className="flex items-center justify-center gap-1.5 rounded-md border border-white/20 bg-white/10 px-[10px] py-1 leading-[normal] text-subtle hover:bg-white/15"
             >
-              <span className="font-inter text-[12px] font-normal">⚙</span>
+              <IconSettings size={12} />
               <span className="font-inter text-[11px] font-medium">Ver umbrales</span>
             </AppLink>
           </div>
@@ -179,7 +168,7 @@ function Resumen({ v }: { v: PatientView }) {
         <AiIdeasCard patientId={v.id} cedula={v.cedula} />
       </div>
 
-      <div className="flex w-full min-w-0 flex-col gap-4 xl:w-[474px] xl:shrink-0">
+      <div className="flex w-full min-w-0 flex-col gap-4 xl:w-[474px] xl:shrink-0 min-[1600px]:block min-[1600px]:w-auto min-[1600px]:flex-[1.3] min-[1600px]:columns-2 min-[1600px]:gap-4 min-[1600px]:[&>*]:mb-4 min-[1600px]:[&>*]:break-inside-avoid">
         <Card raised padding="none" className="flex w-full flex-col gap-3 p-[18px]">
           <SideTitle>Información del Paciente</SideTitle>
           <Divider />
@@ -191,6 +180,9 @@ function Resumen({ v }: { v: PatientView }) {
             ))}
           </div>
         </Card>
+
+        {/* Las alergias en su tarjeta: el médico las registra, corrige o marca inactivas (REVISION-DETALLES.md, D). */}
+        <AlergiasCard pacienteId={v.id} nombre={v.name} entradas={v.expediente?.alergias} />
 
         <Card raised className="flex w-full flex-col gap-[14px]">
           <div className="flex w-full items-center justify-between gap-3">

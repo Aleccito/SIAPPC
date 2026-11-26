@@ -49,13 +49,14 @@ export function usePatient(): PatientResult {
     setParams(next, { replace: true });
   }, [fromUrl, params, setParams]);
 
-  const patients = usePatients();
+  // Con la cédula: si no está en la lista guardada (paciente recién admitido), se vuelve a pedir antes de decir que no existe.
+  const patients = usePatients({ cedulas: [cedula] });
   const patient = patients.data?.items.find((p) => p.document === cedula);
   const assigned = useAssignedPatients();
   const expediente = useExpediente(patient?.id);
 
   if (patients.isError) return { status: 'error', cedula, error: patients.error };
-  if (patients.isPending) return { status: 'loading', cedula };
+  if (patients.isPending || (!patient && patients.isFetching)) return { status: 'loading', cedula };
   if (!patient) return { status: 'notFound', cedula };
 
   const a = assigned.data?.find((x) => x.id === patient.id);

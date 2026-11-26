@@ -556,7 +556,7 @@ diagnósticos, exploración, notificaciones y búsqueda) sigue igual.
 | Comparativa | "+ Agregar Paciente" | Aviso "admite 2 pacientes" | **Se quitó**. |
 | Entrega de turno | "Generar Reporte" | Aviso "Reporte de turno generado" | Impresión del navegador con la entrega. |
 | Entrega de turno | Tarjeta del receptor | "Dra. Ana Gómez" (inventada) | "Quién entrega", con la persona de la sesión, y una nota: el sistema todavía no avisa al turno que recibe (pedido 11). |
-| Entrega de turno | "Confirmar Entrega de Turno" | Aviso "se notificó a la Dra. Ana Gómez" | Guarda la entrega en este navegador (fecha, turno, quién entrega, todos los pacientes a cargo y notas) y lleva al Historial con el **Aviso** "Entrega registrada (en este navegador…)". Mientras cargan los pacientes, el botón espera. |
+| Entrega de turno | "Confirmar Entrega de Turno" | Aviso "se notificó a la Dra. Ana Gómez" | Guarda la entrega en este navegador (fecha, turno, quién entrega, todos los pacientes a cargo y notas) y lleva al Historial con el **Aviso** "Entrega registrada (en este navegador…)". Mientras cargan los pacientes, el botón y el cuadro de notas esperan. |
 | Entrega de turno | Pestaña "Nueva Entrega" | — | Se queda: es la pestaña activa. El recorrido automático la contó como "nada" porque ya se está ahí. |
 | Entrega de turno | Título y etiqueta del turno | Fijos | Salen de la hora: Matutino 07–15, Vespertino 15–23, Nocturno. |
 | Historial de entregas | Tabla | 8 filas fijas de agosto de 2026 | Las entregas guardadas. Cada fila abre su resumen (`?entrega=`). Sin entregas, lo dice. |
@@ -575,3 +575,28 @@ diagnósticos, exploración, notificaciones y búsqueda) sigue igual.
 | Confirmación de atención, Interrogatorio, Nota de ingreso | "Confirmar" / "Guardar" | Aviso | Igual, y el aviso dice "en este equipo" o "en este navegador" (pedidos 2 y 11 a 13). |
 | Asistente IA y panel | Preguntas rápidas | 5 | 7: se agregan "Gravedad" y "Entrega de turno". Cada una manda un texto que el backend reconoce como su tipo de respuesta (`REVISION-IA-RESPUESTAS.md`). |
 | Asistente IA | "Lo que verá la IA" | Médico a cargo fijo ("Carlos Méndez") | El médico a cargo real. Dice además el tipo de respuesta que se pide y los datos que no hay en el expediente. |
+
+## Ronda de detalles (`REVISION-DETALLES.md`)
+
+Todo ícono que es el contenido de un botón, enlace, menú o interruptor es ahora un SVG en línea de `icons.tsx` (antes
+una imagen de Figma o un carácter de la fuente del sistema): si la imagen no carga o la fuente no trae el carácter, el
+botón ya no queda vacío.
+
+| Pantalla | Elemento | Antes | Ahora |
+|---|---|---|---|
+| Dashboard | Acciones de cada fila (perfil, monitoreo, nota SOAP, historia) | Imágenes SVG | SVG en línea; el corazón en rojo con el paciente crítico. Cada uno lleva a su ficha. |
+| Dashboard | "⚠️ Hace…", "📈 Tendencias…", "Ver todos →", "↑ ↓" | Emojis y caracteres | Íconos en línea (alerta, tendencia, flecha, flechas de signo). |
+| Dashboard | "Requiere tu atención ahora" | La evaluación pendiente más antigua primero | La del ingreso más reciente primero: un paciente recién admitido aparece aunque esté estable. |
+| Mis Pacientes | "•••" del encabezado | Texto sin acción | **Se quitó**. |
+| Mis Pacientes | "•••" de cada fila | Ver expediente, Monitoreo, Nueva nota SOAP, Indicar alta | Ícono en línea y: Abrir expediente, Ver monitoreo, Tendencias, Nueva nota SOAP, Registrar exploración física (si falta), Consultar IA (con permiso) e Indicar alta médica. Solo lo que permite el rol: la enfermera ve abrir, monitoreo y tendencias. |
+| Lista UCI | GCS "—" | Sin acción | "Registrar" lleva a la Exploración física, como en el Dashboard y la central. |
+| Resumen | "⚙ Ver umbrales" | Carácter | Engrane en línea. |
+| Resumen | "Médico Responsable" | El primero del equipo (podía ser la enfermera) | El médico a cargo. |
+| Resumen y Antecedentes → "Alergias" | "Registrar alergia", "Corregir", "Marcar inactiva" | No existían | Formulario con sustancia, reacción, severidad (leve, moderada, grave, anafilaxia), estado y fecha (POST y PATCH `/historia/:id/alergias`). Inactivar pide confirmar y elegir "resuelta" o "descartada"; nada se borra. Solo el médico. |
+| Turno recibido | "Marcar como Leído ✓" | Carácter | Ícono en línea. |
+| Historia clínica y Antecedentes | "Ver … →", "Ver sección →" | Carácter | Flecha en línea. |
+| Comparativa, Documentos, Notas SOAP, Registro de diagnóstico, Mis Pacientes, Dispositivos | Flechas de las listas, descargar, subir, filtros | Imágenes | Íconos en línea. |
+| Login, Tendencias, acceso | Ver contraseña, "Volver" | Imágenes | Íconos en línea. |
+| Mi Perfil | Interruptores de avisos | Imagen del interruptor | Dibujado con CSS. |
+| Registro de diagnóstico, Nota de ingreso | Opciones (radio) | Imágenes | Círculos con CSS. |
+| Notificaciones | Punto "sin leer" | Imagen | Punto con CSS. |

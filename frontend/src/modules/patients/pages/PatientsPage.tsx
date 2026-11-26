@@ -34,6 +34,8 @@ import SearchIcon from '@mui/icons-material/Search'
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
 import { AssignBedDialog } from '../components/AssignBedDialog'
 import { AssignDoctorDialog } from '../components/AssignDoctorDialog'
+import { AssignMonitorDialog } from '../components/AssignMonitorDialog'
+import { useAuth } from '../../auth/useAuth'
 import { EditPatientDialog } from '../components/EditPatientDialog'
 import { NewPatientDialog } from '../components/NewPatientDialog'
 import { ageFrom, initialsOf } from '../presentation'
@@ -178,6 +180,14 @@ export function PatientsPage() {
   const [careFor, setCareFor] = useState<AssignedPatient | null>(null)
   // Paciente cuya ficha se está editando; null = dialogo cerrado.
   const [editing, setEditing] = useState<AssignedPatient | null>(null)
+  // Paciente al que se le está asignando monitor; null = dialogo cerrado.
+  const [monitorFor, setMonitorFor] = useState<AssignedPatient | null>(null)
+  // Asignar monitor pide `dispositivos: editar`. Esta app no recibe la matriz de
+  // permisos, así que decide por el rol: admin y administrativo son los que lo
+  // tienen en la matriz base (backend/db/seed.sql). Con otro rol al que se le dé,
+  // el servidor responde y el diálogo enseña su 403 sin romper nada.
+  const role = useAuth().user?.role
+  const canAssignMonitor = role === 'admin' || role === 'administrativo'
 
   // Los memos dependen de `patients.data` y no de una copia con `?? []`: ese
   // literal sería un array nuevo en cada render y los recalcularía siempre.
@@ -470,6 +480,7 @@ export function PatientsPage() {
                       patient={patient}
                       onAssignBed={setBedFor}
                       onAssignCare={setCareFor}
+                      onAssignMonitor={canAssignMonitor ? setMonitorFor : undefined}
                       onEdit={setEditing}
                     />
                   ))}
@@ -521,6 +532,7 @@ export function PatientsPage() {
       <NewPatientDialog open={formOpen} onClose={() => setFormOpen(false)} />
       <AssignBedDialog patient={bedFor} onClose={() => setBedFor(null)} />
       <AssignDoctorDialog patient={careFor} onClose={() => setCareFor(null)} />
+      <AssignMonitorDialog patient={monitorFor} onClose={() => setMonitorFor(null)} />
       <EditPatientDialog patient={editing} onClose={() => setEditing(null)} />
     </Stack>
   )
@@ -530,11 +542,14 @@ function PatientRow({
   patient,
   onAssignBed,
   onAssignCare,
+  onAssignMonitor,
   onEdit,
 }: {
   patient: AssignedPatient
   onAssignBed: (patient: AssignedPatient) => void
   onAssignCare: (patient: AssignedPatient) => void
+  /** Sin ella, el rol no asigna monitores y el elemento no aparece. */
+  onAssignMonitor?: (patient: AssignedPatient) => void
   onEdit: (patient: AssignedPatient) => void
 }) {
   const { t } = useLanguage()
@@ -643,6 +658,16 @@ function PatientRow({
           >
             {t('patients.action.assignCare')}
           </MenuItem>
+          {onAssignMonitor && (
+            <MenuItem
+              onClick={() => {
+                setAnchor(null)
+                onAssignMonitor(patient)
+              }}
+            >
+              {t(patient.device ? 'patients.action.changeMonitor' : 'patients.action.assignMonitor')}
+            </MenuItem>
+          )}
           <MenuItem
             onClick={() => {
               setAnchor(null)

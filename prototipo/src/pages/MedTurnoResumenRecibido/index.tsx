@@ -207,7 +207,10 @@ export default function MedTurnoResumenRecibido() {
                   toast('Entrega marcada como leída (en este navegador)');
                 }}
               >
-                {read ? 'Leído ✓' : 'Marcar como Leído ✓'}
+                <span className="flex items-center gap-1.5">
+                {read ? 'Leído' : 'Marcar como Leído'}
+                <IconCheck size={14} />
+              </span>
               </Button>
               <p className="w-full font-jakarta text-[11px] font-normal leading-[normal] text-muted">Al marcar como leído confirmas que revisaste la entrega de turno</p>
             </div>

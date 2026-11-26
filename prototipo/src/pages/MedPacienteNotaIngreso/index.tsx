@@ -6,8 +6,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { getNotaIngreso, saveNotaIngreso, useExtra, type NotaIngreso } from '../../api/sinBackend';
 import imgBulletItemEllipse from '../../assets/bullet-item-ellipse.svg';
-import imgOptBuenoEllipse from '../../assets/opt-bueno-ellipse.svg';
-import imgOptReservadoEllipse from '../../assets/opt-reservado-ellipse.svg';
 import { useRef, useState } from 'react';
 import { BackButton, Badge, Button, Card, FieldError, focusFirst, InfoField, PatientLayout, Table, TextArea, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
 import { fmtDateTime, staffName } from '../../lib/clinical';
@@ -221,7 +219,7 @@ function NotaIngresoForm({ v, nota }: { v: PatientView; nota: NotaIngreso }) {
                   {selected && p.ring ? (
                     <span className={cn('size-4 shrink-0 rounded-full border-2 bg-white', p.ring)} />
                   ) : (
-                    <img className="size-4 shrink-0" alt="" src={selected ? imgOptReservadoEllipse : imgOptBuenoEllipse} />
+                    <span className={cn('size-4 shrink-0 rounded-full border-2 bg-white', selected ? 'border-primary' : 'border-subtle')} />
                   )}
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[normal]">
                     <p className="font-jakarta text-[14px] font-bold text-ink">{p.label}</p>

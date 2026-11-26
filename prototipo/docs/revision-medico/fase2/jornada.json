@@ -13,7 +13,7 @@
   "ok": true,
   "detalle": {
    "ok": true,
-   "atencion": "Requiere tu atención ahora\nEvaluación\n\nhace 18 h\n\nLasso: evaluación primaria pendiente (sin exploración física desde el ingreso)\n\nUCI-05\n\nFC Alta\n\nhace 4 min\n\nLasso: FC > 120 lpm — Taquicardia (121 lp"
+   "atencion": "Requiere tu atención ahora\nEvaluación\n\nhace 24 h\n\nLasso: evaluación primaria pendiente (sin exploración física desde el ingreso)\n\nUCI-05\n\nFC Alta\n\nhace 12 min\n\nLasso: FC > 120 lpm — Taquicardia (121 l"
   },
   "captura": "02-dashboard.png"
  },
@@ -68,7 +68,7 @@
   "ok": true,
   "detalle": {
    "ok": true,
-   "alertas": "Alertas Activas\n1\n\nSpO2 < 90% — Saturación baja\n\n75 avisos · el último hace 4 min\n\n›\nAnteriores sin atender (3)\n· sin avisos en 30 min\nEstado Neurológico\n\nGLASG",
+   "alertas": "Alertas Activas\n1\n\nSpO2 < 90% — Saturación baja\n\n138 avisos · el último hace 8 min\n\n›\nAnteriores sin atender (3)\n· sin avisos en 30 min\nEstado Neurológico\n\nGLAS",
    "anteriores": true,
    "glasgow": false,
    "imagenesFijas": 0
@@ -82,15 +82,15 @@
    "ok": true,
    "puntos": 1,
    "lineas": [
-    65,
+    45,
     1,
-    65,
+    45,
     1,
-    65,
+    45,
     1,
-    65,
+    45,
     1,
-    65,
+    45,
     1
    ]
   },
@@ -103,15 +103,15 @@
    "ok": true,
    "puntos": 1,
    "lineas": [
-    114,
+    103,
     1,
-    114,
+    103,
     1,
-    114,
+    103,
     1,
-    114,
+    103,
     1,
-    114,
+    103,
     1
    ]
   },
@@ -150,7 +150,7 @@
   "detalle": {
    "ok": true,
    "disponible": true,
-   "respuesta": "Del paciente Ileana Montenegro Sáez: ¿Cuáles son los diagnósticos diferenciales más probables?\n\nPensando… 0:00\n\nEl modelo local tarda entre 30 s y 1,5 min."
+   "respuesta": "Del paciente Ileana Montenegro Sáez: ¿Cuáles son los diagnósticos diferenciales más probables?\n\nTromboembolia pulmonar (TEP) · Dolor torácico, falta de aire súbita, SpO2 baja, FC elevada, sospecha clínica en estudio.\nAngina de pecho · Dolor torácico.\nPericarditis · Dolor torácico (aunque menos proba"
   },
   "captura": "14-pedir-ayuda-a-la-ia-panel-del-paciente-.png"
  },
@@ -169,7 +169,7 @@
   "detalle": {
    "ok": true,
    "filas": 1,
-   "encabezado": "Turno Recibido\nEn revisión\n\nTurno Nocturno (23:00 - 07:00)\n\nEntregado el 25 Nov 2026, 03:59\n\n0 pacientes incluidos\n\nEntregado por: Dr. Carlos Méndez (registrado"
+   "encabezado": "Turno Recibido\nEn revisión\n\nTurno Matutino (07:00 - 15:00)\n\nEntregado el 25 Nov 2026, 10:31\n\n16 pacientes incluidos\n\nEntregado por: Dr. Carlos Méndez (registrad"
   },
   "captura": "16-historial-y-resumen-de-la-entrega.png"
  }

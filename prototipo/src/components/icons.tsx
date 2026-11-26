@@ -51,3 +51,23 @@ export const IconSparkles = createIcon('IconSparkles', 24, 'M9.94 15.5A2 2 0 0 0
 export const IconStop = createIcon('IconStop', 24, 'M6 6h12v12H6z');
 export const IconCopy = createIcon('IconCopy', 24, 'M8 8h12v12H8zM4 16V4h12');
 export const IconSend = createIcon('IconSend', 24, 'M22 2 11 13M22 2l-7 20-4-9-9-4z');
+
+// Íconos de botones, enlaces y símbolos (REVISION-DETALLES.md, A2). Antes eran archivos SVG de Figma puestos como
+// imagen (`<img>`) o caracteres que dependen de la fuente del sistema (⚠️, 📈, ⚙, ✓, ↑, ↓, →, ›): si el navegador no
+// carga la imagen o la fuente no trae el carácter, el botón queda como un cuadrito vacío. En línea no dependen de nada.
+// Trazos de Lucide en 24 px.
+export const IconEye = createIcon('IconEye', 24, 'M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0');
+export const IconHeart = createIcon('IconHeart', 24, 'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z');
+export const IconFolder = createIcon('IconFolder', 24, 'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z');
+export const IconSettings = createIcon('IconSettings', 24, 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0');
+export const IconArrowRight = createIcon('IconArrowRight', 24, 'M5 12h14M12 5l7 7-7 7');
+export const IconArrowUp = createIcon('IconArrowUp', 24, 'M12 19V5M5 12l7-7 7 7');
+export const IconArrowDown = createIcon('IconArrowDown', 24, 'M12 5v14M19 12l-7 7-7-7');
+export const IconChevronRight = createIcon('IconChevronRight', 24, 'M9 18l6-6-6-6');
+export const IconMoreHorizontal = createIcon('IconMoreHorizontal', 24, 'M11 12a1 1 0 1 0 2 0 1 1 0 1 0-2 0M18 12a1 1 0 1 0 2 0 1 1 0 1 0-2 0M4 12a1 1 0 1 0 2 0 1 1 0 1 0-2 0');
+export const IconAlertTriangle = createIcon('IconAlertTriangle', 24, 'M21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3ZM12 9v4M12 17h.01');
+export const IconTrendingUp = createIcon('IconTrendingUp', 24, 'M22 7l-8.5 8.5-5-5L2 17M16 7h6v6');
+export const IconDownload = createIcon('IconDownload', 24, 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3');
+export const IconUpload = createIcon('IconUpload', 24, 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12');
+export const IconSliders = createIcon('IconSliders', 24, 'M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4');
+export const IconFilter = createIcon('IconFilter', 24, 'M22 3H2l8 9.46V19l4 2v-8.54L22 3z');

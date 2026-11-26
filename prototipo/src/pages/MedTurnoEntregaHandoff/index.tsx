@@ -148,7 +148,8 @@ function Entrega({
         <Tabs items={TURNO_TABS} active="nueva" />
       </div>
       <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-5 p-4 md:p-8 xl:flex-row">
-        <div ref={contenido} className="flex w-full min-w-0 flex-col gap-5 xl:max-w-[740px] xl:flex-1">
+        {/* Sin el ancho máximo de Figma (740 px): a 1920 dejaba ~530 px libres (REVISION-DETALLES.md, A1). */}
+        <div ref={contenido} className="flex w-full min-w-0 flex-col gap-5 xl:flex-1">
           <Card padding="sm" className="flex w-full flex-wrap items-center gap-3">
             {summary.map(([label, color], i) => (
               <Fragment key={label}>
@@ -164,10 +165,10 @@ function Entrega({
             <Table minWidth={680}>
               <div className="flex w-full gap-2 bg-[#f1f5f9] p-[10px] font-jakarta text-[11px] font-bold leading-[normal] text-muted">
                 <p className="w-[60px] shrink-0">CAMA</p>
-                <p className="w-[130px] shrink-0">PACIENTE</p>
+                <p className="min-w-[130px] flex-[1.2]">PACIENTE</p>
                 <p className="w-[90px] shrink-0">ESTADO</p>
-                <p className="w-[220px] shrink-0">NOVEDADES DEL TURNO</p>
-                <p className="min-w-0 flex-1">PENDIENTES</p>
+                <p className="min-w-[220px] flex-[2]">NOVEDADES DEL TURNO</p>
+                <p className="min-w-[120px] flex-[1.6]">PENDIENTES</p>
               </div>
               {loading && <p className="p-[10px] font-jakarta text-[13px] text-muted">Cargando pacientes…</p>}
               {rows.map((p) => {
@@ -180,14 +181,14 @@ function Entrega({
                     className={cn('flex w-full items-center gap-2 border-b border-line p-[10px] leading-[normal]', rowLinkClass)}
                   >
                     <p className="w-[60px] shrink-0 font-jakarta text-[13px] font-bold text-ink">{p.bed}</p>
-                    <p className="w-[130px] shrink-0 font-jakarta text-[13px] font-semibold leading-[1.35] text-ink">
+                    <p className="min-w-[130px] flex-[1.2] font-jakarta text-[13px] font-semibold leading-[1.35] text-ink">
                       {p.name}
                     </p>
                     <Badge tone={p.state === 'critico' ? 'danger' : 'info'} size="sm" className="w-[90px] justify-center">
                       {p.stateLabel}
                     </Badge>
-                    <p className="w-[220px] shrink-0 font-jakarta text-[12px] font-normal leading-[1.35] text-muted">{t?.novedad ?? '—'}</p>
-                    <p className={`min-w-[120px] flex-1 rounded-md px-2 py-0.5 font-jakarta text-[11px] font-semibold leading-[1.35] ${CHIP[t?.tono ?? 'success']}`}>{t?.pendiente ?? '—'}</p>
+                    <p className="min-w-[220px] flex-[2] font-jakarta text-[12px] font-normal leading-[1.35] text-muted">{t?.novedad ?? '—'}</p>
+                    <p className={`min-w-[120px] flex-[1.6] rounded-md px-2 py-0.5 font-jakarta text-[11px] font-semibold leading-[1.35] ${CHIP[t?.tono ?? 'success']}`}>{t?.pendiente ?? '—'}</p>
                   </div>
                 );
               })}
@@ -210,6 +211,8 @@ function Entrega({
               minHeight={100}
               maxLength={2000}
               aria-required
+              // Mientras cargan los pacientes no se escribe: lo escrito se perdería al terminar de cargar.
+              disabled={loading}
               error={form.show('entrega-notas')}
             />
             <div className="flex w-full flex-wrap justify-end gap-3">

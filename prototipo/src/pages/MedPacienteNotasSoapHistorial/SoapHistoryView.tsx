@@ -2,12 +2,9 @@
 // Las notas son las del paciente de la URL (GET /soap/notes?patientId=…).
 import { useState, type SyntheticEvent } from 'react';
 import imgAvatar2Png from '../../assets/avatar-2.png';
-import imgChevronRight from '../../assets/chevron-right.svg';
-import imgChevronRight2 from '../../assets/chevron-right-2.svg';
 import imgIconwrapper15 from '../../assets/iconwrapper-15.svg';
-import imgSliders from '../../assets/sliders.svg';
 import { useSoapNotes } from '../../api/queries';
-import { AppLink, Badge, Card, Divider, EmptyState, rowButton, Select, SoapSections, type PatientView } from '../../components';
+import { AppLink, Badge, Card, Divider, EmptyState, IconChevronRight, IconSliders, type PatientView, rowButton, Select, SoapSections } from '../../components';
 import { soapDetailPath, toSoapSections } from '../../data/soap';
 import { fmtDateTime, staffName } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
@@ -57,7 +54,7 @@ export function SoapHistoryView({ v }: { v: PatientView }) {
               value={filter}
               onChange={setFilter}
               format={(l) => (l === 'Todas' ? 'Filtrar' : l)}
-              icon={<img className="size-3" alt="" src={imgSliders} />}
+              icon={<IconSliders size={12} />}
               chevron={false}
               ariaLabel={`Filtrar notas: ${filter}`}
               align="right"
@@ -98,7 +95,7 @@ export function SoapHistoryView({ v }: { v: PatientView }) {
                       title="Ver detalle"
                       className="-m-1 flex shrink-0 rounded p-1 hover:bg-line"
                     >
-                      <img className="size-3.5" alt="" src={isSelected ? imgChevronRight : imgChevronRight2} />
+                      <IconChevronRight size={14} className={isSelected ? 'text-primary' : 'text-muted'} />
                     </AppLink>
                   </div>
                 </div>

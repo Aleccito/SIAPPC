@@ -7,8 +7,6 @@ import { useAssignedPatients } from '../../api/queries';
 import { REAL_AUTH } from '../../api/mode';
 import { guardarPreferencias, leerPreferencias, sonarAlerta, type Preferencias } from '../../lib/preferencias';
 import { fmtDateTime, initials } from '../../lib/clinical';
-import imgSwitchTrack from '../../assets/switch-track.svg';
-import imgSwitchTrack2 from '../../assets/switch-track-2.svg';
 import { AppLayout, Badge, Button, Card, CardTitle, Divider, focusFirst, Input, Modal, ModalHeader, TopBarDate, useDisplayUser, useSession, useToast, useValidation } from '../../components';
 import { checkNewPassword } from '../../lib/validate';
 
@@ -132,7 +130,8 @@ export default function MedPerfilMiPerfil() {
   return (
     <AppLayout breadcrumb="SIAPPC > Mi Perfil" title="Mi Perfil" actions={<TopBarDate>{fmtDateTime(new Date().toISOString())}</TopBarDate>}>
       <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-6 p-4 md:p-8 xl:flex-row">
-        <div className="flex w-full min-w-0 flex-col gap-5 xl:max-w-[680px] xl:flex-1">
+        {/* Sin el ancho máximo de Figma (680 px): a 1920 dejaba ~520 px libres (REVISION-DETALLES.md, A1). */}
+        <div className="flex w-full min-w-0 flex-col gap-5 xl:flex-1">
           <Card padding="lg" className="flex w-full flex-col gap-5 sm:flex-row sm:items-start">
             <div className="flex size-20 shrink-0 items-center justify-center rounded-full bg-primary">
               <p className="font-jakarta text-[28px] font-extrabold leading-[normal] text-white">{initials(me.plainName || me.name)}</p>
@@ -206,7 +205,7 @@ export default function MedPerfilMiPerfil() {
           </Card>
         </div>
 
-        <div className="flex w-full min-w-0 flex-col gap-5 xl:w-[420px] xl:shrink-0">
+        <div className="flex w-full min-w-0 flex-col gap-5 xl:w-[420px] xl:shrink-0 min-[1600px]:w-[520px]">
           <Card padding="lg" className="flex w-full flex-col gap-4">
             <CardTitle>Preferencias de Notificaciones</CardTitle>
             <Divider />
@@ -224,7 +223,10 @@ export default function MedPerfilMiPerfil() {
                     onClick={() => flip(clave)}
                     className="flex shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
-                    <img className="h-5 w-9" alt="" src={prefs[clave] ? imgSwitchTrack : imgSwitchTrack2} />
+                    {/* Interruptor dibujado con CSS: antes era una imagen y, sin ella, el botón quedaba vacío (REVISION-DETALLES.md, A2). */}
+                    <span className={`relative h-5 w-9 rounded-full transition-colors ${prefs[clave] ? 'bg-primary' : 'bg-line'}`}>
+                      <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${prefs[clave] ? 'left-[18px]' : 'left-0.5'}`} />
+                    </span>
                   </button>
                 </div>
               ))}

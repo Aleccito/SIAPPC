@@ -13,8 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { assignCare, listAssignments, unassignCare } from '../api/patientsApi'
-import { listUsers } from '../../admin/api/usersApi'
+import { assignCare, listAssignments, listCareStaff, unassignCare } from '../api/patientsApi'
 import { ApiError } from '../../../shared/api/http'
 import { useLanguage } from '../../../shared/i18n/useLanguage'
 import type { AssignedPatient } from '../../dashboard/types'
@@ -45,7 +44,9 @@ export function AssignDoctorDialog({
 
   const abierto = patient !== null
 
-  const users = useQuery({ queryKey: ['users'], queryFn: listUsers, enabled: abierto })
+  // No es la lista de usuarios (`usuarios: ver`, que el administrativo no tiene):
+  // solo médicos y enfermería activos, lo necesario para elegir.
+  const users = useQuery({ queryKey: ['patients', 'careStaff'], queryFn: listCareStaff, enabled: abierto })
 
   const assignments = useQuery({
     queryKey: ['patients', patient?.id, 'assignments'],
@@ -85,12 +86,16 @@ export function AssignDoctorDialog({
   }
 
   const yaACargo = new Set((assignments.data ?? []).map((a) => a.userId))
-  // Solo personal clínico y activo, y sin los que ya están a cargo: ofrecerlos
-  // otra vez solo lleva al 409 del servidor.
-  const candidatos = (users.data ?? []).filter(
-    (user) =>
-      user.active && (user.role === 'medico' || user.role === 'enfermero') && !yaACargo.has(Number(user.id)),
-  )
+  // Sin los que ya están a cargo: ofrecerlos otra vez solo lleva al 409 del
+  // servidor. La lista ya viene solo con personal clínico activo.
+  const candidatos = (users.data ?? []).filter((user) => !yaACargo.has(user.id))
+
+  // La enfermería de la unidad de la cama, sugerida en un clic: al admitir se
+  // pone a cargo al médico y casi siempre también a la enfermera de esa unidad,
+  // y buscarla en la lista completa cada vez es justo lo que se olvida.
+  const enfermeriaDeLaUnidad = patient?.unit
+    ? candidatos.filter((user) => user.role === 'enfermero' && user.unit === patient.unit)
+    : []
 
   const error = assign.error ?? unassign.error
 
@@ -146,6 +151,27 @@ export function AssignDoctorDialog({
             !assignments.isLoading && (
               <Alert severity="info">{t('patients.care.none')}</Alert>
             )
+          )}
+
+          {patient?.unit && enfermeriaDeLaUnidad.length > 0 && (
+            <Stack spacing={0.75}>
+              <Typography variant="caption" color="text.secondary">
+                {t('patients.care.unitNurse', { unit: patient.unit })}
+              </Typography>
+              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                {enfermeriaDeLaUnidad.map((user) => (
+                  <Button
+                    key={user.id}
+                    size="small"
+                    variant="outlined"
+                    disabled={assign.isPending}
+                    onClick={() => assign.mutate(Number(user.id))}
+                  >
+                    {t('patients.care.unitNurseAssign', { name: user.name })}
+                  </Button>
+                ))}
+              </Stack>
+            </Stack>
           )}
 
           {!users.isLoading && candidatos.length === 0 ? (

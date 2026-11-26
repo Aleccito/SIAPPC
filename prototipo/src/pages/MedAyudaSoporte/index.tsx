@@ -2,12 +2,10 @@
 import { useState } from 'react';
 import imgActivity5 from '../../assets/activity-5.svg';
 import imgBook from '../../assets/book.svg';
-import imgChevronDown2 from '../../assets/chevron-down-2.svg';
-import imgChevronDown4 from '../../assets/chevron-down-4.svg';
 import imgClipboard3 from '../../assets/clipboard-3.svg';
 import imgIconAssetBe1a93ac from '../../assets/icon-asset-be1a93ac.svg';
 import imgWrench from '../../assets/wrench.svg';
-import { AppLayout, Card, EmptyState } from '../../components';
+import { AppLayout, Card, EmptyState, IconChevronDown } from '../../components';
 import { cn } from '../../lib/cn';
 
 const CATEGORIES = [
@@ -148,7 +146,7 @@ export default function MedAyudaSoporte() {
                     className="flex w-full items-center justify-between gap-3 text-left"
                   >
                     <span className="min-w-0 flex-1 font-jakarta text-[15px] font-semibold leading-[normal] text-ink">{question}</span>
-                    <img className="size-4 shrink-0" alt="" src={open ? imgChevronDown2 : imgChevronDown4} />
+                    <IconChevronDown size={16} className={open ? 'rotate-180 text-muted' : 'text-muted'} />
                   </button>
                   {open && (
                     <p id={answerId} className="w-full pt-1 font-jakarta text-[14px] font-normal leading-[22px] text-muted">

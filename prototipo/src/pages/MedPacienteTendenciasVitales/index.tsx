@@ -5,12 +5,11 @@
 import { useState } from 'react';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
-import imgArrowLeft4 from '../../assets/arrow-left-4.svg';
 import imgChartCanvasEllipse from '../../assets/chart-canvas-ellipse.svg';
 import imgChartCanvasEllipse2 from '../../assets/chart-canvas-ellipse-2.svg';
 import imgChartCanvasEllipse3 from '../../assets/chart-canvas-ellipse-3.svg';
 import { getSerie, useExtra, type PuntoTendencia, type Signo } from '../../api/sinBackend';
-import { AppLink, Card, PatientLayout, usePatient, type PatientView } from '../../components';
+import { AppLink, Card, IconArrowLeft, PatientLayout, type PatientView, usePatient } from '../../components';
 import { vitalTone } from '../../lib/alerts';
 import { cn } from '../../lib/cn';
 import { TrendChart, type TrendSeries } from './TrendChart';
@@ -139,7 +138,7 @@ function Tendencias({ v }: { v: PatientView }) {
     <>
       <div className="flex w-full flex-wrap items-center justify-between gap-3">
         <AppLink to="/MedPacienteMonitoreoDetallado" className="flex items-center gap-2 font-jakarta text-[14px] font-bold leading-[normal] text-primary hover:underline">
-          <img className="size-4" alt="" src={imgArrowLeft4} />
+          <IconArrowLeft size={16} />
           Volver a Monitoreo en Vivo
         </AppLink>
         <div className="flex gap-1 rounded-lg border border-line bg-white p-1" role="group" aria-label="Rango de tiempo">

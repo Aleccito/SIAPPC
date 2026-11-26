@@ -99,7 +99,15 @@ export type DatosPuntaje = {
 };
 
 export type Puntajes = {
-  news2: { total: number; parcial: boolean; faltan: string[]; riesgo: "bajo" | "bajo-medio" | "medio" | "alto"; alguno3: boolean };
+  news2: {
+    total: number;
+    parcial: boolean;
+    faltan: string[];
+    riesgo: "bajo" | "bajo-medio" | "medio" | "alto";
+    alguno3: boolean;
+    /** Los parámetros que suman, del que más al que menos: "SpO2 89 (3)". */
+    suman: string[];
+  };
   qsofa: { total: number; evaluables: number; faltan: string[] };
   /** FC / PAS, o null sin PAS. */
   indiceShock: number | null;
@@ -111,8 +119,12 @@ const presente = (v: number | null | undefined): v is number => typeof v === "nu
 export function calcularPuntajes(d: DatosPuntaje): Puntajes {
   const faltan: string[] = [];
   const partes: number[] = [];
+  const conPuntos: Array<[string, number]> = [];
   const sumar = (v: number | null | undefined, nombre: string, f: (x: number) => number) => {
-    if (presente(v)) partes.push(f(v));
+    if (presente(v)) {
+      partes.push(f(v));
+      if (f(v) > 0) conPuntos.push([`${nombre} ${v}`, f(v)]);
+    }
     else faltan.push(nombre);
   };
   sumar(d.resp, "FR", (x) => (x <= 8 ? 3 : x <= 11 ? 1 : x <= 20 ? 0 : x <= 24 ? 2 : 3));
@@ -140,7 +152,14 @@ export function calcularPuntajes(d: DatosPuntaje): Puntajes {
   q(d.glasgow, "conciencia (Glasgow)", (x) => x < 15);
 
   return {
-    news2: { total, parcial: faltan.length > 0, faltan, riesgo, alguno3 },
+    news2: {
+      total,
+      parcial: faltan.length > 0,
+      faltan,
+      riesgo,
+      alguno3,
+      suman: conPuntos.sort((a, b) => b[1] - a[1]).map(([t, n]) => `${t} (${n})`),
+    },
     qsofa: { total: qTotal, evaluables, faltan: qFaltan },
     indiceShock: presente(d.hr) && presente(d.pas) && d.pas > 0 ? Math.round((d.hr / d.pas) * 100) / 100 : null,
   };
@@ -154,13 +173,156 @@ export function gravedadSugerida(riesgo: Puntajes["news2"]["riesgo"]): "alta" | 
 /** Los puntajes en una línea para el contexto del modelo, diciendo qué falta. */
 export function textoPuntajes(p: Puntajes): string {
   const n = p.news2;
-  const news2 = `NEWS2 ${n.parcial ? "parcial " : ""}${n.total} (riesgo ${n.riesgo}${n.alguno3 ? ", algún parámetro en 3" : ""}${n.parcial ? `; sin ${n.faltan.join(", ")}` : ""})`;
+  const news2 = `NEWS2 ${n.parcial ? "parcial " : ""}${n.total} (riesgo ${n.riesgo}${n.alguno3 ? ", algún parámetro en 3" : ""}${n.parcial ? `; sin ${n.faltan.join(", ")}` : ""}${n.suman.length ? `; lo que más suma: ${n.suman.join(", ")}` : ""})`;
   const qsofa = p.qsofa.evaluables
     ? `qSOFA ${p.qsofa.total} de ${p.qsofa.evaluables} criterios evaluables${p.qsofa.faltan.length ? ` (sin ${p.qsofa.faltan.join(", ")})` : ""}`
     : "qSOFA no evaluable";
   const shock = p.indiceShock === null ? "índice de shock no calculable (sin PA)" : `índice de shock ${p.indiceShock}`;
   const gravedad = `Gravedad sugerida por el NEWS2: ${gravedadSugerida(n.riesgo)}${n.parcial ? " (puede ser mayor: el puntaje es parcial)" : ""}`;
   return `Puntajes calculados por el sistema: ${news2}; ${qsofa}; ${shock}. ${gravedad}.`;
+}
+
+// --- Riesgo y pronóstico: las líneas las escribe el backend, no el modelo -------------------------------------------
+//
+// A "¿cuál es la probabilidad de muerte?" el modelo respondía una frase suelta ("El puntaje NEWS2 parcial es 8") o
+// algo peor. Estas líneas salen calculadas con los datos reales y llegan antes que el texto del modelo, que solo
+// agrega lo que más pesa (routes/ai.ts). Ningún número lo inventa el modelo.
+
+export type DatosRiesgo = DatosPuntaje & {
+  edad: number | null;
+  sexo: "M" | "F" | "O" | null;
+  motivo: string | null;
+  /** Diagnósticos activos: "descripción [CIE-10]". */
+  diagnosticos: string[];
+  /** Antecedentes activos (y los diagnósticos), para cáncer, insuficiencia cardíaca y neumopatía crónica. */
+  antecedentes: string[];
+};
+
+const plano = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const hay = (textos: string[], patron: RegExp) => textos.some((t) => patron.test(plano(t)));
+
+const CANCER = /cancer|neoplas|tumor maligno|carcinoma|linfoma|leucemia|metastas|\bc(?:[0-8][0-9]|9[0-7])(?:\.\d+)?\]/;
+const INSUF_CARDIACA = /insuficiencia cardiaca|\bi50(?:\.\d+)?\]/;
+const NEUMOPATIA = /epoc|obstructiva cronica|enfermedad pulmonar cronica|fibrosis pulmonar|bronquiectasia|asma|\bj4[0-7](?:\.\d+)?\]/;
+
+/** Las enfermedades del paciente con un puntaje propio, por los diagnósticos activos (y el motivo si no hay). */
+export function enfermedadesConPuntaje(diagnosticos: string[], motivo: string | null): Array<"tep" | "neumonia" | "sepsis"> {
+  const textos = diagnosticos.length ? diagnosticos : motivo ? [motivo] : [];
+  const out: Array<"tep" | "neumonia" | "sepsis"> = [];
+  if (hay(textos, /tromboembolia|embolia pulmonar|\btep\b|\bi26(?:\.\d+)?\]/)) out.push("tep");
+  if (hay(textos, /neumon|\bj1[2-8](?:\.\d+)?\]/)) out.push("neumonia");
+  if (hay(textos, /sepsis|septic|\ba4[01](?:\.\d+)?\]|\br65(?:\.\d+)?\]/)) out.push("sepsis");
+  return out;
+}
+
+type Criterio = { nombre: string; valor: boolean | null };
+const evaluar = (criterios: Criterio[]) => ({
+  total: criterios.filter((c) => c.valor === true).length,
+  cumplidos: criterios.filter((c) => c.valor === true).map((c) => c.nombre),
+  faltan: criterios.filter((c) => c.valor === null).map((c) => c.nombre),
+});
+const si = (v: number | null | undefined, f: (x: number) => boolean) => (presente(v) ? f(v) : null);
+
+/** sPESI y PESI (TEP). Lo que falta solo puede sumar: el PESI parcial es "al menos" su clase. */
+export function calcularPesi(d: DatosRiesgo) {
+  const cancer = hay(d.antecedentes, CANCER);
+  const ic = hay(d.antecedentes, INSUF_CARDIACA);
+  const neumo = hay(d.antecedentes, NEUMOPATIA);
+  const mental = si(d.glasgow, (g) => g < 15);
+  const spesi = evaluar([
+    { nombre: "edad > 80", valor: d.edad === null ? null : d.edad > 80 },
+    { nombre: "cáncer", valor: cancer },
+    { nombre: "enfermedad cardiopulmonar crónica", valor: ic || neumo },
+    { nombre: "FC ≥ 110", valor: si(d.hr, (x) => x >= 110) },
+    { nombre: "PA sistólica < 100", valor: si(d.pas, (x) => x < 100) },
+    { nombre: "SpO2 < 90", valor: si(d.spo2, (x) => x < 90) },
+  ]);
+  const puntos: Array<[boolean | null, number, string]> = [
+    [d.sexo === "M", 10, ""],
+    [cancer, 30, ""],
+    [ic, 10, ""],
+    [neumo, 10, ""],
+    [si(d.hr, (x) => x >= 110), 20, "FC"],
+    [si(d.pas, (x) => x < 100), 30, "PA sistólica"],
+    [si(d.resp, (x) => x >= 30), 20, "FR"],
+    [si(d.temp, (x) => x < 36), 20, "temperatura"],
+    [mental, 60, "estado mental (Glasgow)"],
+    [si(d.spo2, (x) => x < 90), 20, "SpO2"],
+  ];
+  const total = (d.edad ?? 0) + puntos.reduce((n, [v, p]) => n + (v === true ? p : 0), 0);
+  const faltan = [...(d.edad === null ? ["edad"] : []), ...puntos.filter(([v]) => v === null).map(([, , n]) => n)];
+  const clase = total <= 65 ? "I" : total <= 85 ? "II" : total <= 105 ? "III" : total <= 125 ? "IV" : "V";
+  const RIESGO_CLASE: Record<string, string> = { I: "muy bajo", II: "bajo", III: "intermedio", IV: "alto", V: "muy alto" };
+  return { spesi, pesi: { total, clase, riesgo: RIESGO_CLASE[clase], parcial: faltan.length > 0, faltan } };
+}
+
+/** CURB-65 (neumonía). La urea no está en el expediente y la PA tampoco: casi siempre es "al menos". */
+export function calcularCurb65(d: DatosRiesgo & { urea?: number | null; pad?: number | null }) {
+  return evaluar([
+    { nombre: "confusión", valor: si(d.glasgow, (g) => g < 15) },
+    { nombre: "urea > 7 mmol/L", valor: si(d.urea, (u) => u > 7) },
+    { nombre: "FR ≥ 30", valor: si(d.resp, (x) => x >= 30) },
+    { nombre: "PA sistólica < 90 o diastólica ≤ 60", valor: presente(d.pas) || presente(d.pad) ? (d.pas ?? 999) < 90 || (d.pad ?? 999) <= 60 : null },
+    { nombre: "edad ≥ 65", valor: d.edad === null ? null : d.edad >= 65 },
+  ]);
+}
+
+const QUE_HACER_NEWS2: Record<Puntajes["news2"]["riesgo"], string> = {
+  alto: "valoración urgente por un equipo de cuidados críticos y considerar UCI",
+  medio: "valoración urgente por el médico y vigilancia continua",
+  "bajo-medio": "un parámetro en 3: valoración pronta por el médico",
+  bajo: "vigilancia según protocolo",
+};
+
+const lista = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
+
+/**
+ * Las líneas de riesgo (Markdown), de 2 a 5. Sin signos vitales recientes, el NEWS2 no se calcula y se dice.
+ * Con `pronostico`, la última dice que no se puede dar una probabilidad exacta.
+ */
+export function lineasRiesgo(d: DatosRiesgo, pronostico: boolean): string[] {
+  const p = calcularPuntajes(d);
+  const n = p.news2;
+  const conSignos = [d.hr, d.resp, d.spo2, d.temp].some(presente);
+  const lineas: string[] = [];
+  if (conSignos) {
+    lineas.push(`**Riesgo ${n.riesgo}** · NEWS2 ${n.parcial ? "parcial " : ""}${n.total}: ${QUE_HACER_NEWS2[n.riesgo]}.`);
+    if (n.parcial) lineas.push(`- Es parcial porque faltan ${lista(n.faltan)}: con esos datos el puntaje solo puede subir.`);
+  } else {
+    lineas.push("**Riesgo sin calcular** · NEWS2 no calculable: no hay signos vitales de la última hora.");
+  }
+
+  const enfermedades = enfermedadesConPuntaje(d.diagnosticos, d.motivo);
+  if (!enfermedades.length && conSignos) {
+    const dx = d.diagnosticos[0] ?? d.motivo;
+    lineas.push(`- ${dx ? `Su diagnóstico (${dx.replace(/ \[[^\]]*\]$/, "")}) no tiene` : "Sin diagnóstico registrado no hay"} un puntaje de riesgo propio: el riesgo se lee con el NEWS2.`);
+  }
+  for (const enf of enfermedades) {
+    if (enf === "tep") {
+      const { spesi, pesi } = calcularPesi(d);
+      const s = spesi.total > 0
+        ? `sPESI ${spesi.total} (${lista(spesi.cumplidos)}): riesgo alto`
+        : spesi.faltan.length
+          ? `sPESI 0 con lo evaluable (falta ${lista(spesi.faltan)}): no alcanza para decir que el riesgo es bajo`
+          : "sPESI 0: riesgo bajo";
+      const ps = `PESI ${pesi.parcial ? `parcial ${pesi.total}, al menos clase ${pesi.clase}` : `${pesi.total}, clase ${pesi.clase}`} (riesgo ${pesi.riesgo})`;
+      lineas.push(`- **TEP:** ${s} · ${ps}.${pesi.parcial ? ` Falta ${lista(pesi.faltan)}.` : ""}`);
+    }
+    if (enf === "neumonia") {
+      const c = calcularCurb65(d);
+      const nivel = c.total >= 3 ? "riesgo alto: considerar UCI" : c.total === 2 ? "riesgo moderado: considerar hospitalización" : "riesgo bajo";
+      lineas.push(`- **Neumonía:** CURB-65 ${c.faltan.length ? "al menos " : ""}${c.total}${c.cumplidos.length ? ` (${lista(c.cumplidos)})` : ""}: ${nivel}${c.faltan.length ? `. Falta ${lista(c.faltan)}` : ""}.`);
+    }
+    if (enf === "sepsis") {
+      const q = p.qsofa;
+      const nivel = q.total >= 2 ? "riesgo alto de mala evolución" : "por debajo de 2";
+      lineas.push(`- **Sepsis:** qSOFA ${q.faltan.length ? "al menos " : ""}${q.total} de 3: ${nivel}${q.faltan.length ? `. Falta ${lista(q.faltan)}` : ""}.`);
+    }
+  }
+  if (pronostico) {
+    lineas.push("- No se puede dar una probabilidad exacta de muerte: los puntajes estiman el riesgo de grupos de pacientes, no el de uno en particular.");
+  }
+  return lineas;
 }
 
 // --- Formato del contexto para el modelo -----------------------------------------------------------------------------

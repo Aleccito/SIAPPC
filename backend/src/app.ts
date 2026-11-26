@@ -27,6 +27,7 @@ import reportesCsvRoutes from "./routes/reportesCsv.ts";
 import searchRoutes from "./routes/search.ts";
 import notificationsRoutes from "./routes/notifications.ts";
 import aiRoutes from "./routes/ai.ts";
+import devicesRoutes from "./routes/devices.ts";
 
 export async function buildApp() {
   const app = Fastify({
@@ -134,6 +135,7 @@ export async function buildApp() {
   await app.register(searchRoutes);
   await app.register(notificationsRoutes);
   await app.register(aiRoutes);
+  await app.register(devicesRoutes);
 
   return app;
 }

@@ -1,5 +1,10 @@
 // Pantalla "med/monitoreo/lista-uci" (Figma node 127:11) — generada desde el diseño original de Figma.
 // Las mismas camas que la vista Grid (GET /monitoring/beds), en filas.
+//
+// Desde 768 px es una tabla con columnas proporcionales y una sola fila de títulos (con las unidades): cada celda
+// lleva solo su valor. Con los anchos fijos de Figma quedaban ~600 px vacíos a 1920 y cada celda repetía "FC",
+// "SpO2"… (REVISION-DETALLES.md, A1). En celular, una tarjeta por cama con la etiqueta de cada signo.
+import type { ReactNode } from 'react';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
 import imgBedIcon from '../../assets/bed-icon.svg';
@@ -9,8 +14,9 @@ import imgBedIcon4 from '../../assets/bed-icon-4.svg';
 import imgStatusPillEllipse from '../../assets/status-pill-ellipse.svg';
 import { AppLayout, Badge, rowLinkClass, Table, useRowLink, useSession } from '../../components';
 import { unitSummary, useUnitBeds, useUnitParam, type BedView } from '../../components/monitor/BedCards';
+import { RegistrarExploracion } from '../../components/patient/RegistrarExploracion';
 import { vitalTone } from '../../lib/alerts';
-import { ageFrom, fmtAgoShort, STATE_LABEL } from '../../lib/clinical';
+import { ageFrom, fmtAgoShort, primerApellido, STATE_LABEL } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 import { patientPath } from '../../lib/patientLink';
 import { MonitorActions } from '../MedMonitoreoGridUci';
@@ -22,14 +28,19 @@ const STATE_STYLE = {
   critico: { icon: imgBedIcon2, tone: 'danger', row: 'bg-[#f1f5f9]' },
 } as const;
 
+/** Los signos, en el orden de la tabla. La unidad va en el título (tabla) o junto al valor (tarjeta del celular). */
 const VITALS = [
-  { label: 'FC', unit: 'bpm', width: 'w-[70px]' },
-  { label: 'SpO2', unit: '%', width: 'w-[70px]' },
-  { label: 'P. ARTERIAL', unit: 'mmHg', width: 'w-[110px]' },
-  { label: 'TEMP', unit: '°C', width: 'w-[70px]' },
-  { label: 'FR', unit: 'rpm', width: 'w-[70px]' },
-  { label: 'GCS', unit: '', width: 'w-[60px]' },
+  { label: 'FC', unit: 'bpm' },
+  { label: 'SpO2', unit: '%' },
+  { label: 'P. arterial', unit: 'mmHg' },
+  { label: 'Temp', unit: '°C' },
+  { label: 'FR', unit: 'rpm' },
+  { label: 'GCS', unit: '' },
 ];
+
+// Cama, paciente, estado, los 6 signos y "actualizado": proporcionales, con un mínimo para que nada se corte.
+const COLS =
+  'grid grid-cols-[minmax(84px,0.8fr)_minmax(150px,1.8fr)_minmax(100px,1fr)_minmax(64px,0.8fr)_minmax(64px,0.8fr)_minmax(96px,1.1fr)_minmax(64px,0.8fr)_minmax(64px,0.8fr)_minmax(80px,0.9fr)_minmax(88px,0.9fr)] items-center gap-3';
 
 const LEGEND: Array<[string, string]> = [
   [imgStatusPillEllipse, 'Estable'],
@@ -38,8 +49,9 @@ const LEGEND: Array<[string, string]> = [
 ];
 
 const shortName = (name: string) => {
-  const [first, surname] = name.split(/\s+/);
-  return surname ? `${first[0]}. ${surname}` : name;
+  const first = name.split(/\s+/)[0] ?? '';
+  const surname = primerApellido(name);
+  return surname !== name ? `${first[0]}. ${surname}` : name;
 };
 
 /** [color, valor] de los 6 signos de la fila. */
@@ -48,13 +60,28 @@ function cells(b: BedView): Array<[keyof typeof LEVEL_COLOR, string]> {
   const pa = b.signos?.pa;
   const g = b.glasgow;
   return [
-    [vitalTone('hr', hr), String(hr ?? '-')],
-    [vitalTone('spo2', spo2), String(spo2 ?? '-')],
-    [vitalTone('pa', pa?.sis), pa ? `${pa.sis}/${pa.dia}` : '-'],
-    [vitalTone('temp', b.signos?.temp), b.signos ? b.signos.temp.toFixed(1) : '-'],
-    [vitalTone('resp', resp), String(resp ?? '-')],
-    [g === null ? 'normal' : g <= 8 ? 'danger' : g <= 13 ? 'warning' : 'normal', g === null ? '-' : String(g)],
+    [vitalTone('hr', hr), String(hr ?? '—')],
+    [vitalTone('spo2', spo2), String(spo2 ?? '—')],
+    [vitalTone('pa', pa?.sis), pa ? `${pa.sis}/${pa.dia}` : '—'],
+    [vitalTone('temp', b.signos?.temp), b.signos ? b.signos.temp.toFixed(1) : '—'],
+    [vitalTone('resp', resp), String(resp ?? '—')],
+    [g === null ? 'normal' : g <= 8 ? 'danger' : g <= 13 ? 'warning' : 'normal', g === null ? '—' : String(g)],
   ];
+}
+
+/** El valor de un signo; el GCS sin registrar lleva a registrar la exploración física (A4). */
+function Valor({ b, i, cell, withUnit }: { b: BedView; i: number; cell: [keyof typeof LEVEL_COLOR, string] | undefined; withUnit: boolean }) {
+  const v = VITALS[i];
+  const gcsPendiente = Boolean(v.label === 'GCS' && cell && b.glasgow === null && b.cedula);
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5 leading-[normal]">
+      <p className="flex items-baseline gap-1">
+        <span className={cn('font-jakarta text-[13px] font-extrabold', cell ? LEVEL_COLOR[cell[0]] : 'text-subtle')}>{cell ? cell[1] : '—'}</span>
+        {withUnit && v.unit && <span className="font-jakarta text-[10px] font-semibold text-muted">{v.unit}</span>}
+      </p>
+      {gcsPendiente && <RegistrarExploracion cedula={b.cedula!} texto="Registrar" className="text-[11px]" />}
+    </div>
+  );
 }
 
 export default function MedMonitoreoListaUci() {
@@ -64,6 +91,31 @@ export default function MedMonitoreoListaUci() {
   const [unit, setUnit] = useUnitParam();
   const { beds, units } = useUnitBeds(unit);
   const summary = unitSummary(beds, unit);
+
+  const filas = beds.map((b) => {
+    const free = !b.state || !b.cedula;
+    const style = b.state ? STATE_STYLE[b.state] : null;
+    // Las camas ocupadas llevan al expediente. La libre es informativa: asignar camas es de Admisión.
+    const rowProps = free || !opens ? {} : { ...rowLink(patientPath('/MedPacienteResumen', b.cedula!)), 'aria-label': `Ver a ${b.patientName}, cama ${b.bed}` };
+    return { b, free, style, row: free ? null : cells(b), rowProps, age: ageFrom(b.birthDate) };
+  });
+
+  const cama = (f: (typeof filas)[number]): ReactNode => (
+    <div className="flex items-center gap-2">
+      <img className="size-[18px]" alt="" src={f.style?.icon ?? imgBedIcon4} />
+      <p className="whitespace-nowrap font-jakarta text-[12px] font-extrabold leading-[normal] text-ink">{f.b.bed}</p>
+    </div>
+  );
+  const paciente = (f: (typeof filas)[number]): ReactNode => (
+    <div className="flex min-w-0 flex-col gap-0.5 leading-[normal]">
+      <p className={cn('truncate font-jakarta text-[13px] font-bold', f.free ? 'text-muted' : 'text-ink')}>{f.free ? 'Disponible' : shortName(f.b.patientName ?? '')}</p>
+      {!f.free && f.age !== null && <p className="font-jakarta text-[11px] font-medium text-muted">{`${f.age} años`}</p>}
+    </div>
+  );
+  const estado = (f: (typeof filas)[number]): ReactNode => (
+    <Badge tone={f.style?.tone ?? 'info'} size="sm">{f.b.state ? STATE_LABEL[f.b.state].toUpperCase() : 'DISPONIBLE'}</Badge>
+  );
+  const actualizado = (f: (typeof filas)[number]) => (f.free ? '—' : fmtAgoShort(f.b.vitals.at));
 
   return (
     <AppLayout breadcrumb="SIAPPC > Monitoreo" title={`Central de Monitoreo – ${unit}`} actions={<MonitorActions unit={unit} units={units} setUnit={setUnit} view="lista" />}>
@@ -83,67 +135,58 @@ export default function MedMonitoreoListaUci() {
           </div>
         </div>
 
-        <div className="w-full flex-1 overflow-hidden rounded-xl border border-line">
-          <Table minWidth={1020}>
-            <div className="flex w-full items-center gap-4 border-b border-line bg-surface px-6 py-3 font-jakarta font-bold leading-[normal] text-muted">
-              <p className="w-[60px] shrink-0 text-center text-[11px]">CAMA</p>
-              <p className="w-[140px] shrink-0 text-[11px]">PACIENTE</p>
-              <p className="w-[90px] shrink-0 text-[11px]">ESTADO</p>
-              <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <p className="w-full text-center text-[11px]">SIGNOS VITALES / TELEMETRÍA EN TIEMPO REAL</p>
-                <div className="flex w-full items-center gap-4 text-[10px]">
-                  {VITALS.map((v) => (
-                    <p key={v.label} className={cn(v.width, 'shrink-0 text-center')}>
-                      {v.label}
-                    </p>
-                  ))}
-                  <p className="w-[84px] shrink-0 font-semibold">ACTUALIZADO</p>
-                </div>
-              </div>
+        {/* Desde 768 px: tabla. La caja mide lo que su contenido (antes se estiraba hasta el final de la pantalla). */}
+        <div className="hidden w-full overflow-hidden rounded-xl border border-line md:block">
+          <Table minWidth={900}>
+            <div className={cn(COLS, 'border-b border-line bg-surface px-6 py-3 font-jakarta text-[11px] font-bold uppercase leading-[normal] text-muted')}>
+              <p>Cama</p>
+              <p>Paciente</p>
+              <p>Estado</p>
+              {VITALS.map((v) => (
+                <p key={v.label} className="whitespace-nowrap">
+                  {v.label}
+                  {v.unit && <span className="ml-1 font-semibold normal-case text-subtle">{`(${v.unit})`}</span>}
+                </p>
+              ))}
+              <p className="text-right">Actualizado</p>
             </div>
-            {beds.map((b) => {
-              const free = !b.state || !b.cedula;
-              const style = b.state ? STATE_STYLE[b.state] : null;
-              const row = free ? null : cells(b);
-              // Las camas ocupadas llevan al expediente. La libre es informativa: asignar camas es de Admisión.
-              const rowProps = free || !opens ? {} : { ...rowLink(patientPath('/MedPacienteResumen', b.cedula!)), 'aria-label': `Ver a ${b.patientName}, cama ${b.bed}` };
-              const age = ageFrom(b.birthDate);
-              return (
-                <div key={b.id} {...rowProps} className={cn('flex min-h-[72px] w-full items-center gap-4 border-b border-line px-6 py-3 last:border-b-0', style?.row ?? 'bg-[#f3f4f6]', !free && opens && rowLinkClass)}>
-                  <div className="flex w-[60px] shrink-0 items-center gap-2">
-                    <img className="size-[18px]" alt="" src={style?.icon ?? imgBedIcon4} />
-                    <p className="whitespace-nowrap font-jakarta text-[12px] font-extrabold leading-[normal] text-ink">{b.bed}</p>
-                  </div>
-                  <div className="flex w-[140px] shrink-0 flex-col gap-0.5 leading-[normal]">
-                    <p className={cn('truncate font-jakarta text-[12px] font-bold', free ? 'text-muted' : 'text-ink')}>{free ? 'Disponible' : shortName(b.patientName ?? '')}</p>
-                    {!free && age !== null && <p className="font-jakarta text-[11px] font-medium text-muted">{`${age} años`}</p>}
-                  </div>
-                  <div className="w-[90px] shrink-0">
-                    <Badge tone={style?.tone ?? 'info'} size="sm">{b.state ? STATE_LABEL[b.state].toUpperCase() : 'DISPONIBLE'}</Badge>
-                  </div>
-                  <div className="flex min-w-0 flex-1 items-center gap-4">
-                    {VITALS.map((v, i) => {
-                      const cell = row?.[i];
-                      return (
-                        <div key={v.label} className={cn(v.width, 'flex shrink-0 flex-col gap-0.5 leading-[normal]')}>
-                          <p className="font-jakarta text-[10px] font-bold text-muted">{v.label}</p>
-                          <p className="flex items-baseline gap-1">
-                            <span className={cn('font-jakarta text-[12px] font-extrabold', cell ? LEVEL_COLOR[cell[0]] : 'text-subtle')}>{cell ? cell[1] : '-'}</span>
-                            {v.unit && <span className="font-jakarta text-[10px] font-semibold text-muted">{v.unit}</span>}
-                          </p>
-                        </div>
-                      );
-                    })}
-                    <div className="flex w-[84px] shrink-0 flex-col items-end gap-0.5 text-right font-jakarta font-semibold leading-[normal]">
-                      <p className="w-full text-[10px] text-subtle">ACTUALIZADO</p>
-                      <p className="w-full text-[11px] text-muted">{free ? '-' : fmtAgoShort(b.vitals.at)}</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {filas.map((f) => (
+              <div key={f.b.id} {...f.rowProps} className={cn(COLS, 'min-h-[64px] border-b border-line px-6 py-3 last:border-b-0', f.style?.row ?? 'bg-[#f3f4f6]', !f.free && opens && rowLinkClass)}>
+                {cama(f)}
+                {paciente(f)}
+                <div>{estado(f)}</div>
+                {VITALS.map((v, i) => (
+                  <Valor key={v.label} b={f.b} i={i} cell={f.row?.[i]} withUnit={false} />
+                ))}
+                <p className="text-right font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{actualizado(f)}</p>
+              </div>
+            ))}
           </Table>
         </div>
+
+        {/* Celular: una tarjeta por cama, con la etiqueta de cada signo. */}
+        <ul className="flex w-full flex-col gap-3 md:hidden">
+          {filas.map((f) => (
+            <li key={f.b.id} {...f.rowProps} className={cn('flex flex-col gap-3 rounded-xl border border-line p-4', f.style?.row ?? 'bg-[#f3f4f6]', !f.free && opens && rowLinkClass)}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  {cama(f)}
+                  {paciente(f)}
+                </div>
+                {estado(f)}
+              </div>
+              <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                {VITALS.map((v, i) => (
+                  <div key={v.label} className="flex min-w-0 flex-col gap-0.5">
+                    <p className="font-jakarta text-[10px] font-bold uppercase leading-[normal] text-muted">{v.label}</p>
+                    <Valor b={f.b} i={i} cell={f.row?.[i]} withUnit />
+                  </div>
+                ))}
+              </div>
+              <p className="font-jakarta text-[11px] font-semibold leading-[normal] text-muted">{`Actualizado: ${actualizado(f)}`}</p>
+            </li>
+          ))}
+        </ul>
       </div>
     </AppLayout>
   );

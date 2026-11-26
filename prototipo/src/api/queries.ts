@@ -2,6 +2,7 @@
 // Las claves son las de frontend/ cuando existen (['patients'], ['aiAnalysis', id]…).
 // En modo mock los datos no cambian solos, así que no se repreguntan; con el backend real se
 // vuelven a pedir cada 15 s, como el tablero de frontend/ (CONEXION-BACKEND.md, sección 5).
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { API_MODE } from './mode';
 import { listPatients, listAssignments } from './patients';
@@ -22,13 +23,44 @@ const LIVE = API_MODE === 'mock' ? false : 15_000;
 // ellos), así volver a una pantalla no repite la consulta (REVISION-MEDICO.md, 5.1).
 const QUIETO = 5 * 60_000;
 
-export const usePatients = () => useQuery({ queryKey: ['patients'], queryFn: () => listPatients(), staleTime: QUIETO });
+/** Cuándo se volvió a pedir la lista por última vez porque faltaba alguien, por conjunto de faltantes. */
+const pedidosPorFaltante = new Map<string, number>();
+
+/**
+ * La lista de pacientes, vigente 5 minutos. Pero si una pantalla busca a alguien que no está (`buscar`: ids o
+ * cédulas), como un paciente recién admitido desde la app principal, se vuelve a pedir en el acto: antes su ficha
+ * decía "no encontrado" y su cama de la central salía "Disponible" hasta 5 minutos (REVISION-DETALLES.md, 3.7).
+ * Como mucho una vez cada 10 s por cada conjunto de faltantes, así una cédula que no existe no repregunta sin fin.
+ */
+export function usePatients(buscar?: { ids?: Array<string | null | undefined>; cedulas?: Array<string | null | undefined> }) {
+  const query = useQuery({ queryKey: ['patients'], queryFn: () => listPatients(), staleTime: QUIETO });
+  const items = query.data?.items;
+  const faltan = items
+    ? [
+        ...(buscar?.ids ?? []).filter((id): id is string => !!id && !items.some((p) => p.id === id)),
+        ...(buscar?.cedulas ?? []).filter((c): c is string => !!c && !items.some((p) => p.document === c)),
+      ]
+    : [];
+  const clave = [...new Set(faltan)].sort().join(',');
+  const { isFetching, refetch } = query;
+  useEffect(() => {
+    if (!clave || isFetching) return;
+    const antes = pedidosPorFaltante.get(clave) ?? 0;
+    if (Date.now() - antes < 10_000) return;
+    pedidosPorFaltante.set(clave, Date.now());
+    void refetch();
+  }, [clave, isFetching, refetch]);
+  return query;
+}
 export const useAssignments = (patientId: string | undefined) =>
   useQuery({ queryKey: ['assignments', patientId], queryFn: () => listAssignments(patientId!), enabled: !!patientId });
 
-export const useAssignedPatients = () => useQuery({ queryKey: ['assignedPatients'], queryFn: listAssignedPatients, refetchInterval: LIVE });
-export const useDeviceStatus = () => useQuery({ queryKey: ['deviceStatus'], queryFn: listDeviceStatus, refetchInterval: LIVE });
-export const useMonitoredBeds = () => useQuery({ queryKey: ['monitoredBeds'], queryFn: () => listMonitoredBeds(), refetchInterval: LIVE });
+// Las listas que cambian cuando Admisión registra o mueve a alguien: al entrar a una pantalla o volver a la pestaña se
+// piden otra vez si tienen más de 5 s (por defecto, 30 s), además de cada 15 s (REVISION-DETALLES.md, 3.7).
+const LISTA = 5_000;
+export const useAssignedPatients = () => useQuery({ queryKey: ['assignedPatients'], queryFn: listAssignedPatients, refetchInterval: LIVE, staleTime: LISTA });
+export const useDeviceStatus = () => useQuery({ queryKey: ['deviceStatus'], queryFn: listDeviceStatus, refetchInterval: LIVE, staleTime: LISTA });
+export const useMonitoredBeds = () => useQuery({ queryKey: ['monitoredBeds'], queryFn: () => listMonitoredBeds(), refetchInterval: LIVE, staleTime: LISTA });
 
 export const useExpediente = (patientId: string | undefined) =>
   useQuery({ queryKey: ['expediente', patientId], queryFn: () => getExpediente(patientId!), enabled: !!patientId, staleTime: QUIETO });

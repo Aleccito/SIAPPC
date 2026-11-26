@@ -1,29 +1,34 @@
-// SIMULADO: publicador de demo. Hace de los monitores a pie de cama del seed (DEMO-DEV-01…15) mientras no haya
-// equipos de verdad, para que en el prototipo los signos vitales, las alertas y la onda del ECG cambien solos.
+// SIMULADO: publicador de demo. Hace de los monitores de demo (DEMO-*) que están ASIGNADOS a un paciente, mientras no
+// haya equipos de verdad, para que en el prototipo los signos vitales, las alertas y la onda del ECG cambien solos.
+//
+// Qué equipos simula: los que el backend avisa como asignados en siappc/<equipo>/asignacion (retenido; ver
+// backend/src/services/mqttAsignacion.ts). Al arrancar recibe el aviso de todos; después, cada asignación y cada
+// liberación en el acto, y una sincronía del backend cada 2 minutos. No hace falta reiniciarlo.
+//   - Asignado: manda `online` y empieza a publicar. Liberado: manda `offline` y deja de publicar.
+//   - Solo equipos con el prefijo PREFIJO (DEMO-): un equipo real asignado nunca se simula.
+//   - Los valores: casos.json para DEMO-DEV-01…15; para los demás, un perfil de perfiles.json según los diagnósticos
+//     activos o, mientras no haya diagnóstico, el motivo de consulta. Si el médico registra un diagnóstico, el perfil
+//     cambia con el siguiente aviso (2 minutos como mucho).
 //
 // Publica por MQTT, por TLS y con usuario, lo mismo que la Raspberry (iot/monitor/net/publisher.py):
-//   siappc/<equipo>/status     {device, status: "online"|"offline"}              retenido, al arrancar y al salir
+//   siappc/<equipo>/status     {device, status: "online"|"offline"}              retenido, al asignarse y al liberarse
 //   siappc/<equipo>/telemetry  {device, variable, value, unit, ts, hash}         hr, spo2, resp y temp, cada PERIODO_S
 //   siappc/<equipo>/waveform   {device, variable: "ecg", hz, ts, samples}       cada segundo (si ONDA=1)
 // El backend (backend/src/services/mqttIngest.ts) guarda las lecturas, evalúa las alertas y reparte la onda.
-// Los valores siguen casos.json: oscilan despacio alrededor del centro de cada caso, sin nada aleatorio salvo un
-// poco de ruido de medición.
 //
-// Variables de entorno (ver LEEME.md):
+// Variables de entorno (ver LEEME.md). Solo necesita las de MQTT: no se le pasa el .env entero.
 //   MQTT_USER, MQTT_PASSWORD   las del .env de la raíz (no se imprimen nunca)
 //   MQTT_HOST=mosquitto  MQTT_PORT=8883  MQTT_CA_FILE=/certs/ca.crt
 //   PERIODO_S=30   cada cuántos segundos se manda una lectura de cada signo
 //   ONDA=1         0 para no mandar la onda del ECG
 //   ONDA_HZ=125    muestras por segundo de la onda (10 a 250)
-//   EQUIPOS=       lista separada por comas para mandar solo algunos (vacío: todos los de casos.json)
-// Argumento --una-vez: manda una lectura de cada signo de cada equipo y termina (para probar). Con --historia, antes
-// manda la historia: es la forma de cargarla una sola vez (LEEME.md).
-// Argumento --alerta <equipo>: manda UNA lectura de FC de 150 lpm (alerta crítica) de ese equipo y termina; sirve para
-// mostrar en vivo el aviso, la campana y la lista de alertas sin esperar a que un caso cruce su umbral.
-// Argumento --historia 24h (o 6h, 90m…): antes de empezar, manda las lecturas de ese tiempo hacia atrás con su fecha
-// pasada, cada PASO_HISTORIA_MIN minutos (5), para que las tendencias tengan historia. El backend las guarda como
-// atrasadas, sin avisos en vivo. Se mantienen dentro de los umbrales a propósito: el backend fecha la alerta al
-// guardarla y no con la hora de la lectura (pedido 34), así que una alerta de hace 20 h aparecería como de ahora.
+//   EQUIPOS=       lista separada por comas para simular solo algunos de los asignados (vacío: todos)
+//   PREFIJO=DEMO-  solo se simulan los equipos con este prefijo
+// Argumento --una-vez: manda una lectura de cada signo de cada equipo asignado y termina (para probar). Con --historia,
+// antes manda la historia: es la forma de cargarla una sola vez (LEEME.md).
+// Argumento --alerta <equipo>: manda UNA lectura de FC de 150 lpm (alerta crítica) de ese equipo y termina.
+// Argumento --historia 24h (o 6h, 90m…): manda las lecturas de ese tiempo hacia atrás de los equipos asignados de
+// casos.json, cada PASO_HISTORIA_MIN minutos (5), dentro de los umbrales (pedido 34).
 import { readFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
 import mqtt from 'mqtt';
@@ -34,6 +39,7 @@ const PORT = Number(env.MQTT_PORT || 8883);
 const PERIODO_S = Math.max(5, Number(env.PERIODO_S || 30));
 const ONDA = env.ONDA !== '0';
 const ONDA_HZ = Math.min(250, Math.max(10, Math.round(Number(env.ONDA_HZ || 125))));
+const PREFIJO = env.PREFIJO ?? 'DEMO-';
 const UNA_VEZ = process.argv.includes('--una-vez');
 const iAlerta = process.argv.indexOf('--alerta');
 const ALERTA = iAlerta >= 0 ? process.argv[iAlerta + 1] : null;
@@ -53,25 +59,51 @@ const HISTORIA_MS = (() => {
   return Number(m[1]) * (m[2].toLowerCase() === 'h' ? 3_600_000 : 60_000);
 })();
 const PASO_HISTORIA_MS = Math.max(1, Number(env.PASO_HISTORIA_MIN || 5)) * 60_000;
+/** Cuánto se espera al arrancar a que lleguen los avisos retenidos antes de una ronda única. */
+const ESPERA_AVISOS_MS = 3_000;
 
 if (!env.MQTT_USER || !env.MQTT_PASSWORD) {
-  console.error('Faltan MQTT_USER y MQTT_PASSWORD (las del .env de la raíz: docker run --env-file .env ...).');
+  console.error('Faltan MQTT_USER y MQTT_PASSWORD (las del .env de la raíz; ver LEEME.md).');
   process.exit(1);
 }
 
-const todos = JSON.parse(readFileSync(new URL('./casos.json', import.meta.url), 'utf8'));
-delete todos._nota;
+const CASOS = JSON.parse(readFileSync(new URL('./casos.json', import.meta.url), 'utf8'));
+delete CASOS._nota;
+const PERFILES = JSON.parse(readFileSync(new URL('./perfiles.json', import.meta.url), 'utf8')).perfiles.map((p) => ({
+  ...p,
+  patron: p.palabras ? new RegExp(p.palabras) : null,
+}));
 const filtro = (env.EQUIPOS || '').split(',').map((s) => s.trim()).filter(Boolean);
-const casos = Object.entries(todos).filter(([codigo]) => !filtro.length || filtro.includes(codigo));
-if (!casos.length) {
-  console.error(`Ningún equipo de casos.json coincide con EQUIPOS=${env.EQUIPOS}`);
-  process.exit(1);
-}
 
 // Las del catálogo `variable` (backend/db/seed.sql y seed-demo.sql): si no coinciden, el backend avisa y usa la suya.
 const UNIDADES = { hr: 'lpm', spo2: '%', resp: 'rpm', temp: '°C' };
 
-// --- Valores que cambian poco a poco ---------------------------------------------------------------
+// --- Qué simular de cada equipo asignado ------------------------------------------------------------------------
+
+const plano = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** El perfil del primer diagnóstico que coincida; si ninguno, el del motivo; si tampoco, `general`. */
+function perfilDe(diagnosticos, motivo) {
+  const buscar = (texto) => PERFILES.find((p) => p.patron && p.patron.test(plano(texto)));
+  for (const d of diagnosticos ?? []) {
+    const p = buscar(d);
+    if (p) return { perfil: p, por: `diagnóstico "${d}"` };
+  }
+  const p = motivo ? buscar(motivo) : null;
+  if (p) return { perfil: p, por: 'motivo de consulta' };
+  return { perfil: PERFILES.find((x) => x.nombre === 'general'), por: 'sin diagnóstico ni motivo reconocible' };
+}
+
+/** device → { caso, origen } de los equipos asignados que se simulan. */
+const asignados = new Map();
+
+function casoDe(aviso) {
+  if (CASOS[aviso.device]) return { caso: CASOS[aviso.device], origen: `casos.json (${CASOS[aviso.device].paciente})` };
+  const { perfil, por } = perfilDe(aviso.diagnosticos, aviso.motivo);
+  return { caso: perfil, origen: `perfil ${perfil.nombre} (${por})` };
+}
+
+// --- Valores que cambian poco a poco ---------------------------------------------------------------------------
 
 function hashTexto(texto) {
   let h = 2166136261;
@@ -104,7 +136,7 @@ function valor(codigo, variable, [centro, amplitud], t = Date.now()) {
   return Math.max(0, Math.round(v));
 }
 
-// --- Onda del ECG: un latido PQRST por cada intervalo RR, a la FC del momento ------------------------
+// --- Onda del ECG: un latido PQRST por cada intervalo RR, a la FC del momento ------------------------------------
 
 const gauss = (x, centro, ancho, alto) => alto * Math.exp(-((x - centro) ** 2) / (2 * ancho ** 2));
 function latido(fase, conP) {
@@ -117,9 +149,10 @@ function latido(fase, conP) {
   );
 }
 
-const ondas = new Map(casos.map(([codigo]) => [codigo, { fase: Math.random(), rr: 0.8, t: 0 }]));
+const ondas = new Map();
 
 function muestrasEcg(codigo, caso, n) {
+  if (!ondas.has(codigo)) ondas.set(codigo, { fase: Math.random(), rr: 0.8, t: 0 });
   const s = ondas.get(codigo);
   const fc = Math.max(30, centroActual(codigo, 'hr', caso.hr));
   const fa = caso.ritmo === 'fa';
@@ -144,7 +177,7 @@ function centroActual(codigo, variable, [centro, amplitud]) {
   return centro + amplitud * deriva(`${codigo}:${variable}`, PERIODO_MIN[variable]);
 }
 
-// --- MQTT ------------------------------------------------------------------------------------------
+// --- MQTT --------------------------------------------------------------------------------------------------------
 
 const client = mqtt.connect({
   protocol: 'mqtts',
@@ -168,17 +201,47 @@ function huella(device, variable, ts, value) {
   return createHash('sha256').update(`${device}|${variable}|${ts.toFixed(3)}|${value.toFixed(4)}`).digest('hex');
 }
 
-async function estado(status) {
-  await Promise.all(casos.map(([device]) => publicar(`siappc/${device}/status`, { device, status }, { qos: 1, retain: true })));
+const estado = (device, status) => publicar(`siappc/${device}/status`, { device, status }, { qos: 1, retain: true });
+
+const resumenAsignados = () =>
+  asignados.size ? [...asignados].map(([d, { origen }]) => `${d}: ${origen}`).join(' · ') : 'ninguno (espera el aviso del backend en siappc/+/asignacion)';
+
+/** Aplica un aviso de asignación: empieza, cambia de perfil o deja de simular ese equipo. */
+async function alAviso(device, texto) {
+  if (!device.startsWith(PREFIJO) || (filtro.length && !filtro.includes(device))) return;
+  let aviso = null;
+  try {
+    aviso = texto ? JSON.parse(texto) : null;
+  } catch {
+    console.error(`Aviso de asignación inválido de ${device}: se ignora.`);
+    return;
+  }
+  const antes = asignados.get(device);
+  if (aviso?.asignado && aviso.device === device) {
+    const nuevo = casoDe(aviso);
+    asignados.set(device, nuevo);
+    if (!antes) {
+      console.log(`${new Date().toISOString()} ${device} asignado → ${nuevo.origen}`);
+      await estado(device, 'online');
+    } else if (antes.origen !== nuevo.origen) {
+      console.log(`${new Date().toISOString()} ${device} cambia de perfil → ${nuevo.origen}`);
+    }
+  } else if (antes) {
+    asignados.delete(device);
+    ondas.delete(device);
+    console.log(`${new Date().toISOString()} ${device} liberado: deja de publicar.`);
+    await estado(device, 'offline');
+  }
 }
 
-/** Las lecturas de las últimas `HISTORIA_MS`, con su fecha pasada, dentro de los umbrales. */
+/** Las lecturas de las últimas `HISTORIA_MS`, con su fecha pasada, dentro de los umbrales. Solo de casos.json. */
 async function historia() {
   const fin = Date.now() - 2 * 60_000;
   const inicio = fin - HISTORIA_MS;
+  const equipos = [...asignados].filter(([device]) => CASOS[device]);
   let n = 0;
   for (let t = inicio; t <= fin; t += PASO_HISTORIA_MS) {
-    for (const [device, caso] of casos) {
+    for (const [device, { caso }] of equipos) {
       for (const variable of ['hr', 'spo2', 'resp', 'temp']) {
         if (!caso[variable]) continue;
         const [lo, hi] = SIN_ALERTA[variable];
@@ -189,12 +252,13 @@ async function historia() {
       }
     }
   }
-  console.log(`Historia: ${n} lecturas de las últimas ${Math.round(HISTORIA_MS / 3_600_000)} h, cada ${PASO_HISTORIA_MS / 60_000} min.`);
+  console.log(`Historia: ${n} lecturas de ${equipos.length} equipos, de las últimas ${Math.round(HISTORIA_MS / 3_600_000)} h, cada ${PASO_HISTORIA_MS / 60_000} min.`);
 }
 
 async function ronda() {
+  if (!asignados.size) return;
   const resumen = [];
-  for (const [device, caso] of casos) {
+  for (const [device, { caso }] of asignados) {
     const valores = {};
     for (const variable of ['hr', 'spo2', 'resp', 'temp']) {
       if (!caso[variable]) continue;
@@ -203,22 +267,27 @@ async function ronda() {
       valores[variable] = value;
       await publicar(`siappc/${device}/telemetry`, { device, variable, value, unit: UNIDADES[variable], ts, hash: huella(device, variable, ts, value) }, { qos: 1 });
     }
-    resumen.push(`${device.replace('DEMO-DEV-', '')}: FC ${valores.hr} SpO2 ${valores.spo2} FR ${valores.resp} T ${valores.temp}`);
+    resumen.push(`${device.replace(PREFIJO, '')}: FC ${valores.hr} SpO2 ${valores.spo2} FR ${valores.resp} T ${valores.temp}`);
   }
-  console.log(`${new Date().toISOString()} lecturas de ${casos.length} equipos  ${resumen.join(' · ')}`);
+  console.log(`${new Date().toISOString()} lecturas de ${asignados.size} equipos  ${resumen.join(' · ')}`);
 }
 
 function onda() {
   const ts = Date.now() / 1000;
-  for (const [device, caso] of casos) {
+  for (const [device, { caso }] of asignados) {
     client.publish(`siappc/${device}/waveform`, JSON.stringify({ device, variable: 'ecg', hz: ONDA_HZ, ts, samples: muestrasEcg(device, caso, ONDA_HZ) }), { qos: 0 });
   }
 }
 
+client.on('message', (topic, payload) => {
+  const m = /^siappc\/([^/]+)\/asignacion$/.exec(topic);
+  if (m) alAviso(m[1], payload.toString('utf8')).catch((e) => console.error('No se pudo aplicar el aviso:', e.message));
+});
+
 let timers = [];
 let primera = true;
 client.on('connect', async () => {
-  console.log(`Conectado a mqtts://${HOST}:${PORT} como ${env.MQTT_USER}. Equipos: ${casos.map(([c]) => c).join(', ')}. Lecturas cada ${PERIODO_S} s${ONDA ? `, onda ECG a ${ONDA_HZ} Hz` : ''}.`);
+  console.log(`Conectado a mqtts://${HOST}:${PORT} como ${env.MQTT_USER}. Simula los equipos ${PREFIJO}* asignados${filtro.length ? ` (solo ${filtro.join(', ')})` : ''}. Lecturas cada ${PERIODO_S} s${ONDA ? `, onda ECG a ${ONDA_HZ} Hz` : ''}.`);
   try {
     if (ALERTA) {
       const ts = Date.now() / 1000;
@@ -228,7 +297,12 @@ client.on('connect', async () => {
       client.end(false, () => process.exit(0));
       return;
     }
-    await estado('online');
+    // Los avisos retenidos llegan en cuanto se suscribe: así sabe qué equipos están asignados desde el arranque.
+    await new Promise((resolve, reject) => client.subscribe('siappc/+/asignacion', { qos: 1 }, (err) => (err ? reject(err) : resolve())));
+    if (!primera) return;
+    primera = false;
+    await new Promise((r) => setTimeout(r, ESPERA_AVISOS_MS));
+    console.log(`Equipos asignados: ${resumenAsignados()}`);
     if (UNA_VEZ) {
       // Con --historia: rellena la historia una sola vez y termina, sin repetirla en cada reinicio del servicio.
       if (HISTORIA_MS) await historia();
@@ -237,13 +311,12 @@ client.on('connect', async () => {
       client.end(false, () => process.exit(0));
       return;
     }
-    if (primera) {
-      primera = false;
-      if (HISTORIA_MS) await historia();
-      await ronda();
-      timers.push(setInterval(() => ronda().catch((e) => console.error('No se pudo publicar:', e.message)), PERIODO_S * 1000));
-      if (ONDA) timers.push(setInterval(onda, 1000));
-    }
+    if (HISTORIA_MS) await historia();
+    await ronda();
+    timers.push(setInterval(() => ronda().catch((e) => console.error('No se pudo publicar:', e.message)), PERIODO_S * 1000));
+    if (ONDA) timers.push(setInterval(onda, 1000));
+    // Cada 2 minutos, en el registro, qué está simulando (docker logs).
+    timers.push(setInterval(() => console.log(`${new Date().toISOString()} simulando: ${resumenAsignados()}`), 120_000));
   } catch (e) {
     console.error('No se pudo publicar:', e.message);
   }
@@ -256,7 +329,7 @@ async function salir() {
   timers = [];
   console.log('Saliendo: equipos en offline.');
   try {
-    if (client.connected) await estado('offline');
+    if (client.connected) await Promise.all([...asignados.keys()].map((device) => estado(device, 'offline')));
   } finally {
     client.end(false, () => process.exit(0));
     setTimeout(() => process.exit(0), 3_000).unref();

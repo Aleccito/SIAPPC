@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
+import { SEVERIDAD_TEXTO } from '../../api/alergias';
+import type { HistoriaEntry } from '../../api/types/clinical';
 import { fmtDate, initials } from '../../lib/clinical';
 import { useSession } from '../auth/session';
 import { useAiPanel } from '../ai/AiPanel';
-import { IconClipboard, IconFileText, IconSparkles } from '../icons';
+import { IconAlertTriangle, IconClipboard, IconFileText, IconSparkles } from '../icons';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Tabs, type TabItem } from '../ui/Tabs';
+import { comoAlergia } from './AlergiasCard';
 import { HojaPaciente } from './HojaPaciente';
 import type { PatientView } from './usePatient';
 
@@ -21,6 +24,18 @@ export function PatientAvatar({ name, size = 56 }: { name: string; size?: number
     >
       {initials(name)}
     </span>
+  );
+}
+
+/** "Alergias: penicilina (grave), látex" en rojo, o nada sin alergias activas. */
+function AlergiasActivas({ entradas }: { entradas: HistoriaEntry[] | undefined }) {
+  const activas = (entradas ?? []).map(comoAlergia).filter((a) => a.status === 'activa');
+  if (!activas.length) return null;
+  return (
+    <p className="flex flex-wrap items-center gap-1.5 font-jakarta text-[12px] font-bold leading-[normal] text-danger">
+      <IconAlertTriangle size={13} />
+      {`Alergias: ${activas.map((a) => `${a.substance} (${SEVERIDAD_TEXTO[a.severity].toLowerCase()})`).join(', ')}`}
+    </p>
   );
 }
 
@@ -56,6 +71,8 @@ export function PatientHeader({ view }: { view: PatientView | undefined }) {
                   <span className="font-semibold text-ink">{fmtDate(view.assigned?.admittedAt ?? view.patient.arrivedAt)}</span>
                 </span>
               </div>
+              {/* Las alergias activas en todas las fichas: también se ven al escribir la nota o indicar fármacos (D). */}
+              <AlergiasActivas entradas={view.expediente?.alergias} />
             </div>
           </div>
         ) : (

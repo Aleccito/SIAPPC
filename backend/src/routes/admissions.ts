@@ -22,6 +22,8 @@ import { prisma } from "../lib/prisma.ts";
 import { recordAudit } from "../lib/audit.ts";
 import { dayRange } from "../lib/dates.ts";
 import { conflict, notFound, parseOr400 } from "../lib/http.ts";
+import { liberarMonitoresDe } from "../lib/monitores.ts";
+import { avisarAsignacion } from "../services/mqttAsignacion.ts";
 import { admissionStates, admissionTypes } from "../types.ts";
 import type { Admission, AdmissionState, AdmissionType } from "../types.ts";
 
@@ -306,6 +308,7 @@ export default async function admissionsRoutes(app: FastifyInstance) {
         throw conflict("El ingreso ya está cerrado: un egreso no se reabre");
       }
 
+      let liberados: string[] = [];
       const row = await prisma.$transaction(async (tx) => {
         // Cambio de cama: se toma la nueva y se suelta la anterior. El orden
         // importa —si la nueva está ocupada, la anterior no se ha tocado.
@@ -320,6 +323,8 @@ export default async function admissionsRoutes(app: FastifyInstance) {
         if (input.state === "cancelado") {
           const cama = input.bedId === undefined ? antes.cama_id : input.bedId;
           if (cama) await liberarCama(tx, cama, "disponible");
+          // Sin ingreso no hay cama, y sin cama el monitor no tiene dónde estar (routes/devices.ts).
+          liberados = await liberarMonitoresDe(tx, antes.paciente_id, req.user.sub, `ingreso cancelado de ${antes.paciente.nombre}`);
         }
 
         const actualizado = await tx.ingreso.update({
@@ -346,6 +351,7 @@ export default async function admissionsRoutes(app: FastifyInstance) {
         return actualizado as IngresoRow;
       });
 
+      await avisarAsignacion(liberados, req.log);
       return toAdmission(row);
     },
   );
@@ -363,8 +369,11 @@ export default async function admissionsRoutes(app: FastifyInstance) {
         throw conflict(`El ingreso #${id} no está activo: está ${antes.estado}`);
       }
 
+      let liberados: string[] = [];
       const row = await prisma.$transaction(async (tx) => {
         if (antes.cama_id) await liberarCama(tx, antes.cama_id, "limpieza");
+        // El monitor queda libre con la cama: el paciente que se fue no se lo lleva.
+        liberados = await liberarMonitoresDe(tx, antes.paciente_id, req.user.sub, `egreso de ${antes.paciente.nombre}`);
 
         const cerrado = await tx.ingreso.update({
           where: { ingreso_id: id },
@@ -386,6 +395,7 @@ export default async function admissionsRoutes(app: FastifyInstance) {
         return cerrado as IngresoRow;
       });
 
+      await avisarAsignacion(liberados, req.log);
       return toAdmission(row);
     },
   );

@@ -322,44 +322,49 @@ notificaciones y búsqueda) funciona y se queda.
 
 ## 8. Qué hay que correr en el servidor (después de la fase 2)
 
-Desde `/opt/siappc`, después de mezclar, con `-f docker-compose.yml -f docker-compose.prod.yml` en cada `docker compose`:
+Como `siappc`, en `/opt/siappc`. Al mezclar en `dev`, el despliegue automático (`~/deploy.sh`) trae el código. Lo
+demás, un paso por bloque:
 
-1. **Código y servicios.** Cambian el prototipo y el backend (por la IA):
+1. **Prototipo y backend.** Si el despliegue no los reconstruyó (el backend cambia por la IA):
 
    ```bash
-   git pull
    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build prototipo backend
    ```
 
-2. **Datos.** `prototipo/tools/base/base.sh revisar` y, si falta algo, `prototipo/tools/base/base.sh cargar`.
-
-3. **Publicador de demo.** Reconstruir la imagen, cargar la historia de 24 h **una sola vez** y dejarlo corriendo como
-   siempre:
+2. **Imagen del publicador de demo**, con la opción nueva `--una-vez` para la historia:
 
    ```bash
    docker build -t siappc-telemetria-demo prototipo/tools/telemetria-demo
-   docker stop siappc-telemetria-demo; docker rm siappc-telemetria-demo
-   docker run --rm --network siappc_default --env-file .env \
-     -v "$PWD/infra/mosquitto/certs/ca.crt:/certs/ca.crt:ro" \
-     siappc-telemetria-demo node publicador.mjs --historia 24h --una-vez
-   docker run -d --name siappc-telemetria-demo --restart unless-stopped \
-     --network siappc_default --env-file .env \
-     -v "$PWD/infra/mosquitto/certs/ca.crt:/certs/ca.crt:ro" \
-     siappc-telemetria-demo
    ```
 
-   La historia son unas 17.000 lecturas (15 equipos, 24 h, cada 5 min) y tarda un par de minutos. No hace falta
-   repetirla mientras no se borre la base; correrla dos veces la duplica.
+3. **Parar el publicador que está corriendo:**
 
-4. **Modelo.** Sigue MedGemma 4B Q4_K_M; no hay que bajar nada. Confirmar que el backend apunta al Ollama del
-   servidor:
+   ```bash
+   docker stop siappc-telemetria-demo && docker rm siappc-telemetria-demo
+   ```
+
+4. **Historia de 24 h, una sola vez.** ⚠️ **Cambia datos de la base del servidor, que también usa la app principal:**
+   agrega unas 17.000 lecturas (15 equipos `DEMO-DEV-*`, 24 h, una cada 5 min) a la tabla `lectura`. Quedan dentro de
+   los umbrales, así que no crean alertas ni notificaciones. Las verá también la app principal en los pacientes DEMO.
+   Correrla dos veces la duplica:
+
+   ```bash
+   docker run --rm --network siappc_default --env-file .env -v "$PWD/infra/mosquitto/certs/ca.crt:/certs/ca.crt:ro" siappc-telemetria-demo node publicador.mjs --historia 24h --una-vez
+   ```
+
+5. **El publicador como siempre**, una lectura por minuto:
+
+   ```bash
+   docker run -d --name siappc-telemetria-demo --restart unless-stopped --network siappc_default --env-file .env -e PERIODO_S=60 -v "$PWD/infra/mosquitto/certs/ca.crt:/certs/ca.crt:ro" siappc-telemetria-demo
+   ```
+
+6. **Modelo de la IA.** Sigue MedGemma 4B Q4_K_M; no hay que bajar nada. Confirmar que el backend apunta al Ollama:
 
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backend printenv LLM_URL LLM_MODEL
    ```
 
-   Tiene que decir la URL del Ollama y `hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M`. Una consulta desde el Asistente
-   IA confirma que responde: en el marco `inicio` del flujo llega ahora el `tipo` de la pregunta.
+   Tiene que decir la URL del Ollama y `hf.co/Mungert/medgemma-4b-it-GGUF:Q4_K_M`.
 
 ## 9. Fase 2: qué se hizo
 
@@ -383,7 +388,8 @@ médico (fase 2)"); la IA, en `REVISION-IA-RESPUESTAS.md` (secciones 6 a 8).
 
 - **Entrega de turno vacía.** Mientras cargaba la lista de pacientes, "Confirmar Entrega de Turno" ya se podía tocar,
   y el recorrido guardó una entrega con 0 pacientes. Además se guardaban solo los de entrega directa. Ahora los botones
-  esperan a que cargue y la entrega lleva todos los pacientes a cargo. En modo mock dice "8 pacientes incluidos".
+  y el cuadro de notas esperan a que cargue (lo escrito antes se perdía) y la entrega lleva todos los pacientes a cargo:
+  el recorrido contra el backend local guarda "16 pacientes incluidos".
 - **"Alertas activas" del Centro de alertas contaba todas las abiertas** (16) mientras la lista mostraba 7 activas y 9
   anteriores. Ahora cuenta con la misma regla de 30 minutos. "Desde las 15:53" de un grupo que empezó el día anterior
   ahora dice "desde ayer a las 15:53".
@@ -400,9 +406,9 @@ automáticas.
 | `tsc` del backend | Pasa (con el cliente de Prisma generado) |
 | Pruebas del backend sin base (`aiTemas`, `aiParse`, `aiPuntajes`, `aiAuto`, `mqttOrden`) | 118 de 118 |
 | Pruebas del backend con base | No corrieron en esta máquina: el `backend/.env.test` local no tiene la contraseña actual de Redis (ver la nota de abajo). Ninguna de esas pruebas toca la IA |
-| Suite de interacción en modo mock (Edge sin ventana) | 60 de 60. En 2 de 3 corridas apareció una excepción `MessageNotSentError` que no sale del código de la app (no está en `src/` ni en `node_modules`): es del propio Edge, como el `RegisterClientLocalizationsError` que la suite ya ignora |
-| Recorrido del médico contra el backend real | 17 de 17 pasos: entrar, dashboard, pendientes de evaluación, su turno, atender y confirmar una alerta, abrir un crítico, monitoreo, tendencias de 24 y 6 h, hoja del paciente, nota SOAP escrita y firmada, consulta a la IA, entregar el turno, historial y resumen de la entrega (`fase2/jornada.json`) |
-| Capturas a 1440, 1024 y 390 | 27 pantallas, sin desplazamiento lateral en ninguna. Los textos recortados son los resúmenes de las notas SOAP (recorte a propósito) |
+| Suite de interacción en modo mock completa (Edge sin ventana) | 60 de 60, repetida después de los últimos arreglos. En corridas anteriores apareció a veces una excepción `MessageNotSentError` que no sale del código de la app (no está en `src/` ni en `node_modules`): es del propio Edge |
+| Recorrido del médico contra el backend local | 16 de 16 pasos: entrar, dashboard, pendientes de evaluación, su turno, atender y confirmar una alerta, abrir un crítico, monitoreo, tendencias de 24 y 6 h, hoja del paciente, nota SOAP escrita y firmada, consulta a la IA, entregar el turno, historial y resumen de la entrega con los 16 pacientes (`fase2/jornada.json`) |
+| Capturas a 1920, 1440, 1024 y 390 | Las 40 pantallas del médico y de acceso, sin desplazamiento lateral en ninguna. Los textos recortados son los resúmenes de las notas SOAP (recorte a propósito). A 1920, Monitoreo detallado deja espacio libre a la derecha porque sus columnas tienen ancho fijo desde Figma; ya estaba así antes de este PR |
 | Nada congelado, 3,5 min por pantalla | Ver la tabla de abajo (`fase2/congelado.json`) |
 
 **Nada congelado, antes y después** (números que cambiaron / gráficas iguales):
@@ -417,8 +423,8 @@ automáticas.
 | Resumen (DEMO-0002) | 16 de 20 | 12 de 19; la onda del ECG cambia (no hay otras gráficas: las que cuenta la prueba son íconos) |
 
 **Lo que no se arregla en el prototipo** sigue en la sección 7. Las tendencias de 24 h dependen del pedido 9: el
-backend devuelve como mucho 500 lecturas y, con una cada 30 s, eso son unas 4 horas. La gráfica dice desde qué hora hay
-lecturas.
+backend devuelve como mucho 500 lecturas: con el publicador del servidor (una por minuto) son unas 8 horas. La gráfica
+dice desde qué hora hay lecturas.
 
 **Nota para correr las pruebas con base:** `backend/.env.test` tiene que tener la `REDIS_URL` con el `REDIS_PASSWORD`
 actual del `.env` de la raíz y `DB_PORT=3307` (el puerto que publica MariaDB). También hace falta instalar las
