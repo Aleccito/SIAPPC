@@ -4,7 +4,7 @@
 import { useAlerts, useMonitoredBeds } from '../../api/queries';
 import { getMonitoreoExtra, getSerie, getSignosExtra, useExtra, type Signo } from '../../api/sinBackend';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
-import { AiIdeasCard, AppLink, BackButton, Badge, Card, Divider, IconActivity, IconAlertTriangle, PatientLayout, type PatientView, usePatient } from '../../components';
+import { AiIdeasCard, AppLink, Badge, Card, Divider, IconActivity, IconAlertTriangle, PatientLayout, type PatientView, usePatient } from '../../components';
 import type { ReactNode } from 'react';
 import { CurvaSigno } from '../../components/monitor/CurvaSigno';
 import { RegistrarExploracion } from '../../components/patient/RegistrarExploracion';
@@ -45,7 +45,7 @@ function StatTile({ tile, cols }: { tile: Tile; cols: 2 | 3 }) {
 export default function MedPacienteMonitoreoDetallado() {
   const { view } = usePatient();
   return (
-    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Monitoreo`} title="Monitoreo Detallado" tab="monitoreo" actions={<BackButton />}>
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Monitoreo`} title="Monitoreo Detallado" tab="monitoreo">
       {view && <Monitoreo v={view} />}
     </PatientLayout>
   );

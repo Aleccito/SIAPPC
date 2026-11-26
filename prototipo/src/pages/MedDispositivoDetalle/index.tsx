@@ -3,7 +3,6 @@
 import { useSearchParams } from 'react-router-dom';
 import {
   AppLayout,
-  BackButton,
   Badge,
   Button,
   Card,
@@ -31,7 +30,7 @@ export default function MedDispositivoDetalle() {
   const device: DeviceLive | undefined = devices.find((d) => d.bed === cama) ?? (isPending ? undefined : (devices[0] ?? deviceByBed(cama)));
   if (!device) {
     return (
-      <AppLayout breadcrumb={`SIAPPC > Dispositivos > ${cama ?? '…'}`} title="Monitor" actions={<BackButton to="/MedDispositivosMonitores">Volver a Dispositivos</BackButton>}>
+      <AppLayout breadcrumb={`SIAPPC > Dispositivos > ${cama ?? '…'}`} title="Monitor" back="/MedDispositivosMonitores">
         <PageBody>
           <Card className="w-full font-jakarta text-[13px] text-muted">Cargando monitor…</Card>
         </PageBody>
@@ -55,7 +54,7 @@ function Detalle({ device }: { device: DeviceLive }) {
     <AppLayout
       breadcrumb={`SIAPPC > Dispositivos > ${device.bed}`}
       title={`Monitor ${device.model}`}
-      actions={<BackButton to="/MedDispositivosMonitores">Volver a Dispositivos</BackButton>}
+      back="/MedDispositivosMonitores"
     >
       <PageBody>
         <Card className="flex w-full flex-col gap-4 md:flex-row md:items-center md:justify-between">

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { ApiError } from '../../api/http';
 import { cn } from '../../lib/cn';
+import { patientPath } from '../../lib/patientLink';
 import { AppLayout } from '../layout/AppLayout';
 import type { TopBarProps } from '../layout/TopBar';
 import { Button } from '../ui/Button';
@@ -47,8 +48,16 @@ export function PatientLayout({ tab, children, className, ...topBar }: PatientLa
   const forbidden = patient.status === 'error' && patient.error instanceof ApiError && patient.error.status === 403;
   // 429: el backend limita las consultas por minuto (pedido 33); no es un error del paciente.
   const limite = patient.status === 'error' && patient.error instanceof ApiError && patient.error.status === 429;
+  // Los tramos del paciente en la miga de pan ("SIAPPC > Pacientes > nombre > Historia Clínica > …").
+  const name = patient.view?.name;
+  const links: Record<string, string> = {
+    'Historia Clínica': patientPath('/MedPacienteHistoriaClinicaGeneral', patient.cedula),
+    'Notas SOAP': patientPath('/MedPacienteNotasSoapHistorial', patient.cedula),
+    ...(name ? { [name]: patientPath('/MedPacienteResumen', patient.cedula) } : {}),
+  };
   return (
-    <AppLayout {...topBar}>
+    // "Volver" en todas las fichas; si se entró por un enlace directo, a Mis Pacientes.
+    <AppLayout back="/MedPacientesLista" {...topBar} breadcrumbLinks={{ ...links, ...topBar.breadcrumbLinks }}>
       <div className={cn('flex w-full min-w-0 flex-1 flex-col gap-5 p-4 md:p-8', className)}>
         {patient.status === 'notFound' ? (
           <PatientProblem title="Paciente no encontrado" text={`No hay ningún paciente con la cédula ${patient.cedula}.`} />

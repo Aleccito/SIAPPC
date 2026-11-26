@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getNotaIngreso, saveNotaIngreso, useExtra, type NotaIngreso } from '../../api/sinBackend';
 import imgBulletItemEllipse from '../../assets/bullet-item-ellipse.svg';
 import { useRef, useState } from 'react';
-import { BackButton, Badge, Button, Card, FieldError, focusFirst, InfoField, PatientLayout, Table, TextArea, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
+import { Badge, Button, Card, FieldError, focusFirst, InfoField, PatientLayout, Table, TextArea, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
 import { fmtDateTime, staffName } from '../../lib/clinical';
 import { checkText } from '../../lib/validate';
 import { cn } from '../../lib/cn';
@@ -29,7 +29,7 @@ export default function MedPacienteNotaIngreso() {
   const { view } = usePatient();
   const nota = useExtra('ingreso', view?.cedula, getNotaIngreso);
   return (
-    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Nota de Ingreso`} title="Nota de Ingreso" tab="historia" actions={<BackButton />}>
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Nota de Ingreso`} title="Nota de Ingreso" tab="historia">
       {view && nota.data && <NotaIngresoForm key={view.cedula} v={view} nota={nota.data} />}
     </PatientLayout>
   );

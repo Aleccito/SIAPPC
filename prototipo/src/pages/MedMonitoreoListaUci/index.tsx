@@ -4,7 +4,7 @@
 // Desde 768 px es una tabla con columnas proporcionales y una sola fila de títulos (con las unidades): cada celda
 // lleva solo su valor. Con los anchos fijos de Figma quedaban ~600 px vacíos a 1920 y cada celda repetía "FC",
 // "SpO2"… (docs/historial/REVISION-DETALLES.md, A1). En celular, una tarjeta por cama con la etiqueta de cada signo.
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';
 import imgBedIcon from '../../assets/bed-icon.svg';
@@ -13,7 +13,7 @@ import imgBedIcon3 from '../../assets/bed-icon-3.svg';
 import imgBedIcon4 from '../../assets/bed-icon-4.svg';
 import imgStatusPillEllipse from '../../assets/status-pill-ellipse.svg';
 import { AppLayout, Badge, rowLinkClass, Table, useRowLink, useSession } from '../../components';
-import { unitSummary, useUnitBeds, useUnitParam, type BedView } from '../../components/monitor/BedCards';
+import { ALL_UNITS, groupByUnit, PatientsWithoutBed, patientsLabel, unitSummary, unitTitle, useUnitBeds, useUnitParam, type BedView } from '../../components/monitor/BedCards';
 import { RegistrarExploracion } from '../../components/patient/RegistrarExploracion';
 import { vitalTone } from '../../lib/alerts';
 import { ageFrom, fmtAgoShort, primerApellido, STATE_LABEL } from '../../lib/clinical';
@@ -54,6 +54,15 @@ const shortName = (name: string) => {
   return surname !== name ? `${first[0]}. ${surname}` : name;
 };
 
+/** Rótulo de cada unidad con la opción "Todas": "UCI · 6 pacientes". */
+function GroupTitle({ unit, patients, className }: { unit: string; patients: number; className?: string }) {
+  return (
+    <p className={cn('font-jakarta text-[13px] font-extrabold leading-[normal] text-ink', className)}>
+      {unit} <span className="font-semibold text-muted">{`· ${patientsLabel(patients)}`}</span>
+    </p>
+  );
+}
+
 /** [color, valor] de los 6 signos de la fila. */
 function cells(b: BedView): Array<[keyof typeof LEVEL_COLOR, string]> {
   const { hr, spo2, resp } = b.vitals;
@@ -89,7 +98,10 @@ export default function MedMonitoreoListaUci() {
   // Sin el expediente (el administrativo), las filas se miran pero no abren nada.
   const opens = useSession().can('historia_clinica', 'ver');
   const [unit, setUnit] = useUnitParam();
-  const { beds, units } = useUnitBeds(unit);
+  const { beds, units, counts } = useUnitBeds(unit);
+  // Con "Todas", un rótulo antes de la primera cama de cada unidad.
+  const all = unit === ALL_UNITS;
+  const groupStart = new Map(all ? groupByUnit(beds).map((g) => [g.beds[0].id, g] as const) : []);
   const summary = unitSummary(beds, unit);
 
   const filas = beds.map((b) => {
@@ -118,7 +130,7 @@ export default function MedMonitoreoListaUci() {
   const actualizado = (f: (typeof filas)[number]) => (f.free ? '—' : fmtAgoShort(f.b.vitals.at));
 
   return (
-    <AppLayout breadcrumb="SIAPPC > Monitoreo" title={`Central de Monitoreo – ${unit}`} actions={<MonitorActions unit={unit} units={units} setUnit={setUnit} view="lista" />}>
+    <AppLayout breadcrumb="SIAPPC > Monitoreo" title={`Central de Monitoreo – ${unitTitle(unit)}`} actions={<MonitorActions unit={unit} units={units} counts={counts} setUnit={setUnit} view="lista" />}>
       <div className="flex w-full min-w-0 flex-1 flex-col gap-6 bg-white p-4 md:p-8">
         <div className="flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white px-5 py-4">
           <p className="font-jakarta text-[15px] font-semibold leading-[normal] text-[#374151]">
@@ -133,6 +145,7 @@ export default function MedMonitoreoListaUci() {
               </div>
             ))}
           </div>
+          <PatientsWithoutBed />
         </div>
 
         {/* Desde 768 px: tabla. La caja mide lo que su contenido (antes se estiraba hasta el final de la pantalla). */}
@@ -151,15 +164,18 @@ export default function MedMonitoreoListaUci() {
               <p className="text-right">Actualizado</p>
             </div>
             {filas.map((f) => (
-              <div key={f.b.id} {...f.rowProps} className={cn(COLS, 'min-h-[64px] border-b border-line px-6 py-3 last:border-b-0', f.style?.row ?? 'bg-[#f3f4f6]', !f.free && opens && rowLinkClass)}>
-                {cama(f)}
-                {paciente(f)}
-                <div>{estado(f)}</div>
-                {VITALS.map((v, i) => (
-                  <Valor key={v.label} b={f.b} i={i} cell={f.row?.[i]} withUnit={false} />
-                ))}
-                <p className="text-right font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{actualizado(f)}</p>
-              </div>
+              <Fragment key={f.b.id}>
+                {groupStart.has(f.b.id) && <GroupTitle unit={f.b.unit} patients={groupStart.get(f.b.id)!.patients} className="border-b border-line bg-white px-6 py-2.5" />}
+                <div {...f.rowProps} className={cn(COLS, 'min-h-[64px] border-b border-line px-6 py-3 last:border-b-0', f.style?.row ?? 'bg-[#f3f4f6]', !f.free && opens && rowLinkClass)}>
+                  {cama(f)}
+                  {paciente(f)}
+                  <div>{estado(f)}</div>
+                  {VITALS.map((v, i) => (
+                    <Valor key={v.label} b={f.b} i={i} cell={f.row?.[i]} withUnit={false} />
+                  ))}
+                  <p className="text-right font-jakarta text-[12px] font-semibold leading-[normal] text-muted">{actualizado(f)}</p>
+                </div>
+              </Fragment>
             ))}
           </Table>
         </div>
@@ -167,7 +183,13 @@ export default function MedMonitoreoListaUci() {
         {/* Celular: una tarjeta por cama, con la etiqueta de cada signo. */}
         <ul className="flex w-full flex-col gap-3 md:hidden">
           {filas.map((f) => (
-            <li key={f.b.id} {...f.rowProps} className={cn('flex flex-col gap-3 rounded-xl border border-line p-4', f.style?.row ?? 'bg-[#f3f4f6]', !f.free && opens && rowLinkClass)}>
+            <Fragment key={f.b.id}>
+            {groupStart.has(f.b.id) && (
+              <li>
+                <GroupTitle unit={f.b.unit} patients={groupStart.get(f.b.id)!.patients} className="pt-2" />
+              </li>
+            )}
+            <li {...f.rowProps} className={cn('flex flex-col gap-3 rounded-xl border border-line p-4', f.style?.row ?? 'bg-[#f3f4f6]', !f.free && opens && rowLinkClass)}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   {cama(f)}
@@ -185,6 +207,7 @@ export default function MedMonitoreoListaUci() {
               </div>
               <p className="font-jakarta text-[11px] font-semibold leading-[normal] text-muted">{`Actualizado: ${actualizado(f)}`}</p>
             </li>
+            </Fragment>
           ))}
         </ul>
       </div>

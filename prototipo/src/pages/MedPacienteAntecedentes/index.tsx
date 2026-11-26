@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createAntecedente, type TipoAntecedente } from '../../api/antecedentes';
 import { ApiError } from '../../api/http';
 import type { HistoriaEntry } from '../../api/types/clinical';
-import { BackButton, Badge, Button, Card, IconArrowRight, Modal, ModalHeader, PatientLayout, Select, Table, Tabs, usePatient, useSession, useToast, type PatientView } from '../../components';
+import { Badge, Button, Card, IconArrowRight, Modal, ModalHeader, PatientLayout, Select, Table, Tabs, usePatient, useSession, useToast, type PatientView } from '../../components';
 
 type Section = {
   id: string;
@@ -99,7 +99,7 @@ function AddModal({ section, open, onClose, onAdd }: { section: Section; open: b
 export default function MedPacienteAntecedentes() {
   const { view } = usePatient();
   return (
-    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Antecedentes`} title="Antecedentes Completos" tab="historia" actions={<BackButton />}>
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Antecedentes`} title="Antecedentes Completos" tab="historia">
       {view && <Antecedentes v={view} />}
     </PatientLayout>
   );

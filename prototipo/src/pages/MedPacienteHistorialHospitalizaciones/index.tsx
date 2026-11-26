@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import imgTimelineLeftMarker from '../../assets/timeline-left-marker.svg';
 import imgTimelineLeftMarker2 from '../../assets/timeline-left-marker-2.svg';
 import imgTimelineLeftMarkerFrame from '../../assets/timeline-left-marker-frame.svg';
-import { BackButton, Badge, Card, CardTitle, Divider, PatientLayout, usePatient, type PatientView } from '../../components';
+import { Badge, Card, CardTitle, Divider, PatientLayout, usePatient, type PatientView } from '../../components';
 import { fmtDate, staffName } from '../../lib/clinical';
 
 const B = ({ children, weight = 'font-semibold' }: { children: ReactNode; weight?: string }) => <span className={`${weight} text-ink`}>{children}</span>;
@@ -24,7 +24,6 @@ export default function MedPacienteHistorialHospitalizaciones() {
       breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Hospitalizaciones`}
       title="Historial de Hospitalizaciones e Intervenciones"
       tab="historia"
-      actions={<BackButton />}
     >
       {view && <Historial v={view} />}
     </PatientLayout>

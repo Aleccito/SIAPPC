@@ -7,7 +7,7 @@ import imgHeart5 from '../../assets/heart-5.svg';
 import imgThermometer from '../../assets/thermometer.svg';
 import imgTrendingUp from '../../assets/trending-up.svg';
 import imgWind from '../../assets/wind.svg';
-import { AppLink, BackButton, Card, PatientLayout, Table, usePatient } from '../../components';
+import { AppLink, Card, PatientLayout, Table, usePatient } from '../../components';
 import { UMBRALES_SISTEMA } from '../../lib/alerts';
 import { cn } from '../../lib/cn';
 
@@ -16,7 +16,7 @@ const ICONO: Record<string, string> = { hr: imgHeart5, spo2: imgActivity7, resp:
 export default function MedPacienteConfigUmbrales() {
   const { view } = usePatient();
   return (
-    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Umbrales`} title="Umbrales de Alarma" tab="monitoreo" actions={<BackButton />}>
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Umbrales`} title="Umbrales de Alarma" tab="monitoreo">
       {view && (
         <div className="flex w-full flex-col gap-5">
           <Card className="flex w-full flex-col gap-2">

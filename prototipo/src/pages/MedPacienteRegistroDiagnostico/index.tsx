@@ -9,7 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, request } from '../../api/http';
 import type { HistoriaEntry } from '../../api/types/clinical';
 import imgSearch3 from '../../assets/search-3.svg';
-import { BackButton, Badge, Button, Card, Combobox, DateField, Divider, FieldError, focusFirst, IconChevronDown, PatientLayout, type PatientView, rowButton, Select, TextArea, usePatient, useToast, useValidation } from '../../components';
+import { Badge, Button, Card, Combobox, DateField, Divider, FieldError, focusFirst, IconChevronDown, PatientLayout, type PatientView, rowButton, Select, TextArea, usePatient, useToast, useValidation } from '../../components';
 import { AiIdeasCard } from '../../components/ai';
 import { matches, plain } from '../../lib/text';
 import { fmtDate } from '../../lib/clinical';
@@ -114,7 +114,6 @@ export default function MedPacienteRegistroDiagnostico() {
       breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica`}
       title={editing ? 'Editar Diagnóstico' : 'Registro de Nuevo Diagnóstico'}
       tab="historia"
-      actions={<BackButton />}
     >
       {view?.expediente && <Registro key={editing?.id ?? 'nuevo'} v={view} editing={editing} />}
     </PatientLayout>

@@ -9,7 +9,7 @@ import imgFileText7 from '../../assets/file-text-7.svg';
 import imgImageIcon from '../../assets/image-icon.svg';
 import imgLabIcon from '../../assets/lab-icon.svg';
 import imgUpload2 from '../../assets/upload-2.svg';
-import { BackButton, Button, Card, DocumentPreview, type DocumentType, EmptyState, IconUpload, PatientLayout, type PatientView, rowButton, UploadDocumentModal, usePatient, useToast } from '../../components';
+import { Button, Card, DocumentPreview, type DocumentType, EmptyState, IconUpload, PatientLayout, type PatientView, rowButton, UploadDocumentModal, usePatient, useToast } from '../../components';
 import { fmtDate, staffName } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 
@@ -44,7 +44,6 @@ export default function MedPacienteDocumentosClinicos() {
       breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Documentos`}
       title="Documentos Clínicos Adjuntos"
       tab="documentos"
-      actions={<BackButton />}
     >
       {view && <Documentos v={view} />}
     </PatientLayout>

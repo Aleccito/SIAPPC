@@ -52,6 +52,12 @@ type Attention = { key: string; tag: string; tone: 'danger' | 'warning' | 'neutr
 const BED_COLOR = { danger: 'text-danger', warning: 'text-warning', neutral: 'text-muted' };
 
 const COLS = 'flex w-full items-center px-4';
+// Los 4 botones de acción miden 4 × 34 px más 3 separaciones de 4 px. La columna no baja de eso: antes era `flex-1`
+// sin mínimo y, con menos ancho, los botones se montaban sobre "Alerta activa" (docs/historial/REVISION-TABLAS-Y-VOLVER.md).
+const ACCIONES = 'min-w-[148px] flex-1';
+// Suma de las columnas fijas (180 + 100 + 100 + 250 + 130 + 120), las acciones y el relleno de la fila (2 × 16 px):
+// con menos ancho, la tabla se desplaza de lado en vez de encimarse.
+const TABLA_MIN = 880 + 148 + 32;
 
 const surname = primerApellido;
 
@@ -213,7 +219,7 @@ export default function MedDashboardPrincipal() {
             </div>
 
             <div className="w-full overflow-hidden rounded-lg border border-line">
-              <Table minWidth={1000}>
+              <Table minWidth={TABLA_MIN}>
                 <div className={cn(COLS, 'border-b border-line bg-surface py-3 font-jakarta text-[11px] font-bold uppercase leading-[normal] text-muted')}>
                   <p className="w-[180px] shrink-0">Nombre / HC</p>
                   <p className="w-[100px] shrink-0">Estado</p>
@@ -221,7 +227,7 @@ export default function MedDashboardPrincipal() {
                   <p className="w-[250px] shrink-0">Signos Vitales</p>
                   <p className="w-[130px] shrink-0">Glasgow / TR</p>
                   <p className="w-[120px] shrink-0">Alerta Activa</p>
-                  <p className="min-w-0 flex-1 text-right">Acciones</p>
+                  <p className={cn(ACCIONES, 'text-right')}>Acciones</p>
                 </div>
                 {shownRows.length === 0 && <EmptyState message={isPending ? 'Cargando pacientes…' : undefined} onReset={resetFilters} />}
                 {shownRows.map((r) => {
@@ -258,7 +264,7 @@ export default function MedDashboardPrincipal() {
                         {lastAlert && <IconAlertTriangle size={13} className="text-warning" />}
                         {lastAlert ? fmtAgo(lastAlert).replace('hace un momento', 'ahora').replace(/^[ha]/, (c) => c.toUpperCase()) : 'Ninguna'}
                       </p>
-                      <div className="flex min-w-0 flex-1 justify-end gap-1">
+                      <div className={cn(ACCIONES, 'flex justify-end gap-1')}>
                         {ROW_ACTIONS.map(({ Icon, ...a }) => (
                           <Link
                             key={a.label}
