@@ -1,4 +1,4 @@
-// No viene de Figma: estado de una consulta libre (REVISION-IA.md, sección 4), con la misma lógica que
+// No viene de Figma: estado de una consulta libre (docs/historial/REVISION-IA.md, sección 4), con la misma lógica que
 // frontend/src/modules/clinical/pages/AiConsultPage.tsx: patientId obligatorio (PR #55), "Detener" corta la
 // generación y deja lo escrito, y los errores se traducen a los textos de frontend/.
 import { useCallback, useEffect, useRef, useState } from 'react';

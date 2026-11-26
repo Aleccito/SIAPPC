@@ -40,7 +40,7 @@ const SECTIONS: Section[] = [
     title: 'Antecedentes Personales Patológicos',
     column: 'AÑO / TIPO',
     types: ['personal', 'quirurgico'],
-    // Las alergias tienen su propia subpestaña (REVISION-DETALLES.md, D): mencionarlas aquí confundía.
+    // Las alergias tienen su propia subpestaña (docs/historial/REVISION-DETALLES.md, D): mencionarlas aquí confundía.
     blurb: 'Incluye cirugías previas, hospitalizaciones previas, transfusiones y comorbilidades sistémicas activas. Las alergias están en su pestaña.',
     conditions: ['Hipotiroidismo', 'Enfermedad renal crónica', 'Cardiopatía isquémica', 'Epilepsia'],
     relations: ['2015', '2019', '2022', '2024', '2025'],

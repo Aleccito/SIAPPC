@@ -1,5 +1,5 @@
 // Acceso directo a registrar la exploración física (y con ella el Glasgow) cuando todavía no hay
-// (REVISION-MEDICO.md, 3.6). Va dentro de filas y tarjetas que ya llevan al paciente: detiene el clic para no abrir
+// (docs/historial/REVISION-MEDICO.md, 3.6). Va dentro de filas y tarjetas que ya llevan al paciente: detiene el clic para no abrir
 // también la fila. Solo con permiso para escribir en la historia clínica.
 import type { MouseEvent, KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';

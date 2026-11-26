@@ -26,7 +26,7 @@ type ModalProps = {
  *
  * Se dibuja en `body` (portal): si quedara dentro de un contenedor `sticky` o con
  * `transform` —como el menú lateral—, su capa solo valdría ahí dentro y el resto
- * de la pantalla la taparía (REVISION-IA.md, sección 6).
+ * de la pantalla la taparía (docs/historial/REVISION-IA.md, sección 6).
  */
 export function Modal({ labelledBy, open = true, onClose, width = 480, backdrop = 'bg-[rgba(0,0,0,0.4)]', className, children }: ModalProps) {
   useEffect(() => {

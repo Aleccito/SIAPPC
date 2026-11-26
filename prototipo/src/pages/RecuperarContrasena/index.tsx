@@ -1,5 +1,5 @@
 // Pantalla "SIAPPC - Recovery" (Figma node 345:849, página LOGIN), con la tarjeta y el campo del Login
-// (REVISION.md, puntos 5 y 7). Sin backend: cualquier correo sirve.
+// (docs/historial/REVISION.md, puntos 5 y 7). Sin backend: cualquier correo sirve.
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import imgAlertTriangle from '../../assets/login-alert-triangle.svg';

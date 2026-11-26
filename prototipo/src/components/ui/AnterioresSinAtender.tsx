@@ -1,5 +1,5 @@
 // Las alertas sin atender que ya no son activas (sin un aviso nuevo en los últimos 30 min, src/lib/alerts.ts), en una
-// sección plegada debajo de las activas: siguen a la vista, pero no como si pasaran ahora (REVISION-MEDICO.md, 3.3).
+// sección plegada debajo de las activas: siguen a la vista, pero no como si pasaran ahora (docs/historial/REVISION-MEDICO.md, 3.3).
 import { IconChevronRight } from '../icons';
 import type { ReactNode } from 'react';
 import { VIGENCIA_ALERTA_MIN } from '../../lib/alerts';

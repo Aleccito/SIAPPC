@@ -100,7 +100,7 @@ export default function MedDispositivosMonitores() {
               <p className="w-[100px] shrink-0">BATERÍA</p>
               <p className="w-[130px] shrink-0">ÚLTIMA CALIBRACIÓN</p>
               <p className="min-w-[180px] flex-[1.4]">SEÑALES</p>
-              {/* Proporcionales: con anchos fijos, "Acción" se llevaba ~250 px vacíos a 1920 (REVISION-DETALLES.md, A1). */}
+              {/* Proporcionales: con anchos fijos, "Acción" se llevaba ~250 px vacíos a 1920 (docs/historial/REVISION-DETALLES.md, A1). */}
               <p className="w-[96px] shrink-0 text-right">ACCIÓN</p>
             </div>
             {rows.map((d) => {

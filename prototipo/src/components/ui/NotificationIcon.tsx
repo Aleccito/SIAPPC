@@ -2,7 +2,7 @@
 // (MedNotificacionesCentro, Figma 333:4). Antes eran SVG exportados de Figma: en el Centro el dibujo era más grande
 // que su caja y se recortaba (a la campana le quedaba una rayita por badajo), y en la bandeja el trazo de 2 px en
 // 16 px volvía el badajo una gota; además cada pantalla usaba un ícono distinto para el mismo aviso
-// (CONEXION-BACKEND.md, 9.6). Ahora son los de icons.tsx, con el color del tema.
+// (docs/CONEXION-BACKEND.md, 9.6). Ahora son los de icons.tsx, con el color del tema.
 import type { ComponentType } from 'react';
 import type { FeedKind } from '../../data/notifications';
 import { cn } from '../../lib/cn';

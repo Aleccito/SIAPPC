@@ -1,4 +1,4 @@
-// Interruptores del simulador para demostrar y probar estados (REVISION-IA.md, sección 2).
+// Interruptores del simulador para demostrar y probar estados (docs/historial/REVISION-IA.md, sección 2).
 // Se leen de la URL al cargar y se guardan en sessionStorage: valen para toda la visita.
 //
 //   ?retraso=0          sin esperas (pruebas automáticas y capturas)

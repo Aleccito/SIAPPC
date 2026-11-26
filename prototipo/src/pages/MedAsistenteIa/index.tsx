@@ -1,5 +1,5 @@
 // Pantalla nueva del PR 3: no viene de Figma (en Figma no hay diseño de IA). Consulta libre a la IA
-// (REVISION-IA.md, sección 3; C1 a C3 de la sección 10): a la izquierda el paciente, las preguntas rápidas, la
+// (docs/historial/REVISION-IA.md, sección 3; C1 a C3 de la sección 10): a la izquierda el paciente, las preguntas rápidas, la
 // pregunta y la respuesta; a la derecha "Lo que verá la IA". La consulta exige paciente (`?paciente=` opcional:
 // si no viene, se pide elegirlo). Sin acceso a la IA (enfermería, admin) se ve el aviso del 403 y nada más.
 import { useState } from 'react';

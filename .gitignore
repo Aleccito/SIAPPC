@@ -31,3 +31,6 @@ Thumbs.db
 
 # graphify: salida generada del grafo de conocimiento
 graphify-out/
+
+# Carpeta de trabajo local (borradores, listas, capturas): no se sube.
+Claude outputs/

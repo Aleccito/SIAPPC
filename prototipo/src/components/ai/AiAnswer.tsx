@@ -1,4 +1,4 @@
-// No viene de Figma: muestra la respuesta de la IA (PR 3, REVISION-IA.md sección 4).
+// No viene de Figma: muestra la respuesta de la IA (PR 3, docs/historial/REVISION-IA.md sección 4).
 // Entiende el Markdown que devuelve el modelo (párrafos, **negritas**, viñetas y listas numeradas) y nunca
 // interpreta HTML: todo se pinta como texto.
 import { Fragment, type ReactNode } from 'react';

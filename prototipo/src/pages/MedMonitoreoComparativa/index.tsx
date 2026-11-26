@@ -199,7 +199,7 @@ export default function MedMonitoreoComparativa() {
           </div>
         </div>
 
-        {/* Lado a lado desde 1024 px: es una comparación (REVISION.md, V13). */}
+        {/* Lado a lado desde 1024 px: es una comparación (docs/historial/REVISION.md, V13). */}
         <div ref={comparativa} className="flex w-full flex-col items-start gap-5 lg:flex-row">
           {a && <PatientColumn p={a} hours={hours} />}
           {b && <PatientColumn p={b} hours={hours} />}

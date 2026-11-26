@@ -1,6 +1,6 @@
 // Pantalla "med/paciente/documentos-clinicos" (Figma node 191:553) — generada desde el diseño original de Figma.
 // Documentos del expediente (GET /historia/:id, `documentos`). "Subir" registra la ficha con
-// POST /historia/:id/documentos: el backend todavía no guarda el archivo (CONEXION-BACKEND.md, pedido 15).
+// POST /historia/:id/documentos: el backend todavía no guarda el archivo (docs/CONEXION-BACKEND.md, pedido 15).
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, request } from '../../api/http';

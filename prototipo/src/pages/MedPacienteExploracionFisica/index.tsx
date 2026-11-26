@@ -1,6 +1,6 @@
 // Pantalla "med/paciente/exploracion-fisica" (Figma node 183:234) — generada desde el diseño original de Figma.
 // Paso 3: somatometría y signos vitales se editan en su lugar (rangos posibles de cada signo), el IMC se
-// calcula solo y los hallazgos se escriben; un hallazgo "Anormal" necesita descripción (REVISION.md, paso 3, punto 7).
+// calcula solo y los hallazgos se escriben; un hallazgo "Anormal" necesita descripción (docs/historial/REVISION.md, paso 3, punto 7).
 // Datos: GET/PUT /historia/:id/exploracion-fisica (peso, talla, perímetro, Glasgow y hallazgos por región
 // y técnica, las cuatro del backend). Los otros signos de ingreso no existen en el backend (sinBackend.ts).
 // Sin exploración, el paciente tiene la evaluación primaria pendiente: los campos empiezan vacíos.
@@ -163,7 +163,7 @@ function Exploracion({ v, dto, signos }: { v: PatientView; dto: ExploracionDto; 
       <div className="flex w-full flex-col items-stretch gap-5 lg:flex-row">
         <Card className="flex min-w-0 flex-1 flex-col gap-4">
           <CardHeading>Somatometría de Ingreso</CardHeading>
-          {/* 4 recuadros solo con la tarjeta ancha: a 1024 px el texto se salía (REVISION.md, V11). */}
+          {/* 4 recuadros solo con la tarjeta ancha: a 1024 px el texto se salía (docs/historial/REVISION.md, V11). */}
           <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
             {(
               [

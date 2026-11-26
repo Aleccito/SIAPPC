@@ -1,6 +1,6 @@
 // Pantalla "med/paciente/nota-ingreso" (Figma node 183:603) — generada desde el diseño original de Figma.
 // Paso 3: motivo, padecimiento y plan terapéutico se editan con validación. Los datos de admisión son de
-// solo lectura porque los registra Admisión (REVISION.md, paso 3, punto 6).
+// solo lectura porque los registra Admisión (docs/historial/REVISION.md, paso 3, punto 6).
 // Admisión y diagnósticos salen del ingreso y del expediente; motivo, padecimiento, plan y pronóstico no
 // existen en el backend (src/api/sinBackend.ts, nota de ingreso).
 import { useQueryClient } from '@tanstack/react-query';

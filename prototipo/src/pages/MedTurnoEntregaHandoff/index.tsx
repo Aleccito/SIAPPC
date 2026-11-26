@@ -148,7 +148,7 @@ function Entrega({
         <Tabs items={TURNO_TABS} active="nueva" />
       </div>
       <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-5 p-4 md:p-8 xl:flex-row">
-        {/* Sin el ancho máximo de Figma (740 px): a 1920 dejaba ~530 px libres (REVISION-DETALLES.md, A1). */}
+        {/* Sin el ancho máximo de Figma (740 px): a 1920 dejaba ~530 px libres (docs/historial/REVISION-DETALLES.md, A1). */}
         <div ref={contenido} className="flex w-full min-w-0 flex-col gap-5 xl:flex-1">
           <Card padding="sm" className="flex w-full flex-wrap items-center gap-3">
             {summary.map(([label, color], i) => (
@@ -161,7 +161,7 @@ function Entrega({
 
           <Card className="flex w-full flex-col gap-3">
             <h2 className="font-jakarta text-[15px] font-extrabold leading-[normal] text-ink">Pacientes de Entrega Directa</h2>
-            {/* Novedades y pendientes completos en dos líneas en vez de cortarse (REVISION.md, V9). */}
+            {/* Novedades y pendientes completos en dos líneas en vez de cortarse (docs/historial/REVISION.md, V9). */}
             <Table minWidth={680}>
               <div className="flex w-full gap-2 bg-[#f1f5f9] p-[10px] font-jakarta text-[11px] font-bold leading-[normal] text-muted">
                 <p className="w-[60px] shrink-0">CAMA</p>
@@ -234,7 +234,7 @@ function Entrega({
               <p className="font-jakarta text-[14px] font-bold text-ink">{me.name}</p>
               <p className="font-jakarta text-[12px] font-normal text-muted">{`Turno ${turnoActual.nombre} (${turnoActual.horas})`}</p>
             </div>
-            {/* SIMULADO: el backend no tiene entrega de turno ni a quién avisarle (CONEXION-BACKEND.md, pedido 11). */}
+            {/* SIMULADO: el backend no tiene entrega de turno ni a quién avisarle (docs/CONEXION-BACKEND.md, pedido 11). */}
             <div className="flex w-full items-start gap-2">
               <img className="size-4 shrink-0" alt="" src={imgInfo} />
               <p className="min-w-0 flex-1 font-jakarta text-[12px] font-normal leading-[1.4] text-muted">

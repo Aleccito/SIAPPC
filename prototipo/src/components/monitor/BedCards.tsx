@@ -35,7 +35,7 @@ import { useSession } from '../auth/session';
 
 export const DEFAULT_UNIT = 'UCI';
 
-/** La unidad elegida va en la URL (`?unidad=UCI`), como `frontend/` (CONEXION-BACKEND.md). */
+/** La unidad elegida va en la URL (`?unidad=UCI`), como `frontend/` (docs/CONEXION-BACKEND.md). */
 export function useUnitParam(): [string, (u: string) => void] {
   const [params, setParams] = useSearchParams();
   const unit = params.get('unidad') ?? DEFAULT_UNIT;
@@ -128,7 +128,7 @@ const latido = (x: number, ancho: number) => {
 /**
  * Trazo de ECG de la tarjeta de cama; toma el color del estado de la cama.
  * SIMULADO: en la central no es la onda del equipo (sería una conexión por cama, y el navegador abre 6 por host;
- * pedido 29 de CONEXION-BACKEND.md). Respeta la FC real de la cama: en el recuadro caben los latidos de
+ * pedido 29 de docs/CONEXION-BACKEND.md). Respeta la FC real de la cama: en el recuadro caben los latidos de
  * `VENTANA_TARJETA_S` segundos (54 lpm → unos 4, 113 lpm → unos 9) y avanza un latido cada 60/FC segundos. Con
  * fibrilación auricular (`irregular`), los intervalos varían. Sin FC, plano.
  */

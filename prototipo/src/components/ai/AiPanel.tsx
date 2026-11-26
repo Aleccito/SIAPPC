@@ -1,4 +1,4 @@
-// No viene de Figma: el panel lateral de la IA (REVISION-IA.md, secciones 3 y 4). 480 px a la derecha, sobre la
+// No viene de Figma: el panel lateral de la IA (docs/historial/REVISION-IA.md, secciones 3 y 4). 480 px a la derecha, sobre la
 // pantalla actual (pantalla completa en celular), con la misma consulta que /MedAsistenteIa y el contexto plegado.
 // Se abre desde cualquier pantalla con useAiPanel().open({ cedula, question? }).
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';

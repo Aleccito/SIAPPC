@@ -1,4 +1,4 @@
-// El paciente del expediente va en la URL: `?paciente=DEMO-0002` (REVISION-IA.md, sección 1).
+// El paciente del expediente va en la URL: `?paciente=DEMO-0002` (docs/historial/REVISION-IA.md, sección 1).
 // Un enlace a una pantalla del expediente que no dice de qué paciente es conserva el de la URL
 // actual. Lo aplican Button, Tabs, SegmentedControl, useRowLink, AppLink y usePatientNavigate,
 // así que moverse entre pestañas y pantallas del expediente nunca pierde al paciente.

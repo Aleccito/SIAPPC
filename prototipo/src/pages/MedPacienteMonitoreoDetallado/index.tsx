@@ -131,7 +131,7 @@ function Monitoreo({ v }: { v: PatientView }) {
 
   return (
       // Las columnas crecen con la pantalla: con los anchos fijos de Figma (707 + 443 px) quedaban ~480 px libres a 1920.
-      // Desde 1600 px los paneles de la derecha van en dos columnas (REVISION-DETALLES.md, A1).
+      // Desde 1600 px los paneles de la derecha van en dos columnas (docs/historial/REVISION-DETALLES.md, A1).
       <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
         <div className="flex w-full min-w-0 flex-col gap-4 xl:flex-1">
         {/* El monitor lleva a las tendencias de signos vitales */}

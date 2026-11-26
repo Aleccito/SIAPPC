@@ -1,6 +1,6 @@
-// Pantalla "SIAPPC - MFA" (Figma node 345:426, página LOGIN), con la tarjeta del Login (REVISION.md, punto 5).
+// Pantalla "SIAPPC - MFA" (Figma node 345:426, página LOGIN), con la tarjeta del Login (docs/historial/REVISION.md, punto 5).
 // Paso temporal después del login: el backend no tiene MFA, así que solo pasa el código fijo 000000 (lo dice la
-// pantalla). Sin pasarlo no se entra a la app. Pendiente para cuando exista (CONEXION-BACKEND.md, pedido 17).
+// pantalla). Sin pasarlo no se entra a la app. Pendiente para cuando exista (docs/CONEXION-BACKEND.md, pedido 17).
 import { useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import imgShield from '../../assets/login-shield.svg';

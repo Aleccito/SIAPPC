@@ -1,4 +1,4 @@
-// Alertas del monitor agrupadas y en palabras (REVISION-IA.md, D5).
+// Alertas del monitor agrupadas y en palabras (docs/historial/REVISION-IA.md, D5).
 // El seed trae una alerta por minuto mientras el signo sigue fuera de rango: 18 avisos casi iguales
 // de "FC 132 fuera de rango". Las pantallas los agrupan por equipo, signo y severidad.
 import type { AlertSeverity, SensorAlert } from '../api/types/sensors';
@@ -35,7 +35,7 @@ export const UMBRALES_SISTEMA: Array<{ signo: string; nombre: string; alta: stri
 ];
 
 /**
- * Cuánto dura "activa" una alerta sin un aviso nuevo (REVISION-MEDICO.md, 3.3). El backend no deja atender ni resolver
+ * Cuánto dura "activa" una alerta sin un aviso nuevo (docs/historial/REVISION-MEDICO.md, 3.3). El backend no deja atender ni resolver
  * alertas (pedido 2) y crea una por lectura fuera de rango (pedido 28): sin esta ventana, una alerta de hace horas
  * se veía como de ahora.
  */

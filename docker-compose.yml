@@ -285,8 +285,8 @@ services:
   # Prototipo del módulo médico: las pantallas de Figma en React + Tailwind
   # (segunda app, aparte de `frontend`). Sus datos vienen del backend por /api
   # (su nginx hace de proxy) o de un simulador en el navegador, según
-  # VITE_API_MODE, que se fija al construir. Ver prototipo/LEEME.md y
-  # prototipo/CONEXION-BACKEND.md.
+  # VITE_API_MODE, que se fija al construir. Ver prototipo/README.md y
+  # prototipo/docs/CONEXION-BACKEND.md.
   #
   #   PROTOTIPO_API_MODE  real (por defecto) | mixto | mock
   #   PROTOTIPO_API_REAL  en mixto, los grupos o rutas que van al backend

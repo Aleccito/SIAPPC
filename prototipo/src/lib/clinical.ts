@@ -21,7 +21,7 @@ export function clinicalState(worst: AlertSeverity | null | undefined): Clinical
   return 'estable';
 }
 
-/** Un solo rótulo para el estado intermedio: "Atención", como frontend/ (REVISION-IA.md, D3). */
+/** Un solo rótulo para el estado intermedio: "Atención", como frontend/ (docs/historial/REVISION-IA.md, D3). */
 export const STATE_LABEL: Record<ClinicalState, string> = { critico: 'Crítico', atencion: 'Atención', estable: 'Estable' };
 export const STATE_TONE = { critico: 'danger', atencion: 'warning', estable: 'success' } as const;
 export const STATE_ORDER: Record<ClinicalState, number> = { critico: 0, atencion: 1, estable: 2 };
@@ -82,7 +82,7 @@ export function fmtAgo(value: string | null | undefined, now = Date.now()): stri
   return `hace ${Math.round(h / 24)} días`;
 }
 
-/** Iniciales para el círculo del paciente (REVISION-IA.md, D2): "Rogelio Batista Quintero" → "RB". */
+/** Iniciales para el círculo del paciente (docs/historial/REVISION-IA.md, D2): "Rogelio Batista Quintero" → "RB". */
 export function initials(name: string): string {
   return name
     .split(/\s+/)

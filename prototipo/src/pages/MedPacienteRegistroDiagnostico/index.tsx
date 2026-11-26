@@ -1,6 +1,6 @@
 // Pantalla "med/paciente/registro-diagnostico" (Figma node 140:499) — generada desde el diseño original de Figma.
 // Paso 3: el CIE-10 se busca escribiendo; descripción (20 a 1000 caracteres), fecha (no futura ni anterior al
-// ingreso) y notas (hasta 1000) son campos reales (REVISION.md, paso 3, punto 5).
+// ingreso) y notas (hasta 1000) son campos reales (docs/historial/REVISION.md, paso 3, punto 5).
 // Registra con POST /historia/:id/diagnosticos (o PATCH si llega ?diagnostico=<id> desde "editar").
 // El backend no tiene "severidad" ni "hallazgos" en el diagnóstico: van en `notas`.
 import { useState, type ReactNode } from 'react';
@@ -264,7 +264,7 @@ function Registro({ v, editing }: { v: PatientView; editing: HistoriaEntry | und
             />
           </Field>
 
-          {/* "Estudios adjuntos" se quitó: el archivo no se guardaba en ningún lado (REVISION-MEDICO.md, 6). Los
+          {/* "Estudios adjuntos" se quitó: el archivo no se guardaba en ningún lado (docs/historial/REVISION-MEDICO.md, 6). Los
               documentos se suben en Documentos clínicos. */}
 
           <div className="flex w-full flex-wrap justify-end gap-3 pt-3">

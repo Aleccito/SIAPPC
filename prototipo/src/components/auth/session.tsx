@@ -1,4 +1,4 @@
-// Sesión del prototipo (CONEXION-BACKEND.md, secciones 2 y 9). Guarda el usuario, dice qué puede hacer
+// Sesión del prototipo (docs/CONEXION-BACKEND.md, secciones 2 y 9). Guarda el usuario, dice qué puede hacer
 // (`can`, con la matriz de permisos de seed.sql) y manda al Login a quien no tiene sesión.
 // Después del login viene el código de verificación (LoginMfa): hasta pasarlo, la sesión queda "pendiente" y
 // ninguna pantalla de adentro se abre. El backend no tiene MFA: el código es fijo, 000000 (pendiente, pedido 17).
@@ -20,7 +20,7 @@ const SALIO = 'auth.salio';
 const USER_KEY = 'auth.user';
 /** Login hecho, falta el código de verificación. */
 const MFA_PENDIENTE = 'auth.mfa';
-/** El código fijo mientras el backend no tenga MFA (CONEXION-BACKEND.md, sección 2). */
+/** El código fijo mientras el backend no tenga MFA (docs/CONEXION-BACKEND.md, sección 2). */
 export const MFA_CODE = '000000';
 
 /** Pantallas que se ven sin sesión. */
@@ -67,7 +67,7 @@ function initialUser(): User | null {
   return MEDICO;
 }
 
-/** Pantalla de inicio de cada rol (CONEXION-BACKEND.md, sección 9.1). */
+/** Pantalla de inicio de cada rol (docs/CONEXION-BACKEND.md, sección 9.1). */
 export function landingFor(role: string | undefined): string {
   if (role === 'admin') return '/MedPerfilMiPerfil';
   if (role === 'administrativo') return '/MedMonitoreoGridUci';

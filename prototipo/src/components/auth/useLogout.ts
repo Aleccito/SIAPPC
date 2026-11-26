@@ -1,4 +1,4 @@
-// Cierre de sesión en un solo lugar (REVISION-IA.md, sección 6).
+// Cierre de sesión en un solo lugar (docs/historial/REVISION-IA.md, sección 6).
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../ui/Toast';

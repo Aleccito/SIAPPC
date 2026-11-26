@@ -1,6 +1,6 @@
 // Matriz de permisos por rol: copia de `rol_permiso` en backend/db/seed.sql.
 //
-// El backend no devuelve los permisos del usuario en /auth/me (CONEXION-BACKEND.md, sección 7,
+// El backend no devuelve los permisos del usuario en /auth/me (docs/CONEXION-BACKEND.md, sección 7,
 // pedido 1). Mientras tanto, el menú y los botones se deciden con esta copia; el servidor vuelve a
 // comprobar cada llamada, así que si un administrador cambia la matriz lo peor que pasa es un 403.
 

@@ -48,7 +48,7 @@ export function checkPressure(value: string): ErrorText {
   return null;
 }
 
-/** Rangos posibles de los signos vitales (REVISION.md, paso 3): rechazan errores de tecleo. */
+/** Rangos posibles de los signos vitales (docs/historial/REVISION.md, paso 3): rechazan errores de tecleo. */
 export const VITAL_RANGES = {
   fc: { min: 20, max: 250, unit: 'lpm' },
   fr: { min: 4, max: 60, unit: 'rpm' },

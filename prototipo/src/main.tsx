@@ -14,7 +14,7 @@ const queryClient = new QueryClient({
       staleTime: 30_000,
       // Con datos reales, volver a la pestaña trae lo último (las recargas se pausan con la pestaña oculta).
       refetchOnWindowFocus: API_MODE !== 'mock',
-      // Un 429 tampoco: reintentar enseguida contra el límite de peticiones gasta más cupo (REVISION-MEDICO.md, 5.1).
+      // Un 429 tampoco: reintentar enseguida contra el límite de peticiones gasta más cupo (docs/historial/REVISION-MEDICO.md, 5.1).
       retry: (count, error) => !(error instanceof ApiError && [400, 401, 403, 404, 429].includes(error.status)) && count < 1,
     },
   },

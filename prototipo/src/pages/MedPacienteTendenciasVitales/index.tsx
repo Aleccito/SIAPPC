@@ -1,7 +1,7 @@
 // Pantalla "med/paciente/tendencias-vitales" (Figma node 140:6) — generada desde el diseño original de Figma.
 // Cada lectura en su hora real (src/api/sinBackend.ts, getSerie): FC, SpO2, FR y temperatura del monitor; la PA,
 // simulada. El backend entrega hasta 500 lecturas por signo y sin filtro de fecha, así que en los rangos largos la
-// gráfica dice desde cuándo hay datos (CONEXION-BACKEND.md, pedido 9). Se vuelve a pedir cada 30 s.
+// gráfica dice desde cuándo hay datos (docs/CONEXION-BACKEND.md, pedido 9). Se vuelve a pedir cada 30 s.
 import { useState } from 'react';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';

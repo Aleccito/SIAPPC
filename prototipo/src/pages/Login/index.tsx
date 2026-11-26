@@ -34,7 +34,7 @@ export default function Login() {
     setError(null);
     try {
       await signIn({ email, password });
-      // El backend no tiene MFA: el código es un paso temporal con un valor fijo (CONEXION-BACKEND.md, sección 2).
+      // El backend no tiene MFA: el código es un paso temporal con un valor fijo (docs/CONEXION-BACKEND.md, sección 2).
       navigate('/LoginMfa', { state: { volver } });
     } catch (e) {
       const status = e instanceof ApiError ? e.status : 0;

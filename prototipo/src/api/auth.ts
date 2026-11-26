@@ -46,7 +46,7 @@ export function getStoredUser(): User | null {
 
 /**
  * GET /auth/me: confirma que la sesión sigue viva y refresca el usuario guardado.
- * frontend/ no la usa; aquí sí (ver CONEXION-BACKEND.md, sección 2).
+ * frontend/ no la usa; aquí sí (ver docs/CONEXION-BACKEND.md, sección 2).
  */
 export async function getMe(): Promise<User> {
   const user = await request<User>('/auth/me')

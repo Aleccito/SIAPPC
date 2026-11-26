@@ -47,7 +47,7 @@ const SORT_OPTIONS = [
 /** Filas por página: las de Figma. */
 const PAGE_SIZE = 5;
 // Columnas proporcionales: con anchos fijos de Figma quedaba un hueco de ~500 px antes del menú a 1920
-// (REVISION-DETALLES.md, A1). Por debajo de 900 px la tabla se desplaza (Table minWidth).
+// (docs/historial/REVISION-DETALLES.md, A1). Por debajo de 900 px la tabla se desplaza (Table minWidth).
 const COLS =
   'grid grid-cols-[minmax(200px,2.6fr)_minmax(90px,1fr)_minmax(96px,1.1fr)_minmax(64px,0.8fr)_minmax(64px,0.8fr)_minmax(64px,0.8fr)_minmax(64px,0.8fr)_36px] items-center gap-3';
 const stop = (e: SyntheticEvent) => e.stopPropagation();
@@ -59,7 +59,7 @@ function PatientRow({ p, onDischarge, aExploracion = false }: { p: Patient; onDi
   const crit = p.state === 'critico';
   const transfer = TRANSFER[p.admissionType ?? ''] ?? TRANSFER.programado;
   const aiAccess = useAiAccess();
-  // Solo lo que el rol puede hacer: la enfermera no escribe notas ni exploración (REVISION-DETALLES.md, A3).
+  // Solo lo que el rol puede hacer: la enfermera no escribe notas ni exploración (docs/historial/REVISION-DETALLES.md, A3).
   const { can } = useSession();
   const escribeNotas = can('notas_soap', 'crear');
   return (
@@ -101,7 +101,7 @@ function PatientRow({ p, onDischarge, aExploracion = false }: { p: Patient; onDi
             ...(escribeNotas ? [{ label: 'Nueva nota SOAP', to: patientPath('/MedPacienteNotasSoapNueva', p.document) }] : []),
             ...(p.examined || !can('historia_clinica', 'editar') ? [] : [{ label: 'Registrar exploración física', to: patientPath('/MedPacienteExploracionFisica', p.document) }]),
             ...(aiAccess ? [{ label: 'Consultar IA', to: patientPath('/MedAsistenteIa', p.document) }] : []),
-            // El egreso lo hace Admisión; el médico solo indica el alta médica (REVISION.md, R2).
+            // El egreso lo hace Admisión; el médico solo indica el alta médica (docs/historial/REVISION.md, R2).
             ...(escribeNotas ? [{ label: 'Indicar alta médica', onSelect: () => onDischarge(p) }] : []),
           ]}
         />
@@ -241,7 +241,7 @@ export default function MedPacientesLista() {
                   <p>FC (LPM)</p>
                   <p>SPO2 (%)</p>
                   <p>TEMP (°C)</p>
-                  {/* Sin "•••" aquí: era texto sin acción (REVISION-DETALLES.md, A3). Cada fila lleva su menú. */}
+                  {/* Sin "•••" aquí: era texto sin acción (docs/historial/REVISION-DETALLES.md, A3). Cada fila lleva su menú. */}
                   <span aria-hidden="true" />
                 </div>
                 {rows.map((p) => (

@@ -1,7 +1,7 @@
 // Pantalla "med/perfil/mi-perfil" (Figma node 137:9) — generada desde el diseño original de Figma.
 // Los datos salen de la sesión (GET /auth/me): nombre, rol, unidad, correo, teléfono y última actividad. Lo que el
 // backend no tiene (especialidad, cédula profesional, cambiar la contraseña, MFA) no se inventa: con el login real
-// los botones quedan desactivados (CONEXION-BACKEND.md, sección 2). Las cifras se calculan con los datos reales.
+// los botones quedan desactivados (docs/CONEXION-BACKEND.md, sección 2). Las cifras se calculan con los datos reales.
 import { useState, type FormEvent } from 'react';
 import { useAssignedPatients } from '../../api/queries';
 import { REAL_AUTH } from '../../api/mode';
@@ -12,7 +12,7 @@ import { checkNewPassword } from '../../lib/validate';
 
 
 // Preferencias de avisos de este navegador (src/lib/preferencias.ts): las usa el aviso de alertas en vivo. Se quitaron
-// "Nuevas asignaciones" y "Reportes de turno semanales": no había nada detrás (REVISION-MEDICO.md, 6).
+// "Nuevas asignaciones" y "Reportes de turno semanales": no había nada detrás (docs/historial/REVISION-MEDICO.md, 6).
 const PREFERENCIAS: Array<[keyof Preferencias, string]> = [
   ['criticas', 'Aviso en pantalla de alertas críticas'],
   ['altas', 'Aviso en pantalla de alertas de prioridad alta'],
@@ -76,7 +76,7 @@ export default function MedPerfilMiPerfil() {
   const [mfaActive, setMfaActive] = useState(false);
   const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' });
   const [mfaCode, setMfaCode] = useState('');
-  // Contraseña nueva: 12 o más caracteres, mayúscula, número y símbolo, distinta de la actual (REVISION.md, paso 3, punto 8).
+  // Contraseña nueva: 12 o más caracteres, mayúscula, número y símbolo, distinta de la actual (docs/historial/REVISION.md, paso 3, punto 8).
   const pwdForm = useValidation({
     'password-actual': () => (pwd.current ? null : 'Escriba su contraseña actual'),
     'password-nueva': () => checkNewPassword(pwd.next, pwd.current),
@@ -130,7 +130,7 @@ export default function MedPerfilMiPerfil() {
   return (
     <AppLayout breadcrumb="SIAPPC > Mi Perfil" title="Mi Perfil" actions={<TopBarDate>{fmtDateTime(new Date().toISOString())}</TopBarDate>}>
       <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-6 p-4 md:p-8 xl:flex-row">
-        {/* Sin el ancho máximo de Figma (680 px): a 1920 dejaba ~520 px libres (REVISION-DETALLES.md, A1). */}
+        {/* Sin el ancho máximo de Figma (680 px): a 1920 dejaba ~520 px libres (docs/historial/REVISION-DETALLES.md, A1). */}
         <div className="flex w-full min-w-0 flex-col gap-5 xl:flex-1">
           <Card padding="lg" className="flex w-full flex-col gap-5 sm:flex-row sm:items-start">
             <div className="flex size-20 shrink-0 items-center justify-center rounded-full bg-primary">
@@ -223,7 +223,7 @@ export default function MedPerfilMiPerfil() {
                     onClick={() => flip(clave)}
                     className="flex shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
-                    {/* Interruptor dibujado con CSS: antes era una imagen y, sin ella, el botón quedaba vacío (REVISION-DETALLES.md, A2). */}
+                    {/* Interruptor dibujado con CSS: antes era una imagen y, sin ella, el botón quedaba vacío (docs/historial/REVISION-DETALLES.md, A2). */}
                     <span className={`relative h-5 w-9 rounded-full transition-colors ${prefs[clave] ? 'bg-primary' : 'bg-line'}`}>
                       <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${prefs[clave] ? 'left-[18px]' : 'left-0.5'}`} />
                     </span>

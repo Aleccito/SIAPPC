@@ -5,7 +5,7 @@
 // "Monitor de prueba", simulados), en las camas de los 8 pacientes.
 //
 // Del seed: cama, paciente, modelo, código (como número de serie), estado y señales (hr, spo2, resp).
-// No viene del seed (el backend no los tiene, CONEXION-BACKEND.md pedido 18): batería, calibraciones,
+// No viene del seed (el backend no los tiene, docs/CONEXION-BACKEND.md pedido 18): batería, calibraciones,
 // firmware y eventos. El estado en vivo y la última lectura los da GET /dashboard/devices.
 import imgRowC01Vector from '../assets/row-c-01-vector.svg';
 import { DEL_SEED, DEL_SEED_CAMAS } from '../api/mock/seed/delSeed';

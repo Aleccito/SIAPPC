@@ -1,4 +1,4 @@
-// No viene de Figma: la bandeja "Sugerencia de la IA — sin revisar" de la nota SOAP (REVISION-IA.md, sección 5,
+// No viene de Figma: la bandeja "Sugerencia de la IA — sin revisar" de la nota SOAP (docs/historial/REVISION-IA.md, sección 5,
 // pasos 3 y 4). Muestra de dónde vino, cuándo y con qué modelo; "Insertar" agrega el texto al final de la sección
 // elegida y no guarda nada. Lo que se firma lo escribe (o edita) el médico.
 import { fmtTime } from '../../lib/clinical';

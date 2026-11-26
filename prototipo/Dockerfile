@@ -1,5 +1,5 @@
 # Prototipo del módulo médico (pantallas de Figma). Los datos vienen del backend (/api) o del simulador según
-# VITE_API_MODE, que Vite fija al compilar (CONEXION-BACKEND.md, secciones 1 y 9).
+# VITE_API_MODE, que Vite fija al compilar (docs/CONEXION-BACKEND.md, secciones 1 y 9).
 # Stage 1: build the static bundle.
 FROM node:24-alpine AS build
 WORKDIR /app

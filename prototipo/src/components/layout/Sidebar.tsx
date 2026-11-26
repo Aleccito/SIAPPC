@@ -72,7 +72,7 @@ export function Sidebar({ className, onNavigate, onLogout }: SidebarProps) {
 
       <div className="mt-8 flex flex-col">
         {sessionUser?.role === 'administrativo' && (
-          // El trabajo del administrativo (Admisión) no está en el prototipo (CONEXION-BACKEND.md, 9.1).
+          // El trabajo del administrativo (Admisión) no está en el prototipo (docs/CONEXION-BACKEND.md, 9.1).
           <p className="mb-4 rounded-lg bg-white/5 p-3 font-jakarta text-[11px] leading-[1.45] text-subtle">
             Ingresos, egresos y citas están en la app principal de SIAPPC (Admisión).
           </p>

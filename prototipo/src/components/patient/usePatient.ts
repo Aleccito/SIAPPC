@@ -1,4 +1,4 @@
-// El paciente del expediente: sale de `?paciente=<cédula>` (REVISION-IA.md, sección 1).
+// El paciente del expediente: sale de `?paciente=<cédula>` (docs/historial/REVISION-IA.md, sección 1).
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAssignedPatients, useExpediente, usePatients } from '../../api/queries';

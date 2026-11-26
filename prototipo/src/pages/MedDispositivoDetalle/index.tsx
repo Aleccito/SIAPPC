@@ -72,7 +72,7 @@ function Detalle({ device }: { device: DeviceLive }) {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {/* "Solicitar calibración" y "Reportar falla" se quitaron: no le llegaban a nadie (pedido 18; REVISION-MEDICO.md, 6). */}
+            {/* "Solicitar calibración" y "Reportar falla" se quitaron: no le llegaban a nadie (pedido 18; docs/historial/REVISION-MEDICO.md, 6). */}
             {!free && device.cedula && <Button to={`/MedPacienteResumen?paciente=${device.cedula}`}>Ver paciente</Button>}
           </div>
         </Card>

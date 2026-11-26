@@ -1,4 +1,4 @@
-// SIMULADO: lo que el backend todavía NO tiene (CONEXION-BACKEND.md, secciones 3, 7 y 11). Siempre simulado,
+// SIMULADO: lo que el backend todavía NO tiene (docs/CONEXION-BACKEND.md, secciones 3, 7 y 11). Siempre simulado,
 // también con VITE_API_MODE=real, y por cédula (no por id: el id del backend real no tiene por qué
 // coincidir con el del simulador). Cada función dice qué endpoint haría falta.
 //

@@ -1,4 +1,4 @@
-// Alergias del paciente: verlas y, para el médico, registrarlas, corregirlas o marcarlas inactivas (REVISION-DETALLES.md,
+// Alergias del paciente: verlas y, para el médico, registrarlas, corregirlas o marcarlas inactivas (docs/historial/REVISION-DETALLES.md,
 // parte D). Va en el Resumen y en la subpestaña "Alergias" de Antecedentes.
 //
 // El backend ya tenía GET/POST/PATCH /historia/:id/alergias pero ninguna pantalla las escribía. Nada se borra: una
