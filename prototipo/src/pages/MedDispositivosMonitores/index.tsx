@@ -91,7 +91,9 @@ export default function MedDispositivosMonitores() {
         </div>
 
         <Card padding="none" className="w-full overflow-hidden shadow-[0px_4px_8px_0px_rgba(0,0,0,0.01)]">
-          <Table minWidth={1060}>
+          {/* Suma de los mínimos de las columnas (992), las 7 separaciones de 16 px y el relleno (2 × 24): con 1060 la fila
+              se salía 68 px a 1280 (docs/historial/REVISION-TABLAS-Y-VOLVER.md). */}
+          <Table minWidth={992 + 7 * 16 + 48}>
             <div className={cn(COLS, 'border-b border-line bg-surface py-[14px] font-jakarta text-[11px] font-bold leading-[normal] text-muted')}>
               <p className="w-[76px] shrink-0">CAMA</p>
               <p className="min-w-[160px] flex-[1.6]">PACIENTE</p>

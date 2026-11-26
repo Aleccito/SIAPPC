@@ -1,7 +1,7 @@
 // Piezas de la central de monitoreo (Grid y Lista): selector de unidad, resumen de la unidad y la
 // tarjeta de cama de Figma (node 45:984) dibujada a partir de una cama de GET /monitoring/beds.
 import type { ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { RegistrarExploracion } from '../patient/RegistrarExploracion';
 import imgActivity10 from '../../assets/activity-10.svg';
 import imgActivity8 from '../../assets/activity-8.svg';
@@ -23,7 +23,7 @@ import imgThermometer3 from '../../assets/thermometer-3.svg';
 import imgWind2 from '../../assets/wind-2.svg';
 import imgWind3 from '../../assets/wind-3.svg';
 import imgWind5 from '../../assets/wind-5.svg';
-import { useExpediente, useMonitoredBeds, usePatients } from '../../api/queries';
+import { useAssignedPatients, useExpediente, useMonitoredBeds, usePatients } from '../../api/queries';
 import { useSignosTodos, type SignosExtra } from '../../api/sinBackend';
 import type { MonitoredBed } from '../../api/types/monitoring';
 import { vitalTone } from '../../lib/alerts';
@@ -32,8 +32,14 @@ import { cn } from '../../lib/cn';
 import { patientPath } from '../../lib/patientLink';
 import { useRowLink } from '../ui/rowLink';
 import { useSession } from '../auth/session';
+import { canOpenPath } from '../layout/nav';
 
 export const DEFAULT_UNIT = 'UCI';
+/** Opción del selector con todas las unidades, agrupadas (`?unidad=Todas`). */
+export const ALL_UNITS = 'Todas';
+
+/** "UCI" o, con la opción de todas, "Todas las unidades" (para el título). */
+export const unitTitle = (unit: string) => (unit === ALL_UNITS ? 'Todas las unidades' : unit);
 
 /** La unidad elegida va en la URL (`?unidad=UCI`), como `frontend/` (docs/CONEXION-BACKEND.md). */
 export function useUnitParam(): [string, (u: string) => void] {
@@ -44,31 +50,74 @@ export function useUnitParam(): [string, (u: string) => void] {
 
 export type BedView = MonitoredBed & { cedula: string | null; state: ClinicalState | null; signos: SignosExtra | undefined };
 
-/** Camas de la unidad con el paciente (cédula, estado clínico, PA y temperatura). */
+/**
+ * Camas de la unidad con el paciente (cédula, estado clínico, PA y temperatura). Con `ALL_UNITS`, las de todas, en el
+ * orden de las unidades. `counts`: pacientes (camas ocupadas) de cada unidad, para el selector ("UCI (6)").
+ */
 export function useUnitBeds(unit: string) {
   const beds = useMonitoredBeds();
   // Con los ids de las camas: un paciente recién admitido no sale como cama "Disponible" mientras se pide la lista.
   const patients = usePatients({ ids: (beds.data ?? []).map((b) => b.patientId) });
   const signos = useSignosTodos();
   const units = [...new Set((beds.data ?? []).map((b) => b.unit))];
+  const counts: Record<string, number> = {};
+  for (const b of beds.data ?? []) if (b.patientId) counts[b.unit] = (counts[b.unit] ?? 0) + 1;
   const list: BedView[] = (beds.data ?? [])
-    .filter((b) => b.unit === unit)
-    .sort((a, b) => a.bed.localeCompare(b.bed))
+    .filter((b) => unit === ALL_UNITS || b.unit === unit)
+    .sort((a, b) => units.indexOf(a.unit) - units.indexOf(b.unit) || a.bed.localeCompare(b.bed))
     .map((b) => {
       const cedula = patients.data?.items.find((p) => p.id === b.patientId)?.document ?? null;
       return { ...b, cedula, state: b.patientId ? clinicalState(b.worstSeverity) : null, signos: cedula ? signos.data?.[cedula] : undefined };
     });
-  return { beds: list, units, isPending: beds.isPending };
+  return { beds: list, units, counts, isPending: beds.isPending };
 }
+
+/** Las camas en grupos por unidad, en el orden en que vienen (para la opción "Todas"). */
+export function groupByUnit(beds: BedView[]): Array<{ unit: string; beds: BedView[]; patients: number }> {
+  const groups: Array<{ unit: string; beds: BedView[]; patients: number }> = [];
+  for (const b of beds) {
+    let g = groups.find((x) => x.unit === b.unit);
+    if (!g) groups.push((g = { unit: b.unit, beds: [], patients: 0 }));
+    g.beds.push(b);
+    if (b.state) g.patients++;
+  }
+  return groups;
+}
+
+/** "6 pacientes": el rótulo de cada grupo en "Todas". */
+export const patientsLabel = (n: number) => `${n} ${n === 1 ? 'paciente' : 'pacientes'}`;
 
 /** "Monitoreo activo para 5 pacientes en UCI • 0 Estable • 1 Atención • 4 Crítico". */
 export function unitSummary(beds: BedView[], unit: string) {
   const occupied = beds.filter((b) => b.state);
   const count = (s: ClinicalState) => occupied.filter((b) => b.state === s).length;
   return {
-    lead: `${occupied.length} ${occupied.length === 1 ? 'paciente' : 'pacientes'} en ${unit}`,
+    lead: `${patientsLabel(occupied.length)} en ${unit === ALL_UNITS ? 'todas las unidades' : unit}`,
     rest: ` • ${count('estable')} Estable • ${count('atencion')} Atención • ${count('critico')} Crítico`,
   };
+}
+
+/**
+ * "1 de tus pacientes no tiene cama": la central es por camas y ahí no sale. Solo para quien abre Mis Pacientes (el
+ * administrativo ve la central, pero no tiene pacientes a cargo).
+ */
+export function PatientsWithoutBed() {
+  const { user, can } = useSession();
+  return canOpenPath('/MedPacientesLista', user?.role, (m) => can(m, 'ver')) ? <WithoutBedLine /> : null;
+}
+
+function WithoutBedLine() {
+  const assigned = useAssignedPatients();
+  const n = (assigned.data ?? []).filter((p) => !p.bed).length;
+  if (!n) return null;
+  return (
+    <p className="w-full font-jakarta text-[13px] font-medium leading-[normal] text-muted">
+      {n === 1 ? '1 de tus pacientes no tiene cama y no aparece en la central. ' : `${n} de tus pacientes no tienen cama y no aparecen en la central. `}
+      <Link to="/MedPacientesLista" className="font-bold text-primary hover:underline">
+        Ver en Mis Pacientes
+      </Link>
+    </p>
+  );
 }
 
 const TONE_ICON = {

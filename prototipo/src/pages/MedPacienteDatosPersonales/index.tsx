@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react';
 import { useExploracion } from '../../api/queries';
 import { getDatosExtra, useExtra } from '../../api/sinBackend';
-import { BackButton, Card, InfoField, PatientLayout, usePatient, type PatientView } from '../../components';
+import { Card, InfoField, PatientLayout, usePatient, type PatientView } from '../../components';
 import { fmtDate } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 
@@ -57,7 +57,7 @@ function splitContact(contact: string | null): { name: string; phone: string } {
 export default function MedPacienteDatosPersonales() {
   const { view } = usePatient();
   return (
-    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Datos Personales`} title="Datos Personales y Demográficos" tab="historia" actions={<BackButton />}>
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Datos Personales`} title="Datos Personales y Demográficos" tab="historia">
       {view && <Datos v={view} />}
     </PatientLayout>
   );

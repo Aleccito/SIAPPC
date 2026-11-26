@@ -48,6 +48,29 @@ export function accessForPath(pathname: string): { perm: string[]; clinical: boo
 }
 
 /**
+ * ¿Este rol puede abrir esta ruta? La misma regla que RoleGuard: los permisos de la pantalla y, en las clínicas,
+ * que no sea el admin. Sirve para no ofrecer enlaces que terminan en "Sin permiso".
+ */
+export function canOpenPath(path: string, role: string | undefined, can: (modulo: string) => boolean): boolean {
+  const access = accessForPath(path.split('?')[0]);
+  if (!access) return true;
+  if (role === 'admin' && access.clinical) return false;
+  return access.perm.every((p) => can(p));
+}
+
+/** Adónde lleva cada tramo de la miga de pan ("SIAPPC > Monitoreo > …"). Los del paciente los pone PatientLayout. */
+export const CRUMB_LINKS: Record<string, string> = {
+  Dashboard: '/MedDashboardPrincipal',
+  Pacientes: '/MedPacientesLista',
+  Monitoreo: '/MedMonitoreoGridUci',
+  'Mapa de Camas': '/MedMonitoreoGridUci',
+  Alertas: '/MedAlertasCentro',
+  Reportes: '/MedReportesPanel',
+  Turno: '/MedTurnoHistorial',
+  Dispositivos: '/MedDispositivosMonitores',
+};
+
+/**
  * Qué opción del menú se marca según la ruta.
  * Regla: pantallas del paciente → Pacientes, Monitoreo* → Monitoreo, Turno* → Reportes (como en Figma).
  * Notificaciones, Búsqueda, Ayuda y Perfil no marcan ninguna.

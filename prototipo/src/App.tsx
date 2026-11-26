@@ -3,6 +3,7 @@ import { ToastProvider } from './components';
 import { SessionProvider } from './components/auth/session';
 import { AiPanelProvider } from './components/ai/AiPanel';
 import { RoleGuard } from './components/auth/RoleGuard';
+import { RegistroHistorial } from './components/layout/historial';
 import MedAsistenteIa from './pages/MedAsistenteIa';
 import MedAlertasCentro from './pages/MedAlertasCentro';
 import MedAlertasConfirmacionAtencion from './pages/MedAlertasConfirmacionAtencion';
@@ -48,6 +49,8 @@ import RecuperarContrasena from './pages/RecuperarContrasena';
 function App() {
   return (
     <BrowserRouter>
+      {/* Para el botón "Volver" de la barra superior (components/layout/historial.tsx). */}
+      <RegistroHistorial />
       <ToastProvider>
       {/* Sin sesión, las pantallas de adentro mandan al Login (components/auth/session.tsx). */}
       <SessionProvider>

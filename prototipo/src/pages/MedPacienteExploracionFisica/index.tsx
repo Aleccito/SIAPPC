@@ -10,7 +10,7 @@ import { saveExploracion, type ExploracionDto, type HallazgoDto } from '../../ap
 import { ApiError } from '../../api/http';
 import { useExploracion } from '../../api/queries';
 import { getSignosIngreso, saveSignosIngreso, useExtra, type SignosIngreso } from '../../api/sinBackend';
-import { BackButton, Badge, Button, Card, Divider, FieldError, focusFirst, NumberField, PatientLayout, TextArea, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
+import { Badge, Button, Card, Divider, FieldError, focusFirst, NumberField, PatientLayout, TextArea, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
 import { cn } from '../../lib/cn';
 import { checkNumber, checkPressure, checkText, parseNumber, VITAL_RANGES, type NumberRule } from '../../lib/validate';
 
@@ -87,7 +87,6 @@ export default function MedPacienteExploracionFisica() {
       breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Exploración Física`}
       title="Exploración Física"
       tab="historia"
-      actions={<BackButton />}
     >
       {view && explo.data && signos.isSuccess && <Exploracion key={view.cedula} v={view} dto={explo.data} signos={signos.data} />}
     </PatientLayout>

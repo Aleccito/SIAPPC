@@ -11,7 +11,7 @@ import { addSoapAddendum } from '../../api/clinical';
 import { ApiError } from '../../api/http';
 import { useSoapNote, useSoapNotes } from '../../api/queries';
 import type { SoapNote } from '../../api/types/clinical';
-import { BackButton, Button, CloseButton, Divider, Modal, PatientLayout, TextArea, usePatient, useSession, useToast, type PatientView } from '../../components';
+import { Button, CloseButton, Divider, Modal, PatientLayout, TextArea, usePatient, useSession, useToast, type PatientView } from '../../components';
 import { cn } from '../../lib/cn';
 import { noteRef, SOAP_HISTORY_PATH, SOAP_NEW_PATH } from '../../data/soap';
 import { fmtDateTime, staffName } from '../../lib/clinical';
@@ -28,7 +28,7 @@ const STYLE = [
 export default function MedPacienteNotasSoapDetalle() {
   const { view } = usePatient();
   return (
-    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Notas SOAP > Detalle`} title="Detalle de Nota SOAP" tab="notas" actions={<BackButton />}>
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Notas SOAP > Detalle`} title="Detalle de Nota SOAP" tab="notas">
       {view && (
         <>
           <SoapHistoryView v={view} />

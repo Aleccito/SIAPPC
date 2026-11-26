@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import imgFileText6 from '../../assets/file-text-6.svg';
 import { getNotaCorrelativa, saveNotaCorrelativa, useExtra } from '../../api/sinBackend';
-import { BackButton, Badge, Button, Card, focusFirst, PatientLayout, Table, TextArea, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
+import { Badge, Button, Card, focusFirst, PatientLayout, Table, TextArea, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
 import { fmtDate } from '../../lib/clinical';
 import { checkText } from '../../lib/validate';
 
@@ -24,7 +24,7 @@ const SectionTitle = ({ children }: { children: string }) => (
 export default function MedPacienteDiagnosticosActivos() {
   const { view } = usePatient();
   return (
-    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Diagnósticos`} title="Diagnósticos y Problemas Activos" tab="historia" actions={<BackButton />}>
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Diagnósticos`} title="Diagnósticos y Problemas Activos" tab="historia">
       {view && <Diagnosticos v={view} />}
     </PatientLayout>
   );

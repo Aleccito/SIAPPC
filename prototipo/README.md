@@ -179,6 +179,8 @@ Los informes del historial son estos:
 - `REVISION-IA-RESPUESTAS.md`: la calidad de las respuestas de la IA, antes y después. Los textos y datos del set de
   prueba están en `ia-respuestas/`.
 - `REVISION-DETALLES.md`: columnas, íconos, admisión con monitor, alergias y la IA de pronóstico.
+- `REVISION-TABLAS-Y-VOLVER.md`: tablas que se encimaban, "Volver", la miga de pan con enlaces, el cursor y la central
+  por unidades (con "Todas").
 
 Las capturas de los informes se quitaron del repositorio. Siguen en el historial de git, en el commit c314f64.
 

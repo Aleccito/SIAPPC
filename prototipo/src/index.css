@@ -6,3 +6,27 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/*
+ * Cursor de escribir solo donde se escribe. Fuera de los campos, la flecha normal sobre los textos (no la barra "I")
+ * y sin la rayita que parpadea al hacer clic en un texto (la deja la navegación con cursor de Edge, F7). Se puede
+ * seguir seleccionando y copiando. En `base`, así las clases de Tailwind (cursor-pointer…) siguen mandando.
+ */
+@layer base {
+  body {
+    cursor: default;
+    caret-color: transparent;
+  }
+
+  input,
+  textarea,
+  [contenteditable='true'] {
+    caret-color: auto;
+  }
+
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color'], [type='button'], [type='submit'], [type='reset']),
+  textarea,
+  [contenteditable='true'] {
+    cursor: text;
+  }
+}

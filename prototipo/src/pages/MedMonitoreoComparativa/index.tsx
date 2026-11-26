@@ -106,7 +106,8 @@ function PatientColumn({ p, hours }: { p: PatientRow; hours: number }) {
         </div>
         <Badge tone={p.tone}>{p.stateLabel}</Badge>
       </div>
-      <div className="grid w-full grid-cols-3 gap-2 leading-[normal] sm:grid-cols-5 lg:grid-cols-3 xl:grid-cols-5">
+      {/* 5 por fila desde 1366: a 1280 los valores con flecha ("91% ↓") se salían de su recuadro de 55 px. */}
+      <div className="grid w-full grid-cols-3 gap-2 leading-[normal] sm:grid-cols-5 lg:grid-cols-3 min-[1366px]:grid-cols-5">
         {kpis.map((k) => (
           <div key={k.label} className={cn('flex min-w-0 flex-col gap-1 rounded-lg p-3', k.alert ? KPI_STYLE[k.alert] : 'bg-surface')}>
             <p className={cn('font-jakarta text-[11px] font-semibold', !k.alert && 'text-muted')}>{k.label}</p>

@@ -13,7 +13,7 @@ import imgStethoscope from '../../assets/stethoscope.svg';
 import imgUser from '../../assets/user.svg';
 import { useMonitoredBeds } from '../../api/queries';
 import { getDatosExtra, getIndicacionesExtra, getInterrogatorio, getNotaIngreso, getSignosIngreso, useExtra } from '../../api/sinBackend';
-import { AppLink, BackButton, Button, Divider, IconArrowRight, IconChevronDown, PatientLayout, type PatientView, Table, usePatient, useSession } from '../../components';
+import { AppLink, Button, Divider, IconArrowRight, IconChevronDown, PatientLayout, type PatientView, Table, usePatient, useSession } from '../../components';
 import { fmtDate } from '../../lib/clinical';
 import { cn } from '../../lib/cn';
 
@@ -76,7 +76,7 @@ const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 export default function MedPacienteHistoriaClinicaGeneral() {
   const { view } = usePatient();
   return (
-    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica`} title="Historia Clínica General" tab="historia" actions={<BackButton />}>
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica`} title="Historia Clínica General" tab="historia">
       {view && <Historia v={view} />}
     </PatientLayout>
   );

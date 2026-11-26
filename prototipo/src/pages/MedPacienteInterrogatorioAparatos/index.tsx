@@ -12,7 +12,7 @@ import imgCircleX from '../../assets/circle-x.svg';
 import imgDroplet from '../../assets/droplet.svg';
 import imgIconWrapper from '../../assets/icon-wrapper.svg';
 import imgSparkles from '../../assets/sparkles.svg';
-import { BackButton, Badge, Button, Card, Divider, focusFirst, IconChevronDown, PatientLayout, type PatientView, rowButton, TextArea, usePatient, useToast, useValidation } from '../../components';
+import { Badge, Button, Card, Divider, focusFirst, IconChevronDown, PatientLayout, type PatientView, rowButton, TextArea, usePatient, useToast, useValidation } from '../../components';
 import { checkText } from '../../lib/validate';
 import { cn } from '../../lib/cn';
 
@@ -41,7 +41,6 @@ export default function MedPacienteInterrogatorioAparatos() {
       breadcrumb={`SIAPPC > Pacientes > ${view?.name ?? '…'} > Historia Clínica > Interrogatorio`}
       title="Interrogatorio por Aparatos y Sistemas"
       tab="historia"
-      actions={<BackButton />}
     >
       {view && data.data && <InterrogatorioForm key={view.cedula} v={view} data={data.data} />}
     </PatientLayout>

@@ -10,7 +10,7 @@ import imgCpuIcon from '../../assets/cpu-icon.svg';
 import imgLiveIndicatorEllipse from '../../assets/live-indicator-ellipse.svg';
 import { useAlerts, useAssignments, useDeviceStatus, useMonitoredBeds, useSoapNotes } from '../../api/queries';
 import { getDatosExtra, getSignosExtra, useExtra } from '../../api/sinBackend';
-import { AiIdeasCard, AppLink, BackButton, Badge, Button, Card, Divider, IconSettings, PatientLayout, SoapSections, usePatient, type PatientView } from '../../components';
+import { AiIdeasCard, AppLink, Badge, Button, Card, Divider, IconSettings, PatientLayout, SoapSections, usePatient, type PatientView } from '../../components';
 import { EcgLive } from '../../components/monitor/EcgLive';
 import { alertInfoFrom, attendedAlerts, CONFIRM_PATH, type AttendedState, type ConfirmState } from '../../data/alerts';
 import { toSoapSections } from '../../data/soap';
@@ -38,13 +38,12 @@ const Row = ({ label, children }: { label: string; children: ReactNode }) => (
 export default function MedPacienteResumen() {
   const patient = usePatient();
   const v = patient.view;
-  const bed = v?.bed ?? '…';
   return (
     <PatientLayout
-      breadcrumb={`SIAPPC > Monitoreo > Mapa de Camas > ${bed}`}
+      // Como las demás fichas: al Resumen se llega desde Mis Pacientes, el Dashboard, la central o una alerta.
+      breadcrumb={`SIAPPC > Pacientes > ${v?.name ?? '…'}`}
       title={v ? `Cama ${v.bed ?? '—'} — ${v.name}` : 'Cargando…'}
       tab="resumen"
-      actions={<BackButton to={v?.assigned?.unit ? `/MedMonitoreoGridUci?unidad=${encodeURIComponent(v.assigned.unit)}` : '/MedMonitoreoGridUci'}>Volver al Mapa</BackButton>}
     >
       {v && <Resumen v={v} />}
     </PatientLayout>

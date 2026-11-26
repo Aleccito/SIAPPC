@@ -23,7 +23,6 @@ import {
   aiTextUsed,
   AiIdeasCard,
   AiSuggestionTray,
-  BackButton,
   Badge,
   clearAiText,
   discardSuggestion,
@@ -78,7 +77,7 @@ export default function MedPacienteNotasSoapNueva() {
   const draftQuery = useSoapNote(noteId);
   const draft = draftQuery.data && draftQuery.data.status === 'borrador' ? draftQuery.data : null;
   return (
-    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${v?.name ?? '…'} > Notas SOAP > Nueva`} title="Nueva Nota SOAP" tab="notas" actions={<BackButton />}>
+    <PatientLayout breadcrumb={`SIAPPC > Pacientes > ${v?.name ?? '…'} > Notas SOAP > Nueva`} title="Nueva Nota SOAP" tab="notas">
       {/* La key reinicia el formulario cuando llega el borrador. */}
       {v && (!noteId || !draftQuery.isPending) && <NuevaNota key={draft?.id ?? 'nueva'} v={v} draft={draft} />}
     </PatientLayout>

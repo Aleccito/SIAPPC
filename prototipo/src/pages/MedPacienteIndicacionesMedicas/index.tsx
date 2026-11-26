@@ -8,7 +8,7 @@ import imgHeart4 from '../../assets/heart-4.svg';
 import { ApiError, request } from '../../api/http';
 import { getIndicacionesExtra, useExtra } from '../../api/sinBackend';
 import type { HistoriaEntry } from '../../api/types/clinical';
-import { BackButton, Badge, Button, Card, Combobox, FieldError, IconPlus, IconSparkles, INTERACTIONS_QUESTION, Modal, ModalHeader, PatientLayout, Select, Table, useAiPanel, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
+import { Badge, Button, Card, Combobox, FieldError, IconPlus, IconSparkles, INTERACTIONS_QUESTION, Modal, ModalHeader, PatientLayout, Select, Table, useAiPanel, usePatient, useSession, useToast, useValidation, type PatientView } from '../../components';
 import { checkText } from '../../lib/validate';
 
 /** Vía del backend ⇄ abreviatura de la pantalla. */
@@ -137,7 +137,6 @@ export default function MedPacienteIndicacionesMedicas() {
       tab="historia"
       actions={
         <>
-          <BackButton />
           {canAdd && (
             <Button icon={<IconPlus size={14} />} onClick={() => setModal('Solución intravenosa')}>
               Nueva Indicación

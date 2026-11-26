@@ -600,3 +600,18 @@ botón ya no queda vacío.
 | Mi Perfil | Interruptores de avisos | Imagen del interruptor | Dibujado con CSS. |
 | Registro de diagnóstico, Nota de ingreso | Opciones (radio) | Imágenes | Círculos con CSS. |
 | Notificaciones | Punto "sin leer" | Imagen | Punto con CSS. |
+
+## Tablas, Volver y central (`REVISION-TABLAS-Y-VOLVER.md`)
+
+| Pantalla | Elemento | Antes | Ahora |
+|---|---|---|---|
+| Fichas del paciente (todas), Detalle del monitor | "Volver" | A la derecha, junto a la campana; en el Resumen decía "Volver al Mapa" y siempre iba al mapa | "← Volver" a la izquierda del título (en celular, solo la flecha). Regresa a la pantalla de donde se vino; si se entró por un enlace directo o se recargó, a la pantalla padre: Mis Pacientes o Dispositivos. |
+| Todas | Miga de pan ("SIAPPC > …") | Texto | Cada tramo, menos el último, es un enlace: SIAPPC → el inicio del rol, Pacientes → Mis Pacientes, Monitoreo → la central, Dispositivos → la lista, el nombre del paciente → su Resumen, "Historia Clínica" y "Notas SOAP" → esas fichas. Si el rol no puede abrir la sección, el tramo queda como texto. |
+| Resumen | Miga de pan | "SIAPPC > Monitoreo > Mapa de Camas > UCI-03" | "SIAPPC > Pacientes > nombre", como las demás fichas. |
+| Confirmación de atención | "Volver" | — | Sin cambio: es una ventana sobre la pantalla de origen y ya vuelve con "Cancelar", la X y Escape. |
+| Central (Grid y Lista) | Selector de unidad | "Unidad: UCI" | "Unidad: UCI (6)", con cuántos pacientes hay en cada unidad, y la opción "Todas (n)", que muestra todas las camas en un grupo por unidad ("Trauma · 4 pacientes"). |
+| Central (Grid y Lista) | Resumen | Solo la unidad | Si hay pacientes a cargo sin cama, una línea "1 de tus pacientes no tiene cama y no aparece en la central" con "Ver en Mis Pacientes". No la ve quien no abre Mis Pacientes (el administrativo). |
+| Dashboard | Botones de acción de cada fila | Tapaban "Alerta activa" (58 px) por debajo de ~1900 px | La columna no baja de 148 px; con menos ancho, la tabla se desplaza de lado. |
+| Dispositivos | Fila | La columna "Acción" se salía 68 px a 1280 | La tabla se desplaza de lado. |
+| Comparativa | Recuadros de signos | A 1280, "91% ↓" se salía de su recuadro | 5 por fila desde 1366; antes, 3. |
+| Todas | Textos de la interfaz | Barra de texto "I" al pasar y, con la navegación por cursor de Edge (F7), una rayita parpadeante al hacer clic | Flecha normal y sin rayita fuera de los campos; en los campos, el cursor de texto de siempre. El texto se sigue pudiendo seleccionar y copiar. |
