@@ -2,10 +2,10 @@
 // Muestra la alerta desde la que se llegó (Centro de Alertas, Dashboard o Resumen del
 // paciente); si se entra directo, la alerta crítica más reciente de los pacientes asignados. "Acción tomada"
 // es obligatoria (10 a 500 caracteres) y las
-// notas, opcionales (hasta 500) (REVISION.md, paso 3, punto 2).
+// notas, opcionales (hasta 500) (docs/historial/REVISION.md, paso 3, punto 2).
 // La ventana se dibuja sobre la pantalla de origen, no sobre el fondo de ejemplo de Figma
-// ("Centro de Control de Alertas"), para que se vea de dónde se vino (REVISION.md, C8).
-// El backend no tiene "atender una alerta" (CONEXION-BACKEND.md, pedido 2): la atención se registra en
+// ("Centro de Control de Alertas"), para que se vea de dónde se vino (docs/historial/REVISION.md, C8).
+// El backend no tiene "atender una alerta" (docs/CONEXION-BACKEND.md, pedido 2): la atención se registra en
 // esta visita y la alerta se oculta de las listas hasta recargar.
 import { useState, type ComponentType } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';

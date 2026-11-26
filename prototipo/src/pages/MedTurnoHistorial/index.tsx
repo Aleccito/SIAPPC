@@ -22,7 +22,7 @@ type Status = 'Leído' | 'Pendiente';
 type Row = { id: string; date: string; shift: string; from: string; to: string; pax: string; status: Status; daysAgo: number };
 
 // SIMULADO: las entregas son las registradas en este navegador con "Confirmar entrega" (sinBackend.ts). Antes eran
-// 31 filas fijas de julio y agosto de 2026. El backend no tiene entregas de turno (CONEXION-BACKEND.md, pedido 11).
+// 31 filas fijas de julio y agosto de 2026. El backend no tiene entregas de turno (docs/CONEXION-BACKEND.md, pedido 11).
 const aFila = (e: Entrega): Row => ({
   id: e.id,
   date: fmtDateTime(e.at),

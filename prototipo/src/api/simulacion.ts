@@ -1,4 +1,4 @@
-// SIMULADO: lo que el backend todavía no tiene, pero vivo (CONEXION-BACKEND.md, sección 11).
+// SIMULADO: lo que el backend todavía no tiene, pero vivo (docs/CONEXION-BACKEND.md, sección 11).
 //
 // 1. Deriva en el tiempo. PA, temperatura, tendencias y los paneles del monitoreo detallado no son números fijos:
 //    cambian poco a poco alrededor del valor de cada caso (una suma de senos con fases propias de cada paciente y
@@ -48,7 +48,7 @@ export function vivoTexto(texto: string, clave: string, relativa: number, period
 
 /**
  * Un resultado de laboratorio simulado. No se mueve de a poco como un monitor: cambia solo cuando "llega" un resultado
- * nuevo, cada 60 a 120 minutos según el estudio y el paciente, y se sabe a qué hora llegó (REVISION-MEDICO.md, 4).
+ * nuevo, cada 60 a 120 minutos según el estudio y el paciente, y se sabe a qué hora llegó (docs/historial/REVISION-MEDICO.md, 4).
  */
 export function resultadoLab(texto: string, clave: string, relativa: number, t = Date.now()): { texto: string; at: number } {
   const h = hashTexto(clave);

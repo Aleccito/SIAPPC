@@ -1,8 +1,8 @@
 // Pantalla "med/alertas/centro" (Figma node 48:7) — generada desde el diseño original de Figma.
 // Las alertas del seed de los pacientes asignados (GET /sensors/alerts), agrupadas por cama, signo y
-// severidad: el seed trae una por minuto mientras el signo sigue fuera de rango (REVISION-IA.md, D5).
+// severidad: el seed trae una por minuto mientras el signo sigue fuera de rango (docs/historial/REVISION-IA.md, D5).
 // El historial muestra las que el seed trae como `reconocida`. Atender y silenciar no existen en el
-// backend (CONEXION-BACKEND.md, pedido 2): duran lo que la visita.
+// backend (docs/CONEXION-BACKEND.md, pedido 2): duran lo que la visita.
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import imgBell10 from '../../assets/bell-10.svg';
@@ -192,7 +192,7 @@ export default function MedAlertasCentro() {
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
           <KpiCard label="Alertas Activas" value={String(activeCount)} tone="danger" badge="Acción Urgente" />
           <KpiCard label="Pendientes de Atención" value={String(pendingCount)} tone="warning" badge="En Cola" />
-          {/* El backend no registra cuándo se atiende una alerta (CONEXION-BACKEND.md, pedido 2). */}
+          {/* El backend no registra cuándo se atiende una alerta (docs/CONEXION-BACKEND.md, pedido 2). */}
           <KpiCard label="Tiempo Resp. Promedio" value="—" tone="success" badge="Sin registro" />
         </div>
 
@@ -216,7 +216,7 @@ export default function MedAlertasCentro() {
           <section className="flex w-full min-w-0 flex-col gap-3 xl:w-[450px] xl:shrink-0">
             <h2 className="font-jakarta text-[16px] font-extrabold leading-[normal] text-ink">Historial Resuelto (Últimas horas)</h2>
             <div className="w-full overflow-hidden rounded-xl border border-line bg-white">
-              {/* Paciente 20 px más ancho que en Figma para que los nombres no se corten (REVISION.md, V7). */}
+              {/* Paciente 20 px más ancho que en Figma para que los nombres no se corten (docs/historial/REVISION.md, V7). */}
               <Table minWidth={426}>
                 <div className="flex w-full gap-3 border-b border-line bg-surface px-3 py-2.5 font-jakarta text-[11px] font-bold leading-[normal] text-muted">
                   <p className="w-[45px] shrink-0">HORA</p>

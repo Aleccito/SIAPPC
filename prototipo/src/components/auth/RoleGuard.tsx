@@ -1,4 +1,4 @@
-// Qué pantallas abre cada rol (CONEXION-BACKEND.md, 9.1). Va alrededor de las rutas: si la cuenta no tiene los
+// Qué pantallas abre cada rol (docs/CONEXION-BACKEND.md, 9.1). Va alrededor de las rutas: si la cuenta no tiene los
 // permisos de la pantalla (matriz de seed.sql), o es el admin en una pantalla clínica, se ve un aviso en lugar de
 // la pantalla, sin pedirle nada al servidor. El backend decide igual con su 403; esto evita llegar a él.
 import type { ReactNode } from 'react';

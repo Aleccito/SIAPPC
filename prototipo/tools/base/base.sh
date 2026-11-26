@@ -1,9 +1,10 @@
 #!/bin/sh
-# Datos de la base para el prototipo conectado (CONEXION-BACKEND.md, 9.3). Corre DENTRO del contenedor de MariaDB,
+# Datos de la base para el prototipo conectado (prototipo/docs/CONEXION-BACKEND.md, 9.3). Corre DENTRO del contenedor de MariaDB,
 # con sus variables (MARIADB_*), así que no hace falta escribir contraseñas ni pelear con comillas en PowerShell.
 #
-#   docker compose cp backend/db mariadb:/tmp/db
-#   docker compose cp prototipo/tools/base mariadb:/tmp/base
+#   docker compose exec mariadb rm -rf /tmp/db /tmp/base   # sin esto, cp mete la carpeta dentro de la anterior
+#   docker compose cp backend/db/. mariadb:/tmp/db
+#   docker compose cp prototipo/tools/base/. mariadb:/tmp/base
 #   docker compose exec mariadb sh /tmp/base/base.sh revisar   # solo lee
 #   docker compose exec mariadb sh /tmp/base/base.sh cargar    # carga lo que falte; se puede repetir
 set -e

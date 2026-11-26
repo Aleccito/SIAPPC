@@ -1,5 +1,5 @@
 // Pantalla "siappc-recovery-confirmation" (Figma node 345:19, página LOGIN). Expira en 15 minutos y
-// usa el dominio @institucion.org, como la pantalla de recuperación (REVISION.md, puntos 1 y 2).
+// usa el dominio @institucion.org, como la pantalla de recuperación (docs/historial/REVISION.md, puntos 1 y 2).
 import { useLocation } from 'react-router-dom';
 import imgClock from '../../assets/login-clock.svg';
 import imgMailCheck from '../../assets/login-mail-check.svg';

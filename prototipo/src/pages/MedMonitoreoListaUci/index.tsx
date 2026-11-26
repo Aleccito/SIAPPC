@@ -3,7 +3,7 @@
 //
 // Desde 768 px es una tabla con columnas proporcionales y una sola fila de títulos (con las unidades): cada celda
 // lleva solo su valor. Con los anchos fijos de Figma quedaban ~600 px vacíos a 1920 y cada celda repetía "FC",
-// "SpO2"… (REVISION-DETALLES.md, A1). En celular, una tarjeta por cama con la etiqueta de cada signo.
+// "SpO2"… (docs/historial/REVISION-DETALLES.md, A1). En celular, una tarjeta por cama con la etiqueta de cada signo.
 import type { ReactNode } from 'react';
 import imgAlertTextEllipse from '../../assets/alert-text-ellipse.svg';
 import imgAlertTextEllipse2 from '../../assets/alert-text-ellipse-2.svg';

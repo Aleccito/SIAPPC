@@ -37,7 +37,7 @@ const STATUS_STYLE = {
 } as const;
 
 // Íconos de acción de cada fila: SVG en línea (icons.tsx), no imágenes; si una imagen no carga, el botón queda vacío
-// (REVISION-DETALLES.md, A2).
+// (docs/historial/REVISION-DETALLES.md, A2).
 const ROW_ACTIONS = [
   { label: 'Ver perfil', to: '/MedPacienteResumen', Icon: IconEye },
   { label: 'Monitoreo', to: '/MedPacienteMonitoreoDetallado', Icon: IconHeart },
@@ -80,7 +80,7 @@ function attentionItems(rows: PatientRow[]): Attention[] {
     ];
   });
   // El ingreso más reciente primero: un paciente recién admitido sin evaluación primaria es lo que más urge, y así
-  // aparece aquí aunque esté estable y no entre en las 6 filas de la tabla (REVISION-DETALLES.md, 3.8).
+  // aparece aquí aunque esté estable y no entre en las 6 filas de la tabla (docs/historial/REVISION-DETALLES.md, 3.8).
   const pending = rows
     .filter((r) => !r.examined)
     .sort((a, b) => (b.admittedAt ?? b.arrivedAt).localeCompare(a.admittedAt ?? a.arrivedAt))
@@ -132,7 +132,7 @@ function TrendRow({ r }: { r: PatientRow }) {
       aria-label={`Tendencias de ${r.name}`}
       className="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-3 transition-colors hover:border-subtle sm:flex-row sm:items-center"
     >
-      {/* Nombre completo (en Figma se cortaba a 100 px) y gráficas que se estiran (REVISION.md, V8). */}
+      {/* Nombre completo (en Figma se cortaba a 100 px) y gráficas que se estiran (docs/historial/REVISION.md, V8). */}
       <div className="flex min-w-[100px] shrink-0 flex-col gap-0.5 leading-[normal]">
         <p className="whitespace-nowrap font-jakarta text-[13px] font-bold text-ink">{r.name.split(/\s+/).slice(0, 2).join(' ')}</p>
         <p className="font-jakarta text-[11px] font-normal text-muted">{`Cama ${r.bed ?? '—'}`}</p>
@@ -163,7 +163,7 @@ export default function MedDashboardPrincipal() {
     setStatus('TODOS');
   };
   // Indicadores: cada uno lleva a su lista. "Pendientes" abre Mis Pacientes filtrado a quien no tiene exploración
-  // física, donde cada fila lleva a registrarla (REVISION-MEDICO.md, 3.4).
+  // física, donde cada fila lleva a registrarla (docs/historial/REVISION-MEDICO.md, 3.4).
   const shownRows = rows;
   const KPIS: Array<{ label: string; value: string; stripe: string; color: string; icon: string; to: string }> = [
     { label: 'Pacientes Asignados', value: isPending ? '—' : String(all.length), stripe: 'bg-primary', color: 'text-ink', icon: imgUsers3, to: '/MedPacientesLista' },
@@ -177,7 +177,7 @@ export default function MedDashboardPrincipal() {
     <AppLayout breadcrumb="SIAPPC > Dashboard" title="Dashboard Principal" actions={<SearchBox to="/MedBusquedaGlobal" placeholder="Buscar paciente por nombre o HC..." width={320} />}>
       <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-5 p-4 md:p-6 xl:flex-row">
         <div className="flex w-full min-w-0 flex-col gap-5 xl:flex-1">
-          {/* En celular los tres indicadores van en una fila compacta (REVISION.md, V16). */}
+          {/* En celular los tres indicadores van en una fila compacta (docs/historial/REVISION.md, V16). */}
           <div className="grid w-full grid-cols-3 gap-2 sm:gap-[14px]">
             {KPIS.map((k) => {
               const body = (

@@ -1,6 +1,6 @@
 // Hoja imprimible del paciente ("Generar Reporte" de la cabecera y "Hoja del paciente" de Reportes): una página con
 // los datos reales del expediente y los signos de ahora, para imprimir o guardar en PDF desde el navegador.
-// No se guarda en ningún lado: el backend no tiene reportes clínicos (CONEXION-BACKEND.md, pedido 14).
+// No se guarda en ningún lado: el backend no tiene reportes clínicos (docs/CONEXION-BACKEND.md, pedido 14).
 import { useRef, type ReactNode } from 'react';
 import { useAlerts, useMonitoredBeds, useSoapNotes } from '../../api/queries';
 import { getSignosExtra, useExtra } from '../../api/sinBackend';
@@ -47,7 +47,7 @@ export function HojaPaciente({ v, onClose }: { v: PatientView; onClose: () => vo
   const activos = (filas: Array<Record<string, unknown>> | undefined, estado: string) => (filas ?? []).filter((f) => f.status === estado);
 
   const diagnosticos = activos(e?.diagnosticos, 'activo').map((d) => [texto(d.description), texto(d.code) && `(${d.code})`].filter(Boolean).join(' '));
-  // Con la severidad (REVISION-DETALLES.md, D): "Penicilina (grave) — urticaria".
+  // Con la severidad (docs/historial/REVISION-DETALLES.md, D): "Penicilina (grave) — urticaria".
   const alergias = activos(e?.alergias, 'activa').map((a) => [texto(a.substance), a.severity && `(${String(a.severity)})`, texto(a.reaction) && `— ${a.reaction}`].filter(Boolean).join(' '));
   const medicamentos = activos(e?.medicamentos, 'activo').map((m) => [texto(m.name), texto(m.dose), texto(m.route), texto(m.frequency)].filter(Boolean).join(' '));
   const signosTexto = [

@@ -1,5 +1,5 @@
 // Flecha de tendencia junto a un signo vital ("FC 132 ↑"). Era el carácter ↑ / ↓, que depende de la fuente del sistema;
-// ahora es un SVG en línea (REVISION-DETALLES.md, A2). Para lectores de pantalla dice "alto" o "bajo".
+// ahora es un SVG en línea (docs/historial/REVISION-DETALLES.md, A2). Para lectores de pantalla dice "alto" o "bajo".
 import { IconArrowDown, IconArrowUp } from '../icons';
 
 export type Direccion = 'up' | 'down' | null;

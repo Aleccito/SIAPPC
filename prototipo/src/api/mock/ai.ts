@@ -232,7 +232,7 @@ function guardarAnalisis(id: string, a: AiAnalysis) {
   }
 }
 
-/** DEMO-0004 llegó hace poco: su primer análisis automático tarda un minuto desde que se mira (REVISION-IA.md). */
+/** DEMO-0004 llegó hace poco: su primer análisis automático tarda un minuto desde que se mira (docs/historial/REVISION-IA.md). */
 function primerVistazo(id: string): number {
   const clave = `mock.ia.visto.${id}`;
   try {

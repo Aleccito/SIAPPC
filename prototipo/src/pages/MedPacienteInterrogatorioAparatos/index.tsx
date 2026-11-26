@@ -1,6 +1,6 @@
 // Pantalla "med/paciente/interrogatorio-aparatos" (Figma node 183:6) — generada desde el diseño original de Figma.
 // Paso 3: las observaciones se escriben. Son obligatorias (10 a 1000 caracteres) en los aparatos con
-// síntomas marcados (REVISION.md, paso 3, punto 8).
+// síntomas marcados (docs/historial/REVISION.md, paso 3, punto 8).
 // El backend no tiene interrogatorio: lo marcado de cada paciente sale de src/api/sinBackend.ts.
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

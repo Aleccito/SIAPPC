@@ -1,4 +1,4 @@
--- Revisión de la base para el prototipo conectado (CONEXION-BACKEND.md, 9.3). Solo lee.
+-- Revisión de la base para el prototipo conectado (prototipo/docs/CONEXION-BACKEND.md, 9.3). Solo lee.
 SELECT COUNT(*) AS pacientes_demo FROM paciente WHERE cedula LIKE 'DEMO-%';
 SELECT COUNT(*) AS notas_demo FROM nota_soap n JOIN paciente p USING (paciente_id) WHERE p.cedula LIKE 'DEMO-%';
 SELECT r.nombre AS rol, COUNT(*) AS asignados

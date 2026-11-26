@@ -1,4 +1,4 @@
-// No viene de Figma: piezas de la IA (PR 3, REVISION-IA.md secciones 3 a 5 y 10).
+// No viene de Figma: piezas de la IA (PR 3, docs/historial/REVISION-IA.md secciones 3 a 5 y 10).
 export { AiAnswer, AiDisclaimer } from './AiAnswer';
 export { AiConsult } from './AiConsult';
 export { AiContext } from './AiContext';

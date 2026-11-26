@@ -1,7 +1,7 @@
 // Pantalla "med/paciente/config-umbrales" (Figma node 140:259): Umbrales de alarma.
 // De solo lectura con los umbrales REALES del sistema (backend/src/services/mqttIngest.ts, src/lib/alerts.ts), que son
 // los mismos para todos los pacientes. Antes se podían editar y guardar en el navegador, pero eso no cambiaba cuándo
-// suena una alerta: engañaba (REVISION-MEDICO.md, 5.4 y 6). Editar por paciente depende del pedido 8.
+// suena una alerta: engañaba (docs/historial/REVISION-MEDICO.md, 5.4 y 6). Editar por paciente depende del pedido 8.
 import imgActivity7 from '../../assets/activity-7.svg';
 import imgHeart5 from '../../assets/heart-5.svg';
 import imgThermometer from '../../assets/thermometer.svg';

@@ -1,4 +1,4 @@
-// No viene de Figma: "Ideas de la IA" (REVISION-IA.md, secciones 3 y 4; C4 y C5 de la sección 10). Misma lógica
+// No viene de Figma: "Ideas de la IA" (docs/historial/REVISION-IA.md, secciones 3 y 4; C4 y C5 de la sección 10). Misma lógica
 // que frontend/src/modules/clinical/components/AiIdeasCard.tsx: lee el análisis cada 30 s, se marca desactualizada
 // si llega una alerta del paciente más nueva, pide ideas con "Generar ideas" y con 403 no se dibuja.
 // Variantes: `full` (Resumen), `compact` (Monitoreo detallado), `collapsible` (Confirmación y nota SOAP, solo

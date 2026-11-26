@@ -10,7 +10,7 @@ export type NavItem = {
   icon: ComponentType<IconProps>;
   /** Permisos que hacen falta para verla (módulos de seed.sql, acción "ver"); sin ellos, la ve cualquiera con sesión. */
   perm?: string[];
-  /** Roles que no la ven aunque tengan el permiso: el admin no ve nada clínico (CONEXION-BACKEND.md, 9.1). */
+  /** Roles que no la ven aunque tengan el permiso: el admin no ve nada clínico (docs/CONEXION-BACKEND.md, 9.1). */
   hideFor?: string[];
 };
 
@@ -31,7 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 /**
- * Qué hace falta para abrir una ruta del prototipo (CONEXION-BACKEND.md, 9.1). `clinical`: el admin no la ve
+ * Qué hace falta para abrir una ruta del prototipo (docs/CONEXION-BACKEND.md, 9.1). `clinical`: el admin no la ve
  * aunque la matriz le dé "ver". null: la ve cualquiera con sesión (Mi Perfil, Ayuda, las pantallas de acceso y
  * lo que no es del médico, como la sección Admin*).
  */

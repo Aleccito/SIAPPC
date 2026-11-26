@@ -3,8 +3,8 @@
 // - La hoja imprimible de un paciente, con sus datos reales (la misma de "Generar Reporte" en la ficha).
 // - Los Informes del Sistema: la bitácora del ETL y el CSV de actividad clínica (InformesSistema.tsx).
 // Los reportes clínicos por paciente que traía Figma (historial de entregas, pendientes de entregar, descargas y
-// vistas previas) eran inventados y se quitaron: el backend no tiene reportes clínicos (CONEXION-BACKEND.md,
-// pedido 14; REVISION-MEDICO.md, 6).
+// vistas previas) eran inventados y se quitaron: el backend no tiene reportes clínicos (docs/CONEXION-BACKEND.md,
+// pedido 14; docs/historial/REVISION-MEDICO.md, 6).
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePatients } from '../../api/queries';

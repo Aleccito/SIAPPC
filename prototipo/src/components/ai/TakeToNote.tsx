@@ -1,4 +1,4 @@
-// No viene de Figma: "Llevar a la nota" (REVISION-IA.md, sección 5, paso 1). Un menú corto: qué llevar (la
+// No viene de Figma: "Llevar a la nota" (docs/historial/REVISION-IA.md, sección 5, paso 1). Un menú corto: qué llevar (la
 // respuesta completa o una de sus secciones, si la respuesta las trae) y a dónde (Evaluación o Plan). Abre la
 // Nueva Nota SOAP de ese paciente con la bandeja "sin revisar"; no escribe nada en la nota por su cuenta.
 import { useRef, useState } from 'react';

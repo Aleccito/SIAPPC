@@ -139,7 +139,7 @@ function Datos({ v }: { v: PatientView }) {
       <Row
         main={
           <Section title="Datos Sociales y Demográficos">
-            {/* 4 columnas solo con la tarjeta ancha: a 1024 px no caben (REVISION.md, V10). */}
+            {/* 4 columnas solo con la tarjeta ancha: a 1024 px no caben (docs/historial/REVISION.md, V10). */}
             <FieldList fields={social} className="grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4" />
           </Section>
         }
@@ -150,7 +150,7 @@ function Datos({ v }: { v: PatientView }) {
         }
       />
 
-      {/* Pantalla de consulta: identificación, contacto y seguro los registra Admisión (REVISION.md, R4). */}
+      {/* Pantalla de consulta: identificación, contacto y seguro los registra Admisión (docs/historial/REVISION.md, R4). */}
       <p className="w-full pb-5 pt-2 text-right font-jakarta text-[12px] font-medium leading-[normal] text-muted">
         Datos registrados por Admisión. Para corregirlos, solicítalo a Admisión.
       </p>

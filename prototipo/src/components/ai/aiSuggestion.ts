@@ -1,4 +1,4 @@
-// No viene de Figma: cómo viaja una sugerencia de la IA a la nota SOAP (REVISION-IA.md, sección 5).
+// No viene de Figma: cómo viaja una sugerencia de la IA a la nota SOAP (docs/historial/REVISION-IA.md, sección 5).
 // Va en sessionStorage ligada a la cédula: sobrevive a recargar, no pone texto clínico en la URL y una
 // sugerencia de un paciente no aparece en la nota de otro. Se borra al firmar, al descartar y al cerrar sesión.
 

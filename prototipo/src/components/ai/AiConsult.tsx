@@ -1,4 +1,4 @@
-// No viene de Figma: la consulta libre a la IA (REVISION-IA.md, secciones 3 y 4; C1 y C2 de la sección 10).
+// No viene de Figma: la consulta libre a la IA (docs/historial/REVISION-IA.md, secciones 3 y 4; C1 y C2 de la sección 10).
 // La usan la pantalla Asistente IA y el panel lateral. Exige paciente, como el backend desde el PR #55.
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { usePatientRows, type PatientRow } from '../../data/patients';

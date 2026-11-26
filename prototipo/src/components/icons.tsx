@@ -52,7 +52,7 @@ export const IconStop = createIcon('IconStop', 24, 'M6 6h12v12H6z');
 export const IconCopy = createIcon('IconCopy', 24, 'M8 8h12v12H8zM4 16V4h12');
 export const IconSend = createIcon('IconSend', 24, 'M22 2 11 13M22 2l-7 20-4-9-9-4z');
 
-// Íconos de botones, enlaces y símbolos (REVISION-DETALLES.md, A2). Antes eran archivos SVG de Figma puestos como
+// Íconos de botones, enlaces y símbolos (docs/historial/REVISION-DETALLES.md, A2). Antes eran archivos SVG de Figma puestos como
 // imagen (`<img>`) o caracteres que dependen de la fuente del sistema (⚠️, 📈, ⚙, ✓, ↑, ↓, →, ›): si el navegador no
 // carga la imagen o la fuente no trae el carácter, el botón queda como un cuadrito vacío. En línea no dependen de nada.
 // Trazos de Lucide en 24 px.

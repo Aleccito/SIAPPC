@@ -361,6 +361,14 @@ a mano (`Pruebas/jmeter/correr.sh`).
 | `Pruebas/` | Suite automatizada, colección de Postman y plan de JMeter — ver [Pruebas/README.md](Pruebas/README.md) | Funcionando |
 | `simulation/` | Simulador de eventos discretos, gemelo del modelo de FlexSim — ver [simulation/README.md](simulation/README.md) | Funcionando, por lotes, en el perfil `sim` de Compose |
 
+## Prototipo (segunda app)
+
+En https://prototipo.melo-coton.uk. Es la interfaz nueva del módulo médico, en React + Tailwind, hecha desde el
+diseño de Figma. Usa el mismo backend y la misma base que la app principal, sin compartir código con `frontend/`, y
+la meta es que la reemplace. Cómo correrlo, qué es real y qué sigue simulado: [prototipo/README.md](prototipo/README.md).
+
+Lo que conviene hacer después de la entrega, en todo el proyecto: [docs/PROYECTO-FUTURO.md](docs/PROYECTO-FUTURO.md).
+
 ## Qué está funcionando
 
 Con `docker compose up` quedan operativos, contra la base real:

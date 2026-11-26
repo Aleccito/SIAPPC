@@ -1,6 +1,6 @@
 // La curva de un signo en el monitor de cama: sus lecturas de los últimos minutos (src/api/sinBackend.ts, getSerie),
 // que avanza con cada lectura nueva. Reemplaza los trazos fijos de Figma, que eran una línea recta en diagonal.
-// FC, SpO2, FR y temperatura son lecturas del monitor; la PA, simulada (pedido 10 de CONEXION-BACKEND.md).
+// FC, SpO2, FR y temperatura son lecturas del monitor; la PA, simulada (pedido 10 de docs/CONEXION-BACKEND.md).
 import { cn } from '../../lib/cn';
 
 type Curva = { puntos: Array<[number, number]>; opacidad?: number };

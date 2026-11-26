@@ -4,7 +4,7 @@
 //   con la cama y la unidad de GET /monitoring/beds y las señales de las lecturas recientes (GET /sensors/readings).
 // - Sin backend: DEVICES de src/data/devices.ts, con el estado de GET /dashboard/devices del simulador (como antes).
 //
-// SIMULADO (el backend no los tiene, pedido 18 de CONEXION-BACKEND.md): batería, calibraciones, firmware y eventos.
+// SIMULADO (el backend no los tiene, pedido 18 de docs/CONEXION-BACKEND.md): batería, calibraciones, firmware y eventos.
 // Para los 8 equipos del simulador son los de src/data/devices.ts; para los demás se generan por el código del
 // equipo (siempre los mismos). src/data/devices.ts no cambia: lo usa también la sección del administrador.
 import imgRowC01Vector from '../assets/row-c-01-vector.svg';

@@ -4,7 +4,7 @@
 // último a la derecha. El recuadro se llena desde el primer lote (la ventana crece de 1 a 3 s) y la escala vertical
 // sigue a la señal, para que ocupe el alto. Sin equipo, o si en 5 s no llega ningún lote: "Sin señal de ECG".
 // Una conexión por equipo: se usa en las pantallas de un paciente, no en la central (6 conexiones por host en HTTP/1.1;
-// pedido 29 de CONEXION-BACKEND.md). Si el backend responde 429, espera lo que diga `Retry-After` o cada vez más.
+// pedido 29 de docs/CONEXION-BACKEND.md). Si el backend responde 429, espera lo que diga `Retry-After` o cada vez más.
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch, getToken } from '../../api/http';
 import { esperaTras429 } from '../../api/alertStream';

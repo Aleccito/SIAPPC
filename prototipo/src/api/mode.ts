@@ -1,4 +1,4 @@
-// Interruptor de datos del prototipo (REVISION-IA.md, sección 2; CONEXION-BACKEND.md, sección 4).
+// Interruptor de datos del prototipo (docs/historial/REVISION-IA.md, sección 2; docs/CONEXION-BACKEND.md, sección 4).
 //
 //   VITE_API_MODE=mock   todo simulado (por defecto en `npm run dev`; para trabajar sin backend)
 //   VITE_API_MODE=real   todo va a /api (el backend, por el proxy de Vite o de nginx)

@@ -1,6 +1,6 @@
 // Alertas que viajan entre pantallas (Centro de Alertas, Dashboard, Resumen del paciente →
 // Confirmación de atención → de vuelta). El backend no tiene "atender una alerta"
-// (CONEXION-BACKEND.md, sección 7, pedido 2): lo atendido viaja en el `state` de la navegación.
+// (docs/CONEXION-BACKEND.md, sección 7, pedido 2): lo atendido viaja en el `state` de la navegación.
 import { alertTitle, alertValueText, type AlertGroup } from '../lib/alerts';
 import { fmtAgo, fmtTime } from '../lib/clinical';
 

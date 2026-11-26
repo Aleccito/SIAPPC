@@ -51,7 +51,7 @@ const FAQ = [
 
 
 // "Contacto directo" (un teléfono de relleno y una solicitud con folio inventado) y la insignia "Servicios
-// Operativos" se quitaron: el proyecto no tiene un canal de soporte todavía (REVISION-MEDICO.md, 6).
+// Operativos" se quitaron: el proyecto no tiene un canal de soporte todavía (docs/historial/REVISION-MEDICO.md, 6).
 export default function MedAyudaSoporte() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);

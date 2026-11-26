@@ -76,7 +76,7 @@ export function detectarTemas(pregunta: string): Set<Tema> {
 //
 // Los temas deciden QUÉ secciones del expediente se mandan; el tipo decide QUÉ forma tiene la respuesta. Un modelo de
 // 4B sigue la estructura más visible del prompt: con un prompt único ponía la plantilla de análisis completo en todo
-// (prototipo/REVISION-IA-RESPUESTAS.md, 3.1). Con el tipo, cada pregunta recibe solo su instrucción y su tope.
+// (prototipo/docs/historial/REVISION-IA-RESPUESTAS.md, 3.1). Con el tipo, cada pregunta recibe solo su instrucción y su tope.
 
 export type TipoPregunta =
   | "dato"
@@ -232,7 +232,7 @@ export function mensajesDe(tipo: TipoPregunta, contexto: string, pregunta: strin
 
 // Análisis automático e ideas a pedido (services/aiAuto.ts). AJUSTAR: aquí se afina qué debe y qué no debe generar.
 // Sin cifras de ejemplo: con "SpO2 86 %, FR 28" en el prompt, el modelo citaba
-// esos valores en pacientes que no los tenían (prototipo/REVISION-IA-RESPUESTAS.md).
+// esos valores en pacientes que no los tenían (prototipo/docs/historial/REVISION-IA-RESPUESTAS.md).
 export const PROMPT_IDEAS = `Eres un asistente de apoyo a la decisión clínica. Hablas con un médico.
 Con SOLO los datos del contexto, propón 2 o 3 hipótesis de qué podría tener el paciente, de más a menos probable.
 - Cada hipótesis es un DIAGNÓSTICO (una enfermedad, un síndrome o una complicación), nunca un síntoma ni un signo.

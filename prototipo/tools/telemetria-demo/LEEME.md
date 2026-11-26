@@ -29,7 +29,7 @@ raíz y con el mismo formato que valida `backend/src/services/mqttIngest.ts`.
     centro queda cerca del umbral del backend, así que lo cruzan en episodios cortos y no en cada lectura.
 - **Las alertas** las crea el backend, no el publicador. Hoy el backend crea una alerta, y una notificación para
   cada usuario a cargo, por cada lectura fuera de rango; no agrupa ni enfría. Por eso conviene no bajar mucho
-  `PERIODO_S` (pedido 28 de CONEXION-BACKEND.md).
+  `PERIODO_S` (pedido 28 de prototipo/docs/CONEXION-BACKEND.md).
 - **La temperatura** se guarda como `temp` (está en el catálogo `variable` y no tiene umbral). El prototipo la
   muestra en lugar de la simulada cuando hay una lectura de los últimos 10 minutos.
 - **La presión arterial no se manda**: `lectura.valor` es un número y la PA es un par (pedido 10). Tampoco los
@@ -87,12 +87,12 @@ docker run --rm --network siappc_default --env-file <(grep -E '^MQTT_(USER|PASSW
   minutos.
 - El backend las guarda como atrasadas (más de 60 s): no manda avisos en vivo por ellas.
 - **Quedan dentro de los umbrales a propósito.** El backend fecha cada alerta cuando la guarda y no con la hora de la
-  lectura (pedido 34 de CONEXION-BACKEND.md): una lectura fuera de rango de hace 20 h aparecería como una alerta de
+  lectura (pedido 34 de prototipo/docs/CONEXION-BACKEND.md): una lectura fuera de rango de hace 20 h aparecería como una alerta de
   ahora. Por eso la historia de los críticos se ve más tranquila que su presente.
 - Correrla dos veces duplica la historia (con otras horas): no hace falta repetirla mientras la base no se borre.
 - En el servidor escribe en la base que también usa la app principal: avisar antes.
 
-No es un servicio del Compose a propósito: el Compose no es parte del prototipo (pedido 32 de CONEXION-BACKEND.md).
+No es un servicio del Compose a propósito: el Compose no es parte del prototipo (pedido 32 de prototipo/docs/CONEXION-BACKEND.md).
 
 ## Opciones
 

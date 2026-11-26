@@ -90,7 +90,7 @@ function Resumen({ v }: { v: PatientView }) {
     ['Nombre Completo', v.name],
     ['Fecha de Nacimiento', `${fmtDate(v.patient.birthDate)} (${v.age ?? '—'} años)`],
     ['Grupo Sanguíneo', blood],
-    // El médico a cargo, no el primero del equipo: con la enfermera asignada antes salía ella (REVISION-DETALLES.md, 3.8).
+    // El médico a cargo, no el primero del equipo: con la enfermera asignada antes salía ella (docs/historial/REVISION-DETALLES.md, 3.8).
     ['Médico Responsable', staffName(team.data?.find((a) => /m[eé]dic/i.test(a.role))?.name)],
     ['Diagnóstico Principal', v.mainDx ? String(v.mainDx.description) : '—'],
     ['Contacto de Emergencia', v.patient.emergencyContact ?? '—'],
@@ -117,7 +117,7 @@ function Resumen({ v }: { v: PatientView }) {
 
   return (
     // Las columnas crecen con la pantalla: con los anchos fijos de Figma (630 + 474 px) quedaban ~520 px libres a 1920.
-    // Desde 1600 px las tarjetas de la derecha van en dos columnas (REVISION-DETALLES.md, A1).
+    // Desde 1600 px las tarjetas de la derecha van en dos columnas (docs/historial/REVISION-DETALLES.md, A1).
     <div className="flex w-full flex-col items-start gap-5 xl:flex-row">
       <div className="flex w-full min-w-0 flex-col gap-4 xl:flex-1">
         <div className="flex w-full flex-col gap-4 rounded-xl bg-[#0b1220] p-4 drop-shadow-[0px_8px_10px_rgba(0,0,0,0.25)] sm:p-5 xl:min-h-[571px]">
@@ -181,7 +181,7 @@ function Resumen({ v }: { v: PatientView }) {
           </div>
         </Card>
 
-        {/* Las alergias en su tarjeta: el médico las registra, corrige o marca inactivas (REVISION-DETALLES.md, D). */}
+        {/* Las alergias en su tarjeta: el médico las registra, corrige o marca inactivas (docs/historial/REVISION-DETALLES.md, D). */}
         <AlergiasCard pacienteId={v.id} nombre={v.name} entradas={v.expediente?.alergias} />
 
         <Card raised className="flex w-full flex-col gap-[14px]">

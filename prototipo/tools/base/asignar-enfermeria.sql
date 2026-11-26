@@ -1,5 +1,5 @@
 -- Asigna a la enfermera del seed (enfermero@institucion.org) los mismos pacientes DEMO que tiene el médico, para
--- que su tablero no salga vacío (CONEXION-BACKEND.md, 9.3; pedido 24 para que lo traiga el seed).
+-- que su tablero no salga vacío (prototipo/docs/CONEXION-BACKEND.md, 9.3; pedido 24 para que lo traiga el seed).
 -- Se puede correr varias veces: solo agrega las asignaciones que falten.
 SET NAMES utf8mb4;
 INSERT IGNORE INTO medico_paciente (usuario_id, paciente_id, fecha_asignacion, motivo, activo)

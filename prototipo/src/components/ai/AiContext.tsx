@@ -1,4 +1,4 @@
-// No viene de Figma: "Lo que verá la IA" (REVISION-IA.md, sección 3 y C3 de la sección 10). Muestra lo que el
+// No viene de Figma: "Lo que verá la IA" (docs/historial/REVISION-IA.md, sección 3 y C3 de la sección 10). Muestra lo que el
 // backend le manda al modelo para la pregunta escrita: lo mínimo de seguridad siempre y el resto según de qué
 // trate (mismas reglas: src/lib/aiTemas.ts es copia de backend/src/services/aiTemas.ts).
 import type { ReactNode } from 'react';

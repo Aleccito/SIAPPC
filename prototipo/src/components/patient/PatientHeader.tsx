@@ -14,7 +14,7 @@ import { comoAlergia } from './AlergiasCard';
 import { HojaPaciente } from './HojaPaciente';
 import type { PatientView } from './usePatient';
 
-/** Círculo con las iniciales: la foto de Figma era de una sola paciente (REVISION-IA.md, D2). */
+/** Círculo con las iniciales: la foto de Figma era de una sola paciente (docs/historial/REVISION-IA.md, D2). */
 export function PatientAvatar({ name, size = 56 }: { name: string; size?: number }) {
   return (
     <span

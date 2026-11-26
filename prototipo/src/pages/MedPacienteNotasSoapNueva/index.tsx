@@ -1,10 +1,10 @@
 // Pantalla "med/paciente/notas-soap-nueva" (Figma node 29:1881) — generada desde el diseño original de Figma.
 // Paso 3: S/O/A/P son campos reales. "Guardar borrador" pide al menos una sección; "Guardar y firmar"
-// pide las cuatro (10 a 2000 caracteres) y confirma antes de firmar (REVISION.md, paso 3, punto 1).
+// pide las cuatro (10 a 2000 caracteres) y confirma antes de firmar (docs/historial/REVISION.md, paso 3, punto 1).
 // Guarda con POST /soap/notes (o PUT + /sign si sigue un borrador) para el paciente de la URL.
 // PR 3 (no viene de Figma): la bandeja "Sugerencia de la IA — sin revisar" cuando se llega con "Llevar a la
 // nota", las ideas de la IA en un desplegable y, si la nota tiene texto que vino de la IA, la casilla "Revisé el
-// texto sugerido por la IA" para poder firmar (REVISION-IA.md, sección 5 y D8). Al backend llega lo de siempre.
+// texto sugerido por la IA" para poder firmar (docs/historial/REVISION-IA.md, sección 5 y D8). Al backend llega lo de siempre.
 import imgAvatar2Png from '../../assets/avatar-2.png';
 import imgHeaderRowFrame from '../../assets/header-row-frame.svg';
 import imgHeaderRowFrame2 from '../../assets/header-row-frame-2.svg';
